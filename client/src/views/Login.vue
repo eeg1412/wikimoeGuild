@@ -77,14 +77,14 @@
           <el-form-item label="账号">
             <el-input
               v-model="regForm.account"
-              placeholder="请输入2-16位英数字下划线减号的账号"
+              placeholder="2-16位英数字下划线减号的账号"
             ></el-input>
           </el-form-item>
           <el-form-item label="密码">
             <el-input
               v-model="regForm.password"
               show-password
-              placeholder="请输入4-16位英数字下划线减号的密码"
+              placeholder="4-16位英数字下划线减号的密码"
             ></el-input>
           </el-form-item>
           <el-form-item label="确认密码">
@@ -97,13 +97,13 @@
           <el-form-item label="会长昵称">
             <el-input
               v-model="regForm.nickName"
-              placeholder="请输2-8位中文、日文、英文、数字包括下划线的昵称"
+              placeholder="2-8位中文、日文、英文、数字、下划线"
             ></el-input>
           </el-form-item>
           <el-form-item label="公会名称">
             <el-input
               v-model="regForm.guildName"
-              placeholder="请输入2-8位中文、日文、英文、数字包括下划线的公会名称"
+              placeholder="2-8位中文、日文、英文、数字、下划线"
             ></el-input>
           </el-form-item>
           <el-form-item label="会长头像">
@@ -173,6 +173,8 @@
 import moment from "moment";
 import cropDialog from "../components/CropDialog.vue";
 import { authApi } from "../api";
+import { mapState } from "vuex";
+const utils = require("../../utils/utils");
 
 export default {
   name: "login",
@@ -215,7 +217,8 @@ export default {
       } else {
         return "3";
       }
-    }
+    },
+    ...mapState(["token"])
   },
   watch: {},
   methods: {
@@ -229,11 +232,62 @@ export default {
     },
     onLogin() {},
     onReg() {
+      if (this.regForm.password !== this.regForm.password2) {
+        this.$message.error("两次密码不同!");
+        return false;
+      }
+      const {
+        account,
+        password,
+        nickName,
+        guildName,
+        accountTx,
+        guildIcon,
+        captcha
+      } = this.regForm;
+      //   校验格式
+      if (!utils.accountCheck(account)) {
+        this.$message.error("请输入2-16位英数字下划线减号的账号！");
+        return false;
+      }
+      if (!utils.passwordCheck(password)) {
+        this.$message.error("请输入4-16位英数字下划线减号的密码！");
+        return false;
+      }
+      if (!utils.nickNameCheck(nickName)) {
+        this.$message.error(
+          "请输2-8位中文、日文、英文、数字包括下划线的昵称！"
+        );
+        return false;
+      }
+      if (!utils.nickNameCheck(guildName)) {
+        this.$message.error(
+          "请输入2-8位中文、日文、英文、数字包括下划线的公会名称！"
+        );
+        return false;
+      }
+
+      const jpgReg = new RegExp("data:image/jpeg;base64,");
+      if (!jpgReg.test(accountTx)) {
+        this.$message.error("请设置会长头像！");
+        return false;
+      }
+      if (!jpgReg.test(guildIcon)) {
+        this.$message.error("请设置公会图标！");
+        return false;
+      }
+      if (!captcha) {
+        this.$message.error("请输入验证码！");
+        return false;
+      }
       authApi.register(this.regForm).then(res => {
         console.log(res);
         this.captchaUpdata();
-        if (res.data.code == 0) {
+        if (res.data.code === 0) {
           this.$message.error(res.data.msg);
+        } else if (res.data.code === 1) {
+          this.$store.commit("setToken", res.data.token);
+          this.regDialog = false;
         }
       });
     },
