@@ -70,7 +70,7 @@
         <el-form
           ref="form"
           :model="regForm"
-          label-width="90px"
+          label-width="80px"
           @keyup.enter.native="onReg()"
         >
           <el-form-item label="账号">
@@ -93,20 +93,52 @@
               placeholder="再次输入密码"
             ></el-input>
           </el-form-item>
-          <el-form-item label="管理员昵称">
+          <el-form-item label="会长昵称">
             <el-input
-              v-model="regForm.account"
-              placeholder="请输入管理员昵称"
+              v-model="regForm.nickName"
+              placeholder="请输入会长昵称"
             ></el-input>
           </el-form-item>
           <el-form-item label="公会名称">
             <el-input
-              v-model="form.account"
+              v-model="regForm.guildName"
               placeholder="请输入公会名称"
             ></el-input>
           </el-form-item>
-          <el-form-item label="管理员头像"> </el-form-item>
-          <el-form-item label="公会图标"></el-form-item>
+          <el-form-item label="会长头像">
+            <img :src="this.regForm.accountTx" v-if="this.regForm.accountTx" />
+            <el-upload
+              action=""
+              :auto-upload="false"
+              :show-file-list="false"
+              accept="image/*"
+              :on-change="
+                (file, fileList) =>
+                  handleAvatarSuccess('accountTx', file, fileList)
+              "
+            >
+              <el-button size="small" type="primary">{{
+                regForm.accountTx ? "重新导入" : "点击导入"
+              }}</el-button>
+            </el-upload>
+          </el-form-item>
+          <el-form-item label="公会图标">
+            <img :src="this.regForm.guildIcon" v-if="this.regForm.guildIcon" />
+            <el-upload
+              action=""
+              :auto-upload="false"
+              :show-file-list="false"
+              accept="image/*"
+              :on-change="
+                (file, fileList) =>
+                  handleAvatarSuccess('guildIcon', file, fileList)
+              "
+            >
+              <el-button size="small" type="primary">{{
+                regForm.guildIcon ? "重新导入" : "点击导入"
+              }}</el-button>
+            </el-upload>
+          </el-form-item>
           <el-form-item label="验证码">
             <el-input
               placeholder="请输入计算结果"
@@ -127,22 +159,47 @@
         <el-button type="primary" @click="onReg">注册</el-button>
       </div>
     </el-dialog>
+    <cropDialog
+      :img="base64"
+      :show.sync="cropDialogShow"
+      @onCrop="onCrop"
+    ></cropDialog>
   </div>
 </template>
 
 <script>
 import moment from "moment";
+import cropDialog from "../components/CropDialog.vue";
 
 export default {
   name: "login",
-  components: {},
+  components: {
+    cropDialog
+  },
   data() {
     return {
+      cropDialogShow: false,
       captchaSrc: "",
-      form: {},
-      regForm: {},
+      form: {
+        account: "",
+        password: "",
+        captcha: "",
+        remPass: false
+      },
+      regForm: {
+        account: "",
+        password: "",
+        password2: "",
+        nickName: "",
+        guildName: "",
+        accountTx: "",
+        guildIcon: "",
+        captcha: ""
+      },
       loginDialog: false,
-      regDialog: false
+      regDialog: false,
+      cropType: "",
+      base64: ""
     };
   },
   computed: {
@@ -159,6 +216,14 @@ export default {
   },
   watch: {},
   methods: {
+    onCrop(base64) {
+      this.regForm[this.cropType] = base64;
+    },
+    handleAvatarSuccess(mode, file) {
+      this.cropType = mode;
+      this.base64 = URL.createObjectURL(file.raw);
+      this.cropDialogShow = true;
+    },
     onLogin() {},
     onReg() {},
     captchaUpdata() {},
@@ -166,6 +231,16 @@ export default {
       this.loginDialog = true;
     },
     onRegShow() {
+      this.regForm = {
+        account: "",
+        password: "",
+        password2: "",
+        nickName: "",
+        guildName: "",
+        accountTx: "",
+        guildIcon: "",
+        captcha: ""
+      };
       this.regDialog = true;
     }
   },

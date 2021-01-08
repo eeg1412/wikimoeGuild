@@ -834,6 +834,12 @@ body::-webkit-scrollbar-thumb:hover {
 }
 .wm_guild_dialog_body .el-dialog {
   max-width: 400px;
+  margin-top: 8vh !important;
+}
+@media (max-width: 768px) {
+  .wm_guild_dialog_body .el-dialog {
+    margin-top: 10px !important;
+  }
 }
 .wm_login_view {
   min-height: 100vh;

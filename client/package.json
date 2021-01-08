@@ -11,7 +11,9 @@
     "core-js": "^3.6.5",
     "element-ui": "^2.14.1",
     "moment": "^2.29.1",
+    "pica": "^6.1.1",
     "vue": "^2.6.11",
+    "vue-advanced-cropper": "^1.0.1",
     "vue-router": "^3.2.0",
     "vuex": "^3.4.0"
   },
