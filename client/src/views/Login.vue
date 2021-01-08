@@ -37,6 +37,7 @@
           </el-form-item>
           <el-form-item label="验证码">
             <el-input
+              class="reg_code_img_body"
               placeholder="请输入计算结果"
               v-model="form.captcha"
               type="tel"
@@ -76,14 +77,14 @@
           <el-form-item label="账号">
             <el-input
               v-model="regForm.account"
-              placeholder="请输入账号"
+              placeholder="请输入2-16位英数字下划线减号的账号"
             ></el-input>
           </el-form-item>
           <el-form-item label="密码">
             <el-input
               v-model="regForm.password"
               show-password
-              placeholder="请输入密码"
+              placeholder="请输入4-16位英数字下划线减号的密码"
             ></el-input>
           </el-form-item>
           <el-form-item label="确认密码">
@@ -96,13 +97,13 @@
           <el-form-item label="会长昵称">
             <el-input
               v-model="regForm.nickName"
-              placeholder="请输入会长昵称"
+              placeholder="请输2-8位中文、日文、英文、数字包括下划线的昵称"
             ></el-input>
           </el-form-item>
           <el-form-item label="公会名称">
             <el-input
               v-model="regForm.guildName"
-              placeholder="请输入公会名称"
+              placeholder="请输入2-8位中文、日文、英文、数字包括下划线的公会名称"
             ></el-input>
           </el-form-item>
           <el-form-item label="会长头像">
@@ -141,6 +142,7 @@
           </el-form-item>
           <el-form-item label="验证码">
             <el-input
+              class="reg_code_img_body"
               placeholder="请输入计算结果"
               v-model="regForm.captcha"
               type="tel"
@@ -170,6 +172,7 @@
 <script>
 import moment from "moment";
 import cropDialog from "../components/CropDialog.vue";
+import { authApi } from "../api";
 
 export default {
   name: "login",
@@ -179,7 +182,7 @@ export default {
   data() {
     return {
       cropDialogShow: false,
-      captchaSrc: "",
+      captchaSrc: "/api/captcha?time=" + new Date().getTime(),
       form: {
         account: "",
         password: "",
@@ -225,9 +228,20 @@ export default {
       this.cropDialogShow = true;
     },
     onLogin() {},
-    onReg() {},
-    captchaUpdata() {},
+    onReg() {
+      authApi.register(this.regForm).then(res => {
+        console.log(res);
+        this.captchaUpdata();
+        if (res.data.code == 0) {
+          this.$message.error(res.data.msg);
+        }
+      });
+    },
+    captchaUpdata() {
+      this.captchaSrc = "/api/captcha?time=" + new Date().getTime();
+    },
     onLoginShow() {
+      this.captchaUpdata();
       this.loginDialog = true;
     },
     onRegShow() {
@@ -241,6 +255,7 @@ export default {
         guildIcon: "",
         captcha: ""
       };
+      this.captchaUpdata();
       this.regDialog = true;
     }
   },

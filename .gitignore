@@ -1,2 +1,4 @@
 /node_modules
+/client/accountTx
+/client/guildIcon
 .env

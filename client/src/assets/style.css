@@ -827,6 +827,12 @@ body::-webkit-scrollbar-thumb:hover {
   background-color: #bbb;
 }
 /* guild */
+.reg_code_img_body .el-input-group__append {
+  padding: 0px 5px;
+}
+.reg_code_img {
+  height: 25px;
+}
 .wm_guild_body {
   max-width: 1200px;
   margin: 0 auto;
