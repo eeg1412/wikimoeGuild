@@ -51,7 +51,7 @@
             </el-input>
           </el-form-item>
           <el-form-item label="保持登录">
-            <el-switch v-model="form.remPass"></el-switch>
+            <el-switch v-model="form.save"></el-switch>
           </el-form-item>
         </el-form>
       </div>
@@ -177,7 +177,7 @@ import { mapState } from "vuex";
 const utils = require("../../utils/utils");
 
 export default {
-  name: "login",
+  name: "Login",
   components: {
     cropDialog
   },
@@ -189,7 +189,7 @@ export default {
         account: "",
         password: "",
         captcha: "",
-        remPass: false
+        save: false
       },
       regForm: {
         account: "",
@@ -230,7 +230,39 @@ export default {
       this.base64 = URL.createObjectURL(file.raw);
       this.cropDialogShow = true;
     },
-    onLogin() {},
+    onLogin() {
+      const { account, password, captcha } = this.form;
+      if (!account) {
+        this.$message.error("请输入账号！");
+        return false;
+      }
+      if (!password) {
+        this.$message.error("请输入密码！");
+        return false;
+      }
+      if (!captcha) {
+        this.$message.error("请输入验证码！");
+        return false;
+      }
+      authApi.login(this.form).then(res => {
+        console.log(res);
+        this.captchaUpdata();
+        if (res.data.code === 0) {
+          this.$message.error(res.data.msg);
+        } else if (res.data.code === 1) {
+          this.$store.commit("setToken", res.data.token);
+          if (this.form.save) {
+            localStorage.setItem("token", res.data.token);
+          } else {
+            sessionStorage.setItem("token", res.data.token);
+          }
+          this.regDialog = false;
+          this.$router.replace({
+            name: "Home"
+          });
+        }
+      });
+    },
     onReg() {
       if (this.regForm.password !== this.regForm.password2) {
         this.$message.error("两次密码不同!");

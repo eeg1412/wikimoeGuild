@@ -836,7 +836,7 @@ body::-webkit-scrollbar-thumb:hover {
 .wm_guild_body {
   max-width: 1200px;
   margin: 0 auto;
-  padding-top: 20px;
+  padding-top: 40px;
 }
 .wm_guild_dialog_body .el-dialog {
   max-width: 400px;

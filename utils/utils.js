@@ -1,6 +1,6 @@
 var jwt = require("jsonwebtoken");
 var chalk = require("chalk");
-const userUtils = require("../mongodb/utils/users");
+const playersAccountsUtils = require("../mongodb/utils/players_accounts");
 
 //检查密码格式
 exports.passwordCheck = function (password) {
@@ -28,7 +28,7 @@ exports.getUserIp = function (req) {
 };
 //检查token
 exports.tokenCheck = async function (token) {
-  let secretOrPrivateKey = process.env.JWT_SECRET_KEY || "test"; // 这是加密的key（密钥）
+  let secretOrPrivateKey = process.env.JWT_SECRET_KEY || "wikimoeGuild"; // 这是加密的key（密钥）
   return await new Promise((resolve, reject) => {
     jwt.verify(token, secretOrPrivateKey, function (err, decode) {
       if (err) {
@@ -56,7 +56,7 @@ exports.checkTokenAndAccount = async function (token) {
   let params = {
     account: account
   };
-  let result = await userUtils.findOne(params).catch((err) => {
+  let result = await playersAccountsUtils.findOne(params).catch((err) => {
     res.send({
       code: 0,
       msg: "内部错误请联系管理员！"
