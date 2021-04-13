@@ -6,14 +6,17 @@
       <h1 class="tc mb20">TODO</h1>
       <div class="tc mt30">
         <Button class="mr5">{{ $t("m.label.loginGame") }}</Button>
-        <Button class="p-button-info">{{ $t("m.label.register") }}</Button>
+        <Button class="p-button-info" @click="openRegister">{{
+          $t("m.label.register")
+        }}</Button>
       </div>
     </div>
   </div>
-  <register-dialog></register-dialog>
+  <register-dialog ref="registerDialogCom"></register-dialog>
 </template>
 
 <script>
+import { ref } from "vue";
 import moment from "moment";
 import Button from "primevue/button";
 import RegisterDialog from "../components/registerDialog";
@@ -37,6 +40,13 @@ export default {
         return "3";
       }
     }
+  },
+  setup() {
+    const registerDialogCom = ref(null);
+    const openRegister = () => {
+      registerDialogCom.value.open();
+    };
+    return { registerDialogCom, openRegister };
   }
 };
 </script>

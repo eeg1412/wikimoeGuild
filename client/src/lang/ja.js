@@ -3,6 +3,7 @@ export const m = {
         register: "登録",
         loginGame:"ログイン",
         close:"閉じる",
+        ok:"確認",
         account:"アカウント",
         password:"パスワード",
         passwordRetry:"パスワード確認",
@@ -10,7 +11,9 @@ export const m = {
         guildName:"ギルドネーム",
         accountTx:"アバター",
         guildIcon:"ギルドアイコン",
-        captcha:"キャプチャ"
+        captcha:"キャプチャ",
+        select:"選択",
+        error:"エラー",
     }
 };
   

@@ -22,12 +22,15 @@ export default {
     const langSelected = String(
       app.appContext.config.globalProperties.$i18n.global.locale
     );
-    const lang = ref(langSelected);
     const langList = ref([
       { name: "中文", value: "zh" },
       { name: "English", value: "en" },
       { name: "日本語", value: "ja" }
     ]);
+    const filterLang = langList.value.filter(item => {
+      return item.value === langSelected;
+    });
+    const lang = ref(filterLang.length > 0 ? langSelected : "zh");
     const localeChange = ev => {
       app.appContext.config.globalProperties.$i18n.global.locale = ev.value;
       localStorage.setItem("lang", ev.value);

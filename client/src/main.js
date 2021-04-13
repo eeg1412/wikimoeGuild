@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import ToastService from 'primevue/toastservice';
 import './registerServiceWorker'
 import PrimeVue from 'primevue/config'
 import router from './router'
@@ -14,6 +15,7 @@ import './assets/style.css';
 
 const viewApp = createApp(App)
 viewApp.use(PrimeVue)
+viewApp.use(ToastService);
 viewApp.use(i18n)
 viewApp.use(store).use(router).mount('#app')
 viewApp.config.globalProperties.$i18n = i18n
