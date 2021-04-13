@@ -1,6 +1,7 @@
 export const m = {
     label: {
-        register: "register"
+        register: "register",
+        loginGame:"login"
     }
 };
   
