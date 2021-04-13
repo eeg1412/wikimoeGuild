@@ -145,7 +145,7 @@ export default {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
-          detail: "两次密码不同!",
+          detail: $t("m.error.front.register.0"),
           life: 3000
         });
         return false;
@@ -164,7 +164,7 @@ export default {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
-          detail: "请输入2-16位英数字下划线减号的账号！",
+          detail: $t("m.error.front.register.1"),
           life: 3000
         });
         return false;
@@ -173,7 +173,7 @@ export default {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
-          detail: "请输入4-16位英数字下划线减号的密码！",
+          detail: $t("m.error.front.register.2"),
           life: 3000
         });
         return false;
@@ -182,7 +182,7 @@ export default {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
-          detail: "请输2-8位中文、日文、英文、数字包括下划线的昵称！",
+          detail: $t("m.error.front.register.3"),
           life: 3000
         });
         return false;
@@ -191,7 +191,7 @@ export default {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
-          detail: "请输入2-8位中文、日文、英文、数字包括下划线的公会名称！",
+          detail: $t("m.error.front.register.4"),
           life: 3000
         });
         return false;
@@ -201,7 +201,7 @@ export default {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
-          detail: "请设置会长头像！",
+          detail: $t("m.error.front.register.5"),
           life: 3000
         });
         return false;
@@ -210,7 +210,7 @@ export default {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
-          detail: "请设置公会图标！",
+          detail: $t("m.error.front.register.6"),
           life: 3000
         });
         return false;
@@ -219,7 +219,7 @@ export default {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
-          detail: "请输入验证码！",
+          detail: $t("m.error.front.register.7"),
           life: 3000
         });
         return false;
