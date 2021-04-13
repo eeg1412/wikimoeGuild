@@ -1,24 +1,30 @@
 <template>
   <div class="wm_guild_body wm_login_view" :class="'wm_login_time_' + bgTime">
+    <LocaleSelect class="wm_guild_account_locale" />
     <div class="wm_guild_enter_block">
       <!-- TODO:名称由后台设置 -->
-      <h1 class="tc mb20">维基萌公会联盟</h1>
+      <h1 class="tc mb20">TODO</h1>
       <div class="tc mt30">
         <Button class="mr5">{{ $t("m.label.loginGame") }}</Button>
         <Button class="p-button-info">{{ $t("m.label.register") }}</Button>
       </div>
     </div>
   </div>
+  <register-dialog></register-dialog>
 </template>
 
 <script>
 import moment from "moment";
 import Button from "primevue/button";
+import RegisterDialog from "../components/registerDialog";
+import LocaleSelect from "../components/localeSelect";
 
 export default {
   name: "Account",
   components: {
-    Button
+    Button,
+    RegisterDialog,
+    LocaleSelect
   },
   computed: {
     bgTime: () => {
@@ -35,4 +41,11 @@ export default {
 };
 </script>
 
-<style></style>
+<style>
+.wm_guild_account_locale {
+  position: absolute;
+  z-index: 1;
+  right: 10px;
+  top: 10px;
+}
+</style>
