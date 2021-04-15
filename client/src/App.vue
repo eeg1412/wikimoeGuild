@@ -7,6 +7,12 @@ import Toast from "primevue/toast";
 export default {
   components: {
     Toast
+  },
+  created() {
+    const token = sessionStorage.getItem("token")
+      ? sessionStorage.getItem("token")
+      : localStorage.getItem("token");
+    this.$store.commit("setToken", token);
   }
 };
 </script>
