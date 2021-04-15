@@ -5,7 +5,9 @@
       <!-- TODO:名称由后台设置 -->
       <h1 class="tc mb20">TODO</h1>
       <div class="tc mt30">
-        <Button class="mr5">{{ $t("m.label.loginGame") }}</Button>
+        <Button class="mr5" @click="openLogin">{{
+          $t("m.label.loginGame")
+        }}</Button>
         <Button class="p-button-info" @click="openRegister">{{
           $t("m.label.register")
         }}</Button>
@@ -13,6 +15,7 @@
     </div>
   </div>
   <register-dialog ref="registerDialogCom"></register-dialog>
+  <login-dialog ref="loginDialogCom"></login-dialog>
 </template>
 
 <script>
@@ -20,6 +23,7 @@ import { ref } from "vue";
 import moment from "moment";
 import Button from "primevue/button";
 import RegisterDialog from "../components/registerDialog";
+import LoginDialog from "../components/loginDialog";
 import LocaleSelect from "../components/localeSelect";
 
 export default {
@@ -27,7 +31,8 @@ export default {
   components: {
     Button,
     RegisterDialog,
-    LocaleSelect
+    LocaleSelect,
+    LoginDialog
   },
   computed: {
     bgTime: () => {
@@ -43,10 +48,14 @@ export default {
   },
   setup() {
     const registerDialogCom = ref(null);
+    const loginDialogCom = ref(null);
     const openRegister = () => {
       registerDialogCom.value.open();
     };
-    return { registerDialogCom, openRegister };
+    const openLogin = () => {
+      loginDialogCom.value.open();
+    };
+    return { registerDialogCom, loginDialogCom, openRegister, openLogin };
   }
 };
 </script>

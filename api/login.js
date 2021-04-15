@@ -21,7 +21,8 @@ module.exports = async function (req, res, next) {
     });
     res.send({
       code: 0,
-      msg: "验证码有误！"
+      msg: "验证码有误！",
+      msgCode:"m.error.backend.login.0"
     });
     return false;
   }
@@ -29,7 +30,8 @@ module.exports = async function (req, res, next) {
   if (!account) {
     res.send({
       code: 0,
-      msg: "请输入账号"
+      msg: "请输入账号",
+      msgCode:"m.error.backend.login.1"
     });
     return false;
   }
@@ -37,7 +39,8 @@ module.exports = async function (req, res, next) {
   if (!password) {
     res.send({
       code: 0,
-      msg: "请输入密码"
+      msg: "请输入密码",
+      msgCode:"m.error.backend.login.2"
     });
     return false;
   }
@@ -98,7 +101,8 @@ module.exports = async function (req, res, next) {
   } else {
     res.send({
       code: 0,
-      msg: "账户或密码不正确！"
+      msg: "账户或密码不正确！",
+      msgCode:"m.error.backend.login.3"
     });
   }
 };
