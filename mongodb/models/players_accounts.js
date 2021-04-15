@@ -4,6 +4,7 @@ var Schema = mongoose.Schema;
 var players_accounts = new Schema({
   account: String,
   password: String,
+  email: { type: String, default: "" },
   token: String,
   IP: String,
   creatDate: {

@@ -5,15 +5,27 @@ var players_characters = new Schema({
   account: { type: Schema.Types.ObjectId, ref: "players_accounts" },
   name: String,//名字
   fullName: String,//全名
-  explorationLevel: { type: Number, default: 1 },//探索等级
-  manufacturingLevel: { type: Number, default: 1 },//制造等级
-  cookingLevel: { type: Number, default: 1 },//料理等级
-  battleLevel: { type: Number, default: 1 },//战斗等级
-  attributePoints: { type: Number, default: 0 },//属性点
-  powerLevel: { type: Number, default: 0 },//属性-力量-影响物理攻击
-  constitutionLevel: { type: Number, default: 0 },//属性-体质-影响生命值
-  intelligenceLevel: { type: Number, default: 0 },//属性-智力-影响魔法攻击
-  agileLevel: { type: Number, default: 0 },//属性-敏捷-影响速度
+  status: { type: Number, default: 0 },
+  powerCage: { type: Number, default: 1000 },
+  STRLV: { type: Number, default: 1 },
+  STREXP: { type: Number, default: 0 },
+  MAGLV: { type: Number, default: 1 },
+  MAGEXP: { type: Number, default: 0 },
+  SPDLV: { type: Number, default: 1 },
+  SPDEXP: { type: Number, default: 0 },
+  eatCage: { type: Number, default: 0 },
+  eatSTRAvg: { type: Number, default: 0 },
+  eatMAGAvg: { type: Number, default: 0 },
+  eatSPDAvg: { type: Number, default: 0 },
+  weapon: { type: Schema.Types.ObjectId, ref: "players_weapons" },
+  helmet: { type: Schema.Types.ObjectId, ref: "players_helmets" },
+  armor: { type: Schema.Types.ObjectId, ref: "players_armors" },
+  shoes: { type: Schema.Types.ObjectId, ref: "players_shoes" },
+  glove: { type: Schema.Types.ObjectId, ref: "players_gloves" },
+  creatDate: {
+    type: Date,
+    default: Date.now
+  } //录入时间
 });
 
 module.exports = mongoose.model("players_characters", players_characters);
