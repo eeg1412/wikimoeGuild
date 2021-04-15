@@ -231,7 +231,7 @@ export default {
           toast.add({
             severity: "error",
             summary: $t("m.label.error"),
-            detail: res.data.msg,
+            detail: $t(res.data.msgCode),
             life: 3000
           });
         } else if (res.data.code === 1) {

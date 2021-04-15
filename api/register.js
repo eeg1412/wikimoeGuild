@@ -24,7 +24,8 @@ module.exports = async function (req, res, next) {
     });
     res.send({
       code: 0,
-      msg: "验证码有误！"
+      msg: "验证码有误！",
+      msgCode:"m.error.backend.register.0"
     });
     return false;
   }
@@ -33,28 +34,32 @@ module.exports = async function (req, res, next) {
   if (!utils.accountCheck(account)) {
     res.send({
       code: 0,
-      msg: "请输入2-16位英数字下划线减号的账号！"
+      msg: "请输入2-16位英数字下划线减号的账号！",
+      msgCode:"m.error.backend.register.1"
     });
     return false;
   }
   if (!utils.passwordCheck(password)) {
     res.send({
       code: 0,
-      msg: "请输入4-16位英数字下划线减号的密码！"
+      msg: "请输入4-16位英数字下划线减号的密码！",
+      msgCode:"m.error.backend.register.2"
     });
     return false;
   }
   if (!utils.nickNameCheck(nickName)) {
     res.send({
       code: 0,
-      msg: "请输2-8位中文、日文、英文、数字包括下划线的昵称！"
+      msg: "请输2-8位中文、日文、英文、数字、下划线的昵称！",
+      msgCode:"m.error.backend.register.3"
     });
     return false;
   }
   if (!utils.nickNameCheck(guildName)) {
     res.send({
       code: 0,
-      msg: "请输入2-8位中文、日文、英文、数字包括下划线的公会名称！"
+      msg: "请输入2-8位中文、日文、英文、数字、下划线的公会名称！",
+      msgCode:"m.error.backend.register.4"
     });
     return false;
   }
@@ -63,19 +68,20 @@ module.exports = async function (req, res, next) {
   if (!jpgReg.test(accountTx)) {
     res.send({
       code: 0,
-      msg: "图片上传失败！"
+      msg: "图片上传失败！",
+      msgCode:"m.error.backend.register.5"
     });
     return false;
   }
   if (!jpgReg.test(guildIcon)) {
     res.send({
       code: 0,
-      msg: "图片上传失败！"
+      msg: "图片上传失败！",
+      msgCode:"m.error.backend.register.5"
     });
     return false;
   }
   //   查询账号、会长昵称、公会名称是否存在
-  let accountErrorMsg = [];
   const searchParams = {
     account: account
   };
@@ -83,7 +89,12 @@ module.exports = async function (req, res, next) {
     searchParams
   );
   if (searchPlayerAccountData) {
-    accountErrorMsg.push("账号已存在");
+    res.send({
+      code: 0,
+      msg: "账号已存在",
+      msgCode:"m.error.backend.register.6"
+    });
+    return false;
   }
   const searchInfoParams = {
     $or: [{ nickName: nickName }, { guildName: guildName }]
@@ -93,18 +104,21 @@ module.exports = async function (req, res, next) {
   );
   if (searchPlayerAccountInfoData) {
     if (searchPlayerAccountInfoData.nickName === nickName) {
-      accountErrorMsg.push("会长昵称已存在");
+      res.send({
+        code: 0,
+        msg: "昵称已存在",
+        msgCode:"m.error.backend.register.7"
+      });
+      return false;
     }
     if (searchPlayerAccountInfoData.guildName === guildName) {
-      accountErrorMsg.push("公会名称已存在");
+      res.send({
+        code: 0,
+        msg: "公会名称已存在",
+        msgCode:"m.error.backend.register.8"
+      });
+      return false;
     }
-  }
-  if (accountErrorMsg.length > 0) {
-    res.send({
-      code: 0,
-      msg: accountErrorMsg.join("、") + "！"
-    });
-    return false;
   }
   // 发行token
   let content = { account: account }; // 要生成token的主题信息
