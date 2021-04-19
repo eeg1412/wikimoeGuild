@@ -8,6 +8,18 @@ export default {
   components: {
     Toast
   },
+  computed: {
+    commonToast() {
+      return this.$store.getters.commonToast;
+    }
+  },
+  watch: {
+    commonToast(val) {
+      if (val) {
+        this.$toast.add(val);
+      }
+    }
+  },
   created() {
     const token = sessionStorage.getItem("token")
       ? sessionStorage.getItem("token")

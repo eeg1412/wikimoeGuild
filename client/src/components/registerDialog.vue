@@ -110,6 +110,7 @@ import FileUpload from "primevue/fileupload";
 import CropperDialog from "../components/cropperDialog";
 // import { mapState } from "vuex";
 import store from "../store";
+import { useRouter } from "vue-router";
 import { authApi } from "../api";
 import { useToast } from "primevue/usetoast";
 const utils = require("../../utils/utils");
@@ -138,6 +139,7 @@ export default {
     });
     // register
     const app = getCurrentInstance();
+    const router = useRouter();
     const toast = useToast();
     const $t = app.appContext.config.globalProperties.$i18n.global.t;
     const onReg = () => {
@@ -235,8 +237,12 @@ export default {
             life: 3000
           });
         } else if (res.data.code === 1) {
+          sessionStorage.setItem("token", res.data.token);
           store.commit("setToken", res.data.token);
           display.value = false;
+          router.replace({
+            name: "Home"
+          });
         }
       });
     };

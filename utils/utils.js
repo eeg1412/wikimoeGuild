@@ -1,6 +1,7 @@
 var jwt = require("jsonwebtoken");
 var chalk = require("chalk");
 const playersAccountsUtils = require("../mongodb/utils/players_accounts");
+const playersInfosUtils = require("../mongodb/utils/players_infos");
 
 //检查密码格式
 exports.passwordCheck = function (password) {
@@ -57,10 +58,6 @@ exports.checkTokenAndAccount = async function (token) {
     account: account
   };
   let result = await playersAccountsUtils.findOne(params).catch((err) => {
-    res.send({
-      code: 0,
-      msg: "内部错误请联系管理员！"
-    });
     console.error(chalk.red("数据库查询错误！"));
     throw err;
   });
@@ -71,6 +68,7 @@ exports.checkTokenAndAccount = async function (token) {
     console.info(chalk.yellow(account + "和数据库的token对不上"));
     return false;
   } else {
-    return result;
+    const palyerInfo = await playersInfosUtils.findOne({account:result._id})
+    return palyerInfo;
   }
 };

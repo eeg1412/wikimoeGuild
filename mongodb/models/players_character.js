@@ -6,7 +6,7 @@ var players_characters = new Schema({
   name: String,//名字
   fullName: String,//全名
   status: { type: Number, default: 0 },
-  powerCage: { type: Number, default: 1000 },
+  powerCage: { type: Number, default: Number(process.env.DEFAULT_MAX_POWER_CAGE)||96000 },
   STRLV: { type: Number, default: 1 },
   STREXP: { type: Number, default: 0 },
   MAGLV: { type: Number, default: 1 },

@@ -6,5 +6,8 @@ export default function (api) {
     login (data) {
       return api.post('/login', data)
     },
+    getPlayerInfo () {
+      return api.get('/getPlayerInfo')
+    },
   }
 }

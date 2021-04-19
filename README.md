@@ -1,7 +1,7 @@
 # MEVN
 自用MEVN
 
-Mongodb+Express+Vue2+NodeJS
+Mongodb+Express+Vue3+NodeJS
 
 使用前请创建.env文件
 
