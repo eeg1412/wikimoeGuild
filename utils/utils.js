@@ -7,13 +7,14 @@ const playersInfosUtils = require("../mongodb/utils/players_infos");
 exports.passwordCheck = function (password) {
   return /^[\w_-]{4,16}$/.test(password); //4-16位英数字下划线减号
 };
-//检查密码格式
+//检查账号格式
 exports.accountCheck = function (account) {
   return /^[\w_-]{2,16}$/.test(account); //2-16位英数字下划线减号
 };
 //检查昵称格式
 exports.nickNameCheck = function (nickName) {
-  return /^[\u4E00-\u9FA5\u0800-\u4e00A-Za-z0-9_]{2,8}$/.test(nickName); //2-8位中文、日文、英文、数字包括下划线
+  const textLength = String(nickName).length;
+  return textLength >= 2 && textLength <= 12; //2-12
 };
 //获取用户IP
 exports.getUserIp = function (req) {
@@ -44,7 +45,7 @@ exports.tokenCheck = async function (token) {
   });
 };
 exports.checkTokenAndAccount = async function (token) {
-  let tokenDecode = await this.tokenCheck(token).catch((err) => {
+  let tokenDecode = await this.tokenCheck(token).catch(err => {
     console.info(chalk.yellow("登录信息已失效！"));
     return false;
   });
@@ -57,7 +58,7 @@ exports.checkTokenAndAccount = async function (token) {
   let params = {
     account: account
   };
-  let result = await playersAccountsUtils.findOne(params).catch((err) => {
+  let result = await playersAccountsUtils.findOne(params).catch(err => {
     console.error(chalk.red("数据库查询错误！"));
     throw err;
   });
@@ -68,7 +69,7 @@ exports.checkTokenAndAccount = async function (token) {
     console.info(chalk.yellow(account + "和数据库的token对不上"));
     return false;
   } else {
-    const palyerInfo = await playersInfosUtils.findOne({account:result._id})
+    const palyerInfo = await playersInfosUtils.findOne({ account: result._id });
     return palyerInfo;
   }
 };
