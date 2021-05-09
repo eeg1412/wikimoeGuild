@@ -6,10 +6,10 @@
         class="wm_top_info_avatar_pic"
       />
     </div>
-    <div class="fl ml5">
-      <span class="wm_top_info_rank">Rank.{{ playerInfo.rank }}</span>
+    <div class="fl">
+      <span class="wm_top_info_rank">R.{{ playerInfo.rank }}</span>
     </div>
-    <div class="fl ml5">
+    <div class="fl ml3">
       {{ playerInfo.guildName }}
     </div>
   </div>
@@ -38,7 +38,7 @@ export default {
   background-color: #423d8b;
   border-radius: 5px;
   padding: 2px 5px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .wm_top_info_avatar_pic {
   width: 30px;
@@ -60,5 +60,6 @@ export default {
   box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
   line-height: 40px;
   font-size: 14px;
+  font-size: 13px;
 }
 </style>

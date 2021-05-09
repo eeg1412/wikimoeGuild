@@ -7,10 +7,25 @@ const routes = [
     path: '/',
     name: 'Home',
     component: Home,
-    meta:{
-      shouldPlayerLogin:true,
-      shouldAdminLogin:false
-    }
+    meta: {
+      shouldPlayerLogin: true,
+      shouldAdminLogin: false
+    },
+    children: [
+      { //默认
+        path: '',
+        redirect: 'game'
+      },
+      {
+        name: 'Game',
+        path: 'game',
+        component: () => import(/* webpackChunkName: "Game" */ '../views/game/Game.vue'),
+        meta: {
+          shouldPlayerLogin: true,
+          shouldAdminLogin: false
+        },
+      },
+    ]
   },
   {
     path: '/about',
@@ -24,9 +39,9 @@ const routes = [
     path: '/account',
     name: 'Account',
     component: () => import(/* webpackChunkName: "about" */ '../views/Account.vue'),
-    meta:{
-      shouldPlayerLogin:false,
-      shouldAdminLogin:false
+    meta: {
+      shouldPlayerLogin: false,
+      shouldAdminLogin: false
     }
   }
 ]
@@ -36,12 +51,12 @@ const router = createRouter({
   routes
 })
 router.beforeEach((to, from, next) => {
-  console.log(to,store.getters.token);
+  console.log(to, store.getters.token);
   const shouldPlayerLogin = to.meta.shouldPlayerLogin
   const shouldAdminLogin = to.meta.shouldAdminLogin
   const token = store.getters.token
-  if(shouldPlayerLogin){
-    if(!token){
+  if (shouldPlayerLogin) {
+    if (!token) {
       router.replace({ name: 'Account' });
     }
   }

@@ -1,7 +1,9 @@
 <template>
-  <div class="home">
+  <div class="wm_home">
     <commonTop></commonTop>
-    <img alt="Vue logo" src="../assets/logo.png" />
+    <div class="wm_home_content">
+      <router-view></router-view>
+    </div>
   </div>
 </template>
 
@@ -16,3 +18,13 @@ export default {
   }
 };
 </script>
+<style scoped>
+.wm_home {
+  padding-top: 40px;
+}
+.wm_home_content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+</style>
