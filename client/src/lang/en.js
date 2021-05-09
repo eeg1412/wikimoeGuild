@@ -42,10 +42,8 @@ export const m = {
           "The account only allows letters, numbers, underscores, minus signs, and requires 2-16 digits!",
         "2":
           "The password only allows letters, numbers, underscores, minus signs, and requires 4-16 digits!",
-        "3":
-          "The nickname allows Chinese, Japanese, English, numbers and underscores, and must be 2-8 characters!",
-        "4":
-          "The name of the guild allows Chinese, Japanese, English, numbers and underscores, and must be 2-8 characters!",
+        "3": "The nickname must be 2-12 characters!",
+        "4": "The name of the guild must be 2-12 characters!",
         "5": "Image upload failed!",
         "6": "Account already exists",
         "7": "Nickname already exists",

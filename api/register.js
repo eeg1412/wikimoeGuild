@@ -9,8 +9,8 @@ const fs = require("fs");
 module.exports = async function (req, res, next) {
   const password = req.body.password || "";
   const account = req.body.account || "";
-  const nickName = req.body.nickName || "";
-  const guildName = req.body.guildName || "";
+  const nickName = String(req.body.nickName || "").trim();
+  const guildName = String(req.body.guildName || "").trim();
   const accountTx = req.body.accountTx || "";
   const guildIcon = req.body.guildIcon || "";
   const captcha = req.body.captcha || "";
@@ -25,7 +25,7 @@ module.exports = async function (req, res, next) {
     res.send({
       code: 0,
       msg: "验证码有误！",
-      msgCode:"m.error.backend.register.0"
+      msgCode: "m.error.backend.register.0"
     });
     return false;
   }
@@ -35,7 +35,7 @@ module.exports = async function (req, res, next) {
     res.send({
       code: 0,
       msg: "请输入2-16位英数字下划线减号的账号！",
-      msgCode:"m.error.backend.register.1"
+      msgCode: "m.error.backend.register.1"
     });
     return false;
   }
@@ -43,23 +43,41 @@ module.exports = async function (req, res, next) {
     res.send({
       code: 0,
       msg: "请输入4-16位英数字下划线减号的密码！",
-      msgCode:"m.error.backend.register.2"
+      msgCode: "m.error.backend.register.2"
     });
     return false;
   }
-  if (!utils.nickNameCheck(nickName)) {
+  // 暂时取消昵称与工会名的字符限制
+  // if (!utils.nickNameCheck(nickName)) {
+  //   res.send({
+  //     code: 0,
+  //     msg: "请输2-8位中文、日文、英文、数字、下划线的昵称！",
+  //     msgCode: "m.error.backend.register.3"
+  //   });
+  //   return false;
+  // }
+  // if (!utils.nickNameCheck(guildName)) {
+  //   res.send({
+  //     code: 0,
+  //     msg: "请输入2-8位中文、日文、英文、数字、下划线的公会名称！",
+  //     msgCode: "m.error.backend.register.4"
+  //   });
+  //   return false;
+  // }
+  if (nickName.length === 0 || nickName.length > 12) {
     res.send({
       code: 0,
       msg: "请输2-8位中文、日文、英文、数字、下划线的昵称！",
-      msgCode:"m.error.backend.register.3"
+      msgCode: "m.error.backend.register.3"
     });
     return false;
   }
-  if (!utils.nickNameCheck(guildName)) {
+
+  if (guildName.length === 0 || guildName.length > 12) {
     res.send({
       code: 0,
-      msg: "请输入2-8位中文、日文、英文、数字、下划线的公会名称！",
-      msgCode:"m.error.backend.register.4"
+      msg: "请输2-8位中文、日文、英文、数字、下划线的昵称！",
+      msgCode: "m.error.backend.register.3"
     });
     return false;
   }
@@ -69,7 +87,7 @@ module.exports = async function (req, res, next) {
     res.send({
       code: 0,
       msg: "图片上传失败！",
-      msgCode:"m.error.backend.register.5"
+      msgCode: "m.error.backend.register.5"
     });
     return false;
   }
@@ -77,7 +95,7 @@ module.exports = async function (req, res, next) {
     res.send({
       code: 0,
       msg: "图片上传失败！",
-      msgCode:"m.error.backend.register.5"
+      msgCode: "m.error.backend.register.5"
     });
     return false;
   }
@@ -92,7 +110,7 @@ module.exports = async function (req, res, next) {
     res.send({
       code: 0,
       msg: "账号已存在",
-      msgCode:"m.error.backend.register.6"
+      msgCode: "m.error.backend.register.6"
     });
     return false;
   }
@@ -107,7 +125,7 @@ module.exports = async function (req, res, next) {
       res.send({
         code: 0,
         msg: "昵称已存在",
-        msgCode:"m.error.backend.register.7"
+        msgCode: "m.error.backend.register.7"
       });
       return false;
     }
@@ -115,7 +133,7 @@ module.exports = async function (req, res, next) {
       res.send({
         code: 0,
         msg: "公会名称已存在",
-        msgCode:"m.error.backend.register.8"
+        msgCode: "m.error.backend.register.8"
       });
       return false;
     }

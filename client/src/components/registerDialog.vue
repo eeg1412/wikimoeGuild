@@ -152,6 +152,8 @@ export default {
         });
         return false;
       }
+      form.nickName = form.nickName.trim();
+      form.guildName = form.guildName.trim();
       const {
         account,
         password,
@@ -180,7 +182,7 @@ export default {
         });
         return false;
       }
-      if (!utils.nickNameCheck(nickName)) {
+      if (nickName.length === 0 || nickName.length > 12) {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),
@@ -189,7 +191,7 @@ export default {
         });
         return false;
       }
-      if (!utils.nickNameCheck(guildName)) {
+      if (guildName.length === 0 || guildName.length > 12) {
         toast.add({
           severity: "error",
           summary: $t("m.label.error"),

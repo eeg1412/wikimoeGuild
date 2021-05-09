@@ -13,21 +13,21 @@ export default createStore({
     commonToast: state => state.commonToast
   },
   mutations: {
-    setToken(state, data) {
+    setToken (state, data) {
       state.token = data;
       // 每次重置完数据后尝试刷新玩家信息
       if (data) {
         this.commit("setPlayerInfo");
       }
     },
-    setPlayerInfo(state) {
+    setPlayerInfo (state) {
       authApi.getPlayerInfo().then(res => {
         if (res.data.code === 1) {
-          state.playerInfo = res.data.palyerInfo;
+          state.playerInfo = res.data.playerInfo;
         }
       });
     },
-    showToast(state, data) {
+    showToast (state, data) {
       state.commonToast = data;
     }
   },

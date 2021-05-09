@@ -40,6 +40,7 @@ import { ref, watch } from "vue";
 import Dialog from "primevue/dialog";
 import Button from "primevue/button";
 import VuePictureCropper, { cropper } from "vue-picture-cropper";
+const pica = require("pica")();
 
 export default {
   name: "cropperDialog",
@@ -71,17 +72,34 @@ export default {
     };
 
     const getResult = () => {
+      const canvas = document.createElement("canvas");
+      canvas.height = props.height;
+      canvas.width = props.width;
       const OPT = {
-        width: props.width,
-        height: props.height
+        // width: props.width,
+        // height: props.height,
+        fillColor: "#ffffff",
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: "high"
       };
       //   console.log(cropper.getCroppedCanvas(OPT).toDataURL("image/jpeg", 0.8));
-      const DATA_URL = cropper
-        .getCroppedCanvas(OPT)
-        .toDataURL("image/jpeg", 0.8);
-      result.value = DATA_URL;
-      context.emit("getImage", DATA_URL);
-      isOpen.value = false;
+      const DATA_URL = cropper.getCroppedCanvas(OPT).toDataURL("image/png");
+      const image = new Image();
+      image.src = DATA_URL;
+      image.onload = () => {
+        pica
+          .resize(image, canvas, {
+            unsharpAmount: 15,
+            unsharpRadius: 0.6,
+            unsharpThreshold: 2
+          })
+          .then(c => {
+            const base64JPG = c.toDataURL("image/jpeg", 0.9);
+            result.value = base64JPG;
+            context.emit("getImage", base64JPG);
+            isOpen.value = false;
+          });
+      };
     };
     const close = () => {
       isOpen.value = false;

@@ -33,5 +33,6 @@ app.use(
 app.use("/api", apiRouter);
 app.use(history());
 app.use("/", express.static(path.join(__dirname, "client/dist")));
+app.use("/guildIcon", express.static(path.join(__dirname, "client/guildIcon")));
 
 module.exports = app;

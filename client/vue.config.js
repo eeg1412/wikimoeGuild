@@ -21,7 +21,14 @@ module.exports = {
         pathRewrite: {
           "/socket.io": ""
         }
-      }
+      },
+      "/guildIcon": {
+        target: "http://127.0.0.1:3000/guildIcon",
+        changeOrigin: true,
+        pathRewrite: {
+          "/guildIcon": ""
+        }
+      },
     }
   }
 };

@@ -6,7 +6,7 @@ var players_infos = new Schema({
   nickName: String,
   guildName: String,
   score: { type: Number, default: 0 },
-  level: { type: Number, default: 1 },
+  rank: { type: Number, default: 1 },
   exp: { type: Number, default: 0 },
   diamond: { type: Number, default: 0 },
   money: { type: Number, default: 0 },
