@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="pt10 pb10">
     <charactersList></charactersList>
   </div>
 </template>

@@ -9,7 +9,7 @@
     <div class="fl">
       <span class="wm_top_info_rank">R.{{ playerInfo.rank }}</span>
     </div>
-    <div class="fl ml3">
+    <div class="fl ml5">
       {{ playerInfo.guildName }}
     </div>
   </div>
