@@ -102,11 +102,6 @@
 
 <script>
 import { ref, reactive, getCurrentInstance } from "vue";
-import Dialog from "primevue/dialog";
-import Button from "primevue/button";
-import InputText from "primevue/inputtext";
-import Password from "primevue/password";
-import FileUpload from "primevue/fileupload";
 import CropperDialog from "../components/cropperDialog";
 // import { mapState } from "vuex";
 import store from "../store";
@@ -118,11 +113,6 @@ const utils = require("../../utils/utils");
 export default {
   name: "registerDialog",
   components: {
-    Button,
-    Dialog,
-    InputText,
-    Password,
-    FileUpload,
     CropperDialog
   },
   setup() {

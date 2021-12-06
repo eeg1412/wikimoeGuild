@@ -21,7 +21,6 @@
 <script>
 import { ref } from "vue";
 import moment from "moment";
-import Button from "primevue/button";
 import RegisterDialog from "../components/registerDialog";
 import LoginDialog from "../components/loginDialog";
 import LocaleSelect from "../components/localeSelect";
@@ -29,7 +28,6 @@ import LocaleSelect from "../components/localeSelect";
 export default {
   name: "Account",
   components: {
-    Button,
     RegisterDialog,
     LocaleSelect,
     LoginDialog

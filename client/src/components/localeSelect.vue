@@ -11,12 +11,9 @@
 
 <script>
 import { ref, getCurrentInstance } from "vue";
-import Dropdown from "primevue/dropdown";
 export default {
   name: "localeSelect",
-  components: {
-    Dropdown
-  },
+  components: {},
   setup() {
     const app = getCurrentInstance();
     const langSelected = String(

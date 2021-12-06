@@ -37,17 +37,13 @@
 
 <script>
 import { ref, watch } from "vue";
-import Dialog from "primevue/dialog";
-import Button from "primevue/button";
 import VuePictureCropper, { cropper } from "vue-picture-cropper";
 const pica = require("pica")();
 
 export default {
   name: "cropperDialog",
   components: {
-    VuePictureCropper,
-    Dialog,
-    Button
+    VuePictureCropper
   },
   props: {
     headText: { type: String, default: "" },
