@@ -3,10 +3,13 @@ var Schema = mongoose.Schema;
 // Schema
 var players_characters = new Schema({
   account: { type: Schema.Types.ObjectId, ref: "players_accounts" },
-  name: String,//名字
-  fullName: String,//全名
+  name: String, //名字
+  fullName: String, //全名
   status: { type: Number, default: 0 },
-  powerCage: { type: Number, default: Number(process.env.DEFAULT_MAX_POWER_CAGE)||96000 },
+  powerCage: {
+    type: Number,
+    default: Number(process.env.DEFAULT_MAX_POWER_CAGE) || 96000
+  },
   STRLV: { type: Number, default: 1 },
   STREXP: { type: Number, default: 0 },
   MAGLV: { type: Number, default: 1 },
@@ -17,16 +20,9 @@ var players_characters = new Schema({
   HPEXP: { type: Number, default: 0 },
   level: { type: Number, default: 1 },
   EXP: { type: Number, default: 0 },
-  eatCage: { type: Number, default: 0 },
-  eatSTRAvg: { type: Number, default: 0 },
-  eatMAGAvg: { type: Number, default: 0 },
-  eatSPDAvg: { type: Number, default: 0 },
-  eatHPAvg: { type: Number, default: 0 },
   weapon: { type: Schema.Types.ObjectId, ref: "players_weapons" },
-  helmet: { type: Schema.Types.ObjectId, ref: "players_helmets" },
   armor: { type: Schema.Types.ObjectId, ref: "players_armors" },
-  shoes: { type: Schema.Types.ObjectId, ref: "players_shoes" },
-  glove: { type: Schema.Types.ObjectId, ref: "players_gloves" },
+  accessory: { type: Schema.Types.ObjectId, ref: "players_accessory" },
   creatDate: {
     type: Date,
     default: Date.now
