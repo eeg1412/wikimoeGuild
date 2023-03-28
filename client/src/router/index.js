@@ -4,13 +4,21 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    redirect: { name: 'GameIndex' }
+    redirect: { name: 'GameHome' }
   },
   {
     path: '/game',
     name: 'GameIndex',
+    redirect: { name: 'GameHome' },
     component: () => import(/* webpackChunkName: "game" */ '../views/game/Index.vue'),
     children: [
+      // home
+      {
+        path: 'home',
+        name: 'GameHome',
+        component: () => import(/* webpackChunkName: "game" */ '../views/game/home/Home.vue')
+      },
+      // register
       {
         path: 'register',
         name: 'GameRegister',
