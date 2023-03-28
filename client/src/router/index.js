@@ -1,60 +1,28 @@
-import { createRouter, createWebHistory } from "vue-router";
-import GameIndex from "../views/game/Index.vue";
-import store from "../store";
+import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
-    path: "/",
-    name: "Home",
-    component: GameIndex,
-    meta: {
-      shouldPlayerLogin: true,
-      shouldAdminLogin: false
-    },
-    children: [
-      {
-        //默认
-        path: "",
-        redirect: "game"
-      },
-      {
-        name: "Game",
-        path: "game",
-        component: () =>
-          import(/* webpackChunkName: "Game" */ "../views/game/Game.vue"),
-        meta: {
-          shouldPlayerLogin: true,
-          shouldAdminLogin: false
-        }
-      }
-    ]
+    path: '/',
+    name: 'Home',
+    redirect: { name: 'GameIndex' }
   },
   {
-    path: "/account",
-    name: "Account",
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/Account.vue"),
-    meta: {
-      shouldPlayerLogin: false,
-      shouldAdminLogin: false
-    }
+    path: '/game',
+    name: 'GameIndex',
+    component: () => import(/* webpackChunkName: "game" */ '../views/game/Index.vue'),
+    children: [
+      {
+        path: 'register',
+        name: 'GameRegister',
+        component: () => import(/* webpackChunkName: "game" */ '../views/game/register/Register.vue')
+      },
+    ]
   }
-];
+]
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
-});
-router.beforeEach((to, from, next) => {
-  console.log(to, store.getters.token);
-  const shouldPlayerLogin = to.meta.shouldPlayerLogin;
-  const shouldAdminLogin = to.meta.shouldAdminLogin;
-  const token = store.getters.token;
-  if (shouldPlayerLogin) {
-    if (!token) {
-      router.replace({ name: "Account" });
-    }
-  }
-  next();
-});
-export default router;
+})
+
+export default router

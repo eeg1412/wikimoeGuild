@@ -1,4 +1,4 @@
-# client
+# wikimoe-guild-client
 
 ## Project setup
 ```

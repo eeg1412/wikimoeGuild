@@ -1,38 +1,20 @@
-require("dotenv").config();
-require("./mongodb/db");
-var express = require("express");
-var session = require("express-session");
-var path = require("path");
-var cookieParser = require("cookie-parser");
-var logger = require("morgan");
-var history = require("connect-history-api-fallback");
+var express = require('express');
+var path = require('path');
+var cookieParser = require('cookie-parser');
+var logger = require('morgan');
 
-var apiRouter = require("./routes/api");
+var indexRouter = require('./routes/index');
+var usersRouter = require('./routes/users');
 
 var app = express();
 
-app.use(logger("dev"));
-app.use(express.json({ limit: process.env.JSON_LIMT || "1mb" }));
-app.use(
-  express.urlencoded({
-    extended: false,
-    limit: process.env.URLENCODED_LIMT || "1mb"
-  })
-);
+app.use(logger('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(
-  session({
-    secret: process.env.ACGN_SESSION_SECRET || "wikimoeGuild",
-    name: "wikimoeGuild",
-    cookie: { maxAge: 60000 },
-    resave: false,
-    saveUninitialized: true
-  })
-);
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.use("/api", apiRouter);
-app.use(history());
-app.use("/", express.static(path.join(__dirname, "client/dist")));
-app.use("/guildIcon", express.static(path.join(__dirname, "client/guildIcon")));
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
 
 module.exports = app;
