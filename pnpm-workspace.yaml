@@ -1,0 +1,18 @@
+packages:
+  - server
+  - client
+  - shared
+
+onlyBuiltDependencies:
+  - ''''
+  - '['
+  - ']'
+  - b
+  - d
+  - e
+  - esbuild
+  - i
+  - l
+  - s
+  - u
+  - vue-demi

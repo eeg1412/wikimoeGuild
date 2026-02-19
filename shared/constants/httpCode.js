@@ -1,0 +1,24 @@
+/**
+ * 统一 HTTP 状态码常量
+ */
+export const HTTP_CODE = {
+  OK: 200,
+  CREATED: 201,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  INTERNAL_ERROR: 500
+}
+
+/**
+ * 业务错误码
+ */
+export const BIZ_CODE = {
+  SUCCESS: 0,
+  PARAM_ERROR: 1001,
+  AUTH_FAILED: 2001,
+  TOKEN_EXPIRED: 2002,
+  NOT_FOUND: 3001,
+  SERVER_ERROR: 5001
+}

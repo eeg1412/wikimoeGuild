@@ -1,0 +1,20 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch app.js",
+    "start": "node app.js",
+    "seed:admin": "node scripts/seedAdmin.js"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "mongoose": "9.2.1",
+    "joi": "18.0.2",
+    "winston": "3.19.0",
+    "jsonwebtoken": "9.0.3",
+    "bcryptjs": "3.0.2",
+    "dotenv": "16.5.0",
+    "shared": "workspace:*"
+  }
+}
