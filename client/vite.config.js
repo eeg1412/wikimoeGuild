@@ -3,7 +3,6 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -15,12 +14,10 @@ export default defineConfig({
     tailwindcss(),
     AutoImport({
       imports: ['vue', 'vue-router', 'pinia'],
-      resolvers: [ElementPlusResolver()],
       dts: 'src/auto-imports.d.ts'
     }),
     Components({
       dirs: ['src/components'],
-      resolvers: [ElementPlusResolver()],
       dts: 'src/components.d.ts'
     })
   ],

@@ -225,50 +225,29 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  background: var(--el-bg-color-overlay);
+  box-shadow: var(--el-box-shadow-lighter);
   padding: 0 16px;
   z-index: 10;
 }
 
-:global(.dark) .admin-header {
-  background: #1d1e1f;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
 .header-icon {
-  color: #606266;
-}
-
-:global(.dark) .header-icon {
-  color: #a3a6ad;
+  color: var(--el-text-color-regular);
 }
 
 .header-icon-btn {
-  color: #606266 !important;
-}
-
-:global(.dark) .header-icon-btn {
-  color: #a3a6ad !important;
+  color: var(--el-text-color-regular) !important;
 }
 
 .header-text {
-  color: #606266;
-}
-
-:global(.dark) .header-text {
-  color: #a3a6ad;
+  color: var(--el-text-color-regular);
 }
 
 /* ── 内容区 ── */
 .admin-main {
-  background: #f0f2f5;
+  background: var(--el-bg-color-page);
   padding: 16px;
   overflow: auto;
-}
-
-:global(.dark) .admin-main {
-  background: #141414;
 }
 
 /* ── 移动端间距调整 ── */

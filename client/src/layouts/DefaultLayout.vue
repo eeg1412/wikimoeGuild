@@ -1,14 +1,28 @@
 <template>
-  <div class="default-layout">
-    <header class="layout-header">
+  <div
+    class="min-h-screen flex flex-col bg-gray-50 dark:bg-[#141414] transition-colors"
+  >
+    <header
+      class="flex items-center justify-between px-6 py-4 bg-white dark:bg-[#1d1e1f] border-b border-gray-200 dark:border-gray-700 shadow-sm"
+    >
       <slot name="header">
-        <h1>WikimoeGuild</h1>
+        <h1 class="text-lg font-bold text-gray-800 dark:text-gray-100">
+          WikimoeGuild
+        </h1>
       </slot>
+      <el-button text circle @click="toggleTheme">
+        <el-icon :size="18">
+          <Moon v-if="!isDark" />
+          <Sunny v-else />
+        </el-icon>
+      </el-button>
     </header>
-    <main class="layout-main">
+
+    <main class="flex-1 p-6">
       <slot />
     </main>
-    <footer class="layout-footer">
+
+    <footer class="py-4 text-center text-sm text-gray-400 dark:text-gray-600">
       <slot name="footer">
         <p>&copy; 2026 WikimoeGuild</p>
       </slot>
@@ -17,31 +31,7 @@
 </template>
 
 <script setup>
-// 默认布局
+import { useTheme } from '../composables/useTheme.js'
+
+const { isDark, toggleTheme } = useTheme()
 </script>
-
-<style scoped>
-.default-layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.layout-header {
-  padding: 16px 24px;
-  background: #fff;
-  border-bottom: 1px solid #eee;
-}
-
-.layout-main {
-  flex: 1;
-  padding: 24px;
-}
-
-.layout-footer {
-  padding: 16px 24px;
-  text-align: center;
-  color: #999;
-  font-size: 12px;
-}
-</style>

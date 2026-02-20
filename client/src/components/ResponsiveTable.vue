@@ -617,7 +617,6 @@ export default {
 
     // 过滤掉自定义 props 和事件监听器，其余传递给 el-table
     const tableAttrs = computed(() => {
-      console.log('attrs', attrs)
       const { mobileBreakpoint, ...rest } = attrs
       // 过滤掉已声明的事件监听器，事件由 tableListeners 统一处理
       const filtered = {}
@@ -837,7 +836,9 @@ export default {
   border: 1px solid var(--el-border-color-lighter, #e4e7ed);
   border-radius: 8px;
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.05);
 }
 

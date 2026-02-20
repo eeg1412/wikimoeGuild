@@ -1,8 +1,18 @@
 <template>
   <div
-    class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#141414] px-4"
+    class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#141414] px-4 relative transition-colors"
   >
-    <el-card class="w-full max-w-[400px]" shadow="hover">
+    <!-- 暗模式切换 -->
+    <div class="absolute top-4 right-4">
+      <el-button text circle @click="toggleTheme" size="large">
+        <el-icon :size="20">
+          <Moon v-if="!isDark" />
+          <Sunny v-else />
+        </el-icon>
+      </el-button>
+    </div>
+
+    <el-card class="w-full max-w-100" shadow="hover">
       <template #header>
         <div class="text-center">
           <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
@@ -74,9 +84,11 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '../../stores/admin.js'
+import { useTheme } from '../../composables/useTheme.js'
 
 const router = useRouter()
 const adminStore = useAdminStore()
+const { isDark, toggleTheme } = useTheme()
 const formRef = ref()
 const loading = ref(false)
 const loginError = ref('')
