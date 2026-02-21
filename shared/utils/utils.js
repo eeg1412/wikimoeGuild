@@ -1,10 +1,3 @@
-import bcrypt from 'bcryptjs'
-
-export function createBcryptStr(str) {
-  const salt = bcrypt.genSaltSync(10)
-  const hash = bcrypt.hashSync(str, salt)
-  return hash
-}
 export function formatDate(
   date,
   format = 'YYYY-MM-DD HH:mm:ss',
