@@ -1,5 +1,4 @@
 import * as userService from '../services/userService.js'
-import { HTTP_CODE, BIZ_CODE } from 'shared'
 
 /**
  * 注册
@@ -7,11 +6,7 @@ import { HTTP_CODE, BIZ_CODE } from 'shared'
 export async function register(req, res, next) {
   try {
     const user = await userService.register(req.body)
-    res.status(HTTP_CODE.CREATED).json({
-      code: BIZ_CODE.SUCCESS,
-      message: '注册成功',
-      data: user
-    })
+    res.created(user, '注册成功')
   } catch (error) {
     next(error)
   }
@@ -23,11 +18,7 @@ export async function register(req, res, next) {
 export async function login(req, res, next) {
   try {
     const result = await userService.login(req.body)
-    res.json({
-      code: BIZ_CODE.SUCCESS,
-      message: '登录成功',
-      data: result
-    })
+    res.success(result, '登录成功')
   } catch (error) {
     next(error)
   }
@@ -39,10 +30,7 @@ export async function login(req, res, next) {
 export async function getProfile(req, res, next) {
   try {
     const user = await userService.getUserById(req.user.id)
-    res.json({
-      code: BIZ_CODE.SUCCESS,
-      data: user
-    })
+    res.success(user)
   } catch (error) {
     next(error)
   }

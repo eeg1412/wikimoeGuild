@@ -1,5 +1,3 @@
-import { HTTP_CODE, BIZ_CODE } from 'shared'
-
 /**
  * 创建 Joi 参数校验中间件
  * @param {import('joi').Schema} schema - Joi schema
@@ -10,10 +8,7 @@ export function validate(schema, source = 'body') {
     const { error, value } = schema.validate(req[source], { abortEarly: false })
     if (error) {
       const messages = error.details.map(d => d.message).join('; ')
-      return res.status(HTTP_CODE.BAD_REQUEST).json({
-        code: BIZ_CODE.PARAM_ERROR,
-        message: messages
-      })
+      return res.paramError(messages)
     }
     req[source] = value
     next()

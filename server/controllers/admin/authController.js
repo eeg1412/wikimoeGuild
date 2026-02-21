@@ -1,5 +1,4 @@
 import * as authService from '../../services/admin/authService.js'
-import { HTTP_CODE, BIZ_CODE } from 'shared'
 
 /**
  * 管理员登录
@@ -7,11 +6,7 @@ import { HTTP_CODE, BIZ_CODE } from 'shared'
 export async function login(req, res, next) {
   try {
     const result = await authService.login(req.body)
-    res.json({
-      code: BIZ_CODE.SUCCESS,
-      message: '登录成功',
-      data: result
-    })
+    res.success(result, '登录成功')
   } catch (error) {
     next(error)
   }
@@ -23,10 +18,7 @@ export async function login(req, res, next) {
 export async function getProfile(req, res, next) {
   try {
     const user = await authService.getProfile(req.user.id)
-    res.json({
-      code: BIZ_CODE.SUCCESS,
-      data: user
-    })
+    res.success(user)
   } catch (error) {
     next(error)
   }

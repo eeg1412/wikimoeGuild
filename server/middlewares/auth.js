@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { jwtKeys } from '../config/jwtKeys.js'
 import logger from '../utils/logger.js'
-import { HTTP_CODE, BIZ_CODE } from 'shared'
 
 /**
  * 构造 JWT 鉴权中间件
@@ -11,10 +10,7 @@ function createAuthMiddleware(type) {
   return function (req, res, next) {
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(HTTP_CODE.UNAUTHORIZED).json({
-        code: BIZ_CODE.AUTH_FAILED,
-        message: '未提供认证令牌'
-      })
+      return res.unauthorized()
     }
 
     const token = authHeader.split(' ')[1]
@@ -26,10 +22,7 @@ function createAuthMiddleware(type) {
       next()
     } catch (error) {
       logger.warn(`[${type}] Token verification failed:`, error.message)
-      return res.status(HTTP_CODE.UNAUTHORIZED).json({
-        code: BIZ_CODE.TOKEN_EXPIRED,
-        message: '令牌无效或已过期'
-      })
+      return res.tokenExpired()
     }
   }
 }

@@ -4,6 +4,7 @@ import { connectDB } from './config/db.js'
 import { initJwtKeys } from './config/jwtKeys.js'
 import logger from './utils/logger.js'
 import routes from './routes/index.js'
+import { responseHandler } from './middlewares/responseHandler.js'
 import { errorHandler } from './middlewares/errorHandler.js'
 
 const app = express()
@@ -11,6 +12,9 @@ const app = express()
 // 内置中间件
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// 响应处理中间件
+app.use(responseHandler)
 
 // 请求日志
 app.use((req, _res, next) => {

@@ -220,12 +220,11 @@ export async function remove(id) {
 
 function controllerTemplate() {
   return `import * as ${camelName}Service from '../../services/admin/${camelName}Service.js'
-import { HTTP_CODE, BIZ_CODE } from 'shared'
 
 export async function list(req, res, next) {
   try {
-    const result = await ${camelName}Service.list(req.query)
-    res.json({ code: BIZ_CODE.SUCCESS, data: result })
+    const result = await \${camelName}Service.list(req.query)
+    res.success(result)
   } catch (error) {
     next(error)
   }
@@ -234,7 +233,7 @@ export async function list(req, res, next) {
 export async function getById(req, res, next) {
   try {
     const item = await ${camelName}Service.getById(req.params.id)
-    res.json({ code: BIZ_CODE.SUCCESS, data: item })
+    res.success(item)
   } catch (error) {
     next(error)
   }
@@ -243,11 +242,7 @@ export async function getById(req, res, next) {
 export async function create(req, res, next) {
   try {
     const item = await ${camelName}Service.create(req.body)
-    res.status(HTTP_CODE.CREATED).json({
-      code: BIZ_CODE.SUCCESS,
-      message: '创建成功',
-      data: item,
-    })
+    res.created(item)
   } catch (error) {
     next(error)
   }
@@ -256,7 +251,7 @@ export async function create(req, res, next) {
 export async function update(req, res, next) {
   try {
     const item = await ${camelName}Service.update(req.params.id, req.body)
-    res.json({ code: BIZ_CODE.SUCCESS, message: '更新成功', data: item })
+    res.success(item, '更新成功')
   } catch (error) {
     next(error)
   }
@@ -265,7 +260,7 @@ export async function update(req, res, next) {
 export async function remove(req, res, next) {
   try {
     await ${camelName}Service.remove(req.params.id)
-    res.json({ code: BIZ_CODE.SUCCESS, message: '删除成功' })
+    res.success(null, '删除成功')
   } catch (error) {
     next(error)
   }
