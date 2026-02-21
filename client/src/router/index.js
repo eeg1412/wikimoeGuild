@@ -28,18 +28,6 @@ const routes = [
         name: 'AdminDashboard',
         component: () => import('../views/admin/DashboardView.vue'),
         meta: { title: '仪表盘' }
-      },
-      {
-        path: 'blog-post',
-        name: 'AdminBlogPost',
-        component: () => import('../views/admin/blog-post/index.vue'),
-        meta: { title: '文章管理' }
-      },
-      {
-        path: 'category',
-        name: 'AdminCategory',
-        component: () => import('../views/admin/category/index.vue'),
-        meta: { title: '分类管理' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]

@@ -159,8 +159,6 @@ pnpm dev:client   # 前端（端口 5173，Vite HMR）
 | -------- | ------------------ | --------------------------- |
 | 登录     | `/admin/login`     | 管理员登录                  |
 | 仪表盘   | `/admin/dashboard` | 欢迎卡片、系统状态          |
-| 文章管理 | `/admin/blog-post` | CRUD 示例（代码生成器生成） |
-| 分类管理 | `/admin/category`  | CRUD 示例（代码生成器生成） |
 
 ---
 
@@ -175,16 +173,14 @@ pnpm run gen <中文名> <驼峰英文名>
 ### 示例
 
 ```bash
-pnpm run gen 文章 blogPost
-pnpm run gen 分类标签 categoryTag
+pnpm run gen 示例 example
 ```
 
 ### 命名转换规则
 
 | 输入          | PascalCase    | kebab-case     |
 | ------------- | ------------- | -------------- |
-| `blogPost`    | `BlogPost`    | `blog-post`    |
-| `categoryTag` | `CategoryTag` | `category-tag` |
+| `exampleName` | `ExampleName` | `example-name` |
 | `user`        | `User`        | `user`         |
 
 ### 生成内容
@@ -361,7 +357,7 @@ cd server && node app.js
 | PUT    | `/api/admin/{module}/:id` | 更新         |
 | DELETE | `/api/admin/{module}/:id` | 删除         |
 
-> `{module}` 为生成器创建的模块路径（kebab-case），如 `blog-post`、`category`。
+> `{module}` 为生成器创建的模块路径（kebab-case）。
 
 ---
 

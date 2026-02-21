@@ -29,7 +29,7 @@ const [zhName, camelName] = process.argv.slice(2)
 
 if (!zhName || !camelName) {
   console.error('\n用法: pnpm run gen <中文名> <驼峰英文名>')
-  console.error('示例: pnpm run gen 文章 blogPost\n')
+  console.error('示例: pnpm run gen 示例 example\n')
   process.exit(1)
 }
 
