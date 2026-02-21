@@ -1,4 +1,5 @@
 import axios from 'axios'
+import router from '@/router'
 
 const adminRequest = axios.create({
   baseURL: '/api/admin',
@@ -23,7 +24,7 @@ adminRequest.interceptors.response.use(
   error => {
     if (error.response?.status === 401) {
       localStorage.removeItem('adminToken')
-      window.location.href = '/admin/login'
+      router.push('/admin/login')
     }
     return Promise.reject(error)
   }

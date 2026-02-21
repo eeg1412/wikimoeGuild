@@ -8,6 +8,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import router from './router/index.js'
 import App from './App.vue'
 import './assets/main.css'
+import './assets/cropper.min.css'
 
 const app = createApp(App)
 

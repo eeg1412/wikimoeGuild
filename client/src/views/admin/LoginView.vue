@@ -64,12 +64,16 @@
             </template>
           </el-input>
         </el-form-item>
+        <el-form-item class="mb-2">
+          <el-checkbox v-model="form.rememberMe">保持登录状态</el-checkbox>
+        </el-form-item>
         <el-form-item>
           <el-button
             type="primary"
             class="w-full"
             size="large"
             :loading="loading"
+            :disabled="loading"
             @click="handleLogin"
           >
             登录
@@ -95,7 +99,8 @@ const loginError = ref('')
 
 const form = reactive({
   username: '',
-  password: ''
+  password: '',
+  rememberMe: false
 })
 
 const rules = {

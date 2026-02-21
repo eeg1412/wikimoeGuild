@@ -10,6 +10,8 @@ import { responseHandler } from './middlewares/responseHandler.js'
 import { errorHandler } from './middlewares/errorHandler.js'
 import { checkInited } from './services/admin/installService.js'
 
+global.$DBinited = false // 全局变量，表示是否已完成初始化
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // 生产环境静态资源目录
 const CLIENT_DIST = path.resolve(__dirname, '../front')
@@ -17,29 +19,43 @@ const CLIENT_DIST = path.resolve(__dirname, '../front')
 const app = express()
 
 // 内置中间件
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+// 增加请求体大小限制以支持 base64 编码的大文件（如 Favicon）
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // 响应处理中间件
 app.use(responseHandler)
 
-// 请求日志
+// 用户日志
 app.use((req, _res, next) => {
   logger.info(`${req.method} ${req.url}`)
   next()
 })
 
-// API 路由
-app.use('/api', routes)
+// 公共资源（uploads）
+app.use('/uploads', express.static(path.resolve(__dirname, './public/uploads')))
 
-// 健康检查（放在静态资源之前，不被 catch-all 覆盖）
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' })
-})
+// API 路由
+app.use(
+  '/api',
+
+  (req, res, next) => {
+    if (!global.$DBinited) {
+      // 数据库未连接，直接关闭连接（类似 nginx 444）
+      return req.socket?.destroy()
+    }
+    next()
+  },
+  routes
+)
 
 // -- 生产环境：静态资源 & SPA 路由 --
 // /install 特殊处理：已安装则 444，未安装则返回前端
 app.get('/install', async (req, res) => {
+  if (!global.$DBinited) {
+    // 数据库未连接，直接关闭连接（类似 nginx 444）
+    return req.socket?.destroy()
+  }
   try {
     const inited = await checkInited()
     if (inited) {
@@ -54,9 +70,19 @@ app.get('/install', async (req, res) => {
 
 // 其余前端路由（SPA catch-all）
 app.use(express.static(CLIENT_DIST))
-app.get(/.*/, (_req, res) => {
-  res.sendFile(path.join(CLIENT_DIST, 'index.html'))
-})
+app.get(
+  /.*/,
+  (req, res, next) => {
+    if (!global.$DBinited) {
+      // 数据库未连接，直接关闭连接（类似 nginx 444）
+      return req.socket?.destroy()
+    }
+    next()
+  },
+  (_req, res) => {
+    res.sendFile(path.join(CLIENT_DIST, 'index.html'))
+  }
+)
 
 // 全局错误处理
 app.use(errorHandler)

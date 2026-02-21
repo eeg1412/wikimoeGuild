@@ -4,7 +4,7 @@
   >
     <!-- 暗模式切换 -->
     <div class="absolute top-4 right-4">
-      <el-button text circle @click="toggleTheme" size="large">
+      <el-button text circle @click="toggleTheme">
         <el-icon :size="20">
           <Moon v-if="!isDark" />
           <Sunny v-else />
@@ -50,10 +50,10 @@
         v-if="installDone"
         icon="success"
         title="初始化成功"
-        sub-title="站点已完成初始化，即将跳转到首页"
+        sub-title="站点已完成初始化,点击下方按钮前往登录页"
       >
         <template #extra>
-          <el-button type="primary" @click="goHome">立即前往首页</el-button>
+          <el-button type="primary" @click="goHome">立即前往登录页</el-button>
         </template>
       </el-result>
 
@@ -76,25 +76,34 @@
             <el-input
               v-model="form.username"
               placeholder="请输入管理员用户名"
-              size="large"
+              @blur="form.username = form.username.toLowerCase()"
             >
               <template #prefix
                 ><el-icon><User /></el-icon
               ></template>
             </el-input>
+            <template #extra>
+              <span class="text-xs text-gray-400 dark:text-gray-500"
+                >仅支持小写字母 (a-z) 和数字 (0-9)，3-30 个字符</span
+              >
+            </template>
           </el-form-item>
           <el-form-item label="密码" prop="password">
             <el-input
               v-model="form.password"
               type="password"
               placeholder="请输入管理员密码（至少 6 位）"
-              size="large"
               show-password
             >
               <template #prefix
                 ><el-icon><Lock /></el-icon
               ></template>
             </el-input>
+            <template #extra>
+              <span class="text-xs text-gray-400 dark:text-gray-500"
+                >必须包含大小写字母、数字和符号</span
+              >
+            </template>
           </el-form-item>
         </div>
 
@@ -106,24 +115,24 @@
             站点设置
           </div>
           <el-form-item label="网站标题" prop="siteTitle">
-            <el-input
-              v-model="form.siteTitle"
-              placeholder="请输入网站标题"
-              size="large"
-            />
+            <el-input v-model="form.siteTitle" placeholder="请输入网站标题" />
           </el-form-item>
           <el-form-item label="网站副标题" prop="siteSubTitle">
             <el-input
               v-model="form.siteSubTitle"
               placeholder="请输入网站副标题（可选）"
-              size="large"
+            />
+          </el-form-item>
+          <el-form-item label="站点关键词" prop="siteKeywords">
+            <el-input
+              v-model="form.siteKeywords"
+              placeholder="维基萌,公会,游戏"
             />
           </el-form-item>
           <el-form-item label="站点地址" prop="siteUrl">
             <el-input
               v-model="form.siteUrl"
               placeholder="https://example.com"
-              size="large"
               @blur="trimSiteUrl"
             >
               <template #prefix
@@ -142,8 +151,8 @@
           <el-button
             type="primary"
             class="w-full"
-            size="large"
             :loading="loading"
+            :disabled="loading"
             @click="handleInstall"
           >
             开始初始化
@@ -174,17 +183,49 @@ const form = reactive({
   password: '',
   siteTitle: '',
   siteSubTitle: '',
+  siteKeywords: '',
   siteUrl: ''
 })
 
 const rules = {
   username: [
     { required: true, message: '请输入管理员用户名', trigger: 'blur' },
-    { min: 3, max: 30, message: '用户名长度 3-30 个字符', trigger: 'blur' }
+    { min: 3, max: 30, message: '用户名长度 3-30 个字符', trigger: 'blur' },
+    {
+      pattern: /^[a-z0-9]+$/,
+      message: '用户名只能包含小写字母 (a-z) 和数字 (0-9)',
+      trigger: 'blur'
+    }
   ],
   password: [
     { required: true, message: '请输入管理员密码', trigger: 'blur' },
-    { min: 6, message: '密码至少 6 个字符', trigger: 'blur' }
+    { min: 6, message: '密码至少 6 个字符', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (!value) return callback()
+        const hasLower = /[a-z]/.test(value)
+        const hasUpper = /[A-Z]/.test(value)
+        const hasDigit = /[0-9]/.test(value)
+        const hasSymbol = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value)
+        if (hasLower && hasUpper && hasDigit && hasSymbol) {
+          callback()
+        } else {
+          callback(new Error('密码必须包含大小写字母、数字和符号'))
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  siteTitle: [
+    { required: true, message: '请填写网站标题', trigger: 'blur' },
+    { max: 200, message: '网站标题最多 200 个字符', trigger: 'blur' }
+  ],
+  siteKeywords: [
+    { max: 500, message: '站点关键词最多 500 个字符', trigger: 'blur' }
+  ],
+  siteUrl: [
+    { required: true, message: '请填写站点地址', trigger: 'blur' },
+    { max: 500, message: '站点地址最多 500 个字符', trigger: 'blur' }
   ]
 }
 
@@ -194,7 +235,7 @@ function trimSiteUrl() {
 }
 
 function goHome() {
-  router.replace({ name: 'GameHome' })
+  router.replace({ name: 'AdminLogin' })
 }
 
 /** 提交安装 */
@@ -210,8 +251,6 @@ async function handleInstall() {
   try {
     await installApi({ ...form })
     installDone.value = true
-    // 2 秒后自动跳转
-    setTimeout(goHome, 2000)
   } catch (e) {
     const msg = e.response?.data?.message || '初始化失败，请检查网络连接'
     installError.value = msg

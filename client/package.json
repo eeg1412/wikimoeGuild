@@ -14,6 +14,7 @@
     "pinia": "3.0.4",
     "shared": "workspace:*",
     "vue": "3.5.28",
+    "vue-cropperjs": "^5.0.0",
     "vue-router": "4.5.1"
   },
   "devDependencies": {

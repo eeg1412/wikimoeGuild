@@ -30,6 +30,7 @@ export async function checkInited() {
  * @param {string} params.password  管理员密码
  * @param {string} params.siteTitle
  * @param {string} params.siteSubTitle
+ * @param {string} params.siteKeywords
  * @param {string} params.siteUrl
  */
 export async function install({
@@ -37,6 +38,7 @@ export async function install({
   password,
   siteTitle,
   siteSubTitle,
+  siteKeywords,
   siteUrl
 }) {
   // 再次校验（防止并发）
@@ -48,7 +50,6 @@ export async function install({
   // 写入超级管理员（role=999）
   const admin = new AdminAccount({
     username,
-    email: `${username}@install.local`,
     password,
     role: 999
   })
@@ -58,6 +59,7 @@ export async function install({
   const configItems = [
     { name: 'siteTitle', value: siteTitle || '' },
     { name: 'siteSubTitle', value: siteSubTitle || '' },
+    { name: 'siteKeywords', value: siteKeywords || '' },
     { name: 'siteUrl', value: siteUrl || '' }
   ]
   for (const item of configItems) {

@@ -1,4 +1,20 @@
 import GlobalConfig from '../models/globalConfigs.js'
+import SensitiveFilter from '../utils/sensitiveFilter.js'
+
+// 初始化
+const filter = new SensitiveFilter([], {
+  ignoreCase: true,
+  skipSymbols: true
+})
+
+global.$sensitiveFilter = filter
+
+// console.log(filter.contains(text));
+// true
+
+// console.log(filter.find(text));
+// [{ word: 'sex', index: 8 }, { word: '暴力', index: 20 }]
+
 const initGlobalConfig = async () => {
   // 默认配置
   const siteSettingsConfig = {
@@ -6,8 +22,43 @@ const initGlobalConfig = async () => {
     siteTitle: '',
     // 站点副标题
     siteSubTitle: '',
+    // 站点关键词
+    siteKeywords: '',
     // 站点地址
     siteUrl: ''
+  }
+
+  const emailSettingsConfig = {
+    // smtp服务器
+    emailSmtpHost: '',
+    // smtp端口
+    emailSmtpPort: '',
+    // 安全协议
+    emailSmtpSecure: true,
+    // 发信邮箱
+    emailSender: '',
+    // 发信密码
+    emailPassword: '',
+    // 收信邮箱
+    emailReceiver: ''
+  }
+
+  // 安全设置
+  const securitySettingsConfig = {
+    // IP黑名单
+    siteIPBlockList: new Set(),
+    // 敏感词列表
+    siteBannedKeywordList: []
+  }
+
+  // 广告
+  const adSettingsConfig = {
+    // 是否开启谷歌广告
+    googleAdEnabled: false,
+    // 谷歌广告ID
+    googleAdId: '',
+    // ads.txt
+    googleAdAdsTxt: ''
   }
 
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型
@@ -37,7 +88,10 @@ const initGlobalConfig = async () => {
     .then(data => {
       // 返回格式list,total
       const config = {
-        siteSettings: siteSettingsConfig
+        siteSettings: siteSettingsConfig,
+        securitySettings: securitySettingsConfig,
+        emailSettings: emailSettingsConfig,
+        adSettings: adSettingsConfig
       }
       // 将data转换为object
       const obj = {}
@@ -45,8 +99,12 @@ const initGlobalConfig = async () => {
         obj[item.name] = item.value
       })
       formatResToForm(config.siteSettings, obj)
+      formatResToForm(config.securitySettings, obj)
+      formatResToForm(config.emailSettings, obj)
+      formatResToForm(config.adSettings, obj)
       // 将配置挂载到global上
       global.$globalConfig = config
+      filter.reload([...config.securitySettings.siteBannedKeywordList])
       const showConfig = JSON.parse(
         JSON.stringify(config, (k, v) => {
           if (v instanceof Set) {
@@ -58,6 +116,8 @@ const initGlobalConfig = async () => {
           return v
         })
       )
+      // 将emailSettings.emailPassword设置为****
+      showConfig.emailSettings.emailPassword = '****'
       // 颜色设置（ANSI）
       const ANSI = {
         reset: '\x1b[0m',
