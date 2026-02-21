@@ -44,7 +44,7 @@
 
       <!-- Favicon 图片 -->
       <el-form-item label="网站Favicon" prop="siteFavicon">
-        <div class="space-y-2">
+        <div class="space-y-2" v-loading="faviconUrlIsloading">
           <Cropper
             :width="512"
             :height="512"
@@ -101,14 +101,18 @@ const rules = {
 }
 
 // 检查 Favicon 是否可访问
+const faviconUrlIsloading = ref(false)
 function checkFaviconAccessible() {
+  faviconUrlIsloading.value = true
   const faviconUrl = '/uploads/site/favicon.png'
   const img = new Image()
   img.onload = () => {
     faviconAccessible.value = true
+    faviconUrlIsloading.value = false
   }
   img.onerror = () => {
     faviconAccessible.value = false
+    faviconUrlIsloading.value = false
   }
   img.src = faviconUrl
 }
