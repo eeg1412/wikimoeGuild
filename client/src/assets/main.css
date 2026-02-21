@@ -46,3 +46,6 @@ a {
   height: 128px;
   text-align: center;
 }
+.el-alert__content {
+  padding-right: 20px;
+}

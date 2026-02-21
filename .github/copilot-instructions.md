@@ -3,3 +3,7 @@
 - 前端引用文件时用@符号表示src目录，例如：import MyComponent from '@/components/MyComponent.vue'
 - 从开发产品的角度出发，编写合格的代码，注重代码的可读性和可维护性。
 - 前端代码必须保证闭合标签的正确性，避免出现未闭合的标签。
+- 前端列表页的表格使用ResponsiveTable和ResponsiveTableColumn组件替代element-plus的Table组件，在小屏幕设备上能够正常显示。
+- 前端使用Cropper组件进行图片裁剪。
+- 前端使用IpInfoDisplay组件显示IP地址的地理位置信息。
+- 前端使用DeviceInfoDisplay组件显示设备信息。

@@ -12,6 +12,8 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Cropper: typeof import('./components/Cropper.vue')['default']
+    DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
+    IpInfoDisplay: typeof import('./components/IpInfoDisplay.vue')['default']
     ResponsiveTable: typeof import('./components/ResponsiveTable.vue')['default']
     ResponsiveTableColumn: typeof import('./components/ResponsiveTableColumn.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

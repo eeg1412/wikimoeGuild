@@ -4,16 +4,22 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch app.js",
-    "start": "node app.js"
+    "start": "node app.js",
+    "admin-list": "node scripts/admin-list.js",
+    "admin-password-change": "node scripts/admin-password-change.js",
+    "reset-login-ip": "node scripts/reset-login-ip.js",
+    "reset-login-username": "node scripts/reset-login-username.js"
   },
   "dependencies": {
     "bcryptjs": "3.0.2",
     "dotenv": "16.5.0",
     "express": "5.2.1",
+    "ip2location-nodejs": "^9.7.0",
     "joi": "18.0.2",
     "jsonwebtoken": "9.0.3",
     "mongoose": "9.2.1",
     "shared": "workspace:*",
+    "ua-parser-js": "^2.0.9",
     "winston": "3.19.0"
   }
 }

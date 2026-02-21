@@ -2,13 +2,34 @@ import adminAccount from '../../models/adminAccounts.js'
 import jwt from 'jsonwebtoken'
 import { jwtKeys } from '../../config/jwtKeys.js'
 import { JWT_CONFIG } from '../../config/jwt.js'
+import {
+  checkIpRateLimit,
+  checkUsernameRateLimit,
+  recordLoginLog
+} from './loginLogService.js'
+import { getUserIp, limitStr } from '../../utils/utils.js'
 
 /**
  * 管理员登录
+ * @param {import('express').Request} req
+ * @param {object} body
  */
-export async function login({ username, password, rememberMe = false }) {
-  const account = await adminAccount.findOne({ username: username })
+export async function login(req, { username, password, rememberMe = false }) {
+  const ip = getUserIp(req)
+  // 截断 username，防止超长字符绕过日志限制
+  const safeUsername = limitStr(username, 30)
+
+  // 频率限制：先检查 IP 和账号
+  await checkIpRateLimit(ip)
+  await checkUsernameRateLimit(safeUsername)
+
+  const account = await adminAccount.findOne({ username: safeUsername })
   if (!account) {
+    await recordLoginLog(req, {
+      username: safeUsername,
+      success: false,
+      message: '用户名或密码错误'
+    })
     const err = new Error('用户名或密码错误')
     err.statusCode = 401
     err.expose = true
@@ -17,6 +38,11 @@ export async function login({ username, password, rememberMe = false }) {
 
   const isMatch = await account.comparePassword(password)
   if (!isMatch) {
+    await recordLoginLog(req, {
+      username: safeUsername,
+      success: false,
+      message: '用户名或密码错误'
+    })
     const err = new Error('用户名或密码错误')
     err.statusCode = 401
     err.expose = true
@@ -32,6 +58,12 @@ export async function login({ username, password, rememberMe = false }) {
         : JWT_CONFIG.admin.expiresIn
     }
   )
+
+  await recordLoginLog(req, {
+    username: safeUsername,
+    success: true,
+    message: '登录成功'
+  })
 
   return { admin: account.toJSON(), token }
 }

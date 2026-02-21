@@ -5,6 +5,7 @@ import config from './config/index.js'
 import { connectDB } from './config/db.js'
 import { initJwtKeys } from './config/jwtKeys.js'
 import logger from './utils/logger.js'
+import { initIp2location } from './utils/utils.js'
 import routes from './routes/index.js'
 import { responseHandler } from './middlewares/responseHandler.js'
 import { errorHandler } from './middlewares/errorHandler.js'
@@ -92,6 +93,7 @@ async function start() {
   // 初始化 JWT 密钥（检查或生成密钥文件）
   initJwtKeys()
   await connectDB()
+  initIp2location()
   app.listen(config.port, () => {
     logger.info(`Server running on http://localhost:${config.port}`)
   })

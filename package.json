@@ -9,8 +9,10 @@
     "dev": "concurrently -n server,client -c blue,green \"pnpm dev:server\" \"pnpm dev:client\"",
     "build:client": "pnpm --filter client build",
     "gen": "node scripts/generate.js",
-    "admin-list": "node scripts/admin-list.js",
-    "admin-password-change": "node scripts/admin-password-change.js"
+    "admin-list": "pnpm --filter server admin-list",
+    "admin-password-change": "pnpm --filter server admin-password-change",
+    "reset-login-ip": "pnpm --filter server reset-login-ip",
+    "reset-login-username": "pnpm --filter server reset-login-username"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

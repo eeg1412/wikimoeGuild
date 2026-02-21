@@ -8,10 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 // 加载环境变量
 dotenv.config({
-  path: path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '../server/.env'
-  )
+  path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env')
 })
 
 const mongodbUri =

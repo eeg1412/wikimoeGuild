@@ -51,6 +51,12 @@ const routes = [
         name: 'AdminGlobalConfig',
         component: () => import('../views/admin/global-config/index.vue'),
         meta: { title: '配置管理' }
+      },
+      {
+        path: 'login-log',
+        name: 'AdminLoginLog',
+        component: () => import('../views/admin/login-log/index.vue'),
+        meta: { title: '登录历史' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]
