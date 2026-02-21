@@ -229,7 +229,7 @@ function controllerTemplate() {
 
 export async function list(req, res, next) {
   try {
-    const result = await \${camelName}Service.list(req.query)
+    const result = await ${camelName}Service.list(req.query)
     res.success(result)
   } catch (error) {
     next(error)

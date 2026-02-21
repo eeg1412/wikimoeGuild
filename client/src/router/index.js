@@ -28,6 +28,12 @@ const routes = [
         name: 'AdminDashboard',
         component: () => import('../views/admin/DashboardView.vue'),
         meta: { title: '仪表盘' }
+      },
+      {
+        path: 'global-config',
+        name: 'AdminGlobalConfig',
+        component: () => import('../views/admin/global-config/index.vue'),
+        meta: { title: '配置管理' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]
