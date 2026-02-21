@@ -8,7 +8,6 @@
     "dev:client": "pnpm --filter client dev",
     "dev": "concurrently -n server,client -c blue,green \"pnpm dev:server\" \"pnpm dev:client\"",
     "build:client": "pnpm --filter client build",
-    "seed:admin": "pnpm --filter server seed:admin",
     "gen": "node scripts/generate.js"
   },
   "devDependencies": {

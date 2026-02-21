@@ -4,8 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch app.js",
-    "start": "node app.js",
-    "seed:admin": "node scripts/seedAdmin.js"
+    "start": "node app.js"
   },
   "dependencies": {
     "express": "5.2.1",
