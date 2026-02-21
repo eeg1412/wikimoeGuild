@@ -3,14 +3,31 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: () => import('../views/HomeView.vue')
+    redirect: '/game/home'
   },
+  // ── 安装 ──
   {
-    path: '/login',
-    name: 'Login',
-    component: () => import('../views/LoginView.vue')
+    path: '/install',
+    name: 'Install',
+    component: () => import('../views/InstallView.vue'),
+    meta: { title: '安装向导' }
   },
+  // ── 游戏界面 ──
+  {
+    path: '/game',
+    name: 'Game',
+    redirect: '/game/home',
+    component: () => import('../views/game/GameLayout.vue'),
+    children: [
+      {
+        path: 'home',
+        name: 'GameHome',
+        component: () => import('../views/game/HomeView.vue'),
+        meta: { title: '游戏界面' }
+      }
+    ]
+  },
+
   // ── 管理后台 ──
   {
     path: '/admin/login',
