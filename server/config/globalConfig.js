@@ -5,7 +5,9 @@ const initGlobalConfig = async () => {
     // 站点标题
     siteTitle: '',
     // 站点副标题
-    siteSubTitle: ''
+    siteSubTitle: '',
+    // 站点地址
+    siteUrl: ''
   }
 
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型
