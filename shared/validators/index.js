@@ -1,2 +1,2 @@
-export { registerSchema, loginSchema } from './userValidator.js'
+export { registerSchema, loginSchema } from './adminAccountValidator.js'
 // ===GENERATOR_VALIDATOR===

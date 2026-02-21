@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const adminRequest = axios.create({
   baseURL: '/api/admin',
-  timeout: 10000
+  timeout: 300000
 })
 
 // 请求拦截器 — 附加管理后台 token

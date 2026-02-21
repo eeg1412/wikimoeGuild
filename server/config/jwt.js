@@ -7,8 +7,9 @@ export const JWT_CONFIG = {
    * 用户界面 token 配置
    * 用于普通用户登录后的身份凭证
    */
-  user: {
-    expiresIn: '7d'
+  player: {
+    expiresIn: '24h',
+    rememberMeExpiresIn: '365d'
   },
 
   /**
@@ -16,6 +17,7 @@ export const JWT_CONFIG = {
    * 有效期更短，降低管理端 token 泄露的风险
    */
   admin: {
-    expiresIn: '2h'
+    expiresIn: '2h',
+    rememberMeExpiresIn: '365d'
   }
 }

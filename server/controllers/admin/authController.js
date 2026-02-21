@@ -17,8 +17,8 @@ export async function login(req, res, next) {
  */
 export async function getProfile(req, res, next) {
   try {
-    const user = await authService.getProfile(req.user.id)
-    res.success(user)
+    const admin = await authService.getProfile(req.admin.id)
+    res.success(admin, '获取管理员信息成功')
   } catch (error) {
     next(error)
   }

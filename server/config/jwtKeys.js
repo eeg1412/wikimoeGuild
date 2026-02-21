@@ -11,7 +11,7 @@ const KEYS_DIR = join(__dirname, '..', 'keys')
  * 密钥容器，initJwtKeys() 执行后填充
  */
 export const jwtKeys = {
-  userSecret: /** @type {string} */ (null),
+  playerSecret: /** @type {string} */ (null),
   adminSecret: /** @type {string} */ (null)
 }
 
@@ -42,6 +42,6 @@ export function initJwtKeys() {
   if (!existsSync(KEYS_DIR)) {
     mkdirSync(KEYS_DIR, { recursive: true })
   }
-  jwtKeys.userSecret = loadOrCreate('user.key')
+  jwtKeys.playerSecret = loadOrCreate('player.key')
   jwtKeys.adminSecret = loadOrCreate('admin.key')
 }

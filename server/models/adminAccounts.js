@@ -1,8 +1,7 @@
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
-import { ROLES } from 'shared'
 
-const userSchema = new mongoose.Schema(
+const adminAccountSchema = new mongoose.Schema(
   {
     username: {
       type: String,
@@ -10,24 +9,27 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       minlength: 3,
-      maxlength: 30
+      maxlength: 30,
+      index: true
     },
     email: {
       type: String,
       required: true,
       unique: true,
       trim: true,
-      lowercase: true
+      lowercase: true,
+      index: true
     },
     password: {
       type: String,
       required: true,
-      minlength: 6
+      minlength: 6,
+      index: true
     },
     role: {
-      type: String,
-      enum: Object.values(ROLES),
-      default: ROLES.USER
+      type: Number,
+      default: 0,
+      index: true
     }
   },
   {
@@ -36,26 +38,27 @@ const userSchema = new mongoose.Schema(
 )
 
 // 保存前加密密码
-userSchema.pre('save', function () {
+adminAccountSchema.pre('save', function () {
   if (!this.isModified('password')) return
   const salt = bcrypt.genSaltSync(10)
   this.password = bcrypt.hashSync(this.password, salt)
 })
 
 // 比较密码
-userSchema.methods.comparePassword = async function (candidatePassword) {
+adminAccountSchema.methods.comparePassword = async function (
+  candidatePassword
+) {
   return bcrypt.compare(candidatePassword, this.password)
 }
 
 // 转 JSON 时移除密码
-userSchema.set('toJSON', {
+adminAccountSchema.set('toJSON', {
   transform(_doc, ret) {
     delete ret.password
-    delete ret.__v
     return ret
   }
 })
 
-const User = mongoose.model('User', userSchema)
+const adminAccount = mongoose.model('admin_accounts', adminAccountSchema)
 
-export default User
+export default adminAccount

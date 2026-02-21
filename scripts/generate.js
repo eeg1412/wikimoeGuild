@@ -19,6 +19,10 @@ function toKebabCase(str) {
   )
 }
 
+function toSnakeCase(str) {
+  return str.replace(/[A-Z]/g, ch => `_${ch.toLowerCase()}`)
+}
+
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -35,6 +39,8 @@ if (!zhName || !camelName) {
 
 const pascalName = toPascalCase(camelName)
 const kebabName = toKebabCase(camelName)
+const camelPluralName = camelName + 's'
+const mongoModelName = toSnakeCase(camelName) + 's'
 
 console.log(`\n🚀 生成 CRUD 模块: ${zhName} (${camelName})`)
 console.log(`   PascalCase : ${pascalName}`)
@@ -118,7 +124,7 @@ ${camelName}Schema.set('toJSON', {
   },
 })
 
-const ${pascalName} = mongoose.model('${pascalName}', ${camelName}Schema)
+const ${pascalName} = mongoose.model('${mongoModelName}', ${camelName}Schema)
 
 export default ${pascalName}
 `
@@ -144,7 +150,7 @@ export const update${pascalName}Schema = Joi.object({
 }
 
 function serviceTemplate() {
-  return `import ${pascalName} from '../../models/${pascalName}.js'
+  return `import ${pascalName} from '../../models/${camelPluralName}.js'
 
 /**
  * ${zhName}列表（分页 + 搜索）
@@ -519,7 +525,7 @@ console.log('📁 生成文件...\n')
 
 // 1. Mongoose Model
 createFileIfNotExists(
-  join(ROOT, `server/models/${pascalName}.js`),
+  join(ROOT, `server/models/${camelPluralName}.js`),
   modelTemplate()
 )
 
@@ -607,7 +613,9 @@ insertBeforeMarker(
 
 console.log('\n✨ 生成完成！\n')
 console.log(`后续步骤:`)
-console.log(`  1. 根据业务需求编辑 server/models/${pascalName}.js 添加字段`)
+console.log(
+  `  1. 根据业务需求编辑 server/models/${camelPluralName}.js 添加字段`
+)
 console.log(`  2. 同步更新 shared/validators/${camelName}Validator.js 校验规则`)
 console.log(
   `  3. 同步更新 client/src/views/admin/${kebabName}/index.vue 表格列和表单字段`

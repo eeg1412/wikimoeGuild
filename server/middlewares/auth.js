@@ -4,7 +4,7 @@ import logger from '../utils/logger.js'
 
 /**
  * 构造 JWT 鉴权中间件
- * @param {'user'|'admin'} type - 密钥类型
+ * @param {'player'|'admin'} type - 密钥类型
  */
 function createAuthMiddleware(type) {
   return function (req, res, next) {
@@ -14,7 +14,7 @@ function createAuthMiddleware(type) {
     }
 
     const token = authHeader.split(' ')[1]
-    const secret = type === 'admin' ? jwtKeys.adminSecret : jwtKeys.userSecret
+    const secret = type === 'admin' ? jwtKeys.adminSecret : jwtKeys.playerSecret
 
     try {
       const decoded = jwt.verify(token, secret)
@@ -28,7 +28,7 @@ function createAuthMiddleware(type) {
 }
 
 /** 用户界面鉴权中间件 */
-export const authUser = createAuthMiddleware('user')
+export const authPlayer = createAuthMiddleware('player')
 
 /** 管理后台鉴权中间件 */
 export const authAdmin = createAuthMiddleware('admin')

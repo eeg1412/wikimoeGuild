@@ -17,7 +17,7 @@ wikimoeGuild/
 ├── shared/                   # ⭐ 前后端共享层
 │   ├── index.js              # 统一出口
 │   ├── utils/                # 通用工具函数（formatDate、numberFormat）
-│   ├── constants/            # 枚举常量（ROLES、HTTP_CODE、BIZ_CODE）
+│   ├── constants/            # 枚举常量（HTTP_CODE、BIZ_CODE）
 │   ├── validators/           # Joi 校验规则（前后端复用）
 │   └── helpers/              # 纯函数业务逻辑（getNestedValue、arrayToMap）
 │
@@ -264,7 +264,7 @@ pnpm run gen 示例 example
 
 ```js
 // server 中
-import { registerSchema, ROLES, HTTP_CODE } from 'shared'
+import { registerSchema, HTTP_CODE } from 'shared'
 
 // client 中（通过 vite alias）
 import { formatDate } from '@shared'
