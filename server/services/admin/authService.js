@@ -6,7 +6,7 @@ import { JWT_CONFIG } from '../../config/jwt.js'
 /**
  * 管理员登录
  */
-export async function login({ username, password }) {
+export async function login({ username, password, rememberMe = false }) {
   const account = await adminAccount.findOne({ username: username })
   if (!account) {
     const err = new Error('用户名或密码错误')
@@ -15,7 +15,7 @@ export async function login({ username, password }) {
     throw err
   }
 
-  const isMatch = await adminAccount.comparePassword(password)
+  const isMatch = await account.comparePassword(password)
   if (!isMatch) {
     const err = new Error('用户名或密码错误')
     err.statusCode = 401

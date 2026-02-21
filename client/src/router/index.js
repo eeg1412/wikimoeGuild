@@ -22,7 +22,7 @@ const routes = [
       {
         path: 'home',
         name: 'GameHome',
-        component: () => import('../views/game/HomeView.vue'),
+        component: () => import('../views/game/home/HomeView.vue'),
         meta: { title: '游戏界面' }
       }
     ]

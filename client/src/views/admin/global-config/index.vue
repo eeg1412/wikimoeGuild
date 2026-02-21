@@ -29,16 +29,30 @@
     <!-- 表格 -->
     <el-card shadow="never">
       <ResponsiveTable :data="tableData" v-loading="loading" stripe>
-        <ResponsiveTableColumn prop="title" label="标题" min-width="200" show-overflow-tooltip />
+        <ResponsiveTableColumn
+          prop="title"
+          label="标题"
+          min-width="200"
+          show-overflow-tooltip
+        />
         <ResponsiveTableColumn prop="createdAt" label="创建时间" width="180">
           <template #default="{ row }">
             {{ formatDate(row.createdAt) }}
           </template>
         </ResponsiveTableColumn>
-        <ResponsiveTableColumn label="操作" width="160" fixed="right" card-action>
+        <ResponsiveTableColumn
+          label="操作"
+          width="160"
+          fixed="right"
+          card-action
+        >
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link @click="handleEdit(row)"
+              >编辑</el-button
+            >
+            <el-button type="danger" link @click="handleDelete(row)"
+              >删除</el-button
+            >
           </template>
         </ResponsiveTableColumn>
       </ResponsiveTable>
@@ -83,12 +97,12 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { formatDate } from '@shared'
+import { formatDate } from '@shared/utils'
 import {
   listGlobalConfigApi,
   createGlobalConfigApi,
   updateGlobalConfigApi,
-  deleteGlobalConfigApi,
+  deleteGlobalConfigApi
 } from '../../../api/admin/globalConfig.js'
 
 // ── 搜索 ──
@@ -105,7 +119,7 @@ async function fetchList() {
     const { data } = await listGlobalConfigApi({
       page: pagination.page,
       pageSize: pagination.pageSize,
-      keyword: searchForm.keyword,
+      keyword: searchForm.keyword
     })
     tableData.value = data.data.list
     pagination.total = data.data.total
@@ -133,7 +147,7 @@ const formRef = ref()
 
 const form = reactive({ title: '' })
 const rules = {
-  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
+  title: [{ required: true, message: '请输入标题', trigger: 'blur' }]
 }
 
 function handleAdd() {
@@ -182,7 +196,7 @@ async function handleDelete(row) {
     await ElMessageBox.confirm(`确定要删除「${row.title}」吗？`, '提示', {
       type: 'warning',
       confirmButtonText: '确定',
-      cancelButtonText: '取消',
+      cancelButtonText: '取消'
     })
     await deleteGlobalConfigApi(row._id)
     ElMessage.success('删除成功')

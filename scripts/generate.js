@@ -403,7 +403,7 @@ function frontendPageTemplate() {
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { formatDate } from '@shared'
+import { formatDate } from '@shared/utils'
 import {
   list${pascalName}Api,
   create${pascalName}Api,

@@ -18,7 +18,11 @@ function createAuthMiddleware(type) {
 
     try {
       const decoded = jwt.verify(token, secret)
-      req.user = decoded
+      if (type === 'admin') {
+        req.admin = decoded
+      } else {
+        req.player = decoded
+      }
       next()
     } catch (error) {
       logger.warn(`[${type}] Token verification failed:`, error.message)

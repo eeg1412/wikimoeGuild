@@ -4,4 +4,5 @@ export {
   updateGlobalConfigSchema,
   listGlobalConfigSchema
 } from './globalConfigValidator.js'
+export { installSchema } from './installValidator.js'
 // ===GENERATOR_VALIDATOR===

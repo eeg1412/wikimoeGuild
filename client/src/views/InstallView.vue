@@ -1,5 +1,242 @@
 <template>
-  <div></div>
+  <div
+    class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#141414] px-4 py-10 relative transition-colors"
+  >
+    <!-- 暗模式切换 -->
+    <div class="absolute top-4 right-4">
+      <el-button text circle @click="toggleTheme" size="large">
+        <el-icon :size="20">
+          <Moon v-if="!isDark" />
+          <Sunny v-else />
+        </el-icon>
+      </el-button>
+    </div>
+
+    <!-- 检查初始化中 -->
+    <div
+      v-if="checking"
+      class="flex flex-col items-center gap-3 text-gray-500 dark:text-gray-400"
+    >
+      <el-icon class="animate-spin" :size="32"><Loading /></el-icon>
+      <span>正在检查初始化状态…</span>
+    </div>
+
+    <!-- 安装表单 -->
+    <el-card v-else class="w-full max-w-lg" shadow="hover">
+      <template #header>
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
+            WikimoeGuild
+          </h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            站点初始化向导
+          </p>
+        </div>
+      </template>
+
+      <!-- 全局错误 -->
+      <el-alert
+        v-if="installError"
+        :title="installError"
+        type="error"
+        show-icon
+        closable
+        class="mb-5"
+        @close="installError = ''"
+      />
+
+      <!-- 安装成功提示 -->
+      <el-result
+        v-if="installDone"
+        icon="success"
+        title="初始化成功"
+        sub-title="站点已完成初始化，即将跳转到首页"
+      >
+        <template #extra>
+          <el-button type="primary" @click="goHome">立即前往首页</el-button>
+        </template>
+      </el-result>
+
+      <el-form
+        v-else
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-position="top"
+        @keyup.enter="handleInstall"
+      >
+        <!-- ── 管理员账号 ── -->
+        <div class="mb-4">
+          <div
+            class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-200 dark:border-gray-700 pb-1"
+          >
+            管理员账号
+          </div>
+          <el-form-item label="用户名" prop="username">
+            <el-input
+              v-model="form.username"
+              placeholder="请输入管理员用户名"
+              size="large"
+            >
+              <template #prefix
+                ><el-icon><User /></el-icon
+              ></template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input
+              v-model="form.password"
+              type="password"
+              placeholder="请输入管理员密码（至少 6 位）"
+              size="large"
+              show-password
+            >
+              <template #prefix
+                ><el-icon><Lock /></el-icon
+              ></template>
+            </el-input>
+          </el-form-item>
+        </div>
+
+        <!-- ── 站点设置 ── -->
+        <div class="mb-4">
+          <div
+            class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-200 dark:border-gray-700 pb-1"
+          >
+            站点设置
+          </div>
+          <el-form-item label="网站标题" prop="siteTitle">
+            <el-input
+              v-model="form.siteTitle"
+              placeholder="请输入网站标题"
+              size="large"
+            />
+          </el-form-item>
+          <el-form-item label="网站副标题" prop="siteSubTitle">
+            <el-input
+              v-model="form.siteSubTitle"
+              placeholder="请输入网站副标题（可选）"
+              size="large"
+            />
+          </el-form-item>
+          <el-form-item label="站点地址" prop="siteUrl">
+            <el-input
+              v-model="form.siteUrl"
+              placeholder="https://example.com"
+              size="large"
+              @blur="trimSiteUrl"
+            >
+              <template #prefix
+                ><el-icon><Link /></el-icon
+              ></template>
+            </el-input>
+            <template #extra>
+              <span class="text-xs text-gray-400 dark:text-gray-500"
+                >末尾无需填写 /，系统会自动处理</span
+              >
+            </template>
+          </el-form-item>
+        </div>
+
+        <el-form-item>
+          <el-button
+            type="primary"
+            class="w-full"
+            size="large"
+            :loading="loading"
+            @click="handleInstall"
+          >
+            开始初始化
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+  </div>
 </template>
-<script setup></script>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useTheme } from '../composables/useTheme.js'
+import { checkInitedApi, installApi } from '../api/admin/install.js'
+
+const router = useRouter()
+const { isDark, toggleTheme } = useTheme()
+
+const checking = ref(true)
+const loading = ref(false)
+const installError = ref('')
+const installDone = ref(false)
+const formRef = ref()
+
+const form = reactive({
+  username: '',
+  password: '',
+  siteTitle: '',
+  siteSubTitle: '',
+  siteUrl: ''
+})
+
+const rules = {
+  username: [
+    { required: true, message: '请输入管理员用户名', trigger: 'blur' },
+    { min: 3, max: 30, message: '用户名长度 3-30 个字符', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入管理员密码', trigger: 'blur' },
+    { min: 6, message: '密码至少 6 个字符', trigger: 'blur' }
+  ]
+}
+
+/** 去除站点地址末尾的斜杠 */
+function trimSiteUrl() {
+  form.siteUrl = form.siteUrl.replace(/\/+$/, '')
+}
+
+function goHome() {
+  router.replace({ name: 'GameHome' })
+}
+
+/** 提交安装 */
+async function handleInstall() {
+  installError.value = ''
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  // 提交前再次处理 siteUrl
+  trimSiteUrl()
+
+  loading.value = true
+  try {
+    await installApi({ ...form })
+    installDone.value = true
+    // 2 秒后自动跳转
+    setTimeout(goHome, 2000)
+  } catch (e) {
+    const msg = e.response?.data?.message || '初始化失败，请检查网络连接'
+    installError.value = msg
+  } finally {
+    loading.value = false
+  }
+}
+
+/** 页面加载时检查初始化状态 */
+onMounted(async () => {
+  try {
+    const res = await checkInitedApi()
+    if (res.data?.data?.inited) {
+      return router.replace({ name: 'GameHome' })
+    }
+  } catch {
+    // 接口异常时允许继续显示安装页
+  } finally {
+    checking.value = false
+  }
+
+  // 自动填入当前域名作为站点地址
+  const { protocol, host } = window.location
+  form.siteUrl = `${protocol}//${host}`.replace(/\/+$/, '')
+})
+</script>
+
 <style scoped></style>

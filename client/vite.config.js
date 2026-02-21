@@ -35,5 +35,8 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    outDir: path.resolve(__dirname, '../server/front')
   }
 })
