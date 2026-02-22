@@ -11,6 +11,7 @@
     "reset-login-username": "node scripts/reset-login-username.js"
   },
   "dependencies": {
+    "async-lock": "^1.4.1",
     "bcryptjs": "3.0.2",
     "dotenv": "16.5.0",
     "express": "5.2.1",
@@ -18,6 +19,7 @@
     "joi": "18.0.2",
     "jsonwebtoken": "9.0.3",
     "mongoose": "9.2.1",
+    "nodemailer": "^8.0.1",
     "shared": "workspace:*",
     "ua-parser-js": "^2.0.9",
     "winston": "3.19.0"

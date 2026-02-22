@@ -4,6 +4,8 @@ import path from 'path'
 import { IP2Location } from 'ip2location-nodejs'
 import { UAParser } from 'ua-parser-js'
 import { Bots } from 'ua-parser-js/extensions'
+import AsyncLock from 'async-lock'
+const lock = new AsyncLock({ timeout: 60000 })
 
 export function createBcryptStr(str) {
   const salt = bcrypt.genSaltSync(10)
@@ -124,4 +126,11 @@ export function limitStr(str, len) {
     return strArray.slice(0, len).join('')
   }
   return str
+}
+
+// async-lock
+export function executeInLock(key, fn) {
+  return lock.acquire(key, () => {
+    return fn()
+  })
 }
