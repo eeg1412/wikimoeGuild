@@ -23,3 +23,15 @@ export async function getProfile(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 修改管理员自身密码
+ */
+export async function changePassword(req, res, next) {
+  try {
+    await authService.changePassword(req.admin.id, req.body)
+    res.success(null, '密码修改成功')
+  } catch (error) {
+    next(error)
+  }
+}

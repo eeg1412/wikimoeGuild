@@ -50,7 +50,7 @@ export async function login(req, { username, password, rememberMe = false }) {
   }
 
   const token = jwt.sign(
-    { id: account._id, username: account.username },
+    { id: account._id, username: account.username, role: account.role },
     jwtKeys.adminSecret,
     {
       expiresIn: rememberMe
@@ -80,4 +80,31 @@ export async function getProfile(id) {
     throw err
   }
   return account.toJSON()
+}
+
+/**
+ * 修改管理员自身密码
+ * @param {string} id          JWT 中的管理员 ID
+ * @param {string} currentPassword  当前密码
+ * @param {string} newPassword      新密码
+ */
+export async function changePassword(id, { currentPassword, newPassword }) {
+  const account = await adminAccount.findById(id)
+  if (!account) {
+    const err = new Error('用户不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  const isMatch = await account.comparePassword(currentPassword)
+  if (!isMatch) {
+    const err = new Error('当前密码错误')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  account.password = newPassword
+  await account.save()
 }

@@ -13,6 +13,12 @@ export const adminMenu = [
     path: '/admin/global-config',
     title: '配置管理',
     icon: 'Document'
+  },
+  {
+    path: '/admin/admin-management',
+    title: '管理员列表',
+    icon: 'UserFilled',
+    requiredRole: 999
   }
   // ===GENERATOR_MENU===
 ]

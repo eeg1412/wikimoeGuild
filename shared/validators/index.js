@@ -1,4 +1,10 @@
-export { registerSchema, loginSchema } from './adminAccountValidator.js'
+export {
+  registerSchema,
+  loginSchema,
+  changePasswordSchema,
+  createAdminSchema,
+  updateAdminSchema
+} from './adminAccountValidator.js'
 export {
   createGlobalConfigSchema,
   updateGlobalConfigSchema,

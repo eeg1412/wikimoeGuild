@@ -42,7 +42,7 @@
             @select="handleMenuSelect"
           >
             <el-menu-item
-              v-for="item in adminMenu"
+              v-for="item in filteredMenu"
               :key="item.path"
               :index="item.path"
             >
@@ -74,14 +74,56 @@
               首页
             </el-breadcrumb-item>
             <el-breadcrumb-item
-              v-if="route.meta.title && route.name !== 'AdminDashboard'"
+              v-for="crumb in breadcrumbs"
+              :key="crumb.title"
+              :to="crumb.path ? { path: crumb.path } : undefined"
             >
-              {{ route.meta.title }}
+              {{ crumb.title }}
             </el-breadcrumb-item>
           </el-breadcrumb>
-          <span class="sm:hidden text-sm font-medium header-text">
-            {{ route.meta.title || '仪表盘' }}
-          </span>
+
+          <!-- 手机端：有父级层级时使用 Popover，否则纯文字 -->
+          <div class="sm:hidden">
+            <el-popover
+              v-if="breadcrumbs.length > 1"
+              trigger="click"
+              placement="bottom-start"
+              :width="180"
+            >
+              <template #reference>
+                <span
+                  class="text-sm font-medium header-text cursor-pointer flex items-center gap-1"
+                >
+                  {{ currentPageTitle || '仪表盘' }}
+                  <el-icon :size="11"><ArrowDown /></el-icon>
+                </span>
+              </template>
+              <div class="flex flex-col gap-1">
+                <p class="text-xs text-gray-400 mb-1">页面层级</p>
+                <span
+                  class="text-sm text-[var(--el-color-primary)] cursor-pointer hover:opacity-80"
+                  @click="router.push('/admin/dashboard')"
+                  >首页</span
+                >
+                <template v-for="crumb in breadcrumbs" :key="crumb.title">
+                  <span
+                    v-if="crumb.path"
+                    class="text-sm text-[var(--el-color-primary)] cursor-pointer hover:opacity-80"
+                    @click="router.push(crumb.path)"
+                    >{{ crumb.title }}</span
+                  >
+                  <span
+                    v-else
+                    class="text-sm text-gray-600 dark:text-gray-300"
+                    >{{ crumb.title }}</span
+                  >
+                </template>
+              </div>
+            </el-popover>
+            <span v-else class="text-sm font-medium header-text">
+              {{ currentPageTitle || '仪表盘' }}
+            </span>
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <!-- 暗模式切换 -->
@@ -91,9 +133,22 @@
               <Sunny v-else />
             </el-icon>
           </el-button>
-          <span class="text-sm header-text hidden sm:inline">
-            {{ adminStore.user?.username || '管理员' }}
-          </span>
+          <!-- 用户信息 + 修改密码 -->
+          <el-dropdown trigger="click">
+            <span
+              class="flex items-center gap-1 cursor-pointer text-sm header-text"
+            >
+              {{ adminStore.user?.username || '管理员' }}
+              <el-icon :size="12"><ArrowDown /></el-icon>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="handleChangePassword">
+                  <el-icon><Lock /></el-icon> 修改密码
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-button type="danger" text size="small" @click="handleLogout">
             退出
           </el-button>
@@ -124,6 +179,45 @@ const { isDark, toggleTheme } = useTheme()
 
 const isCollapsed = ref(false)
 const sidebarOpen = ref(false)
+
+/**
+ * 当前页面标题：支持 dynamicTitle（新增/编辑区分）
+ */
+const currentPageTitle = computed(() => {
+  if (route.meta?.dynamicTitle) {
+    return route.query.mode === 'edit'
+      ? route.meta.title
+      : route.meta.createTitle || route.meta.title
+  }
+  return route.meta?.title || ''
+})
+
+/**
+ * 面包屑列表（不含首页，首页固定在模板中）
+ * 每项：{ title, path? }，最后一项 path 为空表示当前页
+ */
+const breadcrumbs = computed(() => {
+  if (route.name === 'AdminDashboard') return []
+  const crumbs = []
+  const parent = route.meta?.breadcrumbParent
+  if (parent) {
+    crumbs.push({ title: parent.title, path: parent.path })
+  }
+  const title = currentPageTitle.value
+  if (title) {
+    crumbs.push({ title })
+  }
+  return crumbs
+})
+
+/** 根据当前登录管理员的 role 过滤菜单 */
+const filteredMenu = computed(() => {
+  const role = adminStore.user?.role
+  return adminMenu.filter(item => {
+    if (item.requiredRole === undefined) return true
+    return role === item.requiredRole
+  })
+})
 
 const sidebarWidth = computed(() => {
   if (isMobile.value) return '220px'
@@ -164,6 +258,10 @@ onMounted(async () => {
 function handleLogout() {
   adminStore.logout()
   router.push('/admin/login')
+}
+
+function handleChangePassword() {
+  router.push({ name: 'AdminChangePassword' })
 }
 </script>
 

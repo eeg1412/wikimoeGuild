@@ -68,5 +68,12 @@ export const responseHandler = (_req, res, next) => {
     res.fail(BIZ_CODE.TOKEN_EXPIRED, message, HTTP_CODE.UNAUTHORIZED)
   }
 
+  /**
+   * 禁止访问响应 (403 Forbidden)
+   */
+  res.forbidden = (message = '权限不足') => {
+    res.fail(BIZ_CODE.AUTH_FAILED, message, HTTP_CODE.FORBIDDEN)
+  }
+
   next()
 }

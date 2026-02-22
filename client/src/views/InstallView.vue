@@ -105,6 +105,18 @@
               >
             </template>
           </el-form-item>
+          <el-form-item label="确认密码" prop="confirmPassword">
+            <el-input
+              v-model="form.confirmPassword"
+              type="password"
+              placeholder="请再次输入管理员密码"
+              show-password
+            >
+              <template #prefix
+                ><el-icon><Lock /></el-icon
+              ></template>
+            </el-input>
+          </el-form-item>
         </div>
 
         <!-- ── 站点设置 ── -->
@@ -181,6 +193,7 @@ const formRef = ref()
 const form = reactive({
   username: '',
   password: '',
+  confirmPassword: '',
   siteTitle: '',
   siteSubTitle: '',
   siteKeywords: '',
@@ -211,6 +224,19 @@ const rules = {
           callback()
         } else {
           callback(new Error('密码必须包含大小写字母、数字和符号'))
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入管理员密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== form.password) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
         }
       },
       trigger: 'blur'
@@ -249,7 +275,9 @@ async function handleInstall() {
 
   loading.value = true
   try {
-    await installApi({ ...form })
+    // confirmPassword 仅用于前端校验，不提交到接口
+    const { confirmPassword: _omit, ...payload } = form
+    await installApi(payload)
     installDone.value = true
   } catch (e) {
     const msg = e.response?.data?.message || '初始化失败，请检查网络连接'

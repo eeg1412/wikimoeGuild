@@ -1,5 +1,7 @@
 import axios from 'axios'
 import router from '@/router'
+// 导入element-plus的消息组件
+import { ElMessage } from 'element-plus'
 
 const adminRequest = axios.create({
   baseURL: '/api/admin',
@@ -22,10 +24,23 @@ adminRequest.interceptors.request.use(
 adminRequest.interceptors.response.use(
   response => response,
   error => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('adminToken')
-      router.push('/admin/login')
+    switch (error.response?.status) {
+      case 401:
+        ElMessage.error('未授权，请重新登录')
+        localStorage.removeItem('adminToken')
+        router.push('/admin/login')
+        break
+      default:
+        const message =
+          error.response?.data?.message ||
+          `请求失败，状态码 ${error.response?.status}`
+        ElMessage.error(message)
+        break
     }
+    // if (error.response?.status === 401) {
+    //   localStorage.removeItem('adminToken')
+    //   router.push('/admin/login')
+    // }
     return Promise.reject(error)
   }
 )

@@ -36,3 +36,13 @@ export const authPlayer = createAuthMiddleware('player')
 
 /** 管理后台鉴权中间件 */
 export const authAdmin = createAuthMiddleware('admin')
+
+/**
+ * 超级管理员权限中间件（role=999），需在 authAdmin 之后使用
+ */
+export function requireSuperAdmin(req, res, next) {
+  if (req.admin?.role !== 999) {
+    return res.forbidden('权限不足，需要超级管理员权限')
+  }
+  next()
+}

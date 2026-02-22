@@ -1,5 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+/** 简单解析 JWT payload（仅用于 UI-level 权限判断，安全由服务端保障） */
+function parseJwtPayload(token) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(base64))
+  } catch {
+    return null
+  }
+}
+
 const routes = [
   {
     path: '/',
@@ -57,6 +67,35 @@ const routes = [
         name: 'AdminLoginLog',
         component: () => import('../views/admin/login-log/Index.vue'),
         meta: { title: '登录历史' }
+      },
+      {
+        path: 'profile/change-password',
+        name: 'AdminChangePassword',
+        component: () =>
+          import('../views/admin/profile/ChangePasswordView.vue'),
+        meta: { title: '修改密码' }
+      },
+      {
+        path: 'admin-management',
+        name: 'AdminManagement',
+        component: () => import('../views/admin/admin-management/Index.vue'),
+        meta: { title: '管理员列表', requiredRole: 999 }
+      },
+      {
+        path: 'admin-management/editor',
+        name: 'AdminManagementEditor',
+        component: () => import('../views/admin/admin-management/Editor.vue'),
+        meta: {
+          title: '管理员编辑',
+          createTitle: '管理员新增',
+          dynamicTitle: true,
+          requiredRole: 999,
+          breadcrumbParent: {
+            title: '管理员列表',
+            name: 'AdminManagement',
+            path: '/admin/admin-management'
+          }
+        }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]
@@ -74,6 +113,14 @@ router.beforeEach(to => {
   if (to.path.startsWith('/admin') && to.name !== 'AdminLogin') {
     const adminToken = localStorage.getItem('adminToken')
     if (!adminToken) return { name: 'AdminLogin' }
+
+    // 检查需要特定 role 的路由
+    if (to.meta?.requiredRole) {
+      const payload = parseJwtPayload(adminToken)
+      if (!payload || payload.role !== to.meta.requiredRole) {
+        return { name: 'AdminDashboard' }
+      }
+    }
   }
   // 已登录管理员访问登录页，重定向到仪表盘
   if (to.name === 'AdminLogin') {
