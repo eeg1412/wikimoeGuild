@@ -7,3 +7,5 @@
 - 前端使用Cropper组件进行图片裁剪。
 - 前端使用IpInfoDisplay组件显示IP地址的地理位置信息。
 - 前端使用DeviceInfoDisplay组件显示设备信息。
+- 页面文件命名使用PascalCase，例如：UserProfile.vue
+- 组件文件命名使用PascalCase，例如：MyComponent.vue
