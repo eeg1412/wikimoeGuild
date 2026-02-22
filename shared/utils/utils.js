@@ -41,3 +41,22 @@ export function formatDate(
     .replace('mm', parts.minute)
     .replace('ss', parts.second)
 }
+
+/**
+ * 生成指定范围内的随机数
+ * @param {number} min - 最小值
+ * @param {number} max - 最大值
+ * @param {boolean} [isInteger=true] - 是否返回整数（默认返回整数）
+ * @returns {number}
+ */
+export function getRandomInRange(min, max, isInteger = true) {
+  if (typeof min !== 'number' || typeof max !== 'number') {
+    throw new Error('min 和 max 必须是数字')
+  }
+  if (min > max) {
+    ;[min, max] = [max, min] // 自动交换
+  }
+
+  const random = Math.random() * (max - min) + min
+  return isInteger ? Math.floor(random) : random
+}

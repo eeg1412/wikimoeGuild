@@ -5,6 +5,13 @@ import { IP2Location } from 'ip2location-nodejs'
 import { UAParser } from 'ua-parser-js'
 import { Bots } from 'ua-parser-js/extensions'
 import AsyncLock from 'async-lock'
+import { Worker } from 'worker_threads'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
 const lock = new AsyncLock({ timeout: 60000 })
 
 export function createBcryptStr(str) {
@@ -132,5 +139,24 @@ export function limitStr(str, len) {
 export function executeInLock(key, fn) {
   return lock.acquire(key, () => {
     return fn()
+  })
+}
+
+export function generateIconAsync(objectId) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(join(__dirname, 'worker', 'icon-worker.js'), {
+      workerData: objectId
+    })
+
+    worker.on('message', msg => {
+      if (msg?.error) reject(new Error(msg.error))
+      else resolve(msg)
+    })
+
+    worker.on('error', reject)
+
+    worker.on('exit', code => {
+      if (code !== 0) reject(new Error(`Worker exited with code ${code}`))
+    })
   })
 }

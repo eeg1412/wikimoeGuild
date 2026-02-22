@@ -11,6 +11,10 @@ import { responseHandler } from './middlewares/responseHandler.js'
 import { errorHandler } from './middlewares/errorHandler.js'
 import { checkInited } from './services/admin/installService.js'
 
+// import { generateIconAsync } from './utils/utils.js'
+
+// generateIconAsync('62d2a1a2e6b3c8a91f2dad11')
+
 global.$DBinited = false // 全局变量，表示是否已完成初始化
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -35,6 +39,8 @@ app.use((req, _res, next) => {
 
 // 公共资源（uploads）
 app.use('/uploads', express.static(path.resolve(__dirname, './public/uploads')))
+// 公共资源（gamepublic）
+app.use('/gamepublic', express.static(path.resolve(__dirname, './gamepublic')))
 
 // API 路由
 app.use(
