@@ -9,3 +9,4 @@
 - 前端使用DeviceInfoDisplay组件显示设备信息。
 - 页面文件命名使用PascalCase，例如：UserProfile.vue
 - 组件文件命名使用PascalCase，例如：MyComponent.vue
+- 服务端使用executeInLock函数执行需要加锁的操作，确保同一时间只有一个请求能够执行该操作，防止数据竞争和不一致。
