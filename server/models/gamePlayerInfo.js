@@ -16,11 +16,19 @@ const gamePlayerInfoSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
-    mapChangeUses: {
+    mapCanChangeUses: {
       type: Number,
       default: 24
     },
     lastMapRecoverAt: {
+      type: Date,
+      default: Date.now
+    },
+    miningCanUses: {
+      type: Number,
+      default: 20
+    },
+    lastMiningRecoverAt: {
       type: Date,
       default: Date.now
     }
