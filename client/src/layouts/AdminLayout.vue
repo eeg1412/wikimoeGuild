@@ -41,16 +41,36 @@
             class="sidebar-menu"
             @select="handleMenuSelect"
           >
-            <el-menu-item
+            <template
               v-for="item in filteredMenu"
-              :key="item.path"
-              :index="item.path"
+              :key="item.path || item.title"
             >
-              <el-icon>
-                <component :is="item.icon" />
-              </el-icon>
-              <template #title>{{ item.title }}</template>
-            </el-menu-item>
+              <!-- 有子菜单 -->
+              <el-sub-menu
+                v-if="item.children && item.children.length"
+                :index="item.title"
+              >
+                <template #title>
+                  <el-icon><component :is="item.icon" /></el-icon>
+                  <span>{{ item.title }}</span>
+                </template>
+                <el-menu-item
+                  v-for="child in item.children"
+                  :key="child.path"
+                  :index="child.path"
+                >
+                  <el-icon><component :is="child.icon" /></el-icon>
+                  <template #title>{{ child.title }}</template>
+                </el-menu-item>
+              </el-sub-menu>
+              <!-- 普通菜单项 -->
+              <el-menu-item v-else :index="item.path">
+                <el-icon>
+                  <component :is="item.icon" />
+                </el-icon>
+                <template #title>{{ item.title }}</template>
+              </el-menu-item>
+            </template>
           </el-menu>
         </el-scrollbar>
       </div>

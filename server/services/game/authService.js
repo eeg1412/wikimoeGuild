@@ -1,0 +1,308 @@
+import GamePlayerAccount from '../../models/gamePlayerAccounts.js'
+import GamePlayerInfo from '../../models/gamePlayerInfo.js'
+import GamePlayerLoginLog from '../../models/gamePlayerLoginLogs.js'
+import GamePlayerRegisterLog from '../../models/gamePlayerRegisterLogs.js'
+import GameMailCode from '../../models/gameMailCode.js'
+import {
+  getUserIp,
+  IP2LocationUtils,
+  deviceUtils,
+  deviceUAInfoUtils,
+  executeInLock,
+  generateIconAsync
+} from '../../utils/utils.js'
+import { sendVerifyCodeMail } from '../../utils/mailer.js'
+import jwt from 'jsonwebtoken'
+import { jwtKeys } from '../../config/jwtKeys.js'
+import { JWT_CONFIG } from '../../config/jwt.js'
+
+// ──────────────────────────────────────────────
+// 验证码相关
+// ──────────────────────────────────────────────
+
+/**
+ * 生成 6 位数字验证码
+ */
+function generateCode() {
+  return String(Math.floor(100000 + Math.random() * 900000))
+}
+
+/**
+ * 发送邮箱验证码
+ * @param {import('express').Request} req
+ * @param {string} email
+ * @param {'register'|'resetPassword'} type
+ */
+export async function sendMailCode(req, email, type) {
+  const ip = getUserIp(req)
+  const oneMinuteAgo = new Date(Date.now() - 60 * 1000)
+
+  // 同 IP 或同邮箱 1 分钟只能发 1 次
+  const recentByIp = await GameMailCode.findOne({
+    ip,
+    createdAt: { $gte: oneMinuteAgo }
+  })
+  if (recentByIp) {
+    const err = new Error('发送太频繁，请 1 分钟后再试')
+    err.statusCode = 429
+    err.expose = true
+    throw err
+  }
+
+  const recentByEmail = await GameMailCode.findOne({
+    email,
+    createdAt: { $gte: oneMinuteAgo }
+  })
+  if (recentByEmail) {
+    const err = new Error('该邮箱发送太频繁，请 1 分钟后再试')
+    err.statusCode = 429
+    err.expose = true
+    throw err
+  }
+
+  const code = generateCode()
+  const codeExpires = new Date(Date.now() + 15 * 60 * 1000) // 15 分钟
+
+  const record = await GameMailCode.create({
+    email,
+    code,
+    ip,
+    codeExpires
+  })
+
+  // 异步记录 IP 和设备信息，不阻塞
+  IP2LocationUtils(ip, record._id, GameMailCode).catch(() => {})
+  deviceUtils(req, record._id, GameMailCode)
+
+  // 发送邮件
+  await sendVerifyCodeMail(email, code, type)
+}
+
+/**
+ * 校验邮箱验证码（校验后标记为已使用）
+ * @param {string} email
+ * @param {string} code
+ */
+export async function verifyMailCode(email, code) {
+  const record = await GameMailCode.findOne({
+    email,
+    code,
+    used: false,
+    codeExpires: { $gt: new Date() }
+  })
+  if (!record) {
+    const err = new Error('验证码无效或已过期')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+  record.used = true
+  record.success = true
+  await record.save()
+}
+
+// ──────────────────────────────────────────────
+// 注册
+// ──────────────────────────────────────────────
+
+/**
+ * 玩家注册
+ * @param {import('express').Request} req
+ * @param {object} body
+ */
+export async function register(req, { email, password, guildName, code }) {
+  const ip = getUserIp(req)
+
+  // 检测敏感词
+  if (global.$sensitiveFilter && global.$sensitiveFilter.contains(guildName)) {
+    const err = new Error('公会名包含违禁词')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 校验验证码
+  await verifyMailCode(email, code)
+
+  return await executeInLock(`register:${email}`, async () => {
+    // 检测 isBot
+    const ua = deviceUAInfoUtils(req)
+    const type = ua?.browser?.type || null
+    const botTypes = ['cli', 'crawler', 'fetcher', 'library']
+    const isBot = type && botTypes.includes(type)
+    if (isBot) {
+      const err = new Error('检测到机器人行为，注册被拒绝')
+      err.statusCode = 403
+      err.expose = true
+      throw err
+    }
+
+    // 1 小时内同 IP 注册次数限制（3 次）
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const ipRegCount = await GamePlayerRegisterLog.countDocuments({
+      ip,
+      success: true,
+      createdAt: { $gte: oneHourAgo }
+    })
+    if (ipRegCount >= 3) {
+      const err = new Error('该 IP 1 小时内注册次数过多，请稍后再试')
+      err.statusCode = 429
+      err.expose = true
+      throw err
+    }
+
+    // 邮箱唯一性
+    const existingEmail = await GamePlayerAccount.findOne({ email })
+    if (existingEmail) {
+      const err = new Error('该邮箱已被注册')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 公会名唯一性
+    const existingGuildName = await GamePlayerInfo.findOne({ guildName })
+    if (existingGuildName) {
+      const err = new Error('该公会名已被使用')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 创建账号
+    const account = await GamePlayerAccount.create({ email, password })
+
+    // 创建玩家信息
+    await GamePlayerInfo.create({ account: account._id, guildName })
+
+    // 记录注册日志
+    const log = await GamePlayerRegisterLog.create({
+      email,
+      ip,
+      success: true,
+      message: '注册成功'
+    })
+    IP2LocationUtils(ip, log._id, GamePlayerRegisterLog).catch(() => {})
+    deviceUtils(req, log._id, GamePlayerRegisterLog)
+
+    // 异步生成公会图标
+    generateIconAsync(String(account._id)).catch(err => {
+      console.error('生成公会图标失败', err)
+    })
+
+    return account
+  })
+}
+
+// ──────────────────────────────────────────────
+// 登录
+// ──────────────────────────────────────────────
+
+/**
+ * 玩家登录
+ */
+export async function login(req, { email, password }) {
+  const ip = getUserIp(req)
+
+  const account = await GamePlayerAccount.findOne({ email })
+  if (!account) {
+    const err = new Error('邮箱或密码错误')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 1 小时内密码错误次数限制（3 次）
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+  const failCount = await GamePlayerLoginLog.countDocuments({
+    email,
+    success: false,
+    createdAt: { $gte: oneHourAgo }
+  })
+  if (failCount >= 3) {
+    const err = new Error('密码错误次数过多，请 1 小时后再试')
+    err.statusCode = 429
+    err.expose = true
+    throw err
+  }
+
+  const passwordMatch = await account.comparePassword(password)
+  if (!passwordMatch) {
+    // 记录失败日志
+    const log = await GamePlayerLoginLog.create({
+      email,
+      ip,
+      success: false,
+      message: '密码错误'
+    })
+    IP2LocationUtils(ip, log._id, GamePlayerLoginLog).catch(() => {})
+    deviceUtils(req, log._id, GamePlayerLoginLog)
+
+    const err = new Error('邮箱或密码错误')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 登录成功：24 小时内相同 IP 不重复记录
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const existingSuccessLog = await GamePlayerLoginLog.findOne({
+    email,
+    ip,
+    success: true,
+    createdAt: { $gte: oneDayAgo }
+  })
+  if (!existingSuccessLog) {
+    const log = await GamePlayerLoginLog.create({
+      email,
+      ip,
+      success: true,
+      message: '登录成功'
+    })
+    IP2LocationUtils(ip, log._id, GamePlayerLoginLog).catch(() => {})
+    deviceUtils(req, log._id, GamePlayerLoginLog)
+  }
+
+  // 获取玩家信息
+  const playerInfo = await GamePlayerInfo.findOne({ account: account._id })
+
+  // 生成 token
+  const token = jwt.sign(
+    { id: account._id, email: account.email },
+    jwtKeys.playerSecret,
+    { expiresIn: JWT_CONFIG.player.expiresIn }
+  )
+
+  return { token, playerInfo }
+}
+
+// ──────────────────────────────────────────────
+// 找回密码
+// ──────────────────────────────────────────────
+
+/**
+ * 重置密码
+ */
+export async function resetPassword(req, { email, code, newPassword }) {
+  // 校验验证码
+  await verifyMailCode(email, code)
+
+  const account = await GamePlayerAccount.findOne({ email })
+  if (!account) {
+    const err = new Error('该邮箱未注册')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  account.password = newPassword
+  await account.save()
+}
+
+// ──────────────────────────────────────────────
+// 获取当前玩家信息
+// ──────────────────────────────────────────────
+export async function getPlayerInfo(playerId) {
+  const playerInfo = await GamePlayerInfo.findOne({ account: playerId })
+  return playerInfo
+}

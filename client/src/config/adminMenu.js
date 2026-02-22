@@ -19,6 +19,24 @@ export const adminMenu = [
     title: '管理员列表',
     icon: 'UserFilled',
     requiredRole: 999
+  },
+  {
+    title: '玩家管理',
+    icon: 'Medal',
+    children: [
+      { path: '/admin/game-player', title: '玩家列表', icon: 'User' },
+      { path: '/admin/game-mail-code', title: '邮件验证码', icon: 'Message' },
+      {
+        path: '/admin/game-player-login-log',
+        title: '玩家登录日志',
+        icon: 'Key'
+      },
+      {
+        path: '/admin/game-player-register-log',
+        title: '玩家注册日志',
+        icon: 'UserFilled'
+      }
+    ]
   }
   // ===GENERATOR_MENU===
 ]

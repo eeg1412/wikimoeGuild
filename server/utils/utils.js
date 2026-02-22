@@ -49,9 +49,9 @@ export function initIp2location() {
 }
 let ip2location = null
 
-export function IP2LocationUtils(ip, id, model, updateMongodb = true) {
+export async function IP2LocationUtils(ip, id, model, updateMongodb = true) {
   if (ip2location) {
-    const promise = new Promise((resolve, reject) => {
+    const promise = new Promise(async (resolve, reject) => {
       console.time('ip2location')
       try {
         // 判断ip是否是ipv6
@@ -76,7 +76,7 @@ export function IP2LocationUtils(ip, id, model, updateMongodb = true) {
 
         console.timeEnd('ip2location')
         if (updateMongodb) {
-          model
+          await model
             .updateOne(
               { _id: id },
               {
@@ -107,7 +107,7 @@ export function deviceUAInfoUtils(req) {
   return uaParser.getResult()
 }
 
-export function deviceUtils(req, id, model) {
+export async function deviceUtils(req, id, model, updateMongodb = true) {
   const ua = deviceUAInfoUtils(req)
   const type = ua?.browser?.type || null
   let isBot = false
@@ -115,16 +115,18 @@ export function deviceUtils(req, id, model) {
   if (type && botTypes.includes(type)) {
     isBot = true
   }
-  const result = model
-    .updateOne(
-      { _id: id },
-      {
-        deviceInfo: ua,
-        isBot: isBot
-      }
-    )
-    .exec()
-  return result
+  if (updateMongodb) {
+    await model
+      .updateOne(
+        { _id: id },
+        {
+          deviceInfo: ua,
+          isBot: isBot
+        }
+      )
+      .exec()
+  }
+  return ua
 }
 
 export function limitStr(str, len) {

@@ -3,6 +3,8 @@
 - 前端引用文件时用@符号表示src目录，例如：import MyComponent from '@/components/MyComponent.vue'
 - 从开发产品的角度出发，编写合格的代码，注重代码的可读性和可维护性。
 - 前端代码必须保证闭合标签的正确性，避免出现未闭合的标签。
+- 前端注重手机端适配。
+- 前端注意暗黑模式的适配。
 - 前端列表页的表格使用ResponsiveTable和ResponsiveTableColumn组件替代element-plus的Table组件，在小屏幕设备上能够正常显示。
 - 前端使用Cropper组件进行图片裁剪。
 - 前端使用IpInfoDisplay组件显示IP地址的地理位置信息。
@@ -10,3 +12,7 @@
 - 页面文件命名使用PascalCase，例如：UserProfile.vue
 - 组件文件命名使用PascalCase，例如：MyComponent.vue
 - 服务端使用executeInLock函数执行需要加锁的操作，确保同一时间只有一个请求能够执行该操作，防止数据竞争和不一致。
+- 服务端使用getUserIp函数获取用户的IP地址，以便进行相关的处理和分析。
+- 服务端使用IP2LocationUtils函数获取IP地址的地理位置信息，并将结果存储在MongoDB中，以便后续查询和分析。
+- 服务端使用deviceUtils函数获取设备信息，并将结果存储在MongoDB中，以便后续查询和分析。
+- 服务端使用$sensitiveFilter.contains(text)函数检查文本中是否包含敏感词，以便进行相应的处理。

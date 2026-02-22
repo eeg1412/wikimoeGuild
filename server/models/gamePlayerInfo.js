@@ -1,8 +1,14 @@
 import mongoose from 'mongoose'
-import bcrypt from 'bcryptjs'
 
 const gamePlayerInfoSchema = new mongoose.Schema(
   {
+    account: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'game_player_accounts',
+      required: true,
+      unique: true,
+      index: true
+    },
     guildName: {
       type: String,
       required: true,
@@ -11,6 +17,10 @@ const gamePlayerInfoSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 8,
       index: true
+    },
+    gold: {
+      type: Number,
+      default: 0
     },
     hasCustomGuildIcon: {
       type: Boolean,

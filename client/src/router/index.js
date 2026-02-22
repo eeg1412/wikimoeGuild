@@ -34,6 +34,24 @@ const routes = [
         name: 'GameHome',
         component: () => import('../views/game/home/HomeView.vue'),
         meta: { title: '游戏界面' }
+      },
+      {
+        path: 'login',
+        name: 'GameLogin',
+        component: () => import('../views/game/auth/LoginView.vue'),
+        meta: { title: '登录' }
+      },
+      {
+        path: 'register',
+        name: 'GameRegister',
+        component: () => import('../views/game/auth/RegisterView.vue'),
+        meta: { title: '注册' }
+      },
+      {
+        path: 'forgot-password',
+        name: 'GameForgotPassword',
+        component: () => import('../views/game/auth/ForgotPasswordView.vue'),
+        meta: { title: '找回密码' }
       }
     ]
   },
@@ -96,6 +114,32 @@ const routes = [
             path: '/admin/admin-management'
           }
         }
+      },
+      {
+        path: 'game-player',
+        name: 'AdminGamePlayer',
+        component: () => import('../views/admin/game-player/Index.vue'),
+        meta: { title: '玩家列表' }
+      },
+      {
+        path: 'game-mail-code',
+        name: 'AdminGameMailCode',
+        component: () => import('../views/admin/game-mail-code/Index.vue'),
+        meta: { title: '邮件验证码' }
+      },
+      {
+        path: 'game-player-login-log',
+        name: 'AdminGamePlayerLoginLog',
+        component: () =>
+          import('../views/admin/game-player-login-log/Index.vue'),
+        meta: { title: '玩家登录日志' }
+      },
+      {
+        path: 'game-player-register-log',
+        name: 'AdminGamePlayerRegisterLog',
+        component: () =>
+          import('../views/admin/game-player-register-log/Index.vue'),
+        meta: { title: '玩家注册日志' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]
