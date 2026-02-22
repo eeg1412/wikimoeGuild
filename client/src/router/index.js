@@ -27,7 +27,7 @@ const routes = [
     path: '/game',
     name: 'Game',
     redirect: '/game/home',
-    component: () => import('../views/game/GameLayout.vue'),
+    component: () => import('../layouts/GameLayout.vue'),
     children: [
       {
         path: 'home',
