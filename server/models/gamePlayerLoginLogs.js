@@ -40,8 +40,8 @@ const gamePlayerLoginLogSchema = new mongoose.Schema(
     },
     expires: {
       type: Date,
-      expires: 31968000,
-      default: Date.now,
+      expires: 0,
+      default: () => new Date(Date.now() + 370 * 24 * 60 * 60 * 1000), // 370天后过期
       index: true
     }
   },

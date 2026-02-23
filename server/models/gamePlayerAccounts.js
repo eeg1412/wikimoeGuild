@@ -18,11 +18,6 @@ const gamePlayerAccountsSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
       index: true
-    },
-    isBanned: {
-      type: Boolean,
-      default: false,
-      index: true
     }
   },
   {

@@ -20,6 +20,8 @@ const gamePlayerInfoSchema = new mongoose.Schema(
     },
     gold: {
       type: Number,
+      min: 0,
+      max: 2000000000,
       default: 0
     },
     hasCustomGuildIcon: {
@@ -28,6 +30,7 @@ const gamePlayerInfoSchema = new mongoose.Schema(
     },
     mapCanChangeUses: {
       type: Number,
+      min: 0,
       default: 24
     },
     lastMapRecoverAt: {
@@ -36,6 +39,7 @@ const gamePlayerInfoSchema = new mongoose.Schema(
     },
     miningCanUses: {
       type: Number,
+      min: 0,
       default: 20
     },
     lastMiningRecoverAt: {
