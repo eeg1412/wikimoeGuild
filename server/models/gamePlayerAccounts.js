@@ -18,6 +18,11 @@ const gamePlayerAccountsSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
       index: true
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      index: true
     }
   },
   {

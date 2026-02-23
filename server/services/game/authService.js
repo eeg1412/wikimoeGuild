@@ -1,5 +1,5 @@
 import GamePlayerAccount from '../../models/gamePlayerAccounts.js'
-import GamePlayerInfo from '../../models/gamePlayerInfo.js'
+import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GamePlayerLoginLog from '../../models/gamePlayerLoginLogs.js'
 import GamePlayerRegisterLog from '../../models/gamePlayerRegisterLogs.js'
 import GameMailCode from '../../models/gameMailCode.js'

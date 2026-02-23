@@ -28,6 +28,11 @@ const adminAccountSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       index: true
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      index: true
     }
   },
   {

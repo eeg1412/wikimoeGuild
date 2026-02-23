@@ -1,4 +1,4 @@
-import GameMailCode from '../../models/gameMailCode.js'
+import GameMailCode from '../../models/gameMailCodes.js'
 
 /**
  * 邮件验证码列表（分页）

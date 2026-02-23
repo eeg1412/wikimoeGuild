@@ -1,5 +1,5 @@
 import GamePlayerAccount from '../../models/gamePlayerAccounts.js'
-import GamePlayerInfo from '../../models/gamePlayerInfo.js'
+import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 
 /**
  * 玩家列表（分页）
