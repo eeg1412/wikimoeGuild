@@ -119,6 +119,15 @@
             <span v-else class="text-gray-400">—</span>
           </template>
         </ResponsiveTableColumn>
+        <ResponsiveTableColumn label="设备信息" min-width="160">
+          <template #default="{ row }">
+            <DeviceInfoDisplay
+              v-if="row.deviceInfo && Object.keys(row.deviceInfo).length"
+              :deviceInfo="row.deviceInfo"
+            />
+            <span v-else class="text-gray-400">—</span>
+          </template>
+        </ResponsiveTableColumn>
         <ResponsiveTableColumn label="过期时间" min-width="170">
           <template #default="{ row }">
             {{ formatDate(row.codeExpires) }}

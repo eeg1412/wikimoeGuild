@@ -40,6 +40,10 @@ export function updateEmailSettingsApi(data) {
   return adminRequest.put('/global-config/email', data)
 }
 
+export function testEmailConnectionApi(data) {
+  return adminRequest.post('/global-config/email/test', data)
+}
+
 // 安全设置
 export function getSecuritySettingsApi() {
   return adminRequest.get('/global-config/security')

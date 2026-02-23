@@ -9,6 +9,9 @@ const router = Router()
 // 管理员登录
 router.post('/login', validate(loginSchema), authController.login)
 
+// 刷新 Token（无需鉴权，只需提供 refreshToken）
+router.post('/refresh', authController.refresh)
+
 // 获取管理员信息（需鉴权）
 router.get('/profile', authAdmin, authController.getProfile)
 

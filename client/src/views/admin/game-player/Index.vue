@@ -4,7 +4,7 @@
     <div class="mb-4">
       <h2 class="text-xl font-semibold dark:text-gray-100">玩家列表</h2>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        查看所有注册玩家信息
+        查看所有注册玩家信息，支持封禁和修改密码
       </p>
     </div>
 
@@ -74,6 +74,33 @@
             {{ formatDate(row.createdAt) }}
           </template>
         </ResponsiveTableColumn>
+        <ResponsiveTableColumn
+          label="操作"
+          width="160"
+          align="center"
+          fixed="right"
+        >
+          <template #default="{ row }">
+            <el-button
+              type="warning"
+              size="small"
+              text
+              :disabled="!!actioningId"
+              @click="openBanDialog(row)"
+            >
+              封禁
+            </el-button>
+            <el-button
+              type="primary"
+              size="small"
+              text
+              :disabled="!!actioningId"
+              @click="openPasswordDialog(row)"
+            >
+              改密
+            </el-button>
+          </template>
+        </ResponsiveTableColumn>
       </ResponsiveTable>
 
       <!-- 分页 -->
@@ -90,25 +117,122 @@
         />
       </div>
     </el-card>
+
+    <!-- 封禁弹窗 -->
+    <el-dialog
+      v-model="banDialogVisible"
+      title="封禁玩家"
+      width="420px"
+      :close-on-click-modal="!actioningId"
+    >
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        将封禁玩家 <strong>{{ currentRow?.accountInfo?.email }}</strong
+        >， 封禁期间该玩家无法登录。
+      </p>
+      <el-form label-width="100px">
+        <el-form-item label="封禁到期时间">
+          <el-date-picker
+            v-model="banForm.banExpires"
+            type="datetime"
+            placeholder="请选择封禁到期时间"
+            :disabled-date="disablePastDate"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="banDialogVisible = false" :disabled="!!actioningId"
+          >取消</el-button
+        >
+        <el-button
+          type="danger"
+          :loading="!!actioningId"
+          :disabled="!banForm.banExpires"
+          @click="handleBan"
+        >
+          确认封禁
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 修改密码弹窗 -->
+    <el-dialog
+      v-model="passwordDialogVisible"
+      title="修改玩家密码"
+      width="420px"
+      :close-on-click-modal="!actioningId"
+    >
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        修改玩家 <strong>{{ currentRow?.accountInfo?.email }}</strong> 的密码，
+        修改后该玩家所有设备将被强制下线。
+      </p>
+      <el-form label-width="100px">
+        <el-form-item label="新密码">
+          <el-input
+            v-model="passwordForm.newPassword"
+            type="password"
+            placeholder="请输入新密码（至少6位）"
+            show-password
+            :disabled="!!actioningId"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button
+          @click="passwordDialogVisible = false"
+          :disabled="!!actioningId"
+          >取消</el-button
+        >
+        <el-button
+          type="primary"
+          :loading="!!actioningId"
+          :disabled="
+            !passwordForm.newPassword || passwordForm.newPassword.length < 6
+          "
+          @click="handleChangePassword"
+        >
+          确认修改
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { listGamePlayersApi } from '@/api/admin/gamePlayer.js'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  listGamePlayersApi,
+  banGamePlayerApi,
+  changeGamePlayerPasswordApi
+} from '@/api/admin/gamePlayer.js'
 import { formatDate } from '@shared'
 
 const loading = ref(false)
 const tableData = ref([])
+const actioningId = ref(null)
 
 const searchForm = reactive({ email: '', guildName: '' })
 const pagination = reactive({ page: 1, pageSize: 20, total: 0 })
+
+// 封禁相关
+const banDialogVisible = ref(false)
+const currentRow = ref(null)
+const banForm = reactive({ banExpires: null })
+
+// 改密相关
+const passwordDialogVisible = ref(false)
+const passwordForm = reactive({ newPassword: '' })
 
 function getGuildIcon(row) {
   if (row.hasCustomGuildIcon) {
     return `/uploads/custom-guild-icon/${row.account}.png`
   }
   return `/uploads/default-guild-icon/${row.account}.png`
+}
+
+function disablePastDate(date) {
+  return date < new Date()
 }
 
 async function fetchData() {
@@ -137,6 +261,69 @@ function handleReset() {
   searchForm.guildName = ''
   pagination.page = 1
   fetchData()
+}
+
+function openBanDialog(row) {
+  currentRow.value = row
+  banForm.banExpires = null
+  banDialogVisible.value = true
+}
+
+function openPasswordDialog(row) {
+  currentRow.value = row
+  passwordForm.newPassword = ''
+  passwordDialogVisible.value = true
+}
+
+async function handleBan() {
+  if (!banForm.banExpires || !currentRow.value) return
+  const email = currentRow.value.accountInfo?.email
+  if (!email) {
+    ElMessage.error('无法获取玩家邮箱')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确认封禁玩家 ${email}，直到 ${new Date(banForm.banExpires).toLocaleString('zh-CN')}？`,
+      '确认封禁',
+      {
+        type: 'warning',
+        confirmButtonText: '确认封禁',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    actioningId.value = currentRow.value._id
+    await banGamePlayerApi({ email, banExpires: banForm.banExpires })
+    ElMessage.success('封禁成功')
+    banDialogVisible.value = false
+    fetchData()
+  } catch {
+    // 取消或失败
+  } finally {
+    actioningId.value = null
+  }
+}
+
+async function handleChangePassword() {
+  if (!passwordForm.newPassword || !currentRow.value) return
+  const email = currentRow.value.accountInfo?.email
+  try {
+    await ElMessageBox.confirm(
+      `确认修改玩家 ${email} 的密码？修改后该玩家所有设备将被强制下线。`,
+      '确认修改密码',
+      { type: 'warning' }
+    )
+    actioningId.value = currentRow.value._id
+    await changeGamePlayerPasswordApi(currentRow.value.account, {
+      newPassword: passwordForm.newPassword
+    })
+    ElMessage.success('密码修改成功')
+    passwordDialogVisible.value = false
+  } catch {
+    // 取消或失败
+  } finally {
+    actioningId.value = null
+  }
 }
 
 onMounted(fetchData)

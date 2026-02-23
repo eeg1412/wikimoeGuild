@@ -18,10 +18,18 @@ export function registerApi(data) {
 
 /**
  * 玩家登录
- * @param {{ email: string, password: string }} data
+ * @param {{ email: string, password: string, rememberMe?: boolean }} data
  */
 export function loginApi(data) {
   return gameRequest.post('/auth/login', data)
+}
+
+/**
+ * 刷新玩家 Token
+ * @param {{ refreshToken: string }} data
+ */
+export function refreshPlayerTokenApi(data) {
+  return gameRequest.post('/auth/refresh', data)
 }
 
 /**

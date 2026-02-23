@@ -8,6 +8,10 @@ router.put('/site', globalConfigCategorizedController.updateSiteSettings)
 
 router.get('/email', globalConfigCategorizedController.getEmailSettings)
 router.put('/email', globalConfigCategorizedController.updateEmailSettings)
+router.post(
+  '/email/test',
+  globalConfigCategorizedController.testEmailConnection
+)
 
 router.get('/security', globalConfigCategorizedController.getSecuritySettings)
 router.put(

@@ -49,16 +49,55 @@
         <el-button
           type="primary"
           :loading="submitting"
-          :disabled="submitting"
+          :disabled="submitting || testing"
           @click="handleSubmit"
         >
           保存配置
         </el-button>
-        <el-button @click="testEmail" :loading="testing" :disabled="testing"
-          >测试连接</el-button
+        <el-button
+          :loading="testing"
+          :disabled="testing || submitting"
+          @click="openTestDialog"
         >
+          测试连接
+        </el-button>
       </el-form-item>
     </el-form>
+
+    <!-- 测试邮件发送弹窗 -->
+    <el-dialog
+      v-model="testDialogVisible"
+      title="测试邮件连接"
+      width="400px"
+      :close-on-click-modal="!testing"
+    >
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        将使用当前保存的邮件配置向指定邮箱发送一封测试邮件。
+      </p>
+      <el-form @submit.prevent="handleTestEmail">
+        <el-form-item label="收件邮箱">
+          <el-input
+            v-model="testReceiver"
+            placeholder="请输入接收测试邮件的邮箱"
+            clearable
+            :disabled="testing"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="testDialogVisible = false" :disabled="testing"
+          >取消</el-button
+        >
+        <el-button
+          type="primary"
+          :loading="testing"
+          :disabled="testing || !testReceiver"
+          @click="handleTestEmail"
+        >
+          发送测试邮件
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -67,11 +106,14 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   getEmailSettingsApi,
-  updateEmailSettingsApi
+  updateEmailSettingsApi,
+  testEmailConnectionApi
 } from '@/api/admin/globalConfig'
 
 const submitting = ref(false)
 const testing = ref(false)
+const testDialogVisible = ref(false)
+const testReceiver = ref('')
 
 const form = reactive({
   emailSmtpHost: '',
@@ -88,7 +130,10 @@ async function loadEmailSettings() {
     const res = await getEmailSettingsApi()
     const data = res.data?.data || {}
     Object.assign(form, data)
-  } catch (e) {
+    if (data.emailReceiver) {
+      testReceiver.value = data.emailReceiver
+    }
+  } catch {
     ElMessage.error('加载邮箱设置失败')
   }
 }
@@ -117,12 +162,25 @@ async function handleSubmit() {
   }
 }
 
-async function testEmail() {
+function openTestDialog() {
+  if (!testReceiver.value && form.emailReceiver) {
+    testReceiver.value = form.emailReceiver
+  }
+  testDialogVisible.value = true
+}
+
+async function handleTestEmail() {
+  if (!testReceiver.value) {
+    ElMessage.warning('请输入收件邮箱')
+    return
+  }
   testing.value = true
   try {
-    ElMessage.success('邮箱设置正确')
+    await testEmailConnectionApi({ to: testReceiver.value })
+    ElMessage.success('测试邮件发送成功，请查收邮件')
+    testDialogVisible.value = false
   } catch (e) {
-    ElMessage.error('邮箱连接失败')
+    ElMessage.error(e.response?.data?.message || '邮件发送失败，请检查邮件配置')
   } finally {
     testing.value = false
   }

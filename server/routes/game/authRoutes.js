@@ -13,6 +13,9 @@ router.post('/register', authController.register)
 // 登录
 router.post('/login', authController.login)
 
+// 刷新 Token
+router.post('/refresh', authController.refresh)
+
 // 重置密码
 router.post('/reset-password', authController.resetPassword)
 

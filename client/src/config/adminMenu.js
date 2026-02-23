@@ -27,6 +27,11 @@ export const adminMenu = [
       { path: '/admin/game-player', title: '玩家列表', icon: 'User' },
       { path: '/admin/game-mail-code', title: '邮件验证码', icon: 'Message' },
       {
+        path: '/admin/game-player-ban-log',
+        title: '封禁记录',
+        icon: 'CircleClose'
+      },
+      {
         path: '/admin/game-player-login-log',
         title: '玩家登录日志',
         icon: 'Key'

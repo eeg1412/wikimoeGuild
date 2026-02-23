@@ -2,12 +2,12 @@ import { ref, computed } from 'vue'
 import { getMeApi } from '@/api/game/auth.js'
 
 // 全局单例状态
-const playerToken = ref(localStorage.getItem('playerToken') || '')
+const playerAccessToken = ref(localStorage.getItem('playerAccessToken') || '')
 const playerInfo = ref(null)
 const playerLoaded = ref(false)
 
 export function useGameUser() {
-  const isLoggedIn = computed(() => !!playerToken.value)
+  const isLoggedIn = computed(() => !!playerAccessToken.value)
 
   /**
    * 公会图标路径
@@ -23,29 +23,34 @@ export function useGameUser() {
 
   /**
    * 登录后设置 token 和信息
+   * @param {string} accessToken
+   * @param {string} refreshToken
+   * @param {object} info - 玩家信息
    */
-  function setLogin(token, info) {
-    playerToken.value = token
+  function setLogin(accessToken, refreshToken, info) {
+    playerAccessToken.value = accessToken
     playerInfo.value = info
     playerLoaded.value = true
-    localStorage.setItem('playerToken', token)
+    localStorage.setItem('playerAccessToken', accessToken)
+    localStorage.setItem('playerRefreshToken', refreshToken)
   }
 
   /**
    * 退出登录
    */
   function logout() {
-    playerToken.value = ''
+    playerAccessToken.value = ''
     playerInfo.value = null
     playerLoaded.value = false
-    localStorage.removeItem('playerToken')
+    localStorage.removeItem('playerAccessToken')
+    localStorage.removeItem('playerRefreshToken')
   }
 
   /**
    * 从服务端拉取当前玩家信息
    */
   async function fetchPlayerInfo() {
-    if (!playerToken.value) return
+    if (!playerAccessToken.value) return
     try {
       const res = await getMeApi()
       playerInfo.value = res.data.data
@@ -56,7 +61,7 @@ export function useGameUser() {
   }
 
   return {
-    playerToken,
+    playerToken: playerAccessToken,
     playerInfo,
     playerLoaded,
     isLoggedIn,

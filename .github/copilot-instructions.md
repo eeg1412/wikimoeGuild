@@ -16,3 +16,4 @@
 - 服务端使用IP2LocationUtils函数获取IP地址的地理位置信息，并将结果存储在MongoDB中，以便后续查询和分析。
 - 服务端使用deviceUtils函数获取设备信息，并将结果存储在MongoDB中，以便后续查询和分析。
 - 服务端使用$sensitiveFilter.contains(text)函数检查文本中是否包含敏感词，以便进行相应的处理。
+- 除非用户明确指示，否则禁止使用 terminal command 来修改文件。

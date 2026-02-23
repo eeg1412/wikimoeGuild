@@ -21,6 +21,11 @@ const gameMailCodeSchema = new mongoose.Schema(
       default: false,
       index: true
     },
+    sent: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
     ip: {
       type: String,
       trim: true,

@@ -49,15 +49,7 @@ export async function login(req, { username, password, rememberMe = false }) {
     throw err
   }
 
-  const token = jwt.sign(
-    { id: account._id, username: account.username, role: account.role },
-    jwtKeys.adminSecret,
-    {
-      expiresIn: rememberMe
-        ? JWT_CONFIG.admin.rememberMeExpiresIn
-        : JWT_CONFIG.admin.expiresIn
-    }
-  )
+  const { accessToken, refreshToken } = signAdminTokens(account, rememberMe)
 
   await recordLoginLog(req, {
     username: safeUsername,
@@ -65,7 +57,78 @@ export async function login(req, { username, password, rememberMe = false }) {
     message: '登录成功'
   })
 
-  return { admin: account.toJSON(), token }
+  return { admin: account.toJSON(), accessToken, refreshToken }
+}
+
+/**
+ * 签发管理员双 Token
+ * @param {object} account  - 账号文档
+ * @param {boolean} rememberMe - 是否保持登录
+ * @returns {{ accessToken: string, refreshToken: string }}
+ */
+function signAdminTokens(account, rememberMe) {
+  const payload = {
+    id: account._id,
+    username: account.username,
+    role: account.role,
+    tokenVersion: account.tokenVersion
+  }
+  const accessToken = jwt.sign(
+    { ...payload, tokenType: 'access' },
+    jwtKeys.adminSecret,
+    { expiresIn: JWT_CONFIG.admin.accessTokenExpiresIn }
+  )
+  const refreshToken = jwt.sign(
+    { ...payload, tokenType: 'refresh', rememberMe: !!rememberMe },
+    jwtKeys.adminSecret,
+    {
+      expiresIn: rememberMe
+        ? JWT_CONFIG.admin.rememberMeRefreshTokenExpiresIn
+        : JWT_CONFIG.admin.refreshTokenExpiresIn
+    }
+  )
+  return { accessToken, refreshToken }
+}
+
+/**
+ * 刷新管理员 Token
+ * 校验 refreshToken 的 tokenVersion，不吻合则吊销
+ */
+export async function refreshAdminToken(refreshTokenStr) {
+  let decoded
+  try {
+    decoded = jwt.verify(refreshTokenStr, jwtKeys.adminSecret)
+  } catch {
+    const err = new Error('刷新令牌无效或已过期')
+    err.statusCode = 401
+    err.expose = true
+    throw err
+  }
+
+  if (decoded.tokenType !== 'refresh') {
+    const err = new Error('令牌类型错误')
+    err.statusCode = 401
+    err.expose = true
+    throw err
+  }
+
+  const account = await adminAccount.findById(decoded.id)
+  if (!account) {
+    const err = new Error('用户不存在')
+    err.statusCode = 401
+    err.expose = true
+    throw err
+  }
+
+  if (account.tokenVersion !== decoded.tokenVersion) {
+    const err = new Error('令牌已失效，请重新登录')
+    err.statusCode = 401
+    err.expose = true
+    throw err
+  }
+
+  const rememberMe = decoded.rememberMe || false
+  return signAdminTokens(account, rememberMe)
 }
 
 /**
@@ -106,5 +169,6 @@ export async function changePassword(id, { currentPassword, newPassword }) {
   }
 
   account.password = newPassword
+  account.tokenVersion = (account.tokenVersion || 0) + 1
   await account.save()
 }

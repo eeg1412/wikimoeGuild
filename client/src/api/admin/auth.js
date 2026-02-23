@@ -4,6 +4,10 @@ export function adminLoginApi(data) {
   return adminRequest.post('/auth/login', data)
 }
 
+export function adminRefreshTokenApi(data) {
+  return adminRequest.post('/auth/refresh', data)
+}
+
 export function adminProfileApi() {
   return adminRequest.get('/auth/profile')
 }

@@ -2,7 +2,8 @@ import GamePlayerAccount from '../../models/gamePlayerAccounts.js'
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GamePlayerLoginLog from '../../models/gamePlayerLoginLogs.js'
 import GamePlayerRegisterLog from '../../models/gamePlayerRegisterLogs.js'
-import GameMailCode from '../../models/gameMailCode.js'
+import GameMailCode from '../../models/gameMailCodes.js'
+import GamePlayerBanLog from '../../models/gamePlayerBanLogs.js'
 import {
   getUserIp,
   IP2LocationUtils,
@@ -15,6 +16,36 @@ import { sendVerifyCodeMail } from '../../utils/mailer.js'
 import jwt from 'jsonwebtoken'
 import { jwtKeys } from '../../config/jwtKeys.js'
 import { JWT_CONFIG } from '../../config/jwt.js'
+import { operationalLogger } from '../../utils/logger.js'
+
+/**
+ * 签发玩家双 Token
+ * @param {object} account  - 账号文档
+ * @param {boolean} rememberMe - 是否保持登录
+ * @returns {{ accessToken: string, refreshToken: string }}
+ */
+function signPlayerTokens(account, rememberMe) {
+  const payload = {
+    id: account._id,
+    email: account.email,
+    tokenVersion: account.tokenVersion
+  }
+  const accessToken = jwt.sign(
+    { ...payload, tokenType: 'access' },
+    jwtKeys.playerSecret,
+    { expiresIn: JWT_CONFIG.player.accessTokenExpiresIn }
+  )
+  const refreshToken = jwt.sign(
+    { ...payload, tokenType: 'refresh', rememberMe: !!rememberMe },
+    jwtKeys.playerSecret,
+    {
+      expiresIn: rememberMe
+        ? JWT_CONFIG.player.rememberMeRefreshTokenExpiresIn
+        : JWT_CONFIG.player.refreshTokenExpiresIn
+    }
+  )
+  return { accessToken, refreshToken }
+}
 
 // ──────────────────────────────────────────────
 // 验证码相关
@@ -37,9 +68,21 @@ export async function sendMailCode(req, email, type) {
   const ip = getUserIp(req)
   const oneMinuteAgo = new Date(Date.now() - 60 * 1000)
 
-  // 同 IP 或同邮箱 1 分钟只能发 1 次
+  // 找回密码：必须先确认该邮箱已注册，未注册则截断，不发送任何邮件
+  if (type === 'resetPassword') {
+    const exists = await GamePlayerAccount.exists({ email })
+    if (!exists) {
+      const err = new Error('该邮箱尚未注册，无法找回密码')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+  }
+
+  // 同 IP 或同邮箱 1 分钟只能发 1 次（仅计算成功发送的记录）
   const recentByIp = await GameMailCode.findOne({
     ip,
+    sent: true,
     createdAt: { $gte: oneMinuteAgo }
   })
   if (recentByIp) {
@@ -51,6 +94,7 @@ export async function sendMailCode(req, email, type) {
 
   const recentByEmail = await GameMailCode.findOne({
     email,
+    sent: true,
     createdAt: { $gte: oneMinuteAgo }
   })
   if (recentByEmail) {
@@ -67,15 +111,31 @@ export async function sendMailCode(req, email, type) {
     email,
     code,
     ip,
-    codeExpires
+    codeExpires,
+    sent: false
   })
 
   // 异步记录 IP 和设备信息，不阻塞
   IP2LocationUtils(ip, record._id, GameMailCode).catch(() => {})
   deviceUtils(req, record._id, GameMailCode)
 
-  // 发送邮件
-  await sendVerifyCodeMail(email, code, type)
+  // 发送邮件，成功后标记 sent
+  // 邮件服务故障属于运营级错误，记录到 operational.log，向用户返回友好提示
+  try {
+    await sendVerifyCodeMail(email, code, type)
+    record.sent = true
+    await record.save()
+  } catch (mailError) {
+    console.error('[sendMailCode] 邮件发送失败:', mailError)
+    operationalLogger.error(
+      `邮件发送失败 to=${email} type=${type}: ${mailError.message}`,
+      { stack: mailError.stack }
+    )
+    const err = new Error('邮件发送失败，请稍后重试或联系管理员')
+    err.statusCode = 503
+    err.expose = true
+    throw err
+  }
 }
 
 /**
@@ -201,8 +261,22 @@ export async function register(req, { email, password, guildName, code }) {
 /**
  * 玩家登录
  */
-export async function login(req, { email, password }) {
+export async function login(req, { email, password, rememberMe = false }) {
   const ip = getUserIp(req)
+
+  // 检查封禁状态
+  const banLog = await GamePlayerBanLog.findOne({
+    email,
+    banExpires: { $gt: new Date() }
+  })
+  if (banLog) {
+    const err = new Error(
+      `该账号已被封禁，封禁到期时间：${banLog.banExpires.toLocaleString('zh-CN')}`
+    )
+    err.statusCode = 403
+    err.expose = true
+    throw err
+  }
 
   const account = await GamePlayerAccount.findOne({ email })
   if (!account) {
@@ -266,14 +340,51 @@ export async function login(req, { email, password }) {
   // 获取玩家信息
   const playerInfo = await GamePlayerInfo.findOne({ account: account._id })
 
-  // 生成 token
-  const token = jwt.sign(
-    { id: account._id, email: account.email },
-    jwtKeys.playerSecret,
-    { expiresIn: JWT_CONFIG.player.expiresIn }
-  )
+  // 签发双 Token
+  const { accessToken, refreshToken } = signPlayerTokens(account, rememberMe)
 
-  return { token, playerInfo }
+  return { accessToken, refreshToken, playerInfo }
+}
+
+/**
+ * 刷新玩家 Token
+ * 刷新时才校验 tokenVersion，不吁则吹销
+ */
+export async function refreshPlayerToken(refreshTokenStr) {
+  let decoded
+  try {
+    decoded = jwt.verify(refreshTokenStr, jwtKeys.playerSecret)
+  } catch {
+    const err = new Error('刷新令牌无效或已过期')
+    err.statusCode = 401
+    err.expose = true
+    throw err
+  }
+
+  if (decoded.tokenType !== 'refresh') {
+    const err = new Error('令牌类型错误')
+    err.statusCode = 401
+    err.expose = true
+    throw err
+  }
+
+  const account = await GamePlayerAccount.findById(decoded.id)
+  if (!account) {
+    const err = new Error('用户不存在')
+    err.statusCode = 401
+    err.expose = true
+    throw err
+  }
+
+  if (account.tokenVersion !== decoded.tokenVersion) {
+    const err = new Error('令牌已失效，请重新登录')
+    err.statusCode = 401
+    err.expose = true
+    throw err
+  }
+
+  const rememberMe = decoded.rememberMe || false
+  return signPlayerTokens(account, rememberMe)
 }
 
 // ──────────────────────────────────────────────
@@ -296,6 +407,7 @@ export async function resetPassword(req, { email, code, newPassword }) {
   }
 
   account.password = newPassword
+  account.tokenVersion = (account.tokenVersion || 0) + 1
   await account.save()
 }
 

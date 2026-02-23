@@ -35,3 +35,19 @@ export async function changePassword(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 刷新管理员 Token
+ */
+export async function refresh(req, res, next) {
+  try {
+    const { refreshToken } = req.body
+    if (!refreshToken) {
+      return res.unauthorized('请提供刷新令牌')
+    }
+    const result = await authService.refreshAdminToken(refreshToken)
+    res.success(result, '令牌刷新成功')
+  } catch (error) {
+    next(error)
+  }
+}

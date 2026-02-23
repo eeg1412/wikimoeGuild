@@ -41,10 +41,17 @@
           />
         </el-form-item>
 
+        <el-form-item class="mb-2">
+          <el-checkbox v-model="form.rememberMe" :disabled="loading"
+            >保持登录状态</el-checkbox
+          >
+        </el-form-item>
+
         <el-button
           type="primary"
           class="w-full mt-2"
           :loading="loading"
+          :disabled="loading"
           @click="handleSubmit"
         >
           登录
@@ -81,7 +88,7 @@ if (isLoggedIn.value) {
 const formRef = ref(null)
 const loading = ref(false)
 
-const form = reactive({ email: '', password: '' })
+const form = reactive({ email: '', password: '', rememberMe: false })
 
 const rules = {
   email: [
@@ -95,9 +102,13 @@ async function handleSubmit() {
   await formRef.value?.validate()
   loading.value = true
   try {
-    const res = await loginApi({ email: form.email, password: form.password })
-    const { token, playerInfo } = res.data.data
-    setLogin(token, playerInfo)
+    const res = await loginApi({
+      email: form.email,
+      password: form.password,
+      rememberMe: form.rememberMe
+    })
+    const { accessToken, refreshToken, playerInfo } = res.data.data
+    setLogin(accessToken, refreshToken, playerInfo)
     ElMessage.success('登录成功')
     router.replace('/game/home')
   } catch {

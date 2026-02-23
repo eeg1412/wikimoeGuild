@@ -1,6 +1,5 @@
 import axios from 'axios'
 import router from '@/router'
-// 导入element-plus的消息组件
 import { ElMessage } from 'element-plus'
 
 const adminRequest = axios.create({
@@ -8,10 +7,38 @@ const adminRequest = axios.create({
   timeout: 300000
 })
 
-// 请求拦截器 — 附加管理后台 token
+/**
+ * 双 Token 刷新队列机制
+ * - isRefreshing: 是否正在刷新 token
+ * - refreshQueue: 等待刷新完成的请求回调队列
+ */
+let isRefreshing = false
+let refreshQueue = []
+
+/** 执行队列中所有等待的请求 */
+function processQueue(error, accessToken = null) {
+  refreshQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error)
+    } else {
+      resolve(accessToken)
+    }
+  })
+  refreshQueue = []
+}
+
+/** 跳转到登录页并清除 token */
+function redirectToLogin(message = '登录已过期，请重新登录') {
+  ElMessage.error(message)
+  localStorage.removeItem('adminAccessToken')
+  localStorage.removeItem('adminRefreshToken')
+  router.push('/admin/login')
+}
+
+// 请求拦截器 — 附加 accessToken
 adminRequest.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('adminToken')
+    const token = localStorage.getItem('adminAccessToken')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -20,27 +47,89 @@ adminRequest.interceptors.request.use(
   error => Promise.reject(error)
 )
 
-// 响应拦截器 — 管理后台统一错误处理
+// 响应拦截器 — 统一错误处理 + 自动刷新 Token
 adminRequest.interceptors.response.use(
   response => response,
-  error => {
-    switch (error.response?.status) {
-      case 401:
-        ElMessage.error('未授权，请重新登录')
-        localStorage.removeItem('adminToken')
-        router.push('/admin/login')
-        break
-      default:
-        const message =
-          error.response?.data?.message ||
-          `请求失败，状态码 ${error.response?.status}`
-        ElMessage.error(message)
-        break
+  async error => {
+    const originalRequest = error.config
+    const status = error.response?.status
+    const message = error.response?.data?.message
+
+    // 401 且非刷新接口本身
+    if (
+      status === 401 &&
+      !originalRequest._isRetry &&
+      !originalRequest._isRefresh
+    ) {
+      const refreshToken = localStorage.getItem('adminRefreshToken')
+
+      // 没有 refreshToken，直接跳转登录
+      if (!refreshToken) {
+        redirectToLogin()
+        return Promise.reject(error)
+      }
+
+      // 如果已经在刷新中，将请求加入队列等待
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          refreshQueue.push({ resolve, reject })
+        })
+          .then(accessToken => {
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`
+            return adminRequest(originalRequest)
+          })
+          .catch(err => Promise.reject(err))
+      }
+
+      // 开始刷新
+      originalRequest._isRetry = true
+      isRefreshing = true
+
+      try {
+        // 直接用 axios 调用刷新接口，避免触发拦截器循环
+        const res = await axios.post(
+          '/api/admin/auth/refresh',
+          { refreshToken },
+          { _isRefresh: true }
+        )
+        const { accessToken, refreshToken: newRefreshToken } = res.data.data
+        localStorage.setItem('adminAccessToken', accessToken)
+        localStorage.setItem('adminRefreshToken', newRefreshToken)
+
+        // 通知所有等待的请求
+        processQueue(null, accessToken)
+
+        // 重试原请求
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`
+        return adminRequest(originalRequest)
+      } catch (refreshError) {
+        processQueue(refreshError, null)
+        redirectToLogin('登录已过期，请重新登录')
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
     }
-    // if (error.response?.status === 401) {
-    //   localStorage.removeItem('adminToken')
-    //   router.push('/admin/login')
-    // }
+
+    // 403 禁止访问
+    if (status === 403) {
+      ElMessage.error(message || '权限不足')
+      return Promise.reject(error)
+    }
+
+    // 429 频率限制
+    if (status === 429) {
+      ElMessage.error(message || '操作过于频繁，请稍后再试')
+      return Promise.reject(error)
+    }
+
+    // 其他错误
+    if (message) {
+      ElMessage.error(message)
+    } else if (status) {
+      ElMessage.error(`请求失败，状态码 ${status}`)
+    }
+
     return Promise.reject(error)
   }
 )

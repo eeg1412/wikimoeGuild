@@ -140,6 +140,12 @@ const routes = [
         component: () =>
           import('../views/admin/game-player-register-log/Index.vue'),
         meta: { title: '玩家注册日志' }
+      },
+      {
+        path: 'game-player-ban-log',
+        name: 'AdminGamePlayerBanLog',
+        component: () => import('../views/admin/game-player-ban-log/Index.vue'),
+        meta: { title: '封禁记录' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]
@@ -153,9 +159,9 @@ const router = createRouter({
 
 // 管理后台路由守卫
 router.beforeEach(to => {
-  // 访问管理后台（非登录页）需要 adminToken
+  // 访问管理后台（非登录页）需要 adminAccessToken
   if (to.path.startsWith('/admin') && to.name !== 'AdminLogin') {
-    const adminToken = localStorage.getItem('adminToken')
+    const adminToken = localStorage.getItem('adminAccessToken')
     if (!adminToken) return { name: 'AdminLogin' }
 
     // 检查需要特定 role 的路由
@@ -168,7 +174,7 @@ router.beforeEach(to => {
   }
   // 已登录管理员访问登录页，重定向到仪表盘
   if (to.name === 'AdminLogin') {
-    const adminToken = localStorage.getItem('adminToken')
+    const adminToken = localStorage.getItem('adminAccessToken')
     if (adminToken) return { path: '/admin/dashboard' }
   }
 })

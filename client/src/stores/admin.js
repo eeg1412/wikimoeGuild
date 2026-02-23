@@ -4,13 +4,15 @@ import { adminLoginApi, adminProfileApi } from '../api/admin/auth.js'
 
 export const useAdminStore = defineStore('admin', () => {
   const user = ref(null)
-  const token = ref(localStorage.getItem('adminToken') || '')
+  const accessToken = ref(localStorage.getItem('adminAccessToken') || '')
 
   async function login(credentials) {
     const { data } = await adminLoginApi(credentials)
-    token.value = data.data.token
-    user.value = data.data.user
-    localStorage.setItem('adminToken', data.data.token)
+    const { admin, accessToken: at, refreshToken: rt } = data.data
+    accessToken.value = at
+    user.value = admin
+    localStorage.setItem('adminAccessToken', at)
+    localStorage.setItem('adminRefreshToken', rt)
   }
 
   async function fetchProfile() {
@@ -20,9 +22,10 @@ export const useAdminStore = defineStore('admin', () => {
 
   function logout() {
     user.value = null
-    token.value = ''
-    localStorage.removeItem('adminToken')
+    accessToken.value = ''
+    localStorage.removeItem('adminAccessToken')
+    localStorage.removeItem('adminRefreshToken')
   }
 
-  return { user, token, login, fetchProfile, logout }
+  return { user, token: accessToken, login, fetchProfile, logout }
 })
