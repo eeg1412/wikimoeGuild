@@ -144,6 +144,94 @@ export function executeInLock(key, fn) {
   })
 }
 
+// ──────────────────────────────────────────────
+// 冒险家工具函数
+// ──────────────────────────────────────────────
+
+/**
+ * 随机生成冒险家头像 ID（1-10）
+ */
+export function generateRandomAdventurerAvatarId() {
+  return String(Math.floor(Math.random() * 10) + 1)
+}
+
+// 冒险家名字词库
+const ADVENTURER_NAME_PREFIXES = [
+  '星',
+  '月',
+  '风',
+  '雷',
+  '影',
+  '光',
+  '暗',
+  '冰',
+  '炎',
+  '云',
+  '霜',
+  '岚',
+  '幽',
+  '苍',
+  '碧',
+  '赤',
+  '玄',
+  '银',
+  '金',
+  '铁'
+]
+const ADVENTURER_NAME_MIDDLES = [
+  '之',
+  '烈',
+  '若',
+  '如',
+  '似',
+  '般',
+  '起',
+  '耀',
+  '落',
+  '升'
+]
+const ADVENTURER_NAME_SUFFIXES = [
+  '战士',
+  '骑士',
+  '猎手',
+  '法师',
+  '游侠',
+  '刺客',
+  '勇者',
+  '传说',
+  '之魂',
+  '守护',
+  '行者',
+  '先锋',
+  '突击',
+  '神射',
+  '圣者',
+  '荣耀'
+]
+
+/**
+ * 随机生成冒险家名字
+ */
+export function generateRandomAdventurerName() {
+  const prefix =
+    ADVENTURER_NAME_PREFIXES[
+      Math.floor(Math.random() * ADVENTURER_NAME_PREFIXES.length)
+    ]
+  const suffix =
+    ADVENTURER_NAME_SUFFIXES[
+      Math.floor(Math.random() * ADVENTURER_NAME_SUFFIXES.length)
+    ]
+  // 30% 概率插入中间词
+  if (Math.random() < 0.3) {
+    const middle =
+      ADVENTURER_NAME_MIDDLES[
+        Math.floor(Math.random() * ADVENTURER_NAME_MIDDLES.length)
+      ]
+    return prefix + middle + suffix
+  }
+  return prefix + suffix
+}
+
 export function generateIconAsync(objectId) {
   return new Promise((resolve, reject) => {
     const worker = new Worker(join(__dirname, 'worker', 'icon-worker.js'), {

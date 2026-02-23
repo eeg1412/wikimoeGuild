@@ -39,8 +39,8 @@ app.use((req, _res, next) => {
 
 // 公共资源（uploads）
 app.use('/uploads', express.static(path.resolve(__dirname, './public/uploads')))
-// 公共资源（gamepublic）
-app.use('/gamepublic', express.static(path.resolve(__dirname, './gamepublic')))
+// 公共资源（publicgame）
+app.use('/publicgame', express.static(path.resolve(__dirname, './publicgame')))
 
 // API 路由
 app.use(

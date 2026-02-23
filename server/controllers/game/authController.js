@@ -18,8 +18,8 @@ export async function sendCode(req, res, next) {
  */
 export async function register(req, res, next) {
   try {
-    await authService.register(req, req.body)
-    res.success(null, '注册成功，请登录')
+    const result = await authService.register(req, req.body)
+    res.success(result, '注册成功')
   } catch (error) {
     next(error)
   }

@@ -36,6 +36,18 @@ const routes = [
         meta: { title: '游戏界面' }
       },
       {
+        path: 'adventurers',
+        name: 'GameAdventurers',
+        component: () => import('../views/game/AdventurersView.vue'),
+        meta: { title: '冒险家列表', requiresPlayerAuth: true }
+      },
+      {
+        path: 'dungeon',
+        name: 'GameDungeon',
+        component: () => import('../views/game/DungeonView.vue'),
+        meta: { title: '地下迷宫', requiresPlayerAuth: true }
+      },
+      {
         path: 'login',
         name: 'GameLogin',
         component: () => import('../views/game/auth/LoginView.vue'),
@@ -146,6 +158,12 @@ const routes = [
         name: 'AdminGamePlayerBanLog',
         component: () => import('../views/admin/game-player-ban-log/Index.vue'),
         meta: { title: '封禁记录' }
+      },
+      {
+        path: 'game-adventurer',
+        name: 'AdminGameAdventurer',
+        component: () => import('../views/admin/game-adventurer/Index.vue'),
+        meta: { title: '冒险家列表' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]
@@ -159,6 +177,13 @@ const router = createRouter({
 
 // 管理后台路由守卫
 router.beforeEach(to => {
+  // 游戏端需要登录的路由守卫
+  if (to.meta?.requiresPlayerAuth) {
+    const playerToken = localStorage.getItem('playerAccessToken')
+    if (!playerToken)
+      return { name: 'GameLogin', query: { redirect: to.fullPath } }
+  }
+
   // 访问管理后台（非登录页）需要 adminAccessToken
   if (to.path.startsWith('/admin') && to.name !== 'AdminLogin') {
     const adminToken = localStorage.getItem('adminAccessToken')

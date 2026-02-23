@@ -37,6 +37,10 @@ export default defineConfig({
       '/uploads': {
         target: 'http://localhost:3120',
         changeOrigin: true
+      },
+      '/publicgame': {
+        target: 'http://localhost:3120',
+        changeOrigin: true
       }
     }
   },

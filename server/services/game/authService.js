@@ -4,13 +4,16 @@ import GamePlayerLoginLog from '../../models/gamePlayerLoginLogs.js'
 import GamePlayerRegisterLog from '../../models/gamePlayerRegisterLogs.js'
 import GameMailCode from '../../models/gameMailCodes.js'
 import GamePlayerBanLog from '../../models/gamePlayerBanLogs.js'
+import GameAdventurer from '../../models/gameAdventurer.js'
 import {
   getUserIp,
   IP2LocationUtils,
   deviceUtils,
   deviceUAInfoUtils,
   executeInLock,
-  generateIconAsync
+  generateIconAsync,
+  generateRandomAdventurerAvatarId,
+  generateRandomAdventurerName
 } from '../../utils/utils.js'
 import { sendVerifyCodeMail } from '../../utils/mailer.js'
 import jwt from 'jsonwebtoken'
@@ -233,7 +236,29 @@ export async function register(req, { email, password, guildName, code }) {
     const account = await GamePlayerAccount.create({ email, password })
 
     // 创建玩家信息
-    await GamePlayerInfo.create({ account: account._id, guildName })
+    const playerInfo = await GamePlayerInfo.create({
+      account: account._id,
+      guildName
+    })
+
+    // 创建初始冒险家
+    const ELEMENTS = ['1', '2', '3', '4', '5', '6']
+    const PASSIVE_BUFF_TYPES = ['1', '2', '3', '4', '5', '6']
+    const randomElement = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)]
+    const randomPassiveBuff =
+      PASSIVE_BUFF_TYPES[Math.floor(Math.random() * PASSIVE_BUFF_TYPES.length)]
+    await GameAdventurer.create({
+      account: account._id,
+      elements: randomElement,
+      passiveBuffType: randomPassiveBuff,
+      defaultAvatarId: generateRandomAdventurerAvatarId(),
+      name: generateRandomAdventurerName()
+    })
+    // 冒险家计数 +1
+    await GamePlayerInfo.updateOne(
+      { _id: playerInfo._id },
+      { $inc: { adventurerCount: 1 } }
+    )
 
     // 记录注册日志
     const log = await GamePlayerRegisterLog.create({
@@ -250,7 +275,10 @@ export async function register(req, { email, password, guildName, code }) {
       console.error('生成公会图标失败', err)
     })
 
-    return account
+    // 注册成功后自动签发 Token 实现免登录跳转
+    const tokens = signPlayerTokens(account, false)
+    const info = await GamePlayerInfo.findOne({ account: account._id }).lean()
+    return { ...tokens, playerInfo: info }
   })
 }
 

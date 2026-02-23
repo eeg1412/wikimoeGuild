@@ -45,6 +45,55 @@ const gamePlayerInfoSchema = new mongoose.Schema(
     lastMiningRecoverAt: {
       type: Date,
       default: Date.now
+    },
+    // 冒险家数量
+    adventurerCount: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    dungeonsBackgroundId: {
+      type: Number,
+      min: 1,
+      default: 1
+    },
+    // 攻击水晶（1），防御水晶（2），速度水晶（3），SAN值水晶（4） 各自的概率 ，总和必须为10000
+    dungeonsCryRates: {
+      attackCryRate: {
+        type: Number,
+        min: 0,
+        default: 2500,
+        max: 10000
+      },
+      defenseCryRate: {
+        type: Number,
+        min: 0,
+        default: 2500,
+        max: 10000
+      },
+      speedCryRate: {
+        type: Number,
+        min: 0,
+        default: 2500,
+        max: 10000
+      },
+      SANCryRate: {
+        type: Number,
+        min: 0,
+        default: 2500,
+        max: 10000
+      }
+    },
+    // 地下迷宫等级
+    dungeonsLevel: {
+      type: Number,
+      min: 1,
+      default: 1
+    },
+    // 上次迷宫结算时间
+    lastDungeonSettleAt: {
+      type: Date,
+      default: Date.now
     }
   },
   {

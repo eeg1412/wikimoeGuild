@@ -25,6 +25,11 @@ export const adminMenu = [
     icon: 'Medal',
     children: [
       { path: '/admin/game-player', title: '玩家列表', icon: 'User' },
+      {
+        path: '/admin/game-adventurer',
+        title: '冒险家列表',
+        icon: 'Promotion'
+      },
       { path: '/admin/game-mail-code', title: '邮件验证码', icon: 'Message' },
       {
         path: '/admin/game-player-ban-log',

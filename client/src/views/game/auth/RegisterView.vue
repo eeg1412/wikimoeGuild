@@ -119,7 +119,7 @@ import { sendCodeApi, registerApi } from '@/api/game/auth.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 
 const router = useRouter()
-const { isLoggedIn } = useGameUser()
+const { isLoggedIn, setLogin } = useGameUser()
 
 if (isLoggedIn.value) {
   router.replace('/game/home')
@@ -244,14 +244,16 @@ async function handleSubmit() {
   await formRef.value?.validate()
   loading.value = true
   try {
-    await registerApi({
+    const res = await registerApi({
       email: form.email,
       guildName: form.guildName,
       password: form.password,
       code: form.code
     })
-    ElMessage.success('注册成功，请登录')
-    router.push('/game/login')
+    const { accessToken, refreshToken, playerInfo } = res.data.data
+    setLogin(accessToken, refreshToken, playerInfo)
+    ElMessage.success('注册成功，欢迎加入公会！')
+    router.push('/game/adventurers')
   } catch {
     // 错误已由拦截器处理
   } finally {
