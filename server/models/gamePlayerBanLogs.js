@@ -17,6 +17,13 @@ const gamePlayerBanLogSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    // 操作管理员
+    admin: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'admin_accounts',
+      required: true,
+      index: true
+    },
     // 用于自动过期删除
     expires: {
       type: Date,
