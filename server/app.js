@@ -38,9 +38,19 @@ app.use((req, _res, next) => {
 })
 
 // 公共资源（uploads）
-app.use('/uploads', express.static(path.resolve(__dirname, './public/uploads')))
+app.use(
+  '/uploads',
+  express.static(path.resolve(__dirname, './public/uploads'), {
+    fallthrough: false
+  })
+)
 // 公共资源（publicgame）
-app.use('/publicgame', express.static(path.resolve(__dirname, './publicgame')))
+app.use(
+  '/publicgame',
+  express.static(path.resolve(__dirname, './publicgame'), {
+    fallthrough: false
+  })
+)
 
 // API 路由
 app.use(

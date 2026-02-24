@@ -44,7 +44,6 @@
             :src="`/publicgame/avatar/${adv.defaultAvatarId}.webp`"
             :alt="adv.name"
             class="w-full h-full rounded-full object-cover border-2 border-gray-200 dark:border-gray-600 group-hover:border-yellow-400 transition-colors"
-            @error="onAvatarError"
           />
           <!-- 闪光动画 -->
           <div
@@ -198,10 +197,6 @@ function getElementName(el) {
 
 function getPassiveBuffName(type) {
   return PASSIVE_BUFF_MAP[type] || type
-}
-
-function onAvatarError(e) {
-  e.target.src = '/publicgame/avatar/1.webp'
 }
 
 function openInfo(adv) {
