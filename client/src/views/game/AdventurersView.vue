@@ -580,7 +580,6 @@ function getAttackPreferenceName(type) {
   return attackPreferenceMap.value.get(type) || type
 }
 
-
 function rarityName(r) {
   return { normal: '普通', rare: '稀有', legendary: '传说' }[r] || r
 }

@@ -305,8 +305,6 @@ const logFontSize = computed(() =>
   Math.max(10, Math.round(cellSize.value * 0.2))
 )
 
-
-
 // 单位状态跟踪
 const unitState = ref(new Map())
 

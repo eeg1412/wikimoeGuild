@@ -725,7 +725,9 @@
                         v-if="getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)"
                       >
                         <GameAdventurerAvatar
-                          :adventurer="getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)"
+                          :adventurer="
+                            getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)
+                          "
                           class="w-full h-full object-cover"
                         />
                         <span
@@ -761,7 +763,9 @@
                         v-if="getUnitAt(logDetail.defenderUnits, c - 1, r - 1)"
                       >
                         <GameAdventurerAvatar
-                          :adventurer="getUnitAt(logDetail.defenderUnits, c - 1, r - 1)"
+                          :adventurer="
+                            getUnitAt(logDetail.defenderUnits, c - 1, r - 1)
+                          "
                           class="w-full h-full object-cover"
                         />
                         <span
@@ -1272,8 +1276,6 @@ function getElementColor(el) {
 function getElementName(el) {
   return ELEMENT_MAP[el]?.name || el
 }
-
-
 
 function getUnitAt(units, row, col) {
   if (!units) return null

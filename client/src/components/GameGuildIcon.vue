@@ -1,9 +1,5 @@
 <template>
-  <img
-    v-if="src"
-    :src="src"
-    v-bind="$attrs"
-  />
+  <img v-if="src" :src="src" v-bind="$attrs" />
 </template>
 
 <script setup>

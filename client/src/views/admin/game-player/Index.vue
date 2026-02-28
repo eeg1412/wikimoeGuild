@@ -229,8 +229,6 @@ const banForm = reactive({ banExpires: null })
 const passwordDialogVisible = ref(false)
 const passwordForm = reactive({ newPassword: '' })
 
-
-
 function disablePastDate(date) {
   return date < new Date()
 }

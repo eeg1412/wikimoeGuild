@@ -212,8 +212,6 @@ function getElementName(el) {
   return ELEMENT_MAP[el]?.name || el
 }
 
-
-
 // ── 数据 ──
 const loading = ref(true)
 const allFormations = ref([])

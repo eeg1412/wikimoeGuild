@@ -191,8 +191,7 @@ import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
 
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
-const { isLoggedIn, playerInfo, fetchPlayerInfo, logout } =
-  useGameUser()
+const { isLoggedIn, playerInfo, fetchPlayerInfo, logout } = useGameUser()
 const { siteSettings, loadSiteSettings } = useGameSiteSettings()
 
 // 悬浮菜单控制

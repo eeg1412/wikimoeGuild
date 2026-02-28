@@ -820,7 +820,9 @@ export async function getBattleLogDetail(accountId, logId) {
   const adventurers =
     allAdvIds.length > 0
       ? await GameAdventurer.find({ _id: { $in: allAdvIds } })
-          .select('_id name defaultAvatarId hasCustomAvatar customAvatarUpdatedAt')
+          .select(
+            '_id name defaultAvatarId hasCustomAvatar customAvatarUpdatedAt'
+          )
           .lean()
       : []
 

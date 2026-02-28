@@ -88,8 +88,6 @@ function typeIcon(type) {
   return icons[type] || '📌'
 }
 
-
-
 function formatTime(t) {
   if (!t) return ''
   const d = new Date(t)
