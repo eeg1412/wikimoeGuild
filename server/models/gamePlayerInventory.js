@@ -61,13 +61,12 @@ const gamePlayerInventorySchema = new mongoose.Schema(
 )
 
 // pre-save 钳制素材数量
-gamePlayerInventorySchema.pre('save', function (next) {
+gamePlayerInventorySchema.pre('save', function () {
   for (const field of MATERIAL_FIELDS) {
     if (this[field] > MAX_MATERIAL) {
       this[field] = MAX_MATERIAL
     }
   }
-  next()
 })
 
 // $inc 操作后钳制素材数量（使用原生集合操作避免递归触发中间件）
