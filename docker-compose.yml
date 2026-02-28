@@ -9,6 +9,7 @@ services:
       - PORT=3120
       - MONGODB_URI=mongodb://mongo:27017/wikimoe-guild
       - LOG_LEVEL=info
+      - TZ=Asia/Shanghai
     volumes:
       - ./server/keys:/app/server/keys
       - ./server/logs:/app/server/logs
