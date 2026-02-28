@@ -17,6 +17,19 @@ const PREVIEW_EXPIRE_MS = 5 * 60 * 1000
  * @returns {object} 生成的符文石
  */
 export async function generateRuneStone(accountId, rarity, level = 1) {
+  // 检查玩家符文石数量上限
+  const runeStoneCount = await GameRuneStone.countDocuments({
+    account: accountId
+  })
+  if (runeStoneCount >= 500) {
+    const err = new Error(
+      '符文石数量已达上限（500个），请先分解或出售多余的符文石'
+    )
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
   const allSkills = runeStoneActiveSkillDataBase()
 
   let activeSkillCount, passiveBuffCount, buffLevelMin, buffLevelMax

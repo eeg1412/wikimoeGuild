@@ -96,6 +96,12 @@ function initBattleUnits(grid, side) {
         }
       }
 
+      const comprehensiveLevel =
+        (adventurer.attackLevel || 1) +
+        (adventurer.defenseLevel || 1) +
+        (adventurer.speedLevel || 1) +
+        (adventurer.SANLevel || 1)
+
       units.push({
         id: adventurer._id?.toString() || `${side}_${row}_${col}`,
         name: adventurer.name || '未知',
@@ -108,6 +114,7 @@ function initBattleUnits(grid, side) {
         defaultAvatarId: adventurer.defaultAvatarId,
         hasCustomAvatar: !!adventurer.hasCustomAvatar,
         isDemon: !!adventurer.isDemon,
+        comprehensiveLevel,
         attack,
         defense,
         speed,
@@ -436,9 +443,10 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
             .sort((a, b) => a.currentSan - b.currentSan)[0]
         if (!target) break
 
-        // 概率计算
+        // 概率计算：对比符文石等级和目标综合等级
+        const runeLevel = unit.runeStone?.level || 1
         let probability = skill.baseValue
-        const levelDiff = target.delay - unit.delay
+        const levelDiff = (target.comprehensiveLevel || 4) - runeLevel
         if (levelDiff > 0) {
           probability = Math.max(
             probability - levelDiff,

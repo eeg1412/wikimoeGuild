@@ -12,6 +12,7 @@ import marketRoutes from './marketRoutes.js'
 import arenaRoutes from './arenaRoutes.js'
 import mineRoutes from './mineRoutes.js'
 import activityRoutes from './activityRoutes.js'
+import guildRoutes from './guildRoutes.js'
 
 const router = Router()
 
@@ -30,5 +31,6 @@ router.use('/market', marketRoutes)
 router.use('/arena', arenaRoutes)
 router.use('/mine', mineRoutes)
 router.use('/activity', activityRoutes)
+router.use('/guild', guildRoutes)
 
 export default router

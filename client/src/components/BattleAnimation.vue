@@ -42,8 +42,8 @@
                 <template v-if="unit">
                   <span
                     class="battle-seq"
-                    :style="{ fontSize: Math.max(8, nameFontSize - 1) + 'px' }"
-                    >{{ idx + 1 }}</span
+                    :style="{ fontSize: Math.max(10, nameFontSize - 1) + 'px' }"
+                    >{{ unit.row * 5 + unit.col + 1 }}</span
                   >
                   <img
                     :src="getUnitAvatar(unit)"
@@ -102,8 +102,8 @@
                 <template v-if="unit">
                   <span
                     class="battle-seq"
-                    :style="{ fontSize: Math.max(8, nameFontSize - 1) + 'px' }"
-                    >{{ idx + 1 }}</span
+                    :style="{ fontSize: Math.max(10, nameFontSize - 1) + 'px' }"
+                    >{{ unit.row * 5 + unit.col + 1 }}</span
                   >
                   <img
                     :src="getUnitAvatar(unit)"
@@ -361,17 +361,25 @@ const displayedLogs = ref([])
 const currentRound = ref(0)
 const currentLogIndex = ref(0)
 const actingUnitIds = ref(new Set())
+const hitUnitIds = ref(new Set())
 let animationTimer = null
+let hitClearTimer = null
 const logContainer = ref(null)
 
 function isActing(id) {
   return actingUnitIds.value.has(id)
 }
 
+function isHit(id) {
+  return hitUnitIds.value.has(id)
+}
+
 function cellClass(unit) {
   if (!unit) return 'cell-empty'
   const cls = unit.alive ? 'cell-alive' : 'cell-dead'
-  return isActing(unit.id) ? cls + ' cell-acting' : cls
+  const acting = isActing(unit.id) ? ' cell-acting' : ''
+  const hit = isHit(unit.id) ? ' cell-hit' : ''
+  return cls + acting + hit
 }
 
 function hpPercent(unit) {
@@ -423,9 +431,9 @@ function formatLogEntry(entry) {
       case 'attack':
         return `✨ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害`
       case 'buff':
-        return `⬆️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.buffType}+${entry.buffValue}`
+        return `⬆️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.buffType}+${entry.value}`
       case 'debuff':
-        return `⬇️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.debuffType}-${entry.debuffValue}`
+        return `⬇️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.debuffType}-${entry.value}`
       case 'changeOrder':
         return entry.success
           ? `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 打乱了 ${targetLabel}${entry.targetName} 的位置！`
@@ -441,6 +449,13 @@ function formatLogEntry(entry) {
 
 function processLogEntry(entry) {
   const map = unitState.value
+  // 清除上一轮的受击状态
+  if (hitClearTimer) {
+    clearTimeout(hitClearTimer)
+    hitClearTimer = null
+  }
+  hitUnitIds.value = new Set()
+
   if (entry.type === 'roundStart') {
     currentRound.value = entry.round
     return
@@ -451,6 +466,7 @@ function processLogEntry(entry) {
     if (defender) {
       defender.currentSan = entry.defenderRemainSan
       if (defender.currentSan <= 0) defender.alive = false
+      hitUnitIds.value = new Set([entry.defender])
     }
   }
   if (entry.type === 'runeSkill') {
@@ -460,6 +476,7 @@ function processLogEntry(entry) {
       if (target) {
         target.currentSan = entry.targetRemainSan
         if (target.currentSan <= 0) target.alive = false
+        hitUnitIds.value = new Set([entry.target])
       }
     }
     if (entry.skillType === 'sanRecover') {
@@ -467,6 +484,10 @@ function processLogEntry(entry) {
       if (target) target.currentSan = entry.targetRemainSan
     }
   }
+  // 自动清除受击状态
+  hitClearTimer = setTimeout(() => {
+    hitUnitIds.value = new Set()
+  }, 300)
 }
 
 const animationFinished = ref(false)
@@ -552,6 +573,10 @@ onUnmounted(() => {
   if (skipTimer) {
     clearInterval(skipTimer)
     skipTimer = null
+  }
+  if (hitClearTimer) {
+    clearTimeout(hitClearTimer)
+    hitClearTimer = null
   }
 })
 </script>
@@ -659,6 +684,12 @@ onUnmounted(() => {
   animation: actPulse 0.5s ease-in-out;
 }
 
+.cell-hit {
+  border-color: rgba(255, 50, 50, 0.8) !important;
+  box-shadow: 0 0 10px rgba(255, 50, 50, 0.6);
+  animation: hitShake 0.3s ease-in-out;
+}
+
 @keyframes actPulse {
   0%,
   100% {
@@ -666,6 +697,30 @@ onUnmounted(() => {
   }
   50% {
     transform: scale(1.06);
+  }
+}
+
+@keyframes hitShake {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+    background: rgba(255, 50, 50, 0.3);
+  }
+  40% {
+    transform: translateX(3px);
+    background: rgba(255, 50, 50, 0.25);
+  }
+  60% {
+    transform: translateX(-2px);
+    background: rgba(255, 50, 50, 0.15);
+  }
+  80% {
+    transform: translateX(1px);
+  }
+  100% {
+    transform: translateX(0);
   }
 }
 

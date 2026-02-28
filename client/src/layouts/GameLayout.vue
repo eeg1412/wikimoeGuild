@@ -1,6 +1,6 @@
 <template>
   <div
-    class="min-h-screen flex flex-col bg-gray-50 dark:bg-[#141414] transition-colors"
+    class="min-h-screen flex flex-col bg-gray-50 dark:bg-[#141414] transition-colors game-layout"
   >
     <!-- 顶栏 -->
     <header
@@ -148,6 +148,13 @@
             <span class="fab-label">矿场</span>
             <div class="fab-item-btn">
               <span class="text-xl">⛏️</span>
+            </div>
+          </div>
+          <!-- 公会设置 -->
+          <div class="fab-item-wrapper" @click="navTo('/game/guild-settings')">
+            <span class="fab-label">公会设置</span>
+            <div class="fab-item-btn">
+              <span class="text-xl">🏰</span>
             </div>
           </div>
         </div>

@@ -379,7 +379,7 @@ const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 // ── 元素工具 ──
@@ -700,7 +700,7 @@ function onBattleAnimationDone() {
 
 function handleGoToMine() {
   showMineDiscovery.value = false
-  router.push('/game/mine')
+  router.push({ name: 'GameMine' })
 }
 
 // ── 初始化 ──

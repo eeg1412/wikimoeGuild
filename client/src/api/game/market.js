@@ -34,13 +34,13 @@ export function createMaterialBuyOrderApi(data) {
 }
 
 // 素材交易 - 购买卖单
-export function fulfillMaterialSellOrderApi(id) {
-  return gameRequest.post(`/market/material/sell-orders/${id}/fulfill`)
+export function fulfillMaterialSellOrderApi(id, data) {
+  return gameRequest.post(`/market/material/sell-orders/${id}/fulfill`, data)
 }
 
 // 素材交易 - 出售给求购
-export function fulfillMaterialBuyOrderApi(id) {
-  return gameRequest.post(`/market/material/buy-orders/${id}/fulfill`)
+export function fulfillMaterialBuyOrderApi(id, data) {
+  return gameRequest.post(`/market/material/buy-orders/${id}/fulfill`, data)
 }
 
 // 素材交易 - 取消

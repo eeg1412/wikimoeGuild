@@ -91,6 +91,21 @@
           </div>
         </div>
       </div>
+
+      <!-- 分页 -->
+      <div
+        v-if="runeStoneTotal > runeStonePageSize"
+        class="flex justify-center mt-4"
+      >
+        <el-pagination
+          v-model:current-page="runeStonePageNum"
+          :page-size="runeStonePageSize"
+          :total="runeStoneTotal"
+          layout="prev, pager, next"
+          small
+          @current-change="fetchRuneStones"
+        />
+      </div>
     </template>
 
     <!-- ==================== 符文石详情弹窗 ==================== -->
@@ -128,9 +143,48 @@
             :key="idx"
             class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
           >
-            {{ skill.skillId || skill }}
             <template v-if="getSkillInfo(skill.skillId || skill)">
-              - {{ getSkillInfo(skill.skillId || skill).label }}
+              <p class="font-semibold text-gray-800 dark:text-gray-100">
+                {{ getSkillInfo(skill.skillId || skill).label }}
+              </p>
+              <p class="mt-0.5 text-gray-500 dark:text-gray-400">
+                {{ getSkillInfo(skill.skillId || skill).description }}
+              </p>
+              <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                <span
+                  >类型:
+                  {{
+                    skillTypeName(getSkillInfo(skill.skillId || skill).type)
+                  }}</span
+                >
+                <span v-if="getSkillInfo(skill.skillId || skill).element">
+                  元素:
+                  {{
+                    elementName(getSkillInfo(skill.skillId || skill).element)
+                  }}
+                </span>
+                <span
+                  >时机:
+                  {{
+                    triggerTimingName(
+                      getSkillInfo(skill.skillId || skill).triggerTiming
+                    )
+                  }}</span
+                >
+                <span
+                  >目标:
+                  {{
+                    targetName(getSkillInfo(skill.skillId || skill).target)
+                  }}</span
+                >
+                <span
+                  >基础值:
+                  {{ getSkillInfo(skill.skillId || skill).baseValue }}</span
+                >
+              </div>
+            </template>
+            <template v-else>
+              {{ skill.skillId || skill }}
             </template>
           </div>
         </div>
@@ -313,9 +367,48 @@
               :key="idx"
               class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
             >
-              {{ skill.skillId || skill }}
               <template v-if="getSkillInfo(skill.skillId || skill)">
-                - {{ getSkillInfo(skill.skillId || skill).label }}
+                <p class="font-semibold text-gray-800 dark:text-gray-100">
+                  {{ getSkillInfo(skill.skillId || skill).label }}
+                </p>
+                <p class="mt-0.5 text-gray-500 dark:text-gray-400">
+                  {{ getSkillInfo(skill.skillId || skill).description }}
+                </p>
+                <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                  <span
+                    >类型:
+                    {{
+                      skillTypeName(getSkillInfo(skill.skillId || skill).type)
+                    }}</span
+                  >
+                  <span v-if="getSkillInfo(skill.skillId || skill).element">
+                    元素:
+                    {{
+                      elementName(getSkillInfo(skill.skillId || skill).element)
+                    }}
+                  </span>
+                  <span
+                    >时机:
+                    {{
+                      triggerTimingName(
+                        getSkillInfo(skill.skillId || skill).triggerTiming
+                      )
+                    }}</span
+                  >
+                  <span
+                    >目标:
+                    {{
+                      targetName(getSkillInfo(skill.skillId || skill).target)
+                    }}</span
+                  >
+                  <span
+                    >基础值:
+                    {{ getSkillInfo(skill.skillId || skill).baseValue }}</span
+                  >
+                </div>
+              </template>
+              <template v-else>
+                {{ skill.skillId || skill }}
               </template>
             </div>
           </div>
@@ -431,23 +524,32 @@ const router = useRouter()
 const { isLoggedIn } = useGameUser()
 
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 // ── 列表 ──
 const loading = ref(false)
 const runeStones = ref([])
 const sortMode = ref('newest')
+const runeStonePageNum = ref(1)
+const runeStonePageSize = 20
+const runeStoneTotal = ref(0)
 
 function handleSortChange() {
+  runeStonePageNum.value = 1
   fetchRuneStones()
 }
 
 async function fetchRuneStones() {
   loading.value = true
   try {
-    const res = await getMyRuneStonesApi({ sort: sortMode.value })
+    const res = await getMyRuneStonesApi({
+      sort: sortMode.value,
+      page: runeStonePageNum.value,
+      pageSize: runeStonePageSize
+    })
     runeStones.value = res.data.data?.list || []
+    runeStoneTotal.value = res.data.data?.total || 0
   } catch {
     runeStones.value = []
   } finally {
@@ -503,7 +605,29 @@ function buffTypeName(t) {
   )
 }
 
-// ── 技能信息查询 ──
+function skillTypeName(t) {
+  return (
+    {
+      attack: '攻击',
+      buff: '增益',
+      debuff: '减益',
+      changeOrder: '改变排序',
+      sanRecover: 'SAN恢复'
+    }[t] || t
+  )
+}
+
+function elementName(el) {
+  return { 1: '地', 2: '水', 3: '火', 4: '风', 5: '光明', 6: '黑暗' }[el] || ''
+}
+
+function triggerTimingName(t) {
+  return { before: '攻击前', after: '攻击后' }[t] || t
+}
+
+function targetName(t) {
+  return { self: '己方', enemy: '敌方' }[t] || t
+}
 const allSkillsMap = computed(() => {
   const map = new Map()
   const skills = runeStoneActiveSkillDataBase()

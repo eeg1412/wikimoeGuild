@@ -25,7 +25,7 @@
           <img
             v-if="item.account"
             :src="getGuildIconUrl(item)"
-            class="w-7 h-7 rounded-full shrink-0 mt-0.5 border border-gray-200 dark:border-gray-600 object-cover"
+            class="w-12 h-12 rounded-full shrink-0 mt-0.5 border border-gray-200 dark:border-gray-600 object-cover"
           />
           <!-- 类型图标（无账号时回退） -->
           <span v-else class="text-lg shrink-0 mt-0.5">{{

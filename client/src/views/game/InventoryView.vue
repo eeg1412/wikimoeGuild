@@ -59,7 +59,7 @@ const router = useRouter()
 const { isLoggedIn } = useGameUser()
 
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 const loading = ref(false)

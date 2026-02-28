@@ -92,7 +92,11 @@ const initGlobalConfig = async () => {
     // 竞技场每次战斗获得金币
     arenaBattleGold: 50,
     // 赛季持续天数，最少3天
-    seasonDays: 3
+    seasonDays: 3,
+    // 公会自定义标志价格
+    guildCustomLogoPrice: 5000,
+    // 公会修改名字价格
+    guildChangeNamePrice: 1000
   }
 
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型

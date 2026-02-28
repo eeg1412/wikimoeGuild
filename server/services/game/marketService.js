@@ -173,7 +173,8 @@ export async function buyCrystalFromOfficial(accountId, crystalType, quantity) {
 export async function listMaterialSellOrders({
   page = 1,
   pageSize = 20,
-  materialType
+  materialType,
+  excludeAccountId
 } = {}) {
   pageSize = Math.min(Math.max(pageSize, 1), 50)
   const validMaterialTypes = [
@@ -186,6 +187,7 @@ export async function listMaterialSellOrders({
   const filter = { orderType: 'sell', status: 'active' }
   if (materialType && validMaterialTypes.includes(materialType))
     filter.materialType = materialType
+  if (excludeAccountId) filter.account = { $ne: excludeAccountId }
   const total = await GameMarketListing.countDocuments(filter)
   const list = await GameMarketListing.find(filter)
     .sort({ unitPrice: 1, createdAt: 1 })
@@ -221,7 +223,8 @@ export async function listMaterialSellOrders({
 export async function listMaterialBuyOrders({
   page = 1,
   pageSize = 20,
-  materialType
+  materialType,
+  excludeAccountId
 } = {}) {
   pageSize = Math.min(Math.max(pageSize, 1), 50)
   const validMaterialTypes = [
@@ -234,6 +237,7 @@ export async function listMaterialBuyOrders({
   const filter = { orderType: 'buy', status: 'active' }
   if (materialType && validMaterialTypes.includes(materialType))
     filter.materialType = materialType
+  if (excludeAccountId) filter.account = { $ne: excludeAccountId }
   const total = await GameMarketListing.countDocuments(filter)
   const list = await GameMarketListing.find(filter)
     .sort({ unitPrice: -1, createdAt: 1 })
@@ -447,7 +451,11 @@ export async function createMaterialBuyOrder(
 /**
  * 购买素材卖单
  */
-export async function fulfillMaterialSellOrder(buyerAccountId, orderId) {
+export async function fulfillMaterialSellOrder(
+  buyerAccountId,
+  orderId,
+  quantity
+) {
   return await executeInLock(`market-fulfill:${orderId}`, async () => {
     const order = await GameMarketListing.findOne({
       _id: orderId,
@@ -468,7 +476,13 @@ export async function fulfillMaterialSellOrder(buyerAccountId, orderId) {
       throw err
     }
 
-    const totalCost = order.unitPrice * order.quantity
+    // 确定购买数量
+    const buyQty =
+      quantity && Number.isInteger(quantity) && quantity > 0
+        ? Math.min(quantity, order.quantity)
+        : order.quantity
+
+    const totalCost = order.unitPrice * buyQty
 
     // 检查买家金币
     const buyerInfo = await GamePlayerInfo.findOne({ account: buyerAccountId })
@@ -488,7 +502,7 @@ export async function fulfillMaterialSellOrder(buyerAccountId, orderId) {
     // 给买家素材
     await GamePlayerInventory.findOneAndUpdate(
       { account: buyerAccountId },
-      { $inc: { [order.materialType]: order.quantity } },
+      { $inc: { [order.materialType]: buyQty } },
       { upsert: true }
     )
 
@@ -498,14 +512,18 @@ export async function fulfillMaterialSellOrder(buyerAccountId, orderId) {
       { $inc: { gold: totalCost } }
     )
 
-    // 更新订单状态
-    order.status = 'completed'
+    // 更新订单
+    if (buyQty >= order.quantity) {
+      order.status = 'completed'
+    } else {
+      order.quantity -= buyQty
+    }
     await order.save()
 
     return {
       goldSpent: totalCost,
       materialType: order.materialType,
-      quantity: order.quantity
+      quantity: buyQty
     }
   })
 }
@@ -513,7 +531,11 @@ export async function fulfillMaterialSellOrder(buyerAccountId, orderId) {
 /**
  * 出售素材给求购者
  */
-export async function fulfillMaterialBuyOrder(sellerAccountId, orderId) {
+export async function fulfillMaterialBuyOrder(
+  sellerAccountId,
+  orderId,
+  quantity
+) {
   return await executeInLock(`market-fulfill:${orderId}`, async () => {
     const order = await GameMarketListing.findOne({
       _id: orderId,
@@ -534,23 +556,29 @@ export async function fulfillMaterialBuyOrder(sellerAccountId, orderId) {
       throw err
     }
 
+    // 确定出售数量
+    const sellQty =
+      quantity && Number.isInteger(quantity) && quantity > 0
+        ? Math.min(quantity, order.quantity)
+        : order.quantity
+
     // 检查卖家素材
     const inventory = await GamePlayerInventory.findOne({
       account: sellerAccountId
     })
-    if (!inventory || inventory[order.materialType] < order.quantity) {
+    if (!inventory || inventory[order.materialType] < sellQty) {
       const err = new Error('素材不足')
       err.statusCode = 400
       err.expose = true
       throw err
     }
 
-    const totalGold = order.unitPrice * order.quantity
+    const totalGold = order.unitPrice * sellQty
 
     // 扣除卖家素材
     await GamePlayerInventory.updateOne(
       { account: sellerAccountId },
-      { $inc: { [order.materialType]: -order.quantity } }
+      { $inc: { [order.materialType]: -sellQty } }
     )
 
     // 给卖家金币（求购者下单时已扣除金币）
@@ -562,18 +590,24 @@ export async function fulfillMaterialBuyOrder(sellerAccountId, orderId) {
     // 给求购者素材
     await GamePlayerInventory.findOneAndUpdate(
       { account: order.account },
-      { $inc: { [order.materialType]: order.quantity } },
+      { $inc: { [order.materialType]: sellQty } },
       { upsert: true }
     )
 
-    // 更新订单状态
-    order.status = 'completed'
+    // 更新订单
+    if (sellQty >= order.quantity) {
+      order.status = 'completed'
+    } else {
+      order.quantity -= sellQty
+      // 退还多冻结的金币给求购者（差额部分）
+      // 不需要，因为金币按买入量立即结算给卖家
+    }
     await order.save()
 
     return {
       goldEarned: totalGold,
       materialType: order.materialType,
-      quantity: order.quantity
+      quantity: sellQty
     }
   })
 }
@@ -651,12 +685,14 @@ export async function listMyMaterialOrders(
 export async function listRuneStoneListings({
   page = 1,
   pageSize = 20,
-  rarity
+  rarity,
+  excludeAccountId
 } = {}) {
   pageSize = Math.min(Math.max(pageSize, 1), 50)
   const validRarities = ['normal', 'rare', 'legendary']
   if (rarity && !validRarities.includes(rarity)) rarity = undefined
   const filter = { status: 'active' }
+  if (excludeAccountId) filter.account = { $ne: excludeAccountId }
   const total = await GameRuneStoneListing.countDocuments(filter)
   let query = GameRuneStoneListing.find(filter)
     .sort({ price: 1, createdAt: 1 })
@@ -804,6 +840,19 @@ export async function buyRuneStoneListing(buyerAccountId, listingId) {
     const buyerInfo = await GamePlayerInfo.findOne({ account: buyerAccountId })
     if (!buyerInfo || buyerInfo.gold < listing.price) {
       const err = new Error('金币不足')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 检查买家符文石数量上限
+    const buyerRuneStoneCount = await GameRuneStone.countDocuments({
+      account: buyerAccountId
+    })
+    if (buyerRuneStoneCount >= 500) {
+      const err = new Error(
+        '符文石数量已达上限（500个），请先分解或出售多余的符文石'
+      )
       err.statusCode = 400
       err.expose = true
       throw err

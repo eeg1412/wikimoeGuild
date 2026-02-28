@@ -175,6 +175,54 @@
 
           <el-divider class="my-2!" />
 
+          <!-- 资源信息 -->
+          <div class="w-full grid grid-cols-2 gap-2 text-xs">
+            <div
+              class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2 text-center"
+            >
+              <p class="text-[10px] text-gray-400">🪙 金币</p>
+              <p class="text-sm font-bold text-yellow-500">
+                {{ (playerInfo?.gold ?? 0).toLocaleString() }}
+              </p>
+            </div>
+            <div
+              class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 text-center"
+            >
+              <p class="text-[10px] text-gray-400">💎 符文石碎片</p>
+              <p class="text-sm font-bold text-purple-500">
+                {{ (inventory?.runeFragment ?? 0).toLocaleString() }}
+              </p>
+            </div>
+          </div>
+          <div class="w-full grid grid-cols-4 gap-1 text-xs mt-1">
+            <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
+              <p class="text-[10px] text-gray-400">⚔️水晶</p>
+              <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+                {{ inventory?.attackCrystal ?? 0 }}
+              </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
+              <p class="text-[10px] text-gray-400">🛡️水晶</p>
+              <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+                {{ inventory?.defenseCrystal ?? 0 }}
+              </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
+              <p class="text-[10px] text-gray-400">💨水晶</p>
+              <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+                {{ inventory?.speedCrystal ?? 0 }}
+              </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
+              <p class="text-[10px] text-gray-400">🌀水晶</p>
+              <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+                {{ inventory?.sanCrystal ?? 0 }}
+              </p>
+            </div>
+          </div>
+
+          <el-divider class="my-2!" />
+
           <!-- 属性升级区 -->
           <div v-for="stat in STAT_LIST" :key="stat.key" class="info-row">
             <span class="info-label"
@@ -204,8 +252,9 @@
             <div class="flex items-center gap-1">
               <template v-if="detailAdv.runeStone">
                 <span
-                  class="text-xs"
+                  class="text-xs cursor-pointer hover:underline"
                   :class="rarityClass(detailAdv.runeStone.rarity)"
+                  @click="openRuneStoneDetail(detailAdv.runeStone)"
                 >
                   {{ rarityName(detailAdv.runeStone.rarity) }} Lv.{{
                     detailAdv.runeStone.level
@@ -340,11 +389,111 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- ==================== 符文石详情弹窗 ==================== -->
+    <el-dialog
+      v-model="runeStoneDetailVisible"
+      :title="runeStoneDetailTitle"
+      width="360px"
+      align-center
+    >
+      <div v-if="runeStoneDetailData" class="space-y-4">
+        <!-- 基本信息 -->
+        <div class="text-center">
+          <div
+            class="inline-flex w-16 h-16 rounded-2xl items-center justify-center text-3xl mb-2"
+            :class="rarityBgClass(runeStoneDetailData.rarity)"
+          >
+            💎
+          </div>
+          <p
+            class="text-lg font-bold"
+            :class="rarityClass(runeStoneDetailData.rarity)"
+          >
+            {{ rarityName(runeStoneDetailData.rarity) }}符文石
+          </p>
+          <p class="text-sm text-gray-400">
+            等级 {{ runeStoneDetailData.level }}
+          </p>
+        </div>
+
+        <!-- 主动技能 -->
+        <div>
+          <h4 class="text-sm font-semibold text-yellow-500 mb-2">
+            ⚡ 主动技能
+          </h4>
+          <div
+            v-for="(skill, idx) in runeStoneDetailData.activeSkills"
+            :key="idx"
+            class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
+          >
+            <template v-if="getSkillInfo(skill.skillId || skill)">
+              <p class="font-semibold text-gray-800 dark:text-gray-100">
+                {{ getSkillInfo(skill.skillId || skill).label }}
+              </p>
+              <p class="mt-0.5 text-gray-500 dark:text-gray-400">
+                {{ getSkillInfo(skill.skillId || skill).description }}
+              </p>
+              <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                <span
+                  >类型:
+                  {{
+                    skillTypeName(getSkillInfo(skill.skillId || skill).type)
+                  }}</span
+                >
+                <span v-if="getSkillInfo(skill.skillId || skill).element">
+                  元素:
+                  {{
+                    elementNameForSkill(
+                      getSkillInfo(skill.skillId || skill).element
+                    )
+                  }}
+                </span>
+                <span
+                  >时机:
+                  {{
+                    triggerTimingName(
+                      getSkillInfo(skill.skillId || skill).triggerTiming
+                    )
+                  }}</span
+                >
+                <span
+                  >目标:
+                  {{
+                    targetName(getSkillInfo(skill.skillId || skill).target)
+                  }}</span
+                >
+                <span
+                  >基础值:
+                  {{ getSkillInfo(skill.skillId || skill).baseValue }}</span
+                >
+              </div>
+            </template>
+            <template v-else>
+              {{ skill.skillId || skill }}
+            </template>
+          </div>
+        </div>
+
+        <!-- 被动增益 -->
+        <div>
+          <h4 class="text-sm font-semibold text-blue-400 mb-2">🔮 被动增益</h4>
+          <div
+            v-for="(buff, idx) in runeStoneDetailData.passiveBuffs"
+            :key="idx"
+            class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
+          >
+            <span>{{ buffTypeName(buff.buffType) }}</span>
+            <span class="font-mono text-yellow-500">+{{ buff.buffLevel }}</span>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -358,25 +507,32 @@ import {
   unequipRuneStoneApi
 } from '@/api/game/adventurer.js'
 import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
+import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
+import {
+  runeStoneActiveSkillDataBase,
+  passiveBuffTypeDataBase,
+  attackPreferenceDataBase
+} from 'shared/utils/gameDatabase.js'
 import Cropper from '@/components/Cropper.vue'
 
 const router = useRouter()
-const { isLoggedIn, fetchPlayerInfo } = useGameUser()
+const { isLoggedIn, fetchPlayerInfo, playerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 function goToFormation() {
-  router.push('/game/formation')
+  router.push({ name: 'GameFormations' })
 }
 
 // ── 数据 ──
 const loading = ref(false)
 const adventurers = ref([])
 const gameSettings = ref({})
+const inventory = ref(null)
 
 // ── 元素映射 ──
 const ELEMENT_MAP = {
@@ -401,11 +557,27 @@ function getElementColor(el) {
 function getElementName(el) {
   return ELEMENT_MAP[el]?.name || el
 }
+const passiveBuffMap = computed(() => {
+  const map = new Map()
+  for (const item of passiveBuffTypeDataBase()) {
+    map.set(item.value, item.label)
+  }
+  return map
+})
+const attackPreferenceMap = computed(() => {
+  const map = new Map()
+  for (const item of attackPreferenceDataBase()) {
+    map.set(item.value, item.label)
+  }
+  return map
+})
 function getPassiveBuffName(type) {
-  return type || '—'
+  if (!type) return '—'
+  return passiveBuffMap.value.get(type) || type
 }
 function getAttackPreferenceName(type) {
-  return type || '—'
+  if (!type) return '—'
+  return attackPreferenceMap.value.get(type) || type
 }
 function getAvatarUrl(adv) {
   if (adv.hasCustomAvatar) {
@@ -445,6 +617,16 @@ async function fetchGameSettings() {
   try {
     const res = await getGameSettingsApi()
     gameSettings.value = res.data.data || {}
+  } catch {
+    // ignore
+  }
+}
+
+// ── 背包（水晶数量） ──
+async function fetchInventory() {
+  try {
+    const res = await getMyInventoryApi()
+    inventory.value = res.data.data || null
   } catch {
     // ignore
   }
@@ -494,7 +676,7 @@ async function handleLevelUp(stat) {
     // 同步列表
     const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
     if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
-    await fetchPlayerInfo()
+    await Promise.all([fetchPlayerInfo(), fetchInventory()])
   } catch (e) {
     // 错误已由拦截器处理
   } finally {
@@ -621,10 +803,78 @@ async function handleUnequip() {
   }
 }
 
+// ── 符文石详情弹窗 ──
+const runeStoneDetailVisible = ref(false)
+const runeStoneDetailData = ref(null)
+
+const runeStoneDetailTitle = computed(() => {
+  if (!runeStoneDetailData.value) return '符文石详情'
+  return `${rarityName(runeStoneDetailData.value.rarity)}符文石 Lv.${runeStoneDetailData.value.level}`
+})
+
+function openRuneStoneDetail(rs) {
+  runeStoneDetailData.value = { ...rs }
+  runeStoneDetailVisible.value = true
+}
+
+function rarityBgClass(r) {
+  return (
+    {
+      normal: 'bg-gray-200 dark:bg-gray-700',
+      rare: 'bg-blue-100 dark:bg-blue-900/30',
+      legendary: 'bg-yellow-100 dark:bg-yellow-900/30'
+    }[r] || ''
+  )
+}
+
+function buffTypeName(t) {
+  return (
+    { attack: '攻击', defense: '防御', speed: '速度', san: 'SAN值' }[t] || t
+  )
+}
+
+function skillTypeName(t) {
+  return (
+    {
+      attack: '攻击',
+      buff: '增益',
+      debuff: '减益',
+      changeOrder: '改变排序',
+      sanRecover: 'SAN恢复'
+    }[t] || t
+  )
+}
+
+function elementNameForSkill(el) {
+  return { 1: '地', 2: '水', 3: '火', 4: '风', 5: '光明', 6: '黑暗' }[el] || ''
+}
+
+function triggerTimingName(t) {
+  return { before: '攻击前', after: '攻击后' }[t] || t
+}
+
+function targetName(t) {
+  return { self: '己方', enemy: '敌方' }[t] || t
+}
+const allSkillsMap = computed(() => {
+  const map = new Map()
+  const skills = runeStoneActiveSkillDataBase()
+  for (const s of skills) {
+    map.set(s.value, s)
+  }
+  return map
+})
+
+function getSkillInfo(skillId) {
+  return allSkillsMap.value.get(skillId) || null
+}
+
 // ── 初始化 ──
 onMounted(() => {
   fetchAdventurers()
   fetchGameSettings()
+  fetchInventory()
+  fetchPlayerInfo()
 })
 </script>
 

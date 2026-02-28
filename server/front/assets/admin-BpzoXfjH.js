@@ -1,0 +1,1 @@
+import{a as i}from"./request-BguEsWT2.js";function s(n={}){return i.get("/admins",{params:n})}function e(n){return i.post("/admins",n)}function r(n,t){return i.put(`/admins/${n}`,t)}export{e as c,s as l,r as u};

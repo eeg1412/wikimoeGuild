@@ -22,7 +22,9 @@ export async function getGameSettings(req, res, next) {
         adventurerCustomAvatarPrice:
           gameSettings.adventurerCustomAvatarPrice ?? 5000,
         adventurerCustomNamePrice:
-          gameSettings.adventurerCustomNamePrice ?? 1000
+          gameSettings.adventurerCustomNamePrice ?? 1000,
+        guildCustomLogoPrice: gameSettings.guildCustomLogoPrice ?? 5000,
+        guildChangeNamePrice: gameSettings.guildChangeNamePrice ?? 1000
       },
       '获取成功'
     )

@@ -49,3 +49,18 @@ a {
 .el-alert__content {
   padding-right: 20px;
 }
+
+/* 全局最小字体 10px */
+* {
+  min-font-size: 10px;
+  -webkit-text-size-adjust: none;
+}
+@supports not (min-font-size: 10px) {
+  .text-xs {
+    font-size: max(0.75rem, 10px) !important;
+  }
+}
+
+.game-layout .avatar-uploader .el-upload.el-upload--text {
+  width: 100%;
+}

@@ -1,4 +1,5 @@
 import winston from 'winston'
+import 'winston-daily-rotate-file'
 import config from '../config/index.js'
 
 const logFormat = winston.format.combine(
@@ -29,8 +30,19 @@ const logger = winston.createLogger({
         })
       )
     }),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' })
+    new winston.transports.DailyRotateFile({
+      filename: 'logs/error-%DATE%.log',
+      level: 'error',
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: '30d',
+      maxSize: '20m'
+    }),
+    new winston.transports.DailyRotateFile({
+      filename: 'logs/combined-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: '30d',
+      maxSize: '20m'
+    })
   ]
 })
 
@@ -43,9 +55,12 @@ const operationalLogger = winston.createLogger({
   level: 'error',
   format: logFormat,
   transports: [
-    new winston.transports.File({
-      filename: 'logs/operational.log',
-      level: 'error'
+    new winston.transports.DailyRotateFile({
+      filename: 'logs/operational-%DATE%.log',
+      level: 'error',
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: '30d',
+      maxSize: '20m'
     })
   ]
 })

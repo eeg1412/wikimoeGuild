@@ -128,9 +128,66 @@ export async function getArenaInfo(accountId) {
           challengeUses: currentChallengeUses,
           totalBattleCount: registration.totalBattleCount,
           guildName: registration.guildName,
-          lockedAdventurerCount: registration.lockedAdventurers?.length || 0
+          lockedAdventurerCount: registration.lockedAdventurers?.length || 0,
+          lockedAdventurers: registration.lockedAdventurers || []
         }
       : null
+  }
+}
+
+/**
+ * 获取竞技场阵容详情（含冒险家详细信息）
+ */
+export async function getArenaFormation(accountId) {
+  const season = await getOrCreateActiveSeason()
+  if (!season) {
+    const err = new Error('赛季结算中')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  const registration = await GameArenaRegistration.findOne({
+    account: accountId,
+    season: season._id
+  }).lean()
+  if (!registration) {
+    const err = new Error('你还没有报名本赛季')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 获取阵容中所有冒险家的详细信息
+  const adventurerIds = registration.formationGrid
+    .flat()
+    .filter(id => id !== null)
+  const adventurers =
+    adventurerIds.length > 0
+      ? await GameAdventurer.find({ _id: { $in: adventurerIds } })
+          .select(
+            '_id name elements defaultAvatarId hasCustomAvatar comprehensiveLevel'
+          )
+          .lean()
+      : []
+
+  const advMap = new Map()
+  for (const adv of adventurers) {
+    advMap.set(adv._id.toString(), adv)
+  }
+
+  // 构建带详情的阵容网格
+  const grid = registration.formationGrid.map(row =>
+    row.map(id => {
+      if (!id) return null
+      const adv = advMap.get(id.toString())
+      return adv || null
+    })
+  )
+
+  return {
+    grid,
+    lockedAdventurers: registration.lockedAdventurers || []
   }
 }
 
@@ -240,21 +297,41 @@ export async function updateFormationPosition(accountId, newGrid) {
       throw err
     }
 
-    // 验证新阵容中的冒险家ID与锁定列表一致
+    // 验证阵容：已锁定的冒险家不能被移除，可以添加新冒险家
     const newIds = newGrid
       .flat()
       .filter(id => id !== null)
       .map(id => id.toString())
     const lockedIds = registration.lockedAdventurers.map(id => id.toString())
 
-    // 新阵容中的冒险家必须都在锁定列表中
-    for (const id of newIds) {
-      if (!lockedIds.includes(id)) {
-        const err = new Error('赛季期间不能替换冒险家，只能更改位置')
+    // 所有已锁定的冒险家必须仍然在新阵容中（不能移除）
+    for (const id of lockedIds) {
+      if (!newIds.includes(id)) {
+        const err = new Error(
+          '不能移除已锁定的冒险家，只能调整位置或添加新冒险家'
+        )
         err.statusCode = 400
         err.expose = true
         throw err
       }
+    }
+
+    // 检查是否有新增的冒险家（在newIds中但不在lockedIds中）
+    const addedIds = [...new Set(newIds.filter(id => !lockedIds.includes(id)))]
+    if (addedIds.length > 0) {
+      // 验证新增冒险家归属
+      const newAdvs = await GameAdventurer.find({
+        _id: { $in: addedIds },
+        account: accountId
+      })
+      if (newAdvs.length !== addedIds.length) {
+        const err = new Error('存在无效的冒险家')
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+      // 将新冒险家添加到锁定列表
+      registration.lockedAdventurers.push(...addedIds)
     }
 
     registration.formationGrid = newGrid
@@ -302,22 +379,20 @@ export async function getMatchList(accountId) {
 
   const result = opponents.map(op => ({
     _id: op._id,
-    accountId: op.account,
+    opponentId: op.account.toString(),
     guildName: op.guildName,
-    points: op.points,
-    isNPC: false
+    points: op.points
   }))
 
   // 不足10名用NPC补足
-  const ELEMENTS = ['1', '2', '3', '4', '5', '6']
   while (result.length < 10) {
     const npcPoints = myPoints + Math.floor(Math.random() * 200) - 100
+    const npcId = `npc_${result.length}`
     result.push({
-      _id: `npc_${result.length}`,
-      accountId: null,
+      _id: npcId,
+      opponentId: npcId,
       guildName: generateRandomAdventurerName() + '公会',
-      points: Math.max(npcPoints, 0),
-      isNPC: true
+      points: Math.max(npcPoints, 0)
     })
   }
 
@@ -393,8 +468,8 @@ export async function challengeOpponent(accountId, opponentId) {
     let opponentPoints = 500
 
     if (isNPC) {
-      // 生成NPC阵容
-      const npcResult = generateNPCFormation()
+      // 生成NPC阵容（基于玩家阵容）
+      const npcResult = generateNPCFormation(myGrid)
       opponentGrid = npcResult.grid
       opponentGuildName = generateRandomAdventurerName() + '公会'
       opponentPoints = myReg.points + Math.floor(Math.random() * 200) - 100
@@ -478,28 +553,39 @@ export async function challengeOpponent(accountId, opponentId) {
 
     // 记录战斗日志（含战斗快照）
     // 保存冒险家的静态战斗属性快照（头像和名字等需实时获取）
-    const snapshotUnit = (adv, row, col) => ({
-      adventurerId: adv._id?.toString() || null,
-      row,
-      col,
-      elements: adv.elements,
-      attackLevel: adv.attackLevel,
-      defenseLevel: adv.defenseLevel,
-      speedLevel: adv.speedLevel,
-      SANLevel: adv.SANLevel,
-      comprehensiveLevel: adv.comprehensiveLevel,
-      attackPreference: adv.attackPreference,
-      passiveBuffType: adv.passiveBuffType,
-      isDemon: !!adv.isDemon,
-      runeStone: adv.runeStone
-        ? {
-            rarity: adv.runeStone.rarity,
-            level: adv.runeStone.level,
-            activeSkills: adv.runeStone.activeSkills,
-            passiveBuffs: adv.runeStone.passiveBuffs
-          }
-        : null
-    })
+    // NPC冒险家的名字和头像也保存在快照中，因为NPC没有数据库记录
+    const snapshotUnit = (adv, row, col) => {
+      const isNpcUnit =
+        typeof adv._id === 'string' && adv._id.startsWith('npc_')
+      const snapshot = {
+        adventurerId: adv._id?.toString() || null,
+        row,
+        col,
+        elements: adv.elements,
+        attackLevel: adv.attackLevel,
+        defenseLevel: adv.defenseLevel,
+        speedLevel: adv.speedLevel,
+        SANLevel: adv.SANLevel,
+        comprehensiveLevel: adv.comprehensiveLevel,
+        attackPreference: adv.attackPreference,
+        passiveBuffType: adv.passiveBuffType,
+        isDemon: !!adv.isDemon,
+        runeStone: adv.runeStone
+          ? {
+              rarity: adv.runeStone.rarity,
+              level: adv.runeStone.level,
+              activeSkills: adv.runeStone.activeSkills,
+              passiveBuffs: adv.runeStone.passiveBuffs
+            }
+          : null
+      }
+      // NPC冒险家的名字和头像保存在快照中
+      if (isNpcUnit) {
+        snapshot.npcName = adv.name || '未知'
+        snapshot.npcDefaultAvatarId = adv.defaultAvatarId || 1
+      }
+      return snapshot
+    }
 
     const attackerSnapshot = []
     const defenderSnapshot = []
@@ -540,17 +626,63 @@ export async function challengeOpponent(accountId, opponentId) {
 }
 
 /**
- * 生成NPC阵容
+ * 生成NPC阵容（基于玩家的阵容生成相似规模和等级的对手）
+ * @param {Array<Array<object|null>>} playerGrid - 玩家的5x5阵容
  */
-function generateNPCFormation() {
+function generateNPCFormation(playerGrid) {
   const ELEMENTS = ['1', '2', '3', '4', '5', '6']
   const allBuffTypes = passiveBuffTypeDataBase()
   const allPreferences = attackPreferenceDataBase()
-  const demonCount = Math.floor(Math.random() * 15) + 5 // 5-19名
-  const demons = []
 
+  // 分析玩家阵容：统计冒险家数量和等级
+  const playerUnits = []
+  if (playerGrid) {
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        const unit = playerGrid[r]?.[c]
+        if (unit) {
+          playerUnits.push({
+            row: r,
+            col: c,
+            avgLevel: Math.round(
+              ((unit.attackLevel || 1) +
+                (unit.defenseLevel || 1) +
+                (unit.speedLevel || 1) +
+                (unit.SANLevel || 1)) /
+                4
+            )
+          })
+        }
+      }
+    }
+  }
+
+  // 如果玩家阵容为空或无法解析，使用默认值
+  const demonCount =
+    playerUnits.length > 0
+      ? playerUnits.length
+      : Math.floor(Math.random() * 15) + 5
+
+  const demons = []
   for (let i = 0; i < demonCount; i++) {
-    const level = Math.floor(Math.random() * 5) + 1
+    // 基于玩家对应位置的冒险家等级生成NPC等级（±1浮动）
+    let baseLevel
+    if (playerUnits[i]) {
+      baseLevel = playerUnits[i].avgLevel
+    } else {
+      // 多出的NPC使用玩家平均等级
+      const avgAll =
+        playerUnits.length > 0
+          ? Math.round(
+              playerUnits.reduce((sum, u) => sum + u.avgLevel, 0) /
+                playerUnits.length
+            )
+          : 1
+      baseLevel = avgAll
+    }
+    // 等级随机浮动±1，最小为1
+    const level = Math.max(1, baseLevel + Math.floor(Math.random() * 3) - 1)
+
     demons.push({
       _id: `npc_adv_${i}`,
       name: generateRandomAdventurerName(),
@@ -570,12 +702,23 @@ function generateNPCFormation() {
     })
   }
 
+  // 将NPC放置到与玩家相同的位置上（优先），多余的依次填入空位
   const grid = Array.from({ length: 5 }, () => Array(5).fill(null))
   let idx = 0
+  // 先放到玩家有冒险家的位置
+  for (const pu of playerUnits) {
+    if (idx < demons.length) {
+      grid[pu.row][pu.col] = demons[idx]
+      idx++
+    }
+  }
+  // 多余的NPC填入剩余空位
   for (let row = 0; row < 5 && idx < demons.length; row++) {
     for (let col = 0; col < 5 && idx < demons.length; col++) {
-      grid[row][col] = demons[idx]
-      idx++
+      if (!grid[row][col]) {
+        grid[row][col] = demons[idx]
+        idx++
+      }
     }
   }
 
@@ -615,8 +758,10 @@ export async function getMyBattleLogs(
     const opponentName = isAttacker
       ? log.defenderGuildName
       : log.attackerGuildName
+    // 不向前端暴露isNPC字段
+    const { isNPC: _isNPC, ...logData } = log
     return {
-      ...log,
+      ...logData,
       isAttacker,
       isWin,
       isDraw,
@@ -661,13 +806,13 @@ export async function getBattleLogDetail(accountId, logId) {
         goldEarned: log.goldEarned,
         attackerGuildName: log.attackerGuildName,
         defenderGuildName: log.defenderGuildName,
-        isNPC: log.isNPC,
         createdAt: log.createdAt
       }
     }
   }
 
   // 实时获取冒险家的头像和名字（可自定义的内容）
+  // NPC冒险家（adventurerId以npc_开头）使用快照中保存的名字和头像
   const allAdvIds = [...(log.attackerUnits || []), ...(log.defenderUnits || [])]
     .map(u => u.adventurerId)
     .filter(id => id && !id.startsWith('npc_') && !id.startsWith('demon_'))
@@ -686,10 +831,23 @@ export async function getBattleLogDetail(accountId, logId) {
 
   // 为每个快照单元附加实时头像和名字
   const enrichUnit = unit => {
+    const isNpcUnit =
+      unit.adventurerId &&
+      (unit.adventurerId.startsWith('npc_') ||
+        unit.adventurerId.startsWith('demon_'))
+    if (isNpcUnit) {
+      // NPC冒险家使用快照中保存的名字和头像
+      return {
+        ...unit,
+        name: unit.npcName || '未知',
+        defaultAvatarId: unit.npcDefaultAvatarId || 1,
+        hasCustomAvatar: false
+      }
+    }
     const realAdv = advMap.get(unit.adventurerId)
     return {
       ...unit,
-      name: realAdv?.name || unit.adventurerId || '未知',
+      name: realAdv?.name || '未知',
       defaultAvatarId: realAdv?.defaultAvatarId || 1,
       hasCustomAvatar: realAdv?.hasCustomAvatar || false
     }
@@ -704,7 +862,6 @@ export async function getBattleLogDetail(accountId, logId) {
     goldEarned: log.goldEarned,
     attackerGuildName: log.attackerGuildName,
     defenderGuildName: log.defenderGuildName,
-    isNPC: log.isNPC,
     createdAt: log.createdAt,
     battleVersion: log.battleVersion,
     attackerUnits: (log.attackerUnits || []).map(enrichUnit),

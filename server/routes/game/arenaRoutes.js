@@ -13,6 +13,9 @@ router.post('/register', authPlayer, arenaController.registerArena)
 // 更新阵容位置
 router.put('/formation', authPlayer, arenaController.updateFormationPosition)
 
+// 获取竞技场阵容详情
+router.get('/formation', authPlayer, arenaController.getArenaFormation)
+
 // 获取对手列表
 router.get('/match-list', authPlayer, arenaController.getMatchList)
 

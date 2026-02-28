@@ -55,6 +55,16 @@ export async function updateFormationPosition(req, res, next) {
   }
 }
 
+export async function getArenaFormation(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const result = await arenaService.getArenaFormation(accountId)
+    res.success(result, '获取竞技场阵容成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
 export async function getMatchList(req, res, next) {
   try {
     const accountId = req.player.id

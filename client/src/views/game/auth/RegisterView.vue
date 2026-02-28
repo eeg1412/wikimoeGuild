@@ -122,7 +122,7 @@ const router = useRouter()
 const { isLoggedIn, setLogin } = useGameUser()
 
 if (isLoggedIn.value) {
-  router.replace('/game/home')
+  router.replace({ name: 'GameHome' })
 }
 
 const formRef = ref(null)
@@ -253,7 +253,7 @@ async function handleSubmit() {
     const { accessToken, refreshToken, playerInfo } = res.data.data
     setLogin(accessToken, refreshToken, playerInfo)
     ElMessage.success('注册成功，欢迎加入公会！')
-    router.push('/game/home')
+    router.push({ name: 'GameHome' })
   } catch {
     // 错误已由拦截器处理
   } finally {

@@ -1,0 +1,1 @@
+import{a as e}from"./request-DAaef2ru.js";function s(a){return e.get("/game-players",{params:a})}function t(a){return e.post("/game-players/ban",a)}function l(a,r){return e.put(`/game-players/${a}/password`,r)}function o(a){return e.get("/game-players/ban-logs",{params:a})}function p(a){return e.delete(`/game-players/ban-logs/${a}`)}export{o as a,t as b,l as c,p as d,s as l};

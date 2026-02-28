@@ -227,7 +227,7 @@ async function handleSubmit() {
       newPassword: form.newPassword
     })
     ElMessage.success('密码重置成功，请登录')
-    router.push('/game/login')
+    router.push({ name: 'GameLogin' })
   } catch {
     // 错误已由拦截器处理
   } finally {

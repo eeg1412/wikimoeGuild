@@ -36,13 +36,6 @@
         📋 矿场列表
       </el-button>
       <el-button
-        :type="activeTab === 'mine' ? 'primary' : 'default'"
-        size="small"
-        @click="handleSwitchTab('mine')"
-      >
-        ⛏️ 当前矿场
-      </el-button>
-      <el-button
         :type="activeTab === 'revenue' ? 'primary' : 'default'"
         size="small"
         @click="handleSwitchTab('revenue')"
@@ -430,7 +423,7 @@ import BattleAnimation from '@/components/BattleAnimation.vue'
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 const playerId = ref(playerInfo.value?.accountId || '')

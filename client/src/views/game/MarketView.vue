@@ -230,20 +230,20 @@
             type="primary"
             text
             size="small"
-            @click="fetchMaterialOrders"
+            @click="handleFilterMaterial"
             >筛选</el-button
           >
         </div>
       </div>
 
-      <!-- 创建订单 -->
+      <!-- 我的 - 发布出售 -->
       <div v-if="materialSubTab === 'my'" class="rpg-card rounded-xl p-4 mb-4">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-          {{ materialSubTab === 'buy' ? '📝 发布求购' : '📝 发布出售' }}
+          📝 发布出售
         </h3>
         <div class="flex flex-wrap items-center gap-2 mb-3">
           <el-select
-            v-model="matOrder.materialType"
+            v-model="matSellForm.materialType"
             placeholder="材料类型"
             size="small"
             class="w-32!"
@@ -256,7 +256,7 @@
             />
           </el-select>
           <el-input-number
-            v-model="matOrder.quantity"
+            v-model="matSellForm.quantity"
             :min="1"
             :max="99999"
             size="small"
@@ -264,7 +264,7 @@
             placeholder="数量"
           />
           <el-input-number
-            v-model="matOrder.unitPrice"
+            v-model="matSellForm.unitPrice"
             :min="1"
             :max="2000000000"
             :step="100"
@@ -274,31 +274,78 @@
           />
         </div>
         <div class="text-xs text-gray-400 mb-2">
-          <template v-if="materialSubTab === 'buy'">
-            需冻结金币:
-            <span class="text-yellow-500 font-semibold"
-              >🪙
-              {{
-                (matOrder.quantity * matOrder.unitPrice).toLocaleString()
-              }}</span
-            >
-          </template>
-          <template v-else>
-            将扣除:
-            <span class="text-yellow-500 font-semibold"
-              >{{ matOrder.quantity }} 个素材</span
-            >
-          </template>
+          将扣除:
+          <span class="text-yellow-500 font-semibold"
+            >{{ matSellForm.quantity }} 个素材</span
+          >
         </div>
         <el-button
           type="primary"
           class="w-full"
           size="small"
-          :loading="createMatOrderLoading"
-          :disabled="createMatOrderLoading"
-          @click="handleCreateMaterialOrder"
+          :loading="createMatSellLoading"
+          :disabled="createMatSellLoading"
+          @click="handleCreateMaterialSellOrder"
         >
-          发布{{ materialSubTab === 'buy' ? '求购' : '出售' }}
+          发布出售
+        </el-button>
+      </div>
+
+      <!-- 我的 - 发布求购 -->
+      <div v-if="materialSubTab === 'my'" class="rpg-card rounded-xl p-4 mb-4">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+          📝 发布求购
+        </h3>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <el-select
+            v-model="matBuyForm.materialType"
+            placeholder="材料类型"
+            size="small"
+            class="w-32!"
+          >
+            <el-option
+              v-for="m in materialTypes"
+              :key="m.key"
+              :label="`${m.icon} ${m.name}`"
+              :value="m.key"
+            />
+          </el-select>
+          <el-input-number
+            v-model="matBuyForm.quantity"
+            :min="1"
+            :max="99999"
+            size="small"
+            class="w-24!"
+            placeholder="数量"
+          />
+          <el-input-number
+            v-model="matBuyForm.unitPrice"
+            :min="1"
+            :max="2000000000"
+            :step="100"
+            size="small"
+            class="w-32!"
+            placeholder="单价"
+          />
+        </div>
+        <div class="text-xs text-gray-400 mb-2">
+          需冻结金币:
+          <span class="text-yellow-500 font-semibold"
+            >🪙
+            {{
+              (matBuyForm.quantity * matBuyForm.unitPrice).toLocaleString()
+            }}</span
+          >
+        </div>
+        <el-button
+          type="warning"
+          class="w-full"
+          size="small"
+          :loading="createMatBuyLoading"
+          :disabled="createMatBuyLoading"
+          @click="handleCreateMaterialBuyOrder"
+        >
+          发布求购
         </el-button>
       </div>
 
@@ -330,6 +377,17 @@
                     <span class="text-xs text-gray-400 font-normal ml-1"
                       >x{{ order.quantity }}</span
                     >
+                    <span
+                      v-if="materialSubTab === 'my'"
+                      class="text-xs ml-1 px-1.5 py-0.5 rounded-full"
+                      :class="
+                        order.orderType === 'sell'
+                          ? 'text-green-500 border border-green-500'
+                          : 'text-blue-500 border border-blue-500'
+                      "
+                    >
+                      {{ order.orderType === 'sell' ? '出售' : '求购' }}
+                    </span>
                   </p>
                   <p class="text-xs text-gray-400">
                     单价 🪙 {{ order.unitPrice?.toLocaleString() }} · 总价 🪙
@@ -344,7 +402,7 @@
                 </div>
               </div>
               <div class="flex flex-col items-end gap-1">
-                <template v-if="order.isMine">
+                <template v-if="materialSubTab === 'my'">
                   <el-button
                     type="danger"
                     text
@@ -362,7 +420,7 @@
                     size="small"
                     :loading="fulfillMatLoading === order._id"
                     :disabled="!!fulfillMatLoading"
-                    @click="handleFulfillMaterialOrder(order)"
+                    @click="openFulfillDialog(order)"
                   >
                     {{ order.orderType === 'sell' ? '购买' : '出售' }}
                   </el-button>
@@ -388,6 +446,71 @@
         </div>
       </template>
     </div>
+
+    <!-- 素材交易数量确认弹窗 -->
+    <el-dialog
+      v-model="fulfillDialogVisible"
+      :title="
+        fulfillDialogOrder?.orderType === 'sell' ? '购买素材' : '出售素材'
+      "
+      width="340px"
+      align-center
+    >
+      <div v-if="fulfillDialogOrder" class="space-y-3">
+        <div class="text-sm text-gray-600 dark:text-gray-300">
+          {{ getMaterialName(fulfillDialogOrder.materialType) }}
+          · 单价 🪙 {{ fulfillDialogOrder.unitPrice?.toLocaleString() }} · 剩余
+          x{{ fulfillDialogOrder.quantity }}
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-500">数量:</span>
+          <el-input-number
+            v-model="fulfillQty"
+            :min="1"
+            :max="fulfillDialogOrder.quantity"
+            size="small"
+            class="flex-1"
+          />
+          <el-button text size="small" @click="handleFulfillSetMax"
+            >全部</el-button
+          >
+        </div>
+        <div class="text-xs text-gray-400">
+          <template v-if="fulfillDialogOrder.orderType === 'sell'">
+            需花费:
+            <span class="text-yellow-500 font-semibold"
+              >🪙
+              {{
+                (fulfillQty * fulfillDialogOrder.unitPrice).toLocaleString()
+              }}</span
+            >
+          </template>
+          <template v-else>
+            将获得:
+            <span class="text-yellow-500 font-semibold"
+              >🪙
+              {{
+                (fulfillQty * fulfillDialogOrder.unitPrice).toLocaleString()
+              }}</span
+            >
+          </template>
+        </div>
+      </div>
+      <template #footer>
+        <el-button size="small" @click="fulfillDialogVisible = false"
+          >取消</el-button
+        >
+        <el-button
+          type="primary"
+          size="small"
+          :loading="!!fulfillMatLoading"
+          :disabled="!!fulfillMatLoading"
+          @click="handleFulfillMaterialOrder"
+        >
+          确认{{ fulfillDialogOrder?.orderType === 'sell' ? '购买' : '出售' }}
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- ===== 符文石交易 ===== -->
     <div v-if="activeTab === 'runeStone'">
@@ -551,7 +674,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -565,6 +688,7 @@ import {
   fulfillMaterialSellOrderApi,
   fulfillMaterialBuyOrderApi,
   cancelMaterialOrderApi,
+  listMyMaterialOrdersApi,
   listRuneStoneListingsApi,
   createRuneStoneListingApi,
   buyRuneStoneListingApi,
@@ -578,7 +702,7 @@ import { useGameUser } from '@/composables/useGameUser.js'
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 const crystalList = [
@@ -704,17 +828,34 @@ const matPage = ref(1)
 const matPageSize = 20
 const matOrdersTotal = ref(0)
 
-const matOrder = reactive({
+const matSellForm = reactive({
   materialType: 'attackCrystal',
   quantity: 1,
   unitPrice: 100
 })
-const createMatOrderLoading = ref(false)
+const matBuyForm = reactive({
+  materialType: 'attackCrystal',
+  quantity: 1,
+  unitPrice: 100
+})
+const createMatSellLoading = ref(false)
+const createMatBuyLoading = ref(false)
 const fulfillMatLoading = ref(null)
 const cancelMatLoading = ref(null)
 
+// 素材交易数量确认弹窗
+const fulfillDialogVisible = ref(false)
+const fulfillDialogOrder = ref(null)
+const fulfillQty = ref(1)
+
 function switchMaterialTab(tab) {
   materialSubTab.value = tab
+  matPage.value = 1
+  fetchMaterialOrders()
+}
+
+function handleFilterMaterial() {
+  matPage.value = 1
   fetchMaterialOrders()
 }
 
@@ -722,25 +863,14 @@ async function fetchMaterialOrders() {
   matOrdersLoading.value = true
   try {
     const params = { page: matPage.value, pageSize: matPageSize }
-    if (matFilter.materialType) params.materialType = matFilter.materialType
+    if (materialSubTab.value !== 'my' && matFilter.materialType) {
+      params.materialType = matFilter.materialType
+    }
     let res
     if (materialSubTab.value === 'my') {
-      // 获取我的订单—合并 sell 和 buy
-      const [sellRes, buyRes] = await Promise.all([
-        listMaterialSellOrdersApi({ ...params, mine: true }),
-        listMaterialBuyOrdersApi({ ...params, mine: true })
-      ])
-      const sellList = (sellRes.data.data?.list || []).map(o => ({
-        ...o,
-        isMine: true
-      }))
-      const buyList = (buyRes.data.data?.list || []).map(o => ({
-        ...o,
-        isMine: true
-      }))
-      matOrders.value = [...sellList, ...buyList]
-      matOrdersTotal.value =
-        (sellRes.data.data?.total || 0) + (buyRes.data.data?.total || 0)
+      res = await listMyMaterialOrdersApi({ ...params, status: 'active' })
+      matOrders.value = res.data.data?.list || []
+      matOrdersTotal.value = res.data.data?.total || 0
     } else if (materialSubTab.value === 'sell') {
       res = await listMaterialSellOrdersApi(params)
       matOrders.value = res.data.data?.list || []
@@ -757,56 +887,76 @@ async function fetchMaterialOrders() {
   }
 }
 
-async function handleCreateMaterialOrder() {
-  createMatOrderLoading.value = true
+async function handleCreateMaterialSellOrder() {
+  createMatSellLoading.value = true
   try {
-    if (materialSubTab.value === 'buy') {
-      await createMaterialBuyOrderApi({
-        materialType: matOrder.materialType,
-        quantity: matOrder.quantity,
-        unitPrice: matOrder.unitPrice
-      })
-    } else {
-      await createMaterialSellOrderApi({
-        materialType: matOrder.materialType,
-        quantity: matOrder.quantity,
-        unitPrice: matOrder.unitPrice
-      })
-    }
-    ElMessage.success('订单发布成功！')
+    await createMaterialSellOrderApi({
+      materialType: matSellForm.materialType,
+      quantity: matSellForm.quantity,
+      unitPrice: matSellForm.unitPrice
+    })
+    ElMessage.success('出售订单发布成功！')
+    await fetchMaterialOrders()
+    await fetchPlayerInfo()
+    await fetchPlayerInventory()
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    createMatSellLoading.value = false
+  }
+}
+
+async function handleCreateMaterialBuyOrder() {
+  createMatBuyLoading.value = true
+  try {
+    await createMaterialBuyOrderApi({
+      materialType: matBuyForm.materialType,
+      quantity: matBuyForm.quantity,
+      unitPrice: matBuyForm.unitPrice
+    })
+    ElMessage.success('求购订单发布成功！')
     await fetchMaterialOrders()
     await fetchPlayerInfo()
   } catch {
     // 错误已由拦截器处理
   } finally {
-    createMatOrderLoading.value = false
+    createMatBuyLoading.value = false
   }
 }
 
-async function handleFulfillMaterialOrder(order) {
-  const isSell = order.orderType === 'sell'
-  try {
-    await ElMessageBox.confirm(
-      isSell
-        ? `确定购买 ${order.quantity} 个${getMaterialName(order.materialType)}？花费 ${(order.quantity * order.unitPrice).toLocaleString()} 金币`
-        : `确定出售 ${order.quantity} 个${getMaterialName(order.materialType)}？获得 ${(order.quantity * order.unitPrice).toLocaleString()} 金币`,
-      '确认交易',
-      { confirmButtonText: '确认', cancelButtonText: '取消' }
-    )
-  } catch {
-    return
+function openFulfillDialog(order) {
+  fulfillDialogOrder.value = order
+  fulfillQty.value = order.quantity
+  fulfillDialogVisible.value = true
+}
+
+function handleFulfillSetMax() {
+  if (fulfillDialogOrder.value) {
+    fulfillQty.value = fulfillDialogOrder.value.quantity
   }
+}
+
+async function handleFulfillMaterialOrder() {
+  const order = fulfillDialogOrder.value
+  if (!order) return
+  const isSell = order.orderType === 'sell'
 
   fulfillMatLoading.value = order._id
   try {
     if (isSell) {
-      await fulfillMaterialSellOrderApi(order._id)
+      await fulfillMaterialSellOrderApi(order._id, {
+        quantity: fulfillQty.value
+      })
     } else {
-      await fulfillMaterialBuyOrderApi(order._id)
+      await fulfillMaterialBuyOrderApi(order._id, {
+        quantity: fulfillQty.value
+      })
     }
     ElMessage.success('交易完成！')
+    fulfillDialogVisible.value = false
     await fetchMaterialOrders()
     await fetchPlayerInfo()
+    await fetchPlayerInventory()
   } catch {
     // 错误已由拦截器处理
   } finally {
@@ -854,6 +1004,7 @@ const cancelRsLoading = ref(null)
 
 function switchRsTab(tab) {
   rsSubTab.value = tab
+  rsPage.value = 1
   fetchRuneStoneListings()
 }
 
@@ -863,7 +1014,7 @@ async function fetchRuneStoneListings() {
     const params = { page: rsPage.value, pageSize: rsPageSize }
     let res
     if (rsSubTab.value === 'my') {
-      res = await listMyRuneStoneListingsApi(params)
+      res = await listMyRuneStoneListingsApi({ ...params, status: 'active' })
       rsListings.value = (res.data.data?.list || []).map(l => ({
         ...l,
         isMine: true
@@ -987,6 +1138,15 @@ function rarityBgClass(r) {
 onMounted(() => {
   fetchOfficialInfo()
   fetchPlayerInventory()
+})
+
+// 切换顶级标签时自动加载对应数据
+watch(activeTab, tab => {
+  if (tab === 'material') {
+    fetchMaterialOrders()
+  } else if (tab === 'runeStone') {
+    fetchRuneStoneListings()
+  }
 })
 </script>
 

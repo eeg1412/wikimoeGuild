@@ -106,6 +106,12 @@ const routes = [
         name: 'GameMine',
         component: () => import('../views/game/MineView.vue'),
         meta: { title: '矿场', requiresPlayerAuth: true }
+      },
+      {
+        path: 'guild-settings',
+        name: 'GameGuildSettings',
+        component: () => import('../views/game/GuildSettingsView.vue'),
+        meta: { title: '公会设置', requiresPlayerAuth: true }
       }
     ]
   },

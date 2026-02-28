@@ -168,13 +168,20 @@
         </div>
 
         <!-- 标签切换 -->
-        <div class="flex justify-center gap-2 mb-4">
+        <div class="flex flex-wrap justify-center gap-2 mb-4">
           <el-button
             :type="arenaTab === 'match' ? 'primary' : 'default'"
             size="small"
             @click="handleSwitchArenaTab('match')"
           >
             🎯 匹配对手
+          </el-button>
+          <el-button
+            :type="arenaTab === 'formation' ? 'primary' : 'default'"
+            size="small"
+            @click="handleSwitchArenaTab('formation')"
+          >
+            🏗️ 阵容管理
           </el-button>
           <el-button
             :type="arenaTab === 'leaderboard' ? 'primary' : 'default'"
@@ -207,7 +214,7 @@
             <div v-else class="space-y-2">
               <div
                 v-for="opponent in matchList"
-                :key="opponent._id || opponent.npcId"
+                :key="opponent._id"
                 class="rpg-card rounded-xl p-3"
               >
                 <div class="flex items-center justify-between">
@@ -215,18 +222,13 @@
                     <div
                       class="w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-gray-200 dark:bg-gray-700"
                     >
-                      {{ opponent.isNPC ? '🤖' : '🏰' }}
+                      🏰
                     </div>
                     <div class="min-w-0">
                       <p
                         class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate"
                       >
                         {{ opponent.guildName }}
-                        <span
-                          v-if="opponent.isNPC"
-                          class="text-[10px] text-gray-400"
-                          >(NPC)</span
-                        >
                       </p>
                       <p class="text-xs text-gray-400">
                         竞技点: {{ opponent.points }}
@@ -236,16 +238,19 @@
                   <el-button
                     type="danger"
                     size="small"
-                    :loading="
-                      challengeLoading === (opponent._id || opponent.npcId)
-                    "
+                    :loading="challengeLoading === opponent._id"
                     :disabled="
                       !!challengeLoading ||
+                      challengedOpponents.has(opponent._id) ||
                       (arenaInfo.registration?.challengeUses ?? 0) <= 0
                     "
                     @click="handleChallenge(opponent)"
                   >
-                    ⚔️ 挑战
+                    {{
+                      challengedOpponents.has(opponent._id)
+                        ? '✅ 已挑战'
+                        : '⚔️ 挑战'
+                    }}
                   </el-button>
                 </div>
               </div>
@@ -258,6 +263,76 @@
                 @click="fetchMatchList"
                 >🔄 刷新对手</el-button
               >
+            </div>
+          </template>
+        </div>
+
+        <!-- ===== 阵容管理 ===== -->
+        <div v-if="arenaTab === 'formation'">
+          <div v-if="arenaFormationLoading" class="flex justify-center py-8">
+            <span class="animate-spin inline-block text-2xl">⏳</span>
+          </div>
+          <template v-else>
+            <p class="text-xs text-gray-400 text-center mb-2">
+              ↑ 前排（面向敌人）· ↓ 后排
+            </p>
+            <p class="text-xs text-red-400 text-center mb-2">
+              ⚠️ 已锁定的冒险家不能移除，只能调整位置或添加新冒险家
+            </p>
+            <div class="arena-grid-board mx-auto mb-4">
+              <div v-for="row in 5" :key="row" class="arena-grid-row">
+                <div
+                  v-for="col in 5"
+                  :key="col"
+                  class="arena-grid-cell"
+                  :class="{
+                    'arena-grid-cell--occupied': getArenaCell(row - 1, col - 1)
+                  }"
+                  @click="handleArenaCellClick(row - 1, col - 1)"
+                >
+                  <span class="arena-grid-cell-seq">{{
+                    (row - 1) * 5 + col
+                  }}</span>
+                  <template v-if="getArenaCell(row - 1, col - 1)">
+                    <img
+                      :src="getAdvAvatarUrl(getArenaCell(row - 1, col - 1))"
+                      class="w-full h-full rounded object-cover"
+                    />
+                    <div
+                      class="absolute bottom-0 left-0 right-0 text-center bg-black/60 text-[10px] text-white leading-tight py-px truncate"
+                    >
+                      {{ getArenaCell(row - 1, col - 1).name }}
+                    </div>
+                    <div
+                      v-if="
+                        isAdventurerLocked(getArenaCell(row - 1, col - 1)._id)
+                      "
+                      class="absolute top-0 right-0.5 text-[10px]"
+                      title="已锁定"
+                    >
+                      🔒
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="text-gray-400 text-lg">➕</span>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-center text-xs text-gray-400 mb-4">
+              已放置 {{ arenaPlacedCount }} 名冒险家
+            </p>
+
+            <div class="flex justify-center gap-3 mb-4">
+              <el-button
+                type="primary"
+                :loading="arenaFormationSaving"
+                :disabled="arenaFormationSaving"
+                @click="handleSaveArenaFormation"
+              >
+                💾 保存阵容
+              </el-button>
             </div>
           </template>
         </div>
@@ -334,9 +409,7 @@
                         >主动挑战</span
                       >
                       <span v-else class="text-orange-400">被挑战</span>
-                      <span class="ml-1">{{
-                        log.opponentName || (log.isNPC ? 'NPC' : '未知')
-                      }}</span>
+                      <span class="ml-1">{{ log.opponentName || '未知' }}</span>
                     </p>
                     <p class="text-xs text-gray-400 mt-0.5">
                       {{ formatTime(log.createdAt) }}
@@ -398,6 +471,92 @@
         </div>
       </template>
     </template>
+
+    <!-- ===== 竞技场阵容选择冒险家弹窗 ===== -->
+    <el-dialog
+      v-model="arenaPickDialogVisible"
+      title="选择冒险家"
+      width="340px"
+      align-center
+      :destroy-on-close="false"
+    >
+      <div v-if="arenaAdventurersLoading" class="text-center py-6">
+        <span class="animate-spin inline-block text-2xl">⏳</span>
+      </div>
+      <template v-else>
+        <!-- 当前格子上的冒险家 -->
+        <div
+          v-if="arenaCellAdventurer"
+          class="mb-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg"
+        >
+          <div class="flex items-center gap-2">
+            <img
+              :src="getAdvAvatarUrl(arenaCellAdventurer)"
+              class="w-8 h-8 rounded-full"
+            />
+            <span
+              class="text-sm font-semibold text-gray-700 dark:text-gray-200"
+            >
+              {{ arenaCellAdventurer.name }}
+            </span>
+            <span
+              v-if="isAdventurerLocked(arenaCellAdventurer._id)"
+              class="text-[10px] text-yellow-500 border border-yellow-500 px-1 rounded"
+            >
+              🔒 已锁定
+            </span>
+            <el-button
+              v-if="!isAdventurerLocked(arenaCellAdventurer._id)"
+              type="danger"
+              text
+              size="small"
+              @click="removeFromArenaCell"
+            >
+              移除
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 可选列表 -->
+        <div class="space-y-1 max-h-60 overflow-y-auto">
+          <div
+            v-for="adv in arenaAvailableAdventurers"
+            :key="adv._id"
+            class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            @click="placeArenaAdventurer(adv)"
+          >
+            <img
+              :src="getAdvAvatarUrl(adv)"
+              class="w-8 h-8 rounded-full border"
+              :style="{ borderColor: getElementColor(adv.elements) }"
+            />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-700 dark:text-gray-200 truncate">
+                {{ adv.name }}
+              </p>
+              <p class="text-[10px] text-gray-400">
+                {{ getElementName(adv.elements) }} · Lv.{{
+                  adv.comprehensiveLevel || 1
+                }}
+              </p>
+            </div>
+            <span
+              v-if="isArenaPlaced(adv._id)"
+              class="text-[10px] text-yellow-500 border border-yellow-500 px-1 rounded"
+            >
+              已放置
+            </span>
+          </div>
+        </div>
+
+        <div
+          v-if="arenaAvailableAdventurers.length === 0"
+          class="text-center py-4 text-gray-400 text-sm"
+        >
+          暂无可添加的冒险家
+        </div>
+      </template>
+    </el-dialog>
 
     <!-- ===== 战斗结果弹窗 ===== -->
     <el-dialog
@@ -519,12 +678,10 @@
             <div class="text-xl font-bold text-gray-400 px-2">VS</div>
             <div class="text-center flex-1">
               <p class="font-semibold text-red-500">
-                {{ logDetail.isNPC ? '🤖' : '🏰' }}
+                🏰
                 {{ logDetail.defenderGuildName }}
               </p>
-              <p class="text-xs text-gray-400">
-                {{ logDetail.isNPC ? 'NPC' : '防守方' }}
-              </p>
+              <p class="text-xs text-gray-400">防守方</p>
             </div>
           </div>
 
@@ -545,69 +702,81 @@
 
           <!-- 阵容展示 -->
           <div class="grid grid-cols-2 gap-3">
-            <!-- 挑战方阵容 -->
+            <!-- 挑战方阵容（转置+列倒序：右侧为小序号） -->
             <div>
               <p class="text-xs text-gray-400 mb-1 text-center">挑战方阵容</p>
               <div class="grid grid-cols-5 gap-0.5">
                 <template v-for="r in 5" :key="'a' + r">
                   <template v-for="c in 5" :key="'a' + r + '-' + c">
                     <div
-                      class="aspect-square rounded border flex items-center justify-center"
+                      class="aspect-square rounded border flex items-center justify-center overflow-hidden relative"
                       :class="
-                        getUnitAt(logDetail.attackerUnits, r - 1, c - 1)
+                        getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)
                           ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
                           : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       "
                       :title="
                         getUnitTooltip(
-                          getUnitAt(logDetail.attackerUnits, r - 1, c - 1)
+                          getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)
                         )
                       "
                     >
-                      <span
-                        v-if="getUnitAt(logDetail.attackerUnits, r - 1, c - 1)"
-                        class="text-[10px]"
-                        >{{
-                          elementEmoji(
-                            getUnitAt(logDetail.attackerUnits, r - 1, c - 1)
-                              .elements
-                          )
-                        }}</span
+                      <template
+                        v-if="getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)"
                       >
+                        <img
+                          :src="
+                            getAdvAvatarUrl(
+                              getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)
+                            )
+                          "
+                          class="w-full h-full object-cover"
+                        />
+                        <span
+                          class="absolute bottom-0 right-0 bg-black/60 text-white text-[8px] leading-none px-0.5 rounded-tl"
+                          >{{ (5 - c) * 5 + (r - 1) + 1 }}</span
+                        >
+                      </template>
                     </div>
                   </template>
                 </template>
               </div>
             </div>
-            <!-- 防守方阵容 -->
+            <!-- 防守方阵容（转置+列正序：左侧为小序号） -->
             <div>
               <p class="text-xs text-gray-400 mb-1 text-center">防守方阵容</p>
               <div class="grid grid-cols-5 gap-0.5">
                 <template v-for="r in 5" :key="'d' + r">
                   <template v-for="c in 5" :key="'d' + r + '-' + c">
                     <div
-                      class="aspect-square rounded border flex items-center justify-center"
+                      class="aspect-square rounded border flex items-center justify-center overflow-hidden relative"
                       :class="
-                        getUnitAt(logDetail.defenderUnits, r - 1, c - 1)
+                        getUnitAt(logDetail.defenderUnits, c - 1, r - 1)
                           ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
                           : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       "
                       :title="
                         getUnitTooltip(
-                          getUnitAt(logDetail.defenderUnits, r - 1, c - 1)
+                          getUnitAt(logDetail.defenderUnits, c - 1, r - 1)
                         )
                       "
                     >
-                      <span
-                        v-if="getUnitAt(logDetail.defenderUnits, r - 1, c - 1)"
-                        class="text-[10px]"
-                        >{{
-                          elementEmoji(
-                            getUnitAt(logDetail.defenderUnits, r - 1, c - 1)
-                              .elements
-                          )
-                        }}</span
+                      <template
+                        v-if="getUnitAt(logDetail.defenderUnits, c - 1, r - 1)"
                       >
+                        <img
+                          :src="
+                            getAdvAvatarUrl(
+                              getUnitAt(logDetail.defenderUnits, c - 1, r - 1)
+                            )
+                          "
+                          class="w-full h-full object-cover"
+                        />
+                        <span
+                          class="absolute bottom-0 left-0 bg-black/60 text-white text-[8px] leading-none px-0.5 rounded-tr"
+                          >{{ (c - 1) * 5 + (r - 1) + 1 }}</span
+                        >
+                      </template>
                     </div>
                   </template>
                 </template>
@@ -627,7 +796,10 @@
                 :key="unit.adventurerId + unit.row + unit.col"
                 class="bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs flex items-center gap-2"
               >
-                <span class="text-sm">{{ elementEmoji(unit.elements) }}</span>
+                <img
+                  :src="getAdvAvatarUrl(unit)"
+                  class="w-8 h-8 rounded-full flex-shrink-0"
+                />
                 <div class="min-w-0 flex-1">
                   <p
                     class="font-semibold text-gray-700 dark:text-gray-200 truncate"
@@ -659,7 +831,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -669,19 +841,22 @@ import {
   challengeOpponentApi,
   getLeaderboardApi,
   getMyBattleLogsApi,
-  getBattleLogDetailApi
+  getBattleLogDetailApi,
+  getArenaFormationApi,
+  updateArenaFormationApi
 } from '@/api/game/arena.js'
 import {
   getMyFormationsApi,
   getFormationDetailApi
 } from '@/api/game/formation.js'
+import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 const loading = ref(false)
@@ -704,6 +879,7 @@ const arenaTab = ref('match')
 const matchList = ref([])
 const matchLoading = ref(false)
 const challengeLoading = ref(null)
+const challengedOpponents = ref(new Set())
 
 // 排行榜
 const leaderboard = ref([])
@@ -725,6 +901,173 @@ const showBattleAnimation = ref(false)
 const logDetailVisible = ref(false)
 const logDetailLoading = ref(false)
 const logDetail = ref(null)
+
+// 竞技场阵容管理
+const arenaFormationLoading = ref(false)
+const arenaFormationSaving = ref(false)
+const arenaGrid = ref(createEmptyGrid())
+const arenaLockedAdventurers = ref([])
+const arenaAllAdventurers = ref([])
+const arenaAdventurersLoading = ref(false)
+const arenaPickDialogVisible = ref(false)
+const arenaPickRow = ref(0)
+const arenaPickCol = ref(0)
+
+function createEmptyGrid() {
+  return Array.from({ length: 5 }, () => Array.from({ length: 5 }, () => null))
+}
+
+const arenaPlacedCount = computed(() => {
+  let count = 0
+  for (const row of arenaGrid.value) {
+    for (const cell of row) {
+      if (cell) count++
+    }
+  }
+  return count
+})
+
+function getArenaCell(row, col) {
+  return arenaGrid.value[row]?.[col] || null
+}
+
+function isAdventurerLocked(advId) {
+  return arenaLockedAdventurers.value.some(
+    id => id === advId || id.toString() === advId?.toString()
+  )
+}
+
+function isArenaPlaced(advId) {
+  for (const row of arenaGrid.value) {
+    for (const cell of row) {
+      if (cell && cell._id === advId) return true
+    }
+  }
+  return false
+}
+
+const arenaCellAdventurer = computed(() => {
+  return getArenaCell(arenaPickRow.value, arenaPickCol.value)
+})
+
+const arenaAvailableAdventurers = computed(() => {
+  return arenaAllAdventurers.value
+})
+
+function handleArenaCellClick(row, col) {
+  arenaPickRow.value = row
+  arenaPickCol.value = col
+  arenaPickDialogVisible.value = true
+}
+
+function placeArenaAdventurer(adv) {
+  const targetRow = arenaPickRow.value
+  const targetCol = arenaPickCol.value
+  // 记住目标格子上原来的冒险家（可能为null）
+  const existingAdv = arenaGrid.value[targetRow][targetCol]
+  // 找到该冒险家当前所在的旧位置
+  let oldRow = -1
+  let oldCol = -1
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      if (arenaGrid.value[r][c] && arenaGrid.value[r][c]._id === adv._id) {
+        oldRow = r
+        oldCol = c
+        break
+      }
+    }
+    if (oldRow >= 0) break
+  }
+  // 如果旧位置存在，先清空
+  if (oldRow >= 0) {
+    arenaGrid.value[oldRow][oldCol] = null
+  }
+  // 将选中的冒险家放到目标格子
+  arenaGrid.value[targetRow][targetCol] = adv
+  // 如果目标格子原来有冒险家，且来源冒险家有旧位置，则互换
+  if (existingAdv && existingAdv._id !== adv._id && oldRow >= 0) {
+    arenaGrid.value[oldRow][oldCol] = existingAdv
+  }
+  arenaPickDialogVisible.value = false
+}
+
+function removeFromArenaCell() {
+  const cell = arenaGrid.value[arenaPickRow.value][arenaPickCol.value]
+  if (cell && isAdventurerLocked(cell._id)) {
+    ElMessage.warning('已锁定的冒险家不能移除')
+    return
+  }
+  arenaGrid.value[arenaPickRow.value][arenaPickCol.value] = null
+  arenaPickDialogVisible.value = false
+}
+
+async function fetchArenaFormation() {
+  arenaFormationLoading.value = true
+  try {
+    const [formRes, advRes] = await Promise.all([
+      getArenaFormationApi(),
+      getMyAdventurersApi()
+    ])
+    const data = formRes.data.data || {}
+    arenaLockedAdventurers.value = (data.lockedAdventurers || []).map(id =>
+      id.toString()
+    )
+    arenaAllAdventurers.value = advRes.data.data || []
+
+    // 构建阵容网格
+    const newGrid = createEmptyGrid()
+    if (data.grid && Array.isArray(data.grid)) {
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          const advData = data.grid[r]?.[c]
+          if (advData && typeof advData === 'object' && advData._id) {
+            newGrid[r][c] = advData
+          }
+        }
+      }
+    }
+    arenaGrid.value = newGrid
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    arenaFormationLoading.value = false
+  }
+}
+
+async function handleSaveArenaFormation() {
+  // 验证所有已锁定冒险家仍在阵容中
+  const currentIds = arenaGrid.value
+    .flat()
+    .filter(c => c !== null)
+    .map(c => c._id)
+  for (const lockedId of arenaLockedAdventurers.value) {
+    if (
+      !currentIds.includes(lockedId) &&
+      !currentIds.some(id => id.toString() === lockedId.toString())
+    ) {
+      ElMessage.error('已锁定的冒险家不能移除')
+      return
+    }
+  }
+
+  const gridData = arenaGrid.value.map(row =>
+    row.map(cell => (cell ? cell._id : null))
+  )
+
+  arenaFormationSaving.value = true
+  try {
+    await updateArenaFormationApi({ grid: gridData })
+    ElMessage.success('竞技场阵容保存成功！')
+    // 重新加载阵容以更新锁定列表
+    await fetchArenaFormation()
+    // 刷新竞技场信息
+    fetchArenaInfo()
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    arenaFormationSaving.value = false
+  }
+}
 
 async function fetchArenaInfo() {
   loading.value = true
@@ -815,6 +1158,8 @@ function handleSwitchArenaTab(tab) {
   arenaTab.value = tab
   if (tab === 'match') {
     fetchMatchList()
+  } else if (tab === 'formation') {
+    fetchArenaFormation()
   } else if (tab === 'leaderboard') {
     fetchLeaderboard()
   } else if (tab === 'logs') {
@@ -824,9 +1169,10 @@ function handleSwitchArenaTab(tab) {
 
 async function fetchMatchList() {
   matchLoading.value = true
+  challengedOpponents.value = new Set()
   try {
     const res = await getMatchListApi()
-    matchList.value = res.data.data?.list || []
+    matchList.value = res.data.data?.opponents || []
   } catch {
     matchList.value = []
   } finally {
@@ -835,11 +1181,11 @@ async function fetchMatchList() {
 }
 
 async function handleChallenge(opponent) {
-  const id = opponent._id || opponent.npcId
+  const id = opponent._id
   challengeLoading.value = id
   try {
     const res = await challengeOpponentApi({
-      opponentId: opponent.isNPC ? opponent._id : opponent.accountId
+      opponentId: opponent.opponentId
     })
     const result = res.data.data
     // 添加便捷字段供模板使用
@@ -847,6 +1193,8 @@ async function handleChallenge(opponent) {
     result.isDraw = result.battleResult.winner === 'draw'
     result.rounds = result.battleResult.rounds
     battleResult.value = result
+    // 记录已挑战过的对手
+    challengedOpponents.value.add(id)
     // 先展示战斗演出
     showBattleAnimation.value = true
     // 刷新状态
@@ -915,8 +1263,33 @@ const ELEMENT_EMOJI_MAP = {
   5: '☀️',
   6: '🌑'
 }
+const ELEMENT_MAP = {
+  1: { name: '地', color: '#a0855b' },
+  2: { name: '水', color: '#4fa3e0' },
+  3: { name: '火', color: '#e05c4f' },
+  4: { name: '风', color: '#6abf69' },
+  5: { name: '光明', color: '#f5c842' },
+  6: { name: '黑暗', color: '#7c5cbf' }
+}
 function elementEmoji(el) {
   return ELEMENT_EMOJI_MAP[el] || '❓'
+}
+function getElementColor(el) {
+  return ELEMENT_MAP[el]?.color || '#999'
+}
+function getElementName(el) {
+  return ELEMENT_MAP[el]?.name || el
+}
+
+function getAdvAvatarUrl(adv) {
+  if (!adv) return ''
+  if (adv.hasCustomAvatar) {
+    return `/uploads/custom-adventurer-avatar/${adv.adventurerId || adv._id}.webp`
+  }
+  if (adv.isDemon) {
+    return `/publicgame/demon/${adv.defaultAvatarId || 1}.webp`
+  }
+  return `/publicgame/avatar/${adv.defaultAvatarId || 1}.webp`
 }
 
 function getUnitAt(units, row, col) {
@@ -959,7 +1332,7 @@ function formatTime(t) {
 
 onMounted(async () => {
   await Promise.all([fetchArenaInfo(), fetchFormations()])
-  if (arenaInfo.value.registered) {
+  if (arenaInfo.value.registration) {
     fetchMatchList()
   }
 })
@@ -1003,5 +1376,66 @@ onMounted(async () => {
 .rpg-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.arena-grid-board {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 320px;
+}
+
+.arena-grid-row {
+  display: flex;
+  gap: 4px;
+}
+
+.arena-grid-cell {
+  width: 56px;
+  height: 56px;
+  border: 2px dashed rgba(200, 160, 80, 0.4);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.arena-grid-cell:hover {
+  border-color: rgba(200, 160, 80, 0.8);
+  background: rgba(255, 200, 50, 0.1);
+}
+
+.arena-grid-cell--occupied {
+  border-style: solid;
+  border-color: rgba(200, 160, 80, 0.6);
+}
+
+.arena-grid-cell-seq {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: 9px;
+  color: rgba(140, 120, 80, 0.6);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dark .arena-grid-cell {
+  background: rgba(30, 25, 20, 0.5);
+}
+
+@media (max-width: 400px) {
+  .arena-grid-cell {
+    width: 48px;
+    height: 48px;
+  }
 }
 </style>

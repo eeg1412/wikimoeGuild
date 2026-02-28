@@ -82,7 +82,7 @@ const { setLogin, isLoggedIn } = useGameUser()
 
 // 已登录则跳转
 if (isLoggedIn.value) {
-  router.replace('/game/home')
+  router.replace({ name: 'GameHome' })
 }
 
 const formRef = ref(null)
@@ -110,7 +110,7 @@ async function handleSubmit() {
     const { accessToken, refreshToken, playerInfo } = res.data.data
     setLogin(accessToken, refreshToken, playerInfo)
     ElMessage.success('登录成功')
-    router.replace('/game/home')
+    router.replace({ name: 'GameHome' })
   } catch {
     // 错误已由 request.js 拦截器处理
   } finally {

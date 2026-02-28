@@ -26,22 +26,22 @@
           }}</span>
         </p>
         <div class="flex flex-wrap gap-2 justify-center">
-          <el-button size="small" @click="handleNav('/game/adventurers')"
+          <el-button size="small" @click="handleNav('GameAdventurers')"
             >⚔️ 冒险家</el-button
           >
-          <el-button size="small" @click="handleNav('/game/dungeon')"
+          <el-button size="small" @click="handleNav('GameDungeon')"
             >🏰 地下迷宫</el-button
           >
-          <el-button size="small" @click="handleNav('/game/mine')"
+          <el-button size="small" @click="handleNav('GameMine')"
             >⛏️ 矿场</el-button
           >
-          <el-button size="small" @click="handleNav('/game/arena')"
+          <el-button size="small" @click="handleNav('GameArena')"
             >⚔️ 竞技场</el-button
           >
-          <el-button size="small" @click="handleNav('/game/market')"
+          <el-button size="small" @click="handleNav('GameMarket')"
             >🏪 交易市场</el-button
           >
-          <el-button size="small" @click="handleNav('/game/inventory')"
+          <el-button size="small" @click="handleNav('GameInventory')"
             >🎒 背包</el-button
           >
         </div>
@@ -69,14 +69,14 @@ const router = useRouter()
 const { isLoggedIn, playerInfo } = useGameUser()
 
 function handleNavLogin() {
-  router.push('/game/login')
+  router.push({ name: 'GameLogin' })
 }
 
 function handleNavRegister() {
-  router.push('/game/register')
+  router.push({ name: 'GameRegister' })
 }
 
-function handleNav(path) {
-  router.push(path)
+function handleNav(routeName) {
+  router.push({ name: routeName })
 }
 </script>

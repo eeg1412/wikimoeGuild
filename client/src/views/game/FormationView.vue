@@ -61,7 +61,7 @@
                   class="w-full h-full rounded object-cover"
                 />
                 <div
-                  class="absolute bottom-0 left-0 right-0 text-center bg-black/60 text-[8px] text-white leading-tight py-px truncate"
+                  class="absolute bottom-0 left-0 right-0 text-center bg-black/60 text-[10px] text-white leading-tight py-px truncate"
                 >
                   {{ getCell(row - 1, col - 1).name }}
                 </div>
@@ -193,7 +193,7 @@ const router = useRouter()
 const { isLoggedIn } = useGameUser()
 
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 // ── 元素工具 ──

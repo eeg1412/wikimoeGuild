@@ -45,11 +45,13 @@ export async function buyCrystalFromOfficial(req, res, next) {
 
 export async function listMaterialSellOrders(req, res, next) {
   try {
+    const accountId = req.player.id
     const { page, pageSize, materialType } = req.query
     const result = await marketService.listMaterialSellOrders({
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
-      materialType
+      materialType,
+      excludeAccountId: accountId
     })
     res.success(result, '获取出售列表成功')
   } catch (error) {
@@ -59,11 +61,13 @@ export async function listMaterialSellOrders(req, res, next) {
 
 export async function listMaterialBuyOrders(req, res, next) {
   try {
+    const accountId = req.player.id
     const { page, pageSize, materialType } = req.query
     const result = await marketService.listMaterialBuyOrders({
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
-      materialType
+      materialType,
+      excludeAccountId: accountId
     })
     res.success(result, '获取求购列表成功')
   } catch (error) {
@@ -107,7 +111,12 @@ export async function fulfillMaterialSellOrder(req, res, next) {
   try {
     const accountId = req.player.id
     const { id } = req.params
-    const result = await marketService.fulfillMaterialSellOrder(accountId, id)
+    const { quantity } = req.body
+    const result = await marketService.fulfillMaterialSellOrder(
+      accountId,
+      id,
+      quantity ? parseInt(quantity) : undefined
+    )
     res.success(result, '购买成功')
   } catch (error) {
     next(error)
@@ -118,7 +127,12 @@ export async function fulfillMaterialBuyOrder(req, res, next) {
   try {
     const accountId = req.player.id
     const { id } = req.params
-    const result = await marketService.fulfillMaterialBuyOrder(accountId, id)
+    const { quantity } = req.body
+    const result = await marketService.fulfillMaterialBuyOrder(
+      accountId,
+      id,
+      quantity ? parseInt(quantity) : undefined
+    )
     res.success(result, '出售成功')
   } catch (error) {
     next(error)
@@ -156,11 +170,13 @@ export async function listMyMaterialOrders(req, res, next) {
 
 export async function listRuneStoneListings(req, res, next) {
   try {
+    const accountId = req.player.id
     const { page, pageSize, rarity } = req.query
     const result = await marketService.listRuneStoneListings({
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
-      rarity
+      rarity,
+      excludeAccountId: accountId
     })
     res.success(result, '获取符文石列表成功')
   } catch (error) {

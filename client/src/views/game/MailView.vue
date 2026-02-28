@@ -225,7 +225,7 @@ import { useGameUser } from '@/composables/useGameUser.js'
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
 if (!isLoggedIn.value) {
-  router.replace('/game/login')
+  router.replace({ name: 'GameLogin' })
 }
 
 const crystalList = [
