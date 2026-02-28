@@ -1,6 +1,6 @@
 services:
   server:
-    build: .
+    image: eeg1412/wikimoe-guild-server:latest
     container_name: wikimoe-guild-server
     restart: unless-stopped
     ports:
