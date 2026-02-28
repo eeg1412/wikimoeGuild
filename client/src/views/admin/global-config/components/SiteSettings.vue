@@ -46,8 +46,8 @@
       <el-form-item label="网站Favicon" prop="siteFavicon">
         <div class="space-y-2" v-loading="faviconUrlIsloading">
           <Cropper
-            :width="512"
-            :height="512"
+            :width="128"
+            :height="128"
             :aspect-ratio="1"
             :src="
               faviconAccessible
