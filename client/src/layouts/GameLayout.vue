@@ -57,7 +57,7 @@
                   ⚙️ 公会设置
                 </el-dropdown-item>
                 <el-dropdown-item divided @click="handleLogout">
-                  退出登录
+                  🚪 退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>

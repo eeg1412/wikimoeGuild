@@ -19,6 +19,26 @@
         </p>
       </div>
 
+      <!-- 冒险家探索动画框 -->
+      <div class="dungeon-explorer-box rounded-2xl mb-4">
+        <div class="dungeon-explorer-inner">
+          <div
+            v-for="(adv, idx) in exploringAdventurers"
+            :key="adv._id || idx"
+            class="dungeon-explorer"
+            :class="adv.direction"
+            :style="adv.animStyle"
+          >
+            <div class="dungeon-explorer-bounce">
+              <GameAdventurerAvatar
+                :adventurer="adv"
+                class="dungeon-explorer-avatar"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 迷宫信息卡 -->
       <div class="dungeon-card rounded-2xl p-5 mb-4">
         <h3
@@ -374,6 +394,7 @@ import {
   challengeLegionApi
 } from '@/api/game/dungeon.js'
 import { getMyFormationsApi } from '@/api/game/formation.js'
+import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
 
 const router = useRouter()
@@ -526,7 +547,7 @@ function calcOutput() {
     return
   }
   const ms = Date.now() - new Date(settleAt).getTime()
-  const minutesPassed = Math.floor(ms / 60000)
+  const minutesPassed = Math.max(Math.floor(ms / 60000), 0)
   // 产物数量 = 分钟数 × 产出倍率 / 100，上限99999
   const rate = productionRateValue.value
   currentOutput.value = Math.min(
@@ -715,9 +736,49 @@ function handleGoToMine() {
   router.push({ name: 'GameMine' })
 }
 
+// ── 冒险家探索动画 ──
+const exploringAdventurers = ref([])
+
+function buildExplorerStyle(idx, total) {
+  // 横向穿越速度 10~20秒
+  const duration = 10 + Math.random() * 10
+  // 随机起始位置，错开步调
+  const delay = -(Math.random() * duration)
+  // 框高120px，头像36px，可用范围 0~84px
+  const maxTop = 120 - 36
+  const topPx = total <= 1 ? maxTop / 2 : (idx / (total - 1)) * maxTop
+  // 走路弹跳速度
+  const bounceSpeed = 0.3 + Math.random() * 0.2
+
+  return {
+    top: `${Math.round(topPx)}px`,
+    animationDuration: `${duration.toFixed(1)}s`,
+    animationDelay: `${delay.toFixed(1)}s`,
+    '--bounce-speed': `${bounceSpeed.toFixed(2)}s`
+  }
+}
+
+async function fetchExplorers() {
+  try {
+    const res = await getMyAdventurersApi()
+    const all = res.data.data || []
+    // 取最多5个冒险家用于动画展示
+    const selected =
+      all.length <= 5 ? all : all.sort(() => Math.random() - 0.5).slice(0, 5)
+    exploringAdventurers.value = selected.map((adv, idx) => ({
+      ...adv,
+      direction: idx % 2 === 0 ? 'walk-right' : 'walk-left',
+      animStyle: buildExplorerStyle(idx, selected.length)
+    }))
+  } catch {
+    // 获取失败不影响主流程
+  }
+}
+
 // ── 初始化 ──
 onMounted(() => {
   fetchDungeonInfo()
+  fetchExplorers()
   calcOutput()
   calcElapsedTime()
   outputTimer = setInterval(() => {
@@ -809,5 +870,106 @@ onUnmounted(() => {
   letter-spacing: 0.1em;
   padding: 12px 32px;
   margin-left: 0px !important;
+}
+
+/* ── 冒险家探索动画 ── */
+.dungeon-explorer-box {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(200, 160, 80, 0.3);
+  backdrop-filter: blur(2px);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.15);
+  height: 120px;
+  position: relative;
+}
+
+.dungeon-explorer-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.dungeon-explorer {
+  position: absolute;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  width: 36px;
+}
+
+.dungeon-explorer.walk-right {
+  animation-name: explorerMoveRight;
+}
+
+.dungeon-explorer.walk-left {
+  animation-name: explorerMoveLeft;
+}
+
+.dungeon-explorer.walk-left .dungeon-explorer-avatar {
+  transform: scaleX(-1);
+}
+
+/* 头像样式 */
+.dungeon-explorer-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 215, 0, 0.7);
+  box-shadow:
+    0 0 8px rgba(255, 200, 50, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* 走路上下弹跳 */
+.dungeon-explorer-bounce {
+  animation: explorerBounce var(--bounce-speed, 0.35s) ease-in-out infinite;
+}
+
+/* 从左到右穿越框体 */
+@keyframes explorerMoveRight {
+  0% {
+    left: -40px;
+    opacity: 0;
+  }
+  3% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% + 4px);
+    opacity: 0;
+  }
+}
+
+/* 从右到左穿越框体 */
+@keyframes explorerMoveLeft {
+  0% {
+    left: calc(100% + 4px);
+    opacity: 0;
+  }
+  3% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 1;
+  }
+  100% {
+    left: -40px;
+    opacity: 0;
+  }
+}
+
+/* 走路弹跳效果 */
+@keyframes explorerBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 </style>

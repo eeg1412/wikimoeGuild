@@ -1,0 +1,1 @@
+import{g as e}from"./request-BFkqSOeO.js";function s(t){return e.post("/auth/send-code",t)}function n(t){return e.post("/auth/register",t)}function o(t){return e.post("/auth/login",t)}function u(t){return e.post("/auth/reset-password",t)}function a(){return e.get("/auth/me")}export{u as a,a as g,o as l,n as r,s};
