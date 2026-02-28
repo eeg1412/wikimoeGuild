@@ -6,12 +6,13 @@ import * as runeStoneService from '../../services/game/runeStoneService.js'
 export async function listMyRuneStones(req, res, next) {
   try {
     const accountId = req.player.id
-    const { page, pageSize, rarity, equipped } = req.query
+    const { page, pageSize, rarity, equipped, sort } = req.query
     const result = await runeStoneService.listMyRuneStones(accountId, {
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
       rarity,
-      equipped
+      equipped,
+      sort
     })
     res.success(result, '获取符文石列表成功')
   } catch (error) {

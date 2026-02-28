@@ -313,7 +313,8 @@ export async function challengeLegion(accountId, formationSlot) {
       // 必掉传说级符文石
       const legendaryRuneStone = await runeStoneService.generateRuneStone(
         accountId,
-        'legendary'
+        'legendary',
+        currentLevel
       )
 
       result.upgraded = true

@@ -469,14 +469,17 @@ export async function digCell(accountId, mineId, row, col, formationSlot) {
         const gameSettings = global.$globalConfig?.gameSettings || {}
         const normalRate = gameSettings.normalRuneStoneRate ?? 8000
         const rareRate = gameSettings.rareRuneStoneRate ?? 1500
-        const rarityRoll = Math.floor(Math.random() * 10000)
+        const legendaryRate = gameSettings.legendaryRuneStoneRate ?? 500
+        const totalRarityRate = normalRate + rareRate + legendaryRate
+        const rarityRoll = Math.floor(Math.random() * totalRarityRate)
         let rarity
         if (rarityRoll < normalRate) rarity = 'normal'
         else if (rarityRoll < normalRate + rareRate) rarity = 'rare'
         else rarity = 'legendary'
         result.runeStone = await runeStoneService.generateRuneStone(
           accountId,
-          rarity
+          rarity,
+          mine.level
         )
 
         // 记录动态：矿场获得符文石
@@ -647,7 +650,7 @@ function generateMineLegion(level) {
     for (let i = 0; i < demonCount; i++) {
       demons.push(
         createMineDemon(
-          1,
+          level,
           ELEMENTS,
           allBuffTypes,
           allPreferences,
@@ -703,7 +706,7 @@ function createMineDemon(
   const preference =
     allPreferences[Math.floor(Math.random() * allPreferences.length)]
 
-  const remaining = Math.max(comprehensiveLevel - 4, 0)
+  const remaining = Math.max(comprehensiveLevel - 1, 0)
   const parts = [0, 0, 0, 0]
   for (let i = 0; i < remaining; i++) {
     parts[Math.floor(Math.random() * 4)]++

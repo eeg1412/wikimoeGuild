@@ -20,7 +20,7 @@ global.$DBinited = false // 全局变量，表示是否已完成初始化
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // 生产环境静态资源目录
-const CLIENT_DIST = path.resolve(__dirname, '../front')
+const CLIENT_DIST = path.resolve(__dirname, './front')
 
 const app = express()
 

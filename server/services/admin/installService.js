@@ -6,7 +6,7 @@ import GlobalConfig from '../../models/globalConfigs.js'
 import { initGlobalConfig } from '../../config/globalConfig.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const LOCK_FILE = path.resolve(__dirname, '../../inited.lock')
+const LOCK_FILE = path.resolve(__dirname, '../../lock/inited.lock')
 
 /**
  * 判断是否已完成初始化

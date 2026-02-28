@@ -5,6 +5,6 @@ logs/
 *.log
 .DS_Store
 server/keys/
-/server/inited.lock
+/server/lock/inited.lock
 /server/public/
 /server/utils/ip2location/

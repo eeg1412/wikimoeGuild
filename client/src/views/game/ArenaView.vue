@@ -65,7 +65,7 @@
       </div>
 
       <!-- ===== 未报名状态 ===== -->
-      <template v-if="!arenaInfo.registered">
+      <template v-if="!arenaInfo.registration">
         <div class="rpg-card rounded-xl p-4 mb-4 text-center">
           <p class="text-gray-500 dark:text-gray-400 mb-3">你还未报名本赛季</p>
           <p class="text-xs text-red-400 mb-3">
@@ -804,8 +804,8 @@ async function handleRegister() {
     await fetchArenaInfo()
     // 自动加载匹配
     fetchMatchList()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '报名失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     registerLoading.value = false
   }
@@ -852,8 +852,8 @@ async function handleChallenge(opponent) {
     // 刷新状态
     await fetchArenaInfo()
     await fetchPlayerInfo()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '挑战失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     challengeLoading.value = null
   }
@@ -899,8 +899,8 @@ async function handleViewLogDetail(log) {
   try {
     const res = await getBattleLogDetailApi(log._id)
     logDetail.value = res.data.data || null
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '获取详情失败')
+  } catch {
+    // 错误已由拦截器处理
     logDetailVisible.value = false
   } finally {
     logDetailLoading.value = false

@@ -43,7 +43,7 @@
       <!-- 5×5 棋盘 -->
       <div class="mb-4">
         <p class="text-xs text-gray-400 text-center mb-2">
-          ← 前排（面向敌人） ← 后排
+          ↑ 前排（面向敌人）· ↓ 后排
         </p>
         <div class="grid-board mx-auto">
           <div v-for="row in 5" :key="row" class="grid-row">
@@ -54,6 +54,7 @@
               :class="{ 'grid-cell--occupied': getCell(row - 1, col - 1) }"
               @click="handleCellClick(row - 1, col - 1)"
             >
+              <span class="grid-cell-seq">{{ (row - 1) * 5 + col }}</span>
               <template v-if="getCell(row - 1, col - 1)">
                 <img
                   :src="getAdvAvatarUrl(getCell(row - 1, col - 1))"
@@ -106,6 +107,7 @@
       title="选择冒险家"
       width="340px"
       align-center
+      :destroy-on-close="false"
     >
       <div v-if="adventurersLoading" class="text-center py-6">
         <span class="animate-spin inline-block text-2xl">⏳</span>
@@ -151,7 +153,7 @@
               </p>
               <p class="text-[10px] text-gray-400">
                 {{ getElementName(adv.elements) }} · Lv.{{
-                  adv.comprehensiveLevel || 4
+                  adv.comprehensiveLevel || 1
                 }}
               </p>
             </div>
@@ -384,7 +386,23 @@ async function handleSave() {
       grid: gridData
     })
     ElMessage.success('阵容保存成功！')
-    await fetchFormations()
+    // 更新本地数据而不是重新加载，避免页面抖动
+    const existIdx = allFormations.value.findIndex(
+      f => f.slot === currentSlot.value
+    )
+    const savedFormation = {
+      slot: currentSlot.value,
+      name: formationName.value || `阵容 ${currentSlot.value}`,
+      grid: grid.value
+    }
+    if (existIdx >= 0) {
+      allFormations.value[existIdx] = {
+        ...allFormations.value[existIdx],
+        ...savedFormation
+      }
+    } else {
+      allFormations.value.push(savedFormation)
+    }
   } catch (e) {
     // 错误已由拦截器处理
   } finally {
@@ -411,7 +429,10 @@ async function handleDelete() {
     ElMessage.success('阵容已删除')
     grid.value = createEmptyGrid()
     formationName.value = ''
-    await fetchFormations()
+    // 更新本地数据而不是重新加载，避免页面抖动
+    allFormations.value = allFormations.value.filter(
+      f => f.slot !== currentSlot.value
+    )
   } catch (e) {
     // 错误已由拦截器处理
   } finally {
@@ -479,6 +500,17 @@ onMounted(async () => {
 .grid-cell--occupied {
   border-style: solid;
   border-color: rgba(200, 160, 80, 0.6);
+}
+
+.grid-cell-seq {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: 9px;
+  color: rgba(140, 120, 80, 0.6);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .dark .grid-cell {

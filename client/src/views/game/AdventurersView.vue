@@ -79,11 +79,23 @@
 
         <!-- 综合等级 -->
         <p class="text-xs text-yellow-500 mt-1 font-mono">
-          Lv.{{
-            adv.comprehensiveLevel ||
-            adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel
-          }}
+          Lv.{{ adv.comprehensiveLevel || 1 }}
         </p>
+
+        <!-- 装备状态标签 -->
+        <span
+          v-if="adv.runeStone"
+          class="mt-1 text-[10px] text-green-400 border border-green-400 px-1 py-0 rounded-full"
+        >
+          💎装备中
+        </span>
+      </div>
+
+      <!-- 快捷入口 -->
+      <div class="col-span-full text-center mt-4 mb-2">
+        <el-button type="primary" text size="small" @click="goToFormation">
+          🏗️ 前往阵容配置
+        </el-button>
       </div>
     </div>
 
@@ -355,6 +367,10 @@ const { isLoggedIn, fetchPlayerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace('/game/login')
+}
+
+function goToFormation() {
+  router.push('/game/formation')
 }
 
 // ── 数据 ──

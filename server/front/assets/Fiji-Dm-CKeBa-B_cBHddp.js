@@ -1,0 +1,1 @@
+const a=new Map([["translation",""],["Central",new Map([["translation","中部区"],["Nausori",""],["Suva",""]])],["Rotuma",new Map([["translation",""],["Gaol",""]])],["Eastern",new Map([["translation",""],["Kadavu",""],["Waidradranu Settlement",""],["Wailevu",""]])],["Western",new Map([["translation","西部区"],["Lautoka",""],["Nadi",""]])]]);export{a as default};

@@ -6,8 +6,27 @@
         💎 符文石
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        管理你的符文石，分解或升级
+        管理你的符文石，分解、升级或合成
       </p>
+    </div>
+
+    <!-- 排序 & 筛选 -->
+    <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
+      <el-select
+        v-model="sortMode"
+        size="small"
+        style="width: 140px"
+        @change="handleSortChange"
+      >
+        <el-option label="入手顺序（新→旧）" value="newest" />
+        <el-option label="入手顺序（旧→新）" value="oldest" />
+        <el-option label="等级（高→低）" value="level_desc" />
+        <el-option label="等级（低→高）" value="level_asc" />
+        <el-option label="稀有度优先" value="rarity" />
+      </el-select>
+      <el-button type="warning" size="small" @click="openSynthesisDialog">
+        🔮 合成
+      </el-button>
     </div>
 
     <!-- 加载状态 -->
@@ -61,6 +80,12 @@
               >
                 已装备
               </span>
+              <span
+                v-if="rs.listedOnMarket"
+                class="text-xs text-orange-400 border border-orange-400 px-1.5 py-0.5 rounded-full"
+              >
+                出售中
+              </span>
               <span class="text-gray-400">▶</span>
             </div>
           </div>
@@ -104,6 +129,9 @@
             class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
           >
             {{ skill.skillId || skill }}
+            <template v-if="getSkillInfo(skill.skillId || skill)">
+              - {{ getSkillInfo(skill.skillId || skill).label }}
+            </template>
           </div>
         </div>
 
@@ -146,6 +174,241 @@
         </p>
       </div>
     </el-dialog>
+
+    <!-- ==================== 符文石合成弹窗 ==================== -->
+    <el-dialog
+      v-model="synthesisVisible"
+      title="🔮 符文石合成"
+      width="380px"
+      align-center
+    >
+      <!-- 第 1 步: 选择符文石 -->
+      <template v-if="synthesisStep === 'select'">
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          选择两个<strong>相同稀有度</strong>的未装备符文石进行合成。合成后素材符文石将被销毁。
+        </p>
+
+        <!-- 主符文石 -->
+        <div class="mb-3">
+          <p
+            class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1"
+          >
+            主符文石
+          </p>
+          <div
+            class="rpg-card rounded-lg p-3 cursor-pointer border-2 transition-colors"
+            :class="
+              synthesisMain
+                ? 'border-yellow-400'
+                : 'border-dashed border-gray-300 dark:border-gray-600'
+            "
+            @click="pickSynthesisSlot('main')"
+          >
+            <div v-if="synthesisMain" class="flex items-center gap-2">
+              <div
+                class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                :class="rarityBgClass(synthesisMain.rarity)"
+              >
+                💎
+              </div>
+              <div>
+                <p
+                  class="text-sm font-semibold"
+                  :class="rarityTextClass(synthesisMain.rarity)"
+                >
+                  {{ rarityName(synthesisMain.rarity) }}符文石 Lv.{{
+                    synthesisMain.level
+                  }}
+                </p>
+              </div>
+            </div>
+            <p v-else class="text-gray-400 text-sm text-center">
+              点击选择主符文石
+            </p>
+          </div>
+        </div>
+
+        <!-- 素材符文石 -->
+        <div class="mb-4">
+          <p
+            class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1"
+          >
+            素材符文石（将被销毁）
+          </p>
+          <div
+            class="rpg-card rounded-lg p-3 cursor-pointer border-2 transition-colors"
+            :class="
+              synthesisMaterial
+                ? 'border-red-400'
+                : 'border-dashed border-gray-300 dark:border-gray-600'
+            "
+            @click="pickSynthesisSlot('material')"
+          >
+            <div v-if="synthesisMaterial" class="flex items-center gap-2">
+              <div
+                class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                :class="rarityBgClass(synthesisMaterial.rarity)"
+              >
+                💎
+              </div>
+              <div>
+                <p
+                  class="text-sm font-semibold"
+                  :class="rarityTextClass(synthesisMaterial.rarity)"
+                >
+                  {{ rarityName(synthesisMaterial.rarity) }}符文石 Lv.{{
+                    synthesisMaterial.level
+                  }}
+                </p>
+              </div>
+            </div>
+            <p v-else class="text-gray-400 text-sm text-center">
+              点击选择素材符文石
+            </p>
+          </div>
+        </div>
+
+        <el-button
+          type="primary"
+          class="w-full"
+          :loading="synthesisPreviewLoading"
+          :disabled="
+            !synthesisMain || !synthesisMaterial || synthesisPreviewLoading
+          "
+          @click="handlePreviewSynthesis"
+        >
+          🔮 预览合成结果
+        </el-button>
+      </template>
+
+      <!-- 第 2 步: 预览结果 -->
+      <template v-else-if="synthesisStep === 'preview'">
+        <div v-if="synthesisPreview" class="space-y-3">
+          <!-- 预览卡片 -->
+          <div class="text-center">
+            <div
+              class="inline-flex w-14 h-14 rounded-2xl items-center justify-center text-2xl mb-1"
+              :class="rarityBgClass(synthesisPreview.rarity)"
+            >
+              💎
+            </div>
+            <p
+              class="text-lg font-bold"
+              :class="rarityTextClass(synthesisPreview.rarity)"
+            >
+              {{ rarityName(synthesisPreview.rarity) }}符文石
+            </p>
+            <p class="text-sm text-gray-400">
+              等级 {{ synthesisPreview.level }}
+            </p>
+          </div>
+
+          <!-- 主动技能 -->
+          <div>
+            <h4 class="text-sm font-semibold text-yellow-500 mb-1">
+              ⚡ 主动技能
+            </h4>
+            <div
+              v-for="(skill, idx) in synthesisPreview.activeSkills"
+              :key="idx"
+              class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
+            >
+              {{ skill.skillId || skill }}
+              <template v-if="getSkillInfo(skill.skillId || skill)">
+                - {{ getSkillInfo(skill.skillId || skill).label }}
+              </template>
+            </div>
+          </div>
+
+          <!-- 被动增益 -->
+          <div>
+            <h4 class="text-sm font-semibold text-blue-400 mb-1">
+              🔮 被动增益
+            </h4>
+            <div
+              v-for="(buff, idx) in synthesisPreview.passiveBuffs"
+              :key="idx"
+              class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
+            >
+              <span>{{ buffTypeName(buff.buffType) }}</span>
+              <span class="font-mono text-yellow-500"
+                >+{{ buff.buffLevel }}</span
+              >
+            </div>
+          </div>
+
+          <p class="text-xs text-red-400 text-center">
+            ⚠️ 不论接受或放弃，素材符文石都将被销毁
+          </p>
+
+          <!-- 操作按钮 -->
+          <div class="flex gap-3 pt-1">
+            <el-button
+              type="danger"
+              class="flex-1"
+              :loading="synthesisConfirmLoading"
+              :disabled="synthesisConfirmLoading"
+              @click="handleConfirmSynthesis(false)"
+            >
+              放弃合成
+            </el-button>
+            <el-button
+              type="primary"
+              class="flex-1"
+              :loading="synthesisConfirmLoading"
+              :disabled="synthesisConfirmLoading"
+              @click="handleConfirmSynthesis(true)"
+            >
+              接受合成
+            </el-button>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- ==================== 选择符文石弹窗 ==================== -->
+    <el-dialog
+      v-model="pickRuneVisible"
+      title="选择符文石"
+      width="360px"
+      align-center
+    >
+      <div
+        v-if="pickableRuneStones.length === 0"
+        class="text-center py-8 text-gray-400"
+      >
+        无可选的符文石
+      </div>
+      <div v-else class="space-y-2 max-h-[50vh] overflow-y-auto">
+        <div
+          v-for="rs in pickableRuneStones"
+          :key="rs._id"
+          class="rpg-card rounded-lg p-3 cursor-pointer hover:border-yellow-400 transition-colors border"
+          @click="confirmPick(rs)"
+        >
+          <div class="flex items-center gap-2">
+            <div
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+              :class="rarityBgClass(rs.rarity)"
+            >
+              💎
+            </div>
+            <div class="flex-1">
+              <p
+                class="text-sm font-semibold"
+                :class="rarityTextClass(rs.rarity)"
+              >
+                {{ rarityName(rs.rarity) }}符文石 Lv.{{ rs.level }}
+              </p>
+              <p class="text-xs text-gray-400">
+                主动 {{ rs.activeSkills?.length || 0 }} · 被动
+                {{ rs.passiveBuffs?.length || 0 }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -157,9 +420,12 @@ import {
   getMyRuneStonesApi,
   getRuneStoneDetailApi,
   decomposeRuneStoneApi,
-  upgradeRuneStoneApi
+  upgradeRuneStoneApi,
+  previewSynthesisApi,
+  confirmSynthesisApi
 } from '@/api/game/runeStone.js'
 import { useGameUser } from '@/composables/useGameUser.js'
+import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
 
 const router = useRouter()
 const { isLoggedIn } = useGameUser()
@@ -171,11 +437,16 @@ if (!isLoggedIn.value) {
 // ── 列表 ──
 const loading = ref(false)
 const runeStones = ref([])
+const sortMode = ref('newest')
+
+function handleSortChange() {
+  fetchRuneStones()
+}
 
 async function fetchRuneStones() {
   loading.value = true
   try {
-    const res = await getMyRuneStonesApi()
+    const res = await getMyRuneStonesApi({ sort: sortMode.value })
     runeStones.value = res.data.data?.list || []
   } catch {
     runeStones.value = []
@@ -230,6 +501,20 @@ function buffTypeName(t) {
   return (
     { attack: '攻击', defense: '防御', speed: '速度', san: 'SAN值' }[t] || t
   )
+}
+
+// ── 技能信息查询 ──
+const allSkillsMap = computed(() => {
+  const map = new Map()
+  const skills = runeStoneActiveSkillDataBase()
+  for (const s of skills) {
+    map.set(s.value, s)
+  }
+  return map
+})
+
+function getSkillInfo(skillId) {
+  return allSkillsMap.value.get(skillId) || null
 }
 
 // ── 分解计算 ──
@@ -288,6 +573,120 @@ async function handleUpgrade() {
     // 错误已由拦截器处理
   } finally {
     upgradeLoading.value = false
+  }
+}
+
+// ── 合成系统 ──
+const synthesisVisible = ref(false)
+const synthesisStep = ref('select') // 'select' | 'preview'
+const synthesisMain = ref(null)
+const synthesisMaterial = ref(null)
+const synthesisPreviewLoading = ref(false)
+const synthesisPreview = ref(null)
+const synthesisPreviewToken = ref('')
+const synthesisConfirmLoading = ref(false)
+
+// 选择器
+const pickRuneVisible = ref(false)
+const pickingSlot = ref('') // 'main' | 'material'
+
+function openSynthesisDialog() {
+  synthesisStep.value = 'select'
+  synthesisMain.value = null
+  synthesisMaterial.value = null
+  synthesisPreview.value = null
+  synthesisPreviewToken.value = ''
+  synthesisVisible.value = true
+}
+
+// 可选符文石：未装备、未上架，排除另一个槽位已选的
+const pickableRuneStones = computed(() => {
+  const excludeId =
+    pickingSlot.value === 'main'
+      ? synthesisMaterial.value?._id
+      : synthesisMain.value?._id
+  const targetRarity =
+    pickingSlot.value === 'material' && synthesisMain.value
+      ? synthesisMain.value.rarity
+      : null
+
+  return runeStones.value.filter(rs => {
+    if (rs.equippedBy) return false
+    if (rs.listedOnMarket) return false
+    if (rs._id === excludeId) return false
+    if (targetRarity && rs.rarity !== targetRarity) return false
+    return true
+  })
+})
+
+function pickSynthesisSlot(slot) {
+  pickingSlot.value = slot
+  pickRuneVisible.value = true
+}
+
+function confirmPick(rs) {
+  if (pickingSlot.value === 'main') {
+    synthesisMain.value = rs
+    // 如果素材稀有度不匹配，清空素材
+    if (
+      synthesisMaterial.value &&
+      synthesisMaterial.value.rarity !== rs.rarity
+    ) {
+      synthesisMaterial.value = null
+    }
+  } else {
+    synthesisMaterial.value = rs
+  }
+  pickRuneVisible.value = false
+}
+
+async function handlePreviewSynthesis() {
+  if (!synthesisMain.value || !synthesisMaterial.value) return
+  synthesisPreviewLoading.value = true
+  try {
+    const res = await previewSynthesisApi({
+      mainRuneStoneId: synthesisMain.value._id,
+      materialRuneStoneId: synthesisMaterial.value._id
+    })
+    const data = res.data.data
+    synthesisPreview.value = data.preview
+    synthesisPreviewToken.value = data.previewToken
+    synthesisStep.value = 'preview'
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    synthesisPreviewLoading.value = false
+  }
+}
+
+async function handleConfirmSynthesis(accept) {
+  const actionLabel = accept ? '接受合成' : '放弃合成'
+  const confirmMsg = accept
+    ? '确定接受合成结果？主符文石将被替换为合成结果，素材符文石将被销毁。'
+    : '确定放弃合成？素材符文石仍将被销毁，主符文石保持不变。'
+  try {
+    await ElMessageBox.confirm(confirmMsg, actionLabel, {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+
+  synthesisConfirmLoading.value = true
+  try {
+    await confirmSynthesisApi({
+      previewToken: synthesisPreviewToken.value,
+      accept
+    })
+    ElMessage.success(accept ? '合成成功！' : '已放弃合成，素材符文石已销毁')
+    synthesisVisible.value = false
+    await fetchRuneStones()
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    synthesisConfirmLoading.value = false
   }
 }
 

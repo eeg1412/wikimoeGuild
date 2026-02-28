@@ -84,6 +84,17 @@ export async function sendMailCode(req, email, type) {
     }
   }
 
+  // 注册：检查邮箱是否已被注册
+  if (type === 'register') {
+    const exists = await GamePlayerAccount.exists({ email })
+    if (exists) {
+      const err = new Error('该邮箱已被注册')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+  }
+
   // 同 IP 或同邮箱 1 分钟只能发 1 次（仅计算成功发送的记录）
   const recentByIp = await GameMailCode.findOne({
     ip,

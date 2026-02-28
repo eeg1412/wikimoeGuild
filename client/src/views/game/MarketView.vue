@@ -59,6 +59,20 @@
           >
             📤 出售水晶给官方
           </h3>
+          <!-- 玩家水晶持有量 -->
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <div
+              v-for="c in crystalList"
+              :key="'own-' + c.key"
+              class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-xs"
+            >
+              <span>{{ c.icon }}</span>
+              <span class="text-gray-600 dark:text-gray-300">{{ c.name }}</span>
+              <span class="ml-auto font-mono" :style="{ color: c.color }">{{
+                playerInventory[c.key] ?? 0
+              }}</span>
+            </div>
+          </div>
           <div class="flex items-center gap-2 mb-3">
             <el-select
               v-model="sellCrystalType"
@@ -177,21 +191,21 @@
           size="small"
           @click="switchMaterialTab('sell')"
         >
-          出售订单
+          贩卖中
         </el-button>
         <el-button
           :type="materialSubTab === 'buy' ? 'primary' : 'default'"
           size="small"
           @click="switchMaterialTab('buy')"
         >
-          求购订单
+          求购中
         </el-button>
         <el-button
           :type="materialSubTab === 'my' ? 'warning' : 'default'"
           size="small"
           @click="switchMaterialTab('my')"
         >
-          我的订单
+          我的
         </el-button>
       </div>
 
@@ -223,7 +237,7 @@
       </div>
 
       <!-- 创建订单 -->
-      <div class="rpg-card rounded-xl p-4 mb-4">
+      <div v-if="materialSubTab === 'my'" class="rpg-card rounded-xl p-4 mb-4">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
           {{ materialSubTab === 'buy' ? '📝 发布求购' : '📝 发布出售' }}
         </h3>
@@ -383,19 +397,19 @@
           size="small"
           @click="switchRsTab('market')"
         >
-          市场列表
+          贩卖中
         </el-button>
         <el-button
           :type="rsSubTab === 'my' ? 'warning' : 'default'"
           size="small"
           @click="switchRsTab('my')"
         >
-          我的上架
+          我的
         </el-button>
       </div>
 
       <!-- 上架符文石 -->
-      <div class="rpg-card rounded-xl p-4 mb-4">
+      <div v-if="rsSubTab === 'my'" class="rpg-card rounded-xl p-4 mb-4">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
           📝 上架符文石
         </h3>
@@ -554,9 +568,11 @@ import {
   listRuneStoneListingsApi,
   createRuneStoneListingApi,
   buyRuneStoneListingApi,
-  cancelRuneStoneListingApi
+  cancelRuneStoneListingApi,
+  listMyRuneStoneListingsApi
 } from '@/api/game/market.js'
 import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
+import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 
 const router = useRouter()
@@ -602,6 +618,16 @@ const buyCrystalType = ref('attackCrystal')
 const buyCrystalQty = ref(1)
 const buyOfficialLoading = ref(false)
 
+// 玩家水晶库存
+const playerInventory = ref({})
+
+async function fetchPlayerInventory() {
+  try {
+    const res = await getMyInventoryApi()
+    playerInventory.value = res.data.data || {}
+  } catch {}
+}
+
 async function fetchOfficialInfo() {
   officialLoading.value = true
   try {
@@ -633,8 +659,9 @@ async function handleSellToOfficial() {
     ElMessage.success('出售成功！')
     await fetchOfficialInfo()
     await fetchPlayerInfo()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '出售失败')
+    await fetchPlayerInventory()
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     sellOfficialLoading.value = false
   }
@@ -660,8 +687,9 @@ async function handleBuyFromOfficial() {
     ElMessage.success('购买成功！')
     await fetchOfficialInfo()
     await fetchPlayerInfo()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '购买失败')
+    await fetchPlayerInventory()
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     buyOfficialLoading.value = false
   }
@@ -748,8 +776,8 @@ async function handleCreateMaterialOrder() {
     ElMessage.success('订单发布成功！')
     await fetchMaterialOrders()
     await fetchPlayerInfo()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '发布失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     createMatOrderLoading.value = false
   }
@@ -779,8 +807,8 @@ async function handleFulfillMaterialOrder(order) {
     ElMessage.success('交易完成！')
     await fetchMaterialOrders()
     await fetchPlayerInfo()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '交易失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     fulfillMatLoading.value = null
   }
@@ -803,8 +831,8 @@ async function handleCancelMaterialOrder(order) {
     ElMessage.success('已下架，资源已退还')
     await fetchMaterialOrders()
     await fetchPlayerInfo()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '下架失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     cancelMatLoading.value = null
   }
@@ -833,12 +861,20 @@ async function fetchRuneStoneListings() {
   rsListingsLoading.value = true
   try {
     const params = { page: rsPage.value, pageSize: rsPageSize }
-    if (rsSubTab.value === 'my') params.mine = true
-    const res = await listRuneStoneListingsApi(params)
-    rsListings.value = (res.data.data?.list || []).map(l => ({
-      ...l,
-      isMine: rsSubTab.value === 'my' || l.isMine
-    }))
+    let res
+    if (rsSubTab.value === 'my') {
+      res = await listMyRuneStoneListingsApi(params)
+      rsListings.value = (res.data.data?.list || []).map(l => ({
+        ...l,
+        isMine: true
+      }))
+    } else {
+      res = await listRuneStoneListingsApi(params)
+      rsListings.value = (res.data.data?.list || []).map(l => ({
+        ...l,
+        isMine: false
+      }))
+    }
     rsListingsTotal.value = res.data.data?.total || 0
   } catch {
     rsListings.value = []
@@ -871,8 +907,8 @@ async function handleCreateRuneStoneListing() {
     ElMessage.success('符文石已上架！')
     rsListForm.runeStoneId = ''
     await fetchRuneStoneListings()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '上架失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     createRsListingLoading.value = false
   }
@@ -895,8 +931,8 @@ async function handleBuyRuneStone(listing) {
     ElMessage.success('购买成功！')
     await fetchRuneStoneListings()
     await fetchPlayerInfo()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '购买失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     buyRsLoading.value = null
   }
@@ -918,8 +954,8 @@ async function handleCancelRuneStoneListing(listing) {
     await cancelRuneStoneListingApi(listing._id)
     ElMessage.success('已下架，符文石已退还')
     await fetchRuneStoneListings()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '下架失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     cancelRsLoading.value = null
   }
@@ -950,6 +986,7 @@ function rarityBgClass(r) {
 
 onMounted(() => {
   fetchOfficialInfo()
+  fetchPlayerInventory()
 })
 </script>
 

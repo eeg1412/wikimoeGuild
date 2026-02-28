@@ -298,8 +298,8 @@ async function handleClaim() {
     detailMail.value.claimed = true
     // 刷新玩家信息（金币等）
     await fetchPlayerInfo()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '领取失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     claimLoading.value = false
   }
@@ -328,8 +328,8 @@ async function handleDelete() {
     detailVisible.value = false
     await fetchMails()
     await fetchUnread()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '删除失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     deleteLoading.value = false
   }

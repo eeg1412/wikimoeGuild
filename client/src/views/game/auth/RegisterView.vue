@@ -253,7 +253,7 @@ async function handleSubmit() {
     const { accessToken, refreshToken, playerInfo } = res.data.data
     setLogin(accessToken, refreshToken, playerInfo)
     ElMessage.success('注册成功，欢迎加入公会！')
-    router.push('/game/adventurers')
+    router.push('/game/home')
   } catch {
     // 错误已由拦截器处理
   } finally {

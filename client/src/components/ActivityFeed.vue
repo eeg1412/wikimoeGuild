@@ -21,8 +21,16 @@
         class="activity-card rounded-xl p-3"
       >
         <div class="flex items-start gap-2">
-          <!-- 类型图标 -->
-          <span class="text-lg shrink-0 mt-0.5">{{ typeIcon(item.type) }}</span>
+          <!-- 公会头像 -->
+          <img
+            v-if="item.account"
+            :src="getGuildIconUrl(item)"
+            class="w-7 h-7 rounded-full shrink-0 mt-0.5 border border-gray-200 dark:border-gray-600 object-cover"
+          />
+          <!-- 类型图标（无账号时回退） -->
+          <span v-else class="text-lg shrink-0 mt-0.5">{{
+            typeIcon(item.type)
+          }}</span>
           <div class="min-w-0 flex-1">
             <p
               class="text-sm font-semibold text-gray-700 dark:text-gray-200 break-all"
@@ -76,6 +84,15 @@ function typeIcon(type) {
     market_listing: '🏪'
   }
   return icons[type] || '📌'
+}
+
+function getGuildIconUrl(item) {
+  const id = item.account
+  if (!id) return ''
+  if (item.hasCustomGuildIcon) {
+    return `/uploads/custom-guild-icon/${id}.png`
+  }
+  return `/uploads/default-guild-icon/${id}.png`
 }
 
 function formatTime(t) {

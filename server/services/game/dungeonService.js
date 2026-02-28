@@ -196,7 +196,10 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     attackCrystals + defenseCrystals + speedCrystals + sanCrystals
   // 每个水晶都有一次掉落机会
   for (let i = 0; i < totalCrystals; i++) {
-    const dropped = await runeStoneService.tryDropRuneStone(accountId)
+    const dropped = await runeStoneService.tryDropRuneStone(
+      accountId,
+      playerInfo.dungeonsLevel
+    )
     if (dropped) {
       droppedRuneStone = dropped
       break // 一次结算最多掉一个

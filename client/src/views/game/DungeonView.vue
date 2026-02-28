@@ -112,7 +112,7 @@
           ✨ 收取水晶
         </el-button>
 
-        <!-- 切换地牢 -->
+        <!-- 切换迷宫 -->
         <el-button
           type="info"
           size="large"
@@ -127,7 +127,7 @@
           "
           @click="handleSwitch"
         >
-          🔄 切换地牢
+          🔄 切换迷宫
         </el-button>
 
         <!-- 挑战军团 -->
@@ -142,7 +142,7 @@
           {{
             battleCooldown > 0
               ? `⚔️ 冷却中 (${battleCooldown}s)`
-              : '⚔️ 挑战地牢军团'
+              : '⚔️ 挑战迷宫军团'
           }}
         </el-button>
       </div>
@@ -196,7 +196,7 @@
       <!-- 军团挑战弹窗 -->
       <el-dialog
         v-model="showLegionDialog"
-        title="⚔️ 挑战地牢军团"
+        title="⚔️ 挑战迷宫军团"
         width="380px"
         align-center
       >
@@ -297,7 +297,7 @@
             v-if="battleResultDisplay === 'win'"
             class="text-sm text-green-400"
           >
-            <p>地牢等级提升！</p>
+            <p>迷宫等级提升！</p>
             <p
               v-if="battleResult.droppedRuneStone"
               class="text-yellow-400 mt-1"
@@ -398,7 +398,7 @@ function rarityName(r) {
   return { normal: '普通', rare: '稀有', legendary: '传说' }[r] || r
 }
 
-// ── 地牢信息 ──
+// ── 迷宫信息 ──
 const dungeonInfo = ref({})
 
 async function fetchDungeonInfo() {
@@ -575,7 +575,7 @@ async function handleSettle() {
   }
 }
 
-// ── 切换地牢 ──
+// ── 切换迷宫 ──
 const switchLoading = ref(false)
 const discoveredMine = ref(null)
 const showMineDiscovery = ref(false)
@@ -583,7 +583,7 @@ const showMineDiscovery = ref(false)
 async function handleSwitch() {
   switchLoading.value = true
   try {
-    // 切换地牢时自动收取水晶
+    // 切换迷宫时自动收取水晶
     if (currentOutput.value >= 1) {
       try {
         const settleRes = await settleCrystalsApi()
@@ -694,7 +694,7 @@ function onBattleAnimationDone() {
   showBattleAnimation.value = false
   battleResultVisible.value = true
   if (battleResult.value?.battleResult?.winner === 'attacker') {
-    ElMessage.success('胜利！地牢等级提升！')
+    ElMessage.success('胜利！迷宫等级提升！')
   }
 }
 
@@ -796,5 +796,6 @@ onUnmounted(() => {
   font-size: 1rem;
   letter-spacing: 0.1em;
   padding: 12px 32px;
+  margin-left: 0px !important;
 }
 </style>

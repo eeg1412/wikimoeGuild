@@ -80,7 +80,7 @@ const gameAdventurerSchema = new mongoose.Schema(
       type: Number,
       min: 1,
       max: 9999999,
-      default: 4
+      default: 1
     },
     // 装备的符文石
     runeStone: {

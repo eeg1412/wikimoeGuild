@@ -112,6 +112,11 @@ gameRequest.interceptors.response.use(
       ElMessage.error('请求失败，请稍后重试')
     }
 
+    // 标记错误已由拦截器处理，避免调用方重复弹出
+    if (error.response) {
+      error.response._errorHandled = true
+    }
+
     return Promise.reject(error)
   }
 )

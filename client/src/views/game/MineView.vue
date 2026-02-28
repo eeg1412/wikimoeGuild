@@ -167,6 +167,7 @@
               placeholder="选择阵容"
               size="small"
               class="flex-1"
+              @change="handleFormationSlotChange"
             >
               <el-option
                 v-for="f in formations"
@@ -190,7 +191,16 @@
                 :disabled="isCellDisabled(cell)"
                 @click="handleDigCell(rIdx, cIdx, cell)"
               >
-                <template v-if="cell.revealed">
+                <template
+                  v-if="
+                    digCellPos &&
+                    digCellPos.row === rIdx &&
+                    digCellPos.col === cIdx
+                  "
+                >
+                  <span class="animate-spin inline-block">⏳</span>
+                </template>
+                <template v-else-if="cell.revealed">
                   <template v-if="cell.type === 'reward'">
                     <span v-if="cell.challengeDefeated" class="text-green-500"
                       >💎</span
@@ -444,6 +454,7 @@ const currentMineLoading = ref(false)
 const selectedFormationSlot = ref(null)
 const formations = ref([])
 const digLoading = ref(false)
+const digCellPos = ref(null) // 当前正在挖的格子位置
 
 // SSE
 let sseSource = null
@@ -496,6 +507,14 @@ async function fetchFormations() {
   try {
     const res = await getMyFormationsApi()
     formations.value = res.data.data || []
+    // 恢复上次选择的阵容
+    const saved = localStorage.getItem('mine_formation_slot')
+    if (saved) {
+      const slot = parseInt(saved)
+      if (formations.value.some(f => f.slot === slot)) {
+        selectedFormationSlot.value = slot
+      }
+    }
   } catch {}
 }
 
@@ -506,8 +525,8 @@ async function handleEnterMine(mineId) {
     currentMine.value = res.data.data || null
     activeTab.value = 'mine'
     connectSSE(mineId)
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '进入矿场失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     currentMineLoading.value = false
   }
@@ -528,6 +547,12 @@ function handleSwitchTab(tab) {
   }
 }
 
+function handleFormationSlotChange(val) {
+  if (val) {
+    localStorage.setItem('mine_formation_slot', String(val))
+  }
+}
+
 async function handleDigCell(row, col, cell) {
   if (digLoading.value) return
 
@@ -544,6 +569,7 @@ async function handleDigCell(row, col, cell) {
   }
 
   digLoading.value = true
+  digCellPos.value = { row, col }
   try {
     const res = await digCellApi(currentMine.value._id, {
       row,
@@ -585,10 +611,11 @@ async function handleDigCell(row, col, cell) {
         fetchMineList()
       }
     }
-  } catch (e) {
-    ElMessage.error(e.response?.data?.message || '挖矿失败')
+  } catch {
+    // 错误已由拦截器处理
   } finally {
     digLoading.value = false
+    digCellPos.value = null
   }
 }
 

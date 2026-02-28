@@ -22,6 +22,7 @@ export async function getFormationDetail(accountId, formationId) {
   })
     .populate({
       path: 'grid',
+      model: 'game_adventurer',
       populate: { path: 'runeStone' }
     })
     .lean()

@@ -1,0 +1,1 @@
+import{o as i,ak as s,r}from"./index-9QqDmlWo.js";function l(a=768){const n=r(!1);let e=null;function t(o){n.value=!o.matches}return i(()=>{e=window.matchMedia(`(min-width: ${a}px)`),n.value=!e.matches,e.addEventListener("change",t)}),s(()=>{e&&e.removeEventListener("change",t)}),{isMobile:n}}export{l as u};

@@ -76,7 +76,7 @@ export async function generateRuneStone(accountId, rarity, level = 1) {
  * @param {string} accountId
  * @returns {object|null} 生成的符文石或null（未掉落）
  */
-export async function tryDropRuneStone(accountId) {
+export async function tryDropRuneStone(accountId, level = 1) {
   const gameSettings = global.$globalConfig?.gameSettings || {}
   const dropRate = gameSettings.runeStoneDropRate ?? 100
 
@@ -87,9 +87,10 @@ export async function tryDropRuneStone(accountId) {
   // 二次随机稀有度
   const normalRate = gameSettings.normalRuneStoneRate ?? 8000
   const rareRate = gameSettings.rareRuneStoneRate ?? 1500
-  // legendaryRate is the rest
+  const legendaryRate = gameSettings.legendaryRuneStoneRate ?? 500
+  const totalRarityRate = normalRate + rareRate + legendaryRate
 
-  const rarityRoll = Math.floor(Math.random() * 10000)
+  const rarityRoll = Math.floor(Math.random() * totalRarityRate)
   let rarity
   if (rarityRoll < normalRate) {
     rarity = 'normal'
@@ -99,7 +100,7 @@ export async function tryDropRuneStone(accountId) {
     rarity = 'legendary'
   }
 
-  return await generateRuneStone(accountId, rarity)
+  return await generateRuneStone(accountId, rarity, level)
 }
 
 /**
@@ -107,19 +108,52 @@ export async function tryDropRuneStone(accountId) {
  */
 export async function listMyRuneStones(
   accountId,
-  { page = 1, pageSize = 20, rarity, equipped } = {}
+  { page = 1, pageSize = 20, rarity, equipped, sort = 'newest' } = {}
 ) {
   const filter = { account: accountId }
   if (rarity) filter.rarity = rarity
   if (equipped === 'true') filter.equippedBy = { $ne: null }
   if (equipped === 'false') filter.equippedBy = null
 
+  // 排序方式
+  const RARITY_ORDER = { legendary: 0, rare: 1, normal: 2 }
+  let sortOption
+  switch (sort) {
+    case 'oldest':
+      sortOption = { createdAt: 1 }
+      break
+    case 'level_desc':
+      sortOption = { level: -1, createdAt: -1 }
+      break
+    case 'level_asc':
+      sortOption = { level: 1, createdAt: -1 }
+      break
+    case 'rarity':
+      // MongoDB不支持自定义枚举排序，先查全部再内存排序
+      break
+    default:
+      sortOption = { createdAt: -1 }
+  }
+
   const total = await GameRuneStone.countDocuments(filter)
-  const list = await GameRuneStone.find(filter)
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * pageSize)
-    .limit(pageSize)
-    .lean()
+
+  let list
+  if (sort === 'rarity') {
+    // 稀有度排序需要在内存中处理
+    const allList = await GameRuneStone.find(filter).lean()
+    allList.sort((a, b) => {
+      const diff = (RARITY_ORDER[a.rarity] ?? 9) - (RARITY_ORDER[b.rarity] ?? 9)
+      if (diff !== 0) return diff
+      return new Date(b.createdAt) - new Date(a.createdAt)
+    })
+    list = allList.slice((page - 1) * pageSize, page * pageSize)
+  } else {
+    list = await GameRuneStone.find(filter)
+      .sort(sortOption)
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .lean()
+  }
 
   return { list, total }
 }

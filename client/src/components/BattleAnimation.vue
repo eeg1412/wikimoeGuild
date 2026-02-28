@@ -40,6 +40,11 @@
                 :class="cellClass(unit)"
               >
                 <template v-if="unit">
+                  <span
+                    class="battle-seq"
+                    :style="{ fontSize: Math.max(8, nameFontSize - 1) + 'px' }"
+                    >{{ idx + 1 }}</span
+                  >
                   <img
                     :src="getUnitAvatar(unit)"
                     class="battle-avatar"
@@ -95,6 +100,11 @@
                 :class="cellClass(unit)"
               >
                 <template v-if="unit">
+                  <span
+                    class="battle-seq"
+                    :style="{ fontSize: Math.max(8, nameFontSize - 1) + 'px' }"
+                    >{{ idx + 1 }}</span
+                  >
                   <img
                     :src="getUnitAvatar(unit)"
                     class="battle-avatar"
@@ -321,11 +331,13 @@ function initUnitState() {
   unitState.value = map
 }
 
-// 5x5 网格显示
+// 5x5 网格显示（攻击方翻转，使前排面向防御方）
 const attackerDisplayUnits = computed(() => {
   const grid = Array(25).fill(null)
   for (const u of props.attackerUnits) {
-    const idx = u.row * 5 + u.col
+    // 翻转行：前排 (row 0) 放到底部，后排 (row 4) 放到顶部
+    const reversedRow = 4 - u.row
+    const idx = reversedRow * 5 + u.col
     if (idx >= 0 && idx < 25) {
       grid[idx] = unitState.value.get(u.id) || u
     }
@@ -393,30 +405,35 @@ function formatLogEntry(entry) {
   if (entry.type === 'roundStart') {
     return `── 第 ${entry.round} 回合 ──`
   }
+  // 判断单位属于哪一方
+  const attackerIdSet = new Set(props.attackerUnits.map(u => u.id))
+  const getSideLabel = id => (attackerIdSet.has(id) ? '【我方】' : '【敌方】')
   if (entry.type === 'attack') {
     const counter = entry.elementCounter ? ' [克制!]' : ''
     const ko =
       entry.defenderRemainSan <= 0
         ? ' 💀击倒！'
         : ` (剩余${entry.defenderRemainSan})`
-    return `${entry.attackerName} → ${entry.defenderName} 造成 ${entry.damage} 伤害${counter}${ko}`
+    return `${getSideLabel(entry.attacker)}${entry.attackerName} → ${getSideLabel(entry.defender)}${entry.defenderName} 造成 ${entry.damage} 伤害${counter}${ko}`
   }
   if (entry.type === 'runeSkill') {
+    const casterLabel = getSideLabel(entry.caster)
+    const targetLabel = entry.target ? getSideLabel(entry.target) : ''
     switch (entry.skillType) {
       case 'attack':
-        return `✨ ${entry.casterName} 发动 [${entry.skillLabel}] → ${entry.targetName} ${entry.damage} 伤害`
+        return `✨ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害`
       case 'buff':
-        return `⬆️ ${entry.casterName} 发动 [${entry.skillLabel}] → ${entry.targetName} ${entry.buffType}+${entry.buffValue}`
+        return `⬆️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.buffType}+${entry.buffValue}`
       case 'debuff':
-        return `⬇️ ${entry.casterName} 发动 [${entry.skillLabel}] → ${entry.targetName} ${entry.debuffType}-${entry.debuffValue}`
+        return `⬇️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.debuffType}-${entry.debuffValue}`
       case 'changeOrder':
         return entry.success
-          ? `🔀 ${entry.casterName} 发动 [${entry.skillLabel}] 打乱了 ${entry.targetName} 的位置！`
-          : `🔀 ${entry.casterName} 发动 [${entry.skillLabel}] 但未命中 ${entry.targetName}`
+          ? `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 打乱了 ${targetLabel}${entry.targetName} 的位置！`
+          : `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 但未命中 ${targetLabel}${entry.targetName}`
       case 'sanRecover':
-        return `💚 ${entry.casterName} 发动 [${entry.skillLabel}] → ${entry.targetName} 恢复 ${entry.healAmount} SAN`
+        return `💚 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} 恢复 ${entry.healAmount} SAN`
       default:
-        return `${entry.casterName} 使用技能`
+        return `${casterLabel}${entry.casterName} 使用技能`
     }
   }
   return JSON.stringify(entry)
@@ -490,12 +507,8 @@ function handleSkip() {
     displayedLogs.value.push(entry)
     currentLogIndex.value++
   }
-  nextTick(() => {
-    if (logContainer.value) {
-      logContainer.value.scrollTop = logContainer.value.scrollHeight
-    }
-  })
-  animationFinished.value = true
+  // 跳过后直接关闭弹窗
+  emit('done')
 }
 
 function handleContinue() {
@@ -596,7 +609,25 @@ onUnmounted(() => {
   grid-template-columns: repeat(5, 1fr);
 }
 
+/* \u6a2a\u5c4f\u65f6\u68cb\u76d8\u65cb\u8f6c90\u00b0\uff0c\u884c\u53d8\u6210\u5217\uff0c\u4f7f\u524d\u6392\u6c34\u5e73\u9762\u5411\u5bf9\u65b9 */
+.battle-sides--row .battle-grid {
+  grid-template-columns: none;
+  grid-template-rows: repeat(5, 1fr);
+  grid-auto-flow: column;
+}
+
+.battle-seq {
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .battle-cell {
+  position: relative;
   border-radius: 4px;
   display: flex;
   flex-direction: column;

@@ -23,3 +23,4 @@
 - 玩家所有可以自由输入的文本都需要进行敏感词过滤，禁止包含敏感词。
 - 游戏端图标采用emoji
 - 禁止 @click="materialSubTab = 'sell'; fetchMaterialOrders()" 这种在click中直接写逻辑的写法。
+- vue页面内的跳转一律采用name跳转

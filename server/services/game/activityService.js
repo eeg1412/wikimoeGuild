@@ -1,4 +1,5 @@
 import GamePlayerActivity from '../../models/gamePlayerActivity.js'
+import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 
 /**
  * 记录玩家动态（内部调用，不抛异常，失败仅 log）
@@ -38,6 +39,22 @@ export async function getActivities({ page = 1, pageSize = 20 }) {
     .skip((page - 1) * pageSize)
     .limit(pageSize)
     .lean()
+
+  // 填充公会头像信息
+  const accountIds = list.filter(a => a.account).map(a => a.account)
+  if (accountIds.length > 0) {
+    const infos = await GamePlayerInfo.find({ account: { $in: accountIds } })
+      .select('account hasCustomGuildIcon')
+      .lean()
+    const infoMap = new Map()
+    for (const info of infos) {
+      infoMap.set(info.account.toString(), info)
+    }
+    for (const item of list) {
+      const info = item.account ? infoMap.get(item.account.toString()) : null
+      item.hasCustomGuildIcon = info?.hasCustomGuildIcon || false
+    }
+  }
 
   return { list, total }
 }

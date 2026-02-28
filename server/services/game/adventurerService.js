@@ -100,7 +100,7 @@ export async function recruitAdventurer(accountId) {
       attackPreference: randomPreference.value,
       defaultAvatarId: generateRandomAdventurerAvatarId(),
       name: generateRandomAdventurerName(),
-      comprehensiveLevel: 4 // 4项属性各1级, 综合等级=4
+      comprehensiveLevel: 1 // 综合等级 = 升级次数 + 1，初始为1
     })
 
     // 冒险家计数 +1
@@ -288,12 +288,13 @@ export async function levelUpStat(accountId, adventurerId, statType) {
 
     // 升级
     adventurer[stat.level] += 1
-    // 重新计算综合等级
+    // 重新计算综合等级 = 升级次数 + 1
     adventurer.comprehensiveLevel =
       adventurer.attackLevel +
       adventurer.defenseLevel +
       adventurer.speedLevel +
-      adventurer.SANLevel
+      adventurer.SANLevel -
+      3
     await adventurer.save()
 
     return await GameAdventurer.findById(adventurer._id)

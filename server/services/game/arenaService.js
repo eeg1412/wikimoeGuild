@@ -564,7 +564,7 @@ function generateNPCFormation() {
       defenseLevel: level,
       speedLevel: level,
       SANLevel: level,
-      comprehensiveLevel: level * 4,
+      comprehensiveLevel: level * 4 - 3,
       runeStone: null,
       isDemon: false
     })
