@@ -43,14 +43,24 @@ app.use(
   '/uploads',
   express.static(path.resolve(__dirname, './public/uploads'), {
     fallthrough: false
-  })
+  }),
+  // 非成功请求（如 404）禁止缓存
+  (err, _req, res, _next) => {
+    res.set('Cache-Control', 'no-store')
+    res.status(err.status || 404).end()
+  }
 )
 // 公共资源（publicgame）
 app.use(
   '/publicgame',
   express.static(path.resolve(__dirname, './publicgame'), {
     fallthrough: false
-  })
+  }),
+  // 非成功请求（如 404）禁止缓存
+  (err, _req, res, _next) => {
+    res.set('Cache-Control', 'no-store')
+    res.status(err.status || 404).end()
+  }
 )
 
 // API 路由
