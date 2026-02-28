@@ -286,8 +286,8 @@ export async function register(req, { email, password, guildName, code }) {
     IP2LocationUtils(ip, log._id, GamePlayerRegisterLog).catch(() => {})
     deviceUtils(req, log._id, GamePlayerRegisterLog)
 
-    // 异步生成公会图标
-    generateIconAsync(String(account._id)).catch(err => {
+    // 生成公会图标（等待完成后再返回，避免前端请求到不存在的文件）
+    await generateIconAsync(String(account._id)).catch(err => {
       console.error('生成公会图标失败', err)
     })
 

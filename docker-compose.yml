@@ -14,11 +14,11 @@ services:
       - ./server/logs:/app/server/logs
       - ./server/public:/app/server/public
       - ./server/lock:/app/server/lock
+      - ./server/utils/ip2location:/app/server/utils/ip2location
     networks:
       - wikimoe-guild
     depends_on:
-      mongo:
-        condition: service_healthy
+      - mongo
 
   mongo:
     image: mongo:8.2.3-noble

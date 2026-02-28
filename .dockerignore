@@ -2,11 +2,6 @@ node_modules
 client/node_modules
 server/node_modules
 shared/node_modules
-client/dist
-server/logs
-server/keys
-server/lock
-server/public/uploads
 .git
 .github
 *.md

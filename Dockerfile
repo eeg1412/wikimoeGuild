@@ -1,4 +1,17 @@
-FROM node:22-alpine
+FROM node:20-alpine
+
+# 安装系统依赖：bash、tzdata（时区）
+# 并设置中国时区 Asia/Shanghai，UTF-8 编码防止日志乱码
+RUN apk add --no-cache bash tzdata \
+  && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+  && echo "Asia/Shanghai" > /etc/timezone \
+  && apk del tzdata
+
+# 设置 UTF-8 字符编码，解决日志中文乱码问题
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+# 设置时区环境变量
+ENV TZ=Asia/Shanghai
 
 # 安装 pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -25,6 +38,6 @@ RUN pnpm install --filter server --filter shared --frozen-lockfile --prod
 
 WORKDIR /app/server
 
-EXPOSE 3000
+EXPOSE 3120
 
 CMD ["node", "app.js"]
