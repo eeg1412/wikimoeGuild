@@ -42,7 +42,7 @@
 
       <!-- 5×5 棋盘 -->
       <div class="mb-4">
-        <p class="text-xs text-gray-400 text-center mb-2">
+        <p class="text-sm text-gray-400 text-center mb-2">
           ↑ 前排（面向敌人）· ↓ 后排
         </p>
         <div class="grid-board mx-auto">
@@ -96,7 +96,7 @@
       </div>
 
       <!-- 已放置计数 -->
-      <p class="text-center text-xs text-gray-400 mb-4">
+      <p class="text-center text-sm text-gray-400 mb-4">
         已放置 {{ placedCount }} / 25 名冒险家
       </p>
     </template>
@@ -151,7 +151,7 @@
               <p class="text-sm text-gray-700 dark:text-gray-200 truncate">
                 {{ adv.name }}
               </p>
-              <p class="text-[10px] text-gray-400">
+              <p class="text-xs text-gray-400">
                 {{ getElementName(adv.elements) }} · Lv.{{
                   adv.comprehensiveLevel || 1
                 }}
@@ -159,7 +159,7 @@
             </div>
             <span
               v-if="isPlaced(adv._id)"
-              class="text-[10px] text-yellow-500 border border-yellow-500 px-1 rounded"
+              class="text-xs text-yellow-500 border border-yellow-500 px-1 rounded"
             >
               已放置
             </span>
@@ -498,7 +498,7 @@ onMounted(async () => {
   position: absolute;
   top: 1px;
   left: 3px;
-  font-size: 9px;
+  font-size: 10px;
   color: rgba(140, 120, 80, 0.6);
   line-height: 1;
   pointer-events: none;

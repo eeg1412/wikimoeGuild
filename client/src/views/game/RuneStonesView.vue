@@ -67,7 +67,7 @@
                 >
                   {{ rarityName(rs.rarity) }}符文石
                 </p>
-                <p class="text-xs text-gray-400">
+                <p class="text-sm text-gray-400">
                   Lv.{{ rs.level }} · 主动 {{ rs.activeSkills?.length || 0 }} ·
                   被动 {{ rs.passiveBuffs?.length || 0 }}
                 </p>
@@ -141,7 +141,7 @@
           <div
             v-for="(skill, idx) in detailRS.activeSkills"
             :key="idx"
-            class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
+            class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
           >
             <template v-if="getSkillInfo(skill.skillId || skill)">
               <p class="font-semibold text-gray-800 dark:text-gray-100">
@@ -195,7 +195,7 @@
           <div
             v-for="(buff, idx) in detailRS.passiveBuffs"
             :key="idx"
-            class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
+            class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
           >
             <span>{{ buffTypeName(buff.buffType) }}</span>
             <span class="font-mono text-yellow-500">+{{ buff.buffLevel }}</span>
@@ -223,7 +223,7 @@
             升级 ({{ upgradeCost }}碎片)
           </el-button>
         </div>
-        <p v-else class="text-center text-xs text-gray-400">
+        <p v-else class="text-center text-sm text-gray-400">
           已装备中，请先卸下再进行分解或升级
         </p>
       </div>
@@ -245,7 +245,7 @@
         <!-- 主符文石 -->
         <div class="mb-3">
           <p
-            class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1"
+            class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1"
           >
             主符文石
           </p>
@@ -285,7 +285,7 @@
         <!-- 素材符文石 -->
         <div class="mb-4">
           <p
-            class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1"
+            class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1"
           >
             素材符文石（将被销毁）
           </p>
@@ -365,7 +365,7 @@
             <div
               v-for="(skill, idx) in synthesisPreview.activeSkills"
               :key="idx"
-              class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
+              class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
             >
               <template v-if="getSkillInfo(skill.skillId || skill)">
                 <p class="font-semibold text-gray-800 dark:text-gray-100">
@@ -421,7 +421,7 @@
             <div
               v-for="(buff, idx) in synthesisPreview.passiveBuffs"
               :key="idx"
-              class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
+              class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
             >
               <span>{{ buffTypeName(buff.buffType) }}</span>
               <span class="font-mono text-yellow-500"
@@ -430,7 +430,7 @@
             </div>
           </div>
 
-          <p class="text-xs text-red-400 text-center">
+          <p class="text-sm text-red-400 text-center">
             ⚠️ 不论接受或放弃，素材符文石都将被销毁
           </p>
 
@@ -493,7 +493,7 @@
               >
                 {{ rarityName(rs.rarity) }}符文石 Lv.{{ rs.level }}
               </p>
-              <p class="text-xs text-gray-400">
+              <p class="text-sm text-gray-400">
                 主动 {{ rs.activeSkills?.length || 0 }} · 被动
                 {{ rs.passiveBuffs?.length || 0 }}
               </p>

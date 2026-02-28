@@ -57,7 +57,7 @@
                 >
                   {{ mail.title }}
                 </p>
-                <p class="text-xs text-gray-400 mt-0.5">
+                <p class="text-sm text-gray-400 mt-0.5">
                   {{ formatTime(mail.createdAt) }}
                   <span
                     v-if="mail.hasAttachment && !mail.claimed"
@@ -108,7 +108,7 @@
       </div>
       <div v-else-if="detailMail" class="space-y-4">
         <!-- 邮件信息 -->
-        <div class="text-xs text-gray-400 flex items-center gap-2">
+        <div class="text-sm text-gray-400 flex items-center gap-2">
           <span>{{ typeLabel(detailMail.type) }}</span>
           <span>·</span>
           <span>{{ formatTime(detailMail.createdAt) }}</span>
@@ -186,7 +186,7 @@
               领取附件
             </el-button>
           </div>
-          <div v-else class="mt-2 text-center text-xs text-green-500">
+          <div v-else class="mt-2 text-center text-sm text-green-500">
             ✅ 附件已领取
           </div>
         </div>

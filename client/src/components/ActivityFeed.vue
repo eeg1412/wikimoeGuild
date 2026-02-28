@@ -41,11 +41,11 @@
             </p>
             <p
               v-if="item.content"
-              class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
+              class="text-sm text-gray-500 dark:text-gray-400 mt-0.5"
             >
               {{ item.content }}
             </p>
-            <p class="text-[10px] text-gray-400 mt-1">
+            <p class="text-xs text-gray-400 mt-1">
               {{ formatTime(item.createdAt) }}
             </p>
           </div>
@@ -123,6 +123,10 @@ function handlePageChange() {
 
 onMounted(() => {
   fetchActivities()
+})
+
+defineExpose({
+  refresh: fetchActivities
 })
 </script>
 

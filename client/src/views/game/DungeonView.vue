@@ -1,7 +1,7 @@
 <template>
   <div class="w-full relative" :style="[dungeonBgStyle, { minHeight: '70vh' }]">
     <!-- 遮罩层 -->
-    <div class="absolute inset-0 bg-black/60 z-0" />
+    <div class="absolute inset-0 bg-gray-400/60 dark:bg-black/60 z-0" />
 
     <!-- 内容层 -->
     <div class="relative z-10 py-6 px-4 max-w-lg mx-auto">
@@ -34,7 +34,7 @@
             :style="{ borderColor: cry.color + '80' }"
           >
             <span class="text-lg">{{ cry.icon }}</span>
-            <span class="text-xs text-gray-300 mt-0.5">{{ cry.name }}水晶</span>
+            <span class="text-sm text-gray-300 mt-0.5">{{ cry.name }}水晶</span>
             <span
               class="text-base font-bold mt-1"
               :style="{ color: cry.color }"
@@ -75,11 +75,11 @@
           </div>
           <div class="dungeon-info-row">
             <span class="text-gray-300 text-sm">上次结算时间</span>
-            <span class="text-gray-400 text-xs">{{ lastSettleStr }}</span>
+            <span class="text-gray-400 text-sm">{{ lastSettleStr }}</span>
           </div>
           <div class="dungeon-info-row">
             <span class="text-gray-300 text-sm">距上次收取</span>
-            <span class="text-orange-300 font-semibold text-xs rpg-num">{{
+            <span class="text-orange-300 font-semibold text-sm rpg-num">{{
               elapsedTimeStr
             }}</span>
           </div>
@@ -184,7 +184,7 @@
             <span class="text-yellow-400 font-bold text-lg"
               >🎉 获得符文石！</span
             >
-            <p class="text-xs text-gray-400 mt-1">
+            <p class="text-sm text-gray-400 mt-1">
               {{ rarityName(settleResult.runeStone.rarity) }} 符文石 Lv.{{
                 settleResult.runeStone.level
               }}
@@ -221,7 +221,7 @@
                   class="w-8 h-8 rounded-full border"
                   :style="{ borderColor: getElementColor(demon.elements) }"
                 />
-                <span class="text-[10px] text-gray-400"
+                <span class="text-xs text-gray-400"
                   >Lv.{{ demon.comprehensiveLevel }}</span
                 >
               </div>
@@ -349,7 +349,7 @@
               }}</span>
             </p>
           </div>
-          <p class="text-xs text-gray-400">
+          <p class="text-sm text-gray-400">
             作为矿主，其他玩家挖矿时你将获得额外水晶奖励
           </p>
           <el-button type="primary" size="small" @click="handleGoToMine"
@@ -491,12 +491,17 @@ const crystalRates = computed(() => {
   ]
 })
 
-// 产出率
-const productionRate = computed(() => {
+// 产出倍率数值
+const productionRateValue = computed(() => {
   const cnt = adventurerCount.value
-  if (cnt <= 0) return '0%'
-  const rate = cnt * 100 + (cnt - 1) * 10
-  return `${Math.min(rate, 2750)}%`
+  if (cnt <= 0) return 0
+  return Math.min(cnt * 100 + (cnt - 1) * 10, 2750)
+})
+
+// 产出率（显示用）
+const productionRate = computed(() => {
+  if (productionRateValue.value <= 0) return '0%'
+  return `${productionRateValue.value}%`
 })
 
 // 结算时间
@@ -521,7 +526,13 @@ function calcOutput() {
     return
   }
   const ms = Date.now() - new Date(settleAt).getTime()
-  currentOutput.value = Math.floor(ms / 60000)
+  const minutesPassed = Math.floor(ms / 60000)
+  // 产物数量 = 分钟数 × 产出倍率 / 100，上限99999
+  const rate = productionRateValue.value
+  currentOutput.value = Math.min(
+    Math.floor((minutesPassed * rate) / 100),
+    99999
+  )
 }
 
 // 距上次收取经过的时间（实时更新）

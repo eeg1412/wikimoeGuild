@@ -31,21 +31,21 @@
         </div>
         <div v-if="arenaInfo.season" class="grid grid-cols-2 gap-2 text-sm">
           <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
-            <p class="text-[10px] text-gray-400">开始时间</p>
-            <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+            <p class="text-xs text-gray-400">开始时间</p>
+            <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
               {{ formatTime(arenaInfo.season.startTime) }}
             </p>
           </div>
           <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
-            <p class="text-[10px] text-gray-400">结束时间</p>
-            <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+            <p class="text-xs text-gray-400">结束时间</p>
+            <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
               {{ formatTime(arenaInfo.season.endTime) }}
             </p>
           </div>
           <div
             class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2 text-center"
           >
-            <p class="text-[10px] text-gray-400">奖池总额</p>
+            <p class="text-xs text-gray-400">奖池总额</p>
             <p class="text-sm font-bold text-yellow-500">
               🪙 {{ arenaInfo.season.poolAmount?.toLocaleString() }}
             </p>
@@ -53,7 +53,7 @@
           <div
             class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center"
           >
-            <p class="text-[10px] text-gray-400">每战奖金</p>
+            <p class="text-xs text-gray-400">每战奖金</p>
             <p class="text-sm font-bold text-blue-500">
               🪙 {{ arenaInfo.season.battleGold }}
             </p>
@@ -68,7 +68,7 @@
       <template v-if="!arenaInfo.registration">
         <div class="rpg-card rounded-xl p-4 mb-4 text-center">
           <p class="text-gray-500 dark:text-gray-400 mb-3">你还未报名本赛季</p>
-          <p class="text-xs text-red-400 mb-3">
+          <p class="text-sm text-red-400 mb-3">
             ⚠️
             报名后，阵容中的冒险家将被锁定至赛季结束，期间不可替换，只能调整位置。
           </p>
@@ -93,31 +93,39 @@
 
           <!-- 阵容预览 -->
           <div v-if="formationPreview" class="mb-3">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
               📋 阵容预览（{{ formationPreviewCount }} 名冒险家）
             </p>
-            <div class="grid grid-cols-5 gap-1 max-w-65 mx-auto">
-              <template
+            <div class="arena-grid-board mx-auto">
+              <div
                 v-for="(row, rIdx) in formationPreview.grid"
                 :key="rIdx"
+                class="arena-grid-row"
               >
                 <div
                   v-for="(cell, cIdx) in row"
                   :key="`${rIdx}-${cIdx}`"
-                  class="aspect-square rounded border flex items-center justify-center text-xs"
-                  :class="
-                    cell
-                      ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700'
-                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                  "
+                  class="arena-grid-cell"
+                  :class="{
+                    'arena-grid-cell--occupied': cell
+                  }"
                 >
+                  <span class="arena-grid-cell-seq">{{
+                    rIdx * 5 + cIdx + 1
+                  }}</span>
                   <template v-if="cell">
-                    <span class="text-sm">{{
-                      elementEmoji(cell.elements)
-                    }}</span>
+                    <GameAdventurerAvatar
+                      :adventurer="cell"
+                      class="w-full h-full rounded object-cover"
+                    />
+                    <div
+                      class="absolute bottom-0 left-0 right-0 text-center bg-black/60 text-[10px] text-white leading-tight py-px truncate"
+                    >
+                      {{ cell.name }}
+                    </div>
                   </template>
                 </div>
-              </template>
+              </div>
             </div>
           </div>
           <div v-if="formationPreviewLoading" class="mb-3 text-center">
@@ -141,19 +149,19 @@
         <div class="rpg-card rounded-xl p-4 mb-4">
           <div class="grid grid-cols-3 gap-2 text-center">
             <div>
-              <p class="text-[10px] text-gray-400">竞技点</p>
+              <p class="text-xs text-gray-400">竞技点</p>
               <p class="text-lg font-bold text-yellow-500">
                 {{ arenaInfo.registration?.points ?? 500 }}
               </p>
             </div>
             <div>
-              <p class="text-[10px] text-gray-400">剩余挑战</p>
+              <p class="text-xs text-gray-400">剩余挑战</p>
               <p class="text-lg font-bold text-blue-500">
                 {{ arenaInfo.registration?.challengeUses ?? 0 }}
               </p>
             </div>
             <div>
-              <p class="text-[10px] text-gray-400">对战次数</p>
+              <p class="text-xs text-gray-400">对战次数</p>
               <p class="text-lg font-bold text-green-500">
                 {{ arenaInfo.registration?.totalBattleCount ?? 0 }}
               </p>
@@ -161,7 +169,7 @@
           </div>
           <p
             v-if="arenaInfo.nextRecoverIn"
-            class="text-center text-[10px] text-gray-400 mt-2"
+            class="text-center text-xs text-gray-400 mt-2"
           >
             ⏰ 下次恢复: {{ Math.ceil(arenaInfo.nextRecoverIn / 60) }} 分钟后
           </p>
@@ -230,7 +238,7 @@
                       >
                         {{ opponent.guildName }}
                       </p>
-                      <p class="text-xs text-gray-400">
+                      <p class="text-sm text-gray-400">
                         竞技点: {{ opponent.points }}
                       </p>
                     </div>
@@ -273,10 +281,10 @@
             <span class="animate-spin inline-block text-2xl">⏳</span>
           </div>
           <template v-else>
-            <p class="text-xs text-gray-400 text-center mb-2">
+            <p class="text-sm text-gray-400 text-center mb-2">
               ↑ 前排（面向敌人）· ↓ 后排
             </p>
-            <p class="text-xs text-red-400 text-center mb-2">
+            <p class="text-sm text-red-400 text-center mb-2">
               ⚠️ 已锁定的冒险家不能移除，只能调整位置或添加新冒险家
             </p>
             <div class="arena-grid-board mx-auto mb-4">
@@ -320,7 +328,7 @@
               </div>
             </div>
 
-            <p class="text-center text-xs text-gray-400 mb-4">
+            <p class="text-center text-sm text-gray-400 mb-4">
               已放置 {{ arenaPlacedCount }} 名冒险家
             </p>
 
@@ -369,7 +377,7 @@
                       >
                         {{ player.guildName }}
                       </p>
-                      <p class="text-xs text-gray-400">
+                      <p class="text-sm text-gray-400">
                         对战 {{ player.totalBattleCount }} 次
                       </p>
                     </div>
@@ -411,7 +419,7 @@
                       <span v-else class="text-orange-400">被挑战</span>
                       <span class="ml-1">{{ log.opponentName || '未知' }}</span>
                     </p>
-                    <p class="text-xs text-gray-400 mt-0.5">
+                    <p class="text-sm text-gray-400 mt-0.5">
                       {{ formatTime(log.createdAt) }}
                       · {{ log.rounds }} 回合
                       <span
@@ -436,7 +444,7 @@
                         {{ log.isWin ? '胜利' : log.isDraw ? '平局' : '失败' }}
                       </span>
                       <p
-                        class="text-xs"
+                        class="text-sm"
                         :class="
                           log.pointsChange >= 0
                             ? 'text-green-400'
@@ -447,7 +455,7 @@
                         }}{{ log.pointsChange }} pt
                       </p>
                     </div>
-                    <span class="text-gray-400 text-xs">▶</span>
+                    <span class="text-gray-400 text-sm">▶</span>
                   </div>
                 </div>
               </div>
@@ -501,7 +509,7 @@
             </span>
             <span
               v-if="isAdventurerLocked(arenaCellAdventurer._id)"
-              class="text-[10px] text-yellow-500 border border-yellow-500 px-1 rounded"
+              class="text-xs text-yellow-500 border border-yellow-500 px-1 rounded"
             >
               🔒 已锁定
             </span>
@@ -534,7 +542,7 @@
               <p class="text-sm text-gray-700 dark:text-gray-200 truncate">
                 {{ adv.name }}
               </p>
-              <p class="text-[10px] text-gray-400">
+              <p class="text-xs text-gray-400">
                 {{ getElementName(adv.elements) }} · Lv.{{
                   adv.comprehensiveLevel || 1
                 }}
@@ -542,7 +550,7 @@
             </div>
             <span
               v-if="isArenaPlaced(adv._id)"
-              class="text-[10px] text-yellow-500 border border-yellow-500 px-1 rounded"
+              class="text-xs text-yellow-500 border border-yellow-500 px-1 rounded"
             >
               已放置
             </span>
@@ -673,7 +681,7 @@
               <p class="font-semibold text-blue-500">
                 🏰 {{ logDetail.attackerGuildName }}
               </p>
-              <p class="text-xs text-gray-400">挑战方</p>
+              <p class="text-sm text-gray-400">挑战方</p>
             </div>
             <div class="text-xl font-bold text-gray-400 px-2">VS</div>
             <div class="text-center flex-1">
@@ -681,7 +689,7 @@
                 🏰
                 {{ logDetail.defenderGuildName }}
               </p>
-              <p class="text-xs text-gray-400">防守方</p>
+              <p class="text-sm text-gray-400">防守方</p>
             </div>
           </div>
 
@@ -704,7 +712,7 @@
           <div class="grid grid-cols-2 gap-3">
             <!-- 挑战方阵容（转置+列倒序：右侧为小序号） -->
             <div>
-              <p class="text-xs text-gray-400 mb-1 text-center">挑战方阵容</p>
+              <p class="text-sm text-gray-400 mb-1 text-center">挑战方阵容</p>
               <div class="grid grid-cols-5 gap-0.5">
                 <template v-for="r in 5" :key="'a' + r">
                   <template v-for="c in 5" :key="'a' + r + '-' + c">
@@ -731,7 +739,7 @@
                           class="w-full h-full object-cover"
                         />
                         <span
-                          class="absolute bottom-0 right-0 bg-black/60 text-white text-[8px] leading-none px-0.5 rounded-tl"
+                          class="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] leading-none px-0.5 rounded-tl"
                           >{{ (5 - c) * 5 + (r - 1) + 1 }}</span
                         >
                       </template>
@@ -742,7 +750,7 @@
             </div>
             <!-- 防守方阵容（转置+列正序：左侧为小序号） -->
             <div>
-              <p class="text-xs text-gray-400 mb-1 text-center">防守方阵容</p>
+              <p class="text-sm text-gray-400 mb-1 text-center">防守方阵容</p>
               <div class="grid grid-cols-5 gap-0.5">
                 <template v-for="r in 5" :key="'d' + r">
                   <template v-for="c in 5" :key="'d' + r + '-' + c">
@@ -769,7 +777,7 @@
                           class="w-full h-full object-cover"
                         />
                         <span
-                          class="absolute bottom-0 left-0 bg-black/60 text-white text-[8px] leading-none px-0.5 rounded-tr"
+                          class="absolute bottom-0 left-0 bg-black/60 text-white text-[10px] leading-none px-0.5 rounded-tr"
                           >{{ (c - 1) * 5 + (r - 1) + 1 }}</span
                         >
                       </template>
@@ -782,7 +790,7 @@
 
           <!-- 单位详情列表 -->
           <div class="space-y-2">
-            <p class="text-xs text-gray-400">👥 冒险家属性快照</p>
+            <p class="text-sm text-gray-400">👥 冒险家属性快照</p>
             <div class="max-h-60 overflow-y-auto space-y-1">
               <div
                 v-for="unit in [
@@ -790,7 +798,7 @@
                   ...logDetail.defenderUnits
                 ]"
                 :key="unit.adventurerId + unit.row + unit.col"
-                class="bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs flex items-center gap-2"
+                class="bg-gray-50 dark:bg-gray-800 rounded p-2 text-sm flex items-center gap-2"
               >
                 <GameAdventurerAvatar
                   :adventurer="unit"
@@ -817,7 +825,7 @@
             </div>
           </div>
 
-          <p class="text-xs text-gray-400 text-center">
+          <p class="text-sm text-gray-400 text-center">
             {{ formatTime(logDetail.createdAt) }}
           </p>
         </div>
@@ -1406,7 +1414,7 @@ onMounted(async () => {
   position: absolute;
   top: 1px;
   left: 3px;
-  font-size: 9px;
+  font-size: 10px;
   color: rgba(140, 120, 80, 0.6);
   line-height: 1;
   pointer-events: none;

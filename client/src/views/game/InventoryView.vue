@@ -43,7 +43,7 @@
         <span class="text-2xl font-bold text-purple-400 mt-1 tabular-nums">
           {{ (inventory.runeFragment || 0).toLocaleString() }}
         </span>
-        <p class="text-xs text-gray-400 mt-2">可用于升级符文石</p>
+        <p class="text-sm text-gray-400 mt-2">可用于升级符文石</p>
       </div>
     </template>
   </div>

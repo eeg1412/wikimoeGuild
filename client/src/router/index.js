@@ -112,6 +112,12 @@ const routes = [
         name: 'GameGuildSettings',
         component: () => import('../views/game/GuildSettingsView.vue'),
         meta: { title: '公会设置', requiresPlayerAuth: true }
+      },
+      {
+        path: 'guide',
+        name: 'GameGuide',
+        component: () => import('../views/game/GuideView.vue'),
+        meta: { title: '新手手册' }
       }
     ]
   },

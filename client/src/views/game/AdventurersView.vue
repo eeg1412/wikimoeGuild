@@ -64,28 +64,28 @@
 
         <!-- 名字 -->
         <p
-          class="text-xs font-medium text-gray-700 dark:text-gray-200 text-center truncate w-full"
+          class="text-sm font-medium text-gray-700 dark:text-gray-200 text-center truncate w-full"
         >
           {{ adv.name }}
         </p>
 
         <!-- 元素标签 -->
         <span
-          class="mt-1 text-xs px-1.5 py-0.5 rounded-full text-white font-medium"
+          class="mt-1 text-sm px-1.5 py-0.5 rounded-full text-white font-medium"
           :style="{ backgroundColor: getElementColor(adv.elements) }"
         >
           {{ getElementName(adv.elements) }}
         </span>
 
         <!-- 综合等级 -->
-        <p class="text-xs text-yellow-500 mt-1 font-mono">
+        <p class="text-sm text-yellow-500 mt-1 font-mono">
           Lv.{{ adv.comprehensiveLevel || 1 }}
         </p>
 
         <!-- 装备状态标签 -->
         <span
           v-if="adv.runeStone"
-          class="mt-1 text-[10px] text-green-400 border border-green-400 px-1 py-0 rounded-full"
+          class="mt-1 text-xs text-green-400 border border-green-400 px-1 py-0 rounded-full"
         >
           💎装备中
         </span>
@@ -156,13 +156,13 @@
           </div>
           <div class="info-row">
             <span class="info-label">被动增益</span>
-            <span class="info-value text-xs">{{
+            <span class="info-value text-sm">{{
               getPassiveBuffName(detailAdv.passiveBuffType)
             }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">攻击偏好</span>
-            <span class="info-value text-xs">{{
+            <span class="info-value text-sm">{{
               getAttackPreferenceName(detailAdv.attackPreference)
             }}</span>
           </div>
@@ -176,11 +176,11 @@
           <el-divider class="my-2!" />
 
           <!-- 资源信息 -->
-          <div class="w-full grid grid-cols-2 gap-2 text-xs">
+          <div class="w-full grid grid-cols-2 gap-2 text-sm">
             <div
               class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2 text-center"
             >
-              <p class="text-[10px] text-gray-400">🪙 金币</p>
+              <p class="text-xs text-gray-400">🪙 金币</p>
               <p class="text-sm font-bold text-yellow-500">
                 {{ (playerInfo?.gold ?? 0).toLocaleString() }}
               </p>
@@ -188,34 +188,34 @@
             <div
               class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 text-center"
             >
-              <p class="text-[10px] text-gray-400">💎 符文石碎片</p>
+              <p class="text-xs text-gray-400">💎 符文石碎片</p>
               <p class="text-sm font-bold text-purple-500">
                 {{ (inventory?.runeFragment ?? 0).toLocaleString() }}
               </p>
             </div>
           </div>
-          <div class="w-full grid grid-cols-4 gap-1 text-xs mt-1">
+          <div class="w-full grid grid-cols-4 gap-1 text-sm mt-1">
             <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
-              <p class="text-[10px] text-gray-400">⚔️水晶</p>
-              <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+              <p class="text-xs text-gray-400">⚔️水晶</p>
+              <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
                 {{ inventory?.attackCrystal ?? 0 }}
               </p>
             </div>
             <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
-              <p class="text-[10px] text-gray-400">🛡️水晶</p>
-              <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+              <p class="text-xs text-gray-400">🛡️水晶</p>
+              <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
                 {{ inventory?.defenseCrystal ?? 0 }}
               </p>
             </div>
             <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
-              <p class="text-[10px] text-gray-400">💨水晶</p>
-              <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+              <p class="text-xs text-gray-400">💨水晶</p>
+              <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
                 {{ inventory?.speedCrystal ?? 0 }}
               </p>
             </div>
             <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
-              <p class="text-[10px] text-gray-400">🌀水晶</p>
-              <p class="text-xs font-mono text-gray-600 dark:text-gray-300">
+              <p class="text-xs text-gray-400">🌀水晶</p>
+              <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
                 {{ inventory?.sanCrystal ?? 0 }}
               </p>
             </div>
@@ -240,7 +240,7 @@
               升级
             </el-button>
           </div>
-          <p class="text-xs text-gray-400 text-center">
+          <p class="text-sm text-gray-400 text-center">
             升级消耗：50水晶 + 500金币
           </p>
 
@@ -252,7 +252,7 @@
             <div class="flex items-center gap-1">
               <template v-if="detailAdv.runeStone">
                 <span
-                  class="text-xs cursor-pointer hover:underline"
+                  class="text-sm cursor-pointer hover:underline"
                   :class="rarityClass(detailAdv.runeStone.rarity)"
                   @click="openRuneStoneDetail(detailAdv.runeStone)"
                 >
@@ -272,7 +272,7 @@
                 </el-button>
               </template>
               <template v-else>
-                <span class="text-xs text-gray-400">无</span>
+                <span class="text-sm text-gray-400">无</span>
                 <el-button
                   type="primary"
                   text
@@ -376,7 +376,7 @@
             <span :class="rarityClass(rs.rarity)" class="text-sm font-semibold">
               {{ rarityName(rs.rarity) }}
             </span>
-            <span class="text-xs text-gray-500 ml-1">Lv.{{ rs.level }}</span>
+            <span class="text-sm text-gray-500 ml-1">Lv.{{ rs.level }}</span>
           </div>
           <el-button
             type="primary"
@@ -425,7 +425,7 @@
           <div
             v-for="(skill, idx) in runeStoneDetailData.activeSkills"
             :key="idx"
-            class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
+            class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
           >
             <template v-if="getSkillInfo(skill.skillId || skill)">
               <p class="font-semibold text-gray-800 dark:text-gray-100">
@@ -481,7 +481,7 @@
           <div
             v-for="(buff, idx) in runeStoneDetailData.passiveBuffs"
             :key="idx"
-            class="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
+            class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
           >
             <span>{{ buffTypeName(buff.buffType) }}</span>
             <span class="font-mono text-yellow-500">+{{ buff.buffLevel }}</span>

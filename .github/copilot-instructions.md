@@ -24,3 +24,4 @@
 - 游戏端图标采用emoji
 - 禁止 @click="materialSubTab = 'sell'; fetchMaterialOrders()" 这种在click中直接写逻辑的写法。
 - vue页面内的跳转一律采用name跳转
+- 每次对数值的调整都要考虑和手册的同步更新，保持一致性。

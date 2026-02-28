@@ -22,9 +22,16 @@ export async function getDungeonInfo(accountId) {
   const hoursPassed = Math.floor((now - lastRecover) / (60 * 60 * 1000))
   const recoveredUses = Math.min(playerInfo.mapCanChangeUses + hoursPassed, 24)
 
-  // 计算当前产出
+  // 计算当前产出（乘以产出倍率后的实际数量，上限99999）
   const lastSettle = new Date(playerInfo.lastDungeonSettleAt || now)
   const minutesPassed = Math.floor((now - lastSettle) / 60000)
+  const cnt = playerInfo.adventurerCount || 0
+  const productionRate =
+    cnt > 0 ? Math.min(cnt * 100 + (cnt - 1) * 10, 2750) : 0
+  const currentOutput = Math.min(
+    Math.floor((minutesPassed * productionRate) / 100),
+    99999
+  )
 
   return {
     dungeonsLevel: playerInfo.dungeonsLevel,
@@ -35,7 +42,7 @@ export async function getDungeonInfo(accountId) {
     lastDungeonSettleAt: playerInfo.lastDungeonSettleAt,
     lastBattleAt: playerInfo.lastBattleAt,
     adventurerCount: playerInfo.adventurerCount,
-    currentOutput: minutesPassed,
+    currentOutput: currentOutput,
     gold: playerInfo.gold
   }
 }
@@ -157,7 +164,11 @@ async function settleCrystalsInternal(playerInfo, accountId) {
   if (cnt <= 0) return { crystals: {}, runeStone: null }
 
   const productionRate = Math.min(cnt * 100 + (cnt - 1) * 10, 2750)
-  const totalOutput = Math.floor((minutesPassed * productionRate) / 100)
+  // 最大产物数量限制为99999
+  const totalOutput = Math.min(
+    Math.floor((minutesPassed * productionRate) / 100),
+    99999
+  )
 
   if (totalOutput <= 0) return { crystals: {}, runeStone: null }
 

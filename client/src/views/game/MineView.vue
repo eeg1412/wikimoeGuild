@@ -20,7 +20,7 @@
             miningInfo.miningCanUses ?? 0
           }}</span>
         </div>
-        <div v-if="miningInfo.nextRecoverIn" class="text-xs text-gray-400">
+        <div v-if="miningInfo.nextRecoverIn" class="text-sm text-gray-400">
           ⏰ {{ Math.ceil(miningInfo.nextRecoverIn / 60) }}分钟后恢复
         </div>
       </div>
@@ -103,12 +103,12 @@
                     >👑 我的</span
                   >
                 </p>
-                <p class="text-xs text-gray-400 mt-0.5">
+                <p class="text-sm text-gray-400 mt-0.5">
                   矿主: {{ mine.ownerGuildName }} · 奖励进度:
                   {{ mine.exploredRewards }}/{{ mine.totalRewards }}
                 </p>
               </div>
-              <span class="text-gray-400 text-xs">▶</span>
+              <span class="text-gray-400 text-sm">▶</span>
             </div>
           </div>
         </div>
@@ -139,11 +139,11 @@
               <span class="font-semibold text-gray-700 dark:text-gray-200"
                 >⛰️ Lv.{{ currentMine.level }} 矿场</span
               >
-              <span class="text-xs text-gray-400 ml-2"
+              <span class="text-sm text-gray-400 ml-2"
                 >矿主: {{ currentMine.ownerGuildName }}</span
               >
             </div>
-            <div class="text-xs text-gray-400">
+            <div class="text-sm text-gray-400">
               奖励: {{ currentMine.exploredRewards }}/{{
                 currentMine.totalRewards
               }}
@@ -154,7 +154,7 @@
         <!-- 阵容选择 -->
         <div class="rpg-card rounded-xl p-3 mb-3">
           <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-400">战斗阵容:</span>
+            <span class="text-sm text-gray-400">战斗阵容:</span>
             <el-select
               v-model="selectedFormationSlot"
               placeholder="选择阵容"
@@ -220,7 +220,7 @@
         </div>
 
         <!-- SSE 连接状态 -->
-        <div class="text-center text-xs mb-3">
+        <div class="text-center text-sm mb-3">
           <span v-if="sseConnected" class="text-green-400">🟢 实时同步中</span>
           <span v-else class="text-gray-400">🔴 未连接</span>
         </div>
@@ -241,28 +241,28 @@
       <template v-else>
         <!-- 汇总 -->
         <div v-if="revenueSummary" class="rpg-card rounded-xl p-3 mb-3">
-          <p class="text-xs text-gray-400 mb-2">📊 近7天总收益</p>
+          <p class="text-sm text-gray-400 mb-2">📊 近7天总收益</p>
           <div class="grid grid-cols-2 gap-2 text-center text-sm">
             <div class="bg-red-50 dark:bg-red-900/20 rounded p-2">
-              <p class="text-[10px] text-gray-400">⚔️ 攻击水晶</p>
+              <p class="text-xs text-gray-400">⚔️ 攻击水晶</p>
               <p class="font-bold text-red-500">
                 {{ revenueSummary.attackCrystal || 0 }}
               </p>
             </div>
             <div class="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
-              <p class="text-[10px] text-gray-400">🛡️ 防御水晶</p>
+              <p class="text-xs text-gray-400">🛡️ 防御水晶</p>
               <p class="font-bold text-blue-500">
                 {{ revenueSummary.defenseCrystal || 0 }}
               </p>
             </div>
             <div class="bg-green-50 dark:bg-green-900/20 rounded p-2">
-              <p class="text-[10px] text-gray-400">💨 速度水晶</p>
+              <p class="text-xs text-gray-400">💨 速度水晶</p>
               <p class="font-bold text-green-500">
                 {{ revenueSummary.speedCrystal || 0 }}
               </p>
             </div>
             <div class="bg-purple-50 dark:bg-purple-900/20 rounded p-2">
-              <p class="text-[10px] text-gray-400">💚 SAN水晶</p>
+              <p class="text-xs text-gray-400">💚 SAN水晶</p>
               <p class="font-bold text-purple-500">
                 {{ revenueSummary.sanCrystal || 0 }}
               </p>
@@ -280,7 +280,7 @@
           <div
             v-for="rev in revenueList"
             :key="rev._id"
-            class="rpg-card rounded-xl p-2 text-xs"
+            class="rpg-card rounded-xl p-2 text-sm"
           >
             <div class="flex items-center justify-between">
               <div>
@@ -344,7 +344,7 @@
           <template v-else-if="digResult.challengeFailed">
             <div class="text-4xl mb-2">😔</div>
             <p class="text-red-500 font-bold">战斗失败</p>
-            <p class="text-xs text-gray-400">其他玩家可以继续挑战</p>
+            <p class="text-sm text-gray-400">其他玩家可以继续挑战</p>
           </template>
         </template>
 
@@ -376,7 +376,7 @@
           class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-sm"
         >
           <p class="text-yellow-500 font-bold">✨ 获得符文石！</p>
-          <p class="text-xs text-gray-400">
+          <p class="text-sm text-gray-400">
             {{ rarityLabel(digResult.runeStone.rarity) }} · Lv.{{
               digResult.runeStone.level
             }}
@@ -784,13 +784,13 @@ onUnmounted(() => {
 .mine-cell {
   min-width: 26px;
   min-height: 26px;
-  font-size: 11px;
+  font-size: 12px;
 }
 @media (min-width: 400px) {
   .mine-cell {
     min-width: 32px;
     min-height: 32px;
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 </style>

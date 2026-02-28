@@ -34,20 +34,20 @@
             <div
               class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center"
             >
-              <p class="text-xs text-gray-400 mb-1">收购单价</p>
+              <p class="text-sm text-gray-400 mb-1">收购单价</p>
               <p class="text-lg font-bold text-green-500">
                 🪙 {{ officialInfo.buyPrice }}
               </p>
-              <p class="text-[10px] text-gray-400">官方从你手中收购</p>
+              <p class="text-xs text-gray-400">官方从你手中收购</p>
             </div>
             <div
               class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center"
             >
-              <p class="text-xs text-gray-400 mb-1">出售单价</p>
+              <p class="text-sm text-gray-400 mb-1">出售单价</p>
               <p class="text-lg font-bold text-blue-500">
                 🪙 {{ officialInfo.sellPrice }}
               </p>
-              <p class="text-[10px] text-gray-400">从官方购买</p>
+              <p class="text-xs text-gray-400">从官方购买</p>
             </div>
           </div>
         </div>
@@ -64,7 +64,7 @@
             <div
               v-for="c in crystalList"
               :key="'own-' + c.key"
-              class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-xs"
+              class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm"
             >
               <span>{{ c.icon }}</span>
               <span class="text-gray-600 dark:text-gray-300">{{ c.name }}</span>
@@ -95,7 +95,7 @@
               class="w-28!"
             />
           </div>
-          <div class="text-xs text-gray-400 mb-2">
+          <div class="text-sm text-gray-400 mb-2">
             预计获得:
             <span class="text-yellow-500 font-semibold"
               >🪙
@@ -128,7 +128,7 @@
             <div
               v-for="c in crystalList"
               :key="c.key"
-              class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-xs"
+              class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm"
             >
               <span>{{ c.icon }}</span>
               <span class="text-gray-600 dark:text-gray-300">{{ c.name }}</span>
@@ -159,7 +159,7 @@
               class="w-28!"
             />
           </div>
-          <div class="text-xs text-gray-400 mb-2">
+          <div class="text-sm text-gray-400 mb-2">
             需要花费:
             <span class="text-yellow-500 font-semibold"
               >🪙
@@ -273,7 +273,7 @@
             placeholder="单价"
           />
         </div>
-        <div class="text-xs text-gray-400 mb-2">
+        <div class="text-sm text-gray-400 mb-2">
           将扣除:
           <span class="text-yellow-500 font-semibold"
             >{{ matSellForm.quantity }} 个素材</span
@@ -328,7 +328,7 @@
             placeholder="单价"
           />
         </div>
-        <div class="text-xs text-gray-400 mb-2">
+        <div class="text-sm text-gray-400 mb-2">
           需冻结金币:
           <span class="text-yellow-500 font-semibold"
             >🪙
@@ -389,13 +389,13 @@
                       {{ order.orderType === 'sell' ? '出售' : '求购' }}
                     </span>
                   </p>
-                  <p class="text-xs text-gray-400">
+                  <p class="text-sm text-gray-400">
                     单价 🪙 {{ order.unitPrice?.toLocaleString() }} · 总价 🪙
                     {{ (order.quantity * order.unitPrice).toLocaleString() }}
                   </p>
                   <p
                     v-if="order.guildName"
-                    class="text-[10px] text-gray-400 mt-0.5"
+                    class="text-xs text-gray-400 mt-0.5"
                   >
                     {{ order.guildName }}
                   </p>
@@ -475,7 +475,7 @@
             >全部</el-button
           >
         </div>
-        <div class="text-xs text-gray-400">
+        <div class="text-sm text-gray-400">
           <template v-if="fulfillDialogOrder.orderType === 'sell'">
             需花费:
             <span class="text-yellow-500 font-semibold"
@@ -610,16 +610,16 @@
                       >Lv.{{ listing.runeStone?.level }}</span
                     >
                   </p>
-                  <p class="text-xs text-gray-400">
+                  <p class="text-sm text-gray-400">
                     主动 {{ listing.runeStone?.activeSkills?.length || 0 }} ·
                     被动 {{ listing.runeStone?.passiveBuffs?.length || 0 }}
                   </p>
-                  <p class="text-xs text-yellow-500 font-semibold">
+                  <p class="text-sm text-yellow-500 font-semibold">
                     🪙 {{ listing.price?.toLocaleString() }}
                   </p>
                   <p
                     v-if="listing.guildName"
-                    class="text-[10px] text-gray-400 mt-0.5"
+                    class="text-xs text-gray-400 mt-0.5"
                   >
                     {{ listing.guildName }}
                   </p>

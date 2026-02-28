@@ -55,7 +55,7 @@
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
               🎨 修改公会标志
             </p>
-            <p class="text-xs text-gray-400 mt-0.5">
+            <p class="text-sm text-gray-400 mt-0.5">
               消耗 {{ gameSettings.guildCustomLogoPrice ?? 5000 }} 金币
             </p>
           </div>
@@ -69,7 +69,7 @@
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
               📝 修改公会名字
             </p>
-            <p class="text-xs text-gray-400 mt-0.5">
+            <p class="text-sm text-gray-400 mt-0.5">
               消耗 {{ gameSettings.guildChangeNamePrice ?? 1000 }} 金币
             </p>
           </div>

@@ -4,7 +4,7 @@
   >
     <!-- 顶栏 -->
     <header
-      class="flex items-center justify-between px-4 sm:px-6 py-3 bg-white dark:bg-[#1d1e1f] shadow-sm"
+      class="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-white dark:bg-[#1d1e1f] shadow-sm"
     >
       <!-- 左侧标题 -->
       <router-link
@@ -51,9 +51,14 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="handleLogout"
-                  >退出登录</el-dropdown-item
+                <el-dropdown-item
+                  @click="handleNavTo({ name: 'GameGuildSettings' })"
                 >
+                  ⚙️ 公会设置
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout">
+                  退出登录
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -89,76 +94,81 @@
     >
       <!-- 菜单项（展开时显示） -->
       <transition name="fab-menu">
-        <div v-if="fabOpen" class="flex flex-col items-end gap-2 mb-2">
-          <!-- 冒险家列表 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/adventurers')">
-            <span class="fab-label">冒险家</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">⚔️</span>
-            </div>
+        <div v-if="fabOpen" class="fab-grid-panel">
+          <div class="fab-grid-item" @click="handleNavTo({ name: 'GameHome' })">
+            <span class="fab-grid-icon">🏠</span>
+            <span class="fab-grid-label">首页</span>
           </div>
-          <!-- 地下迷宫 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/dungeon')">
-            <span class="fab-label">地下迷宫</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">🏰</span>
-            </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameAdventurers' })"
+          >
+            <span class="fab-grid-icon">⚔️</span>
+            <span class="fab-grid-label">冒险家</span>
           </div>
-          <!-- 符文石 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/rune-stones')">
-            <span class="fab-label">符文石</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">💎</span>
-            </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameDungeon' })"
+          >
+            <span class="fab-grid-icon">🏰</span>
+            <span class="fab-grid-label">迷宫</span>
           </div>
-          <!-- 阵容配置 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/formations')">
-            <span class="fab-label">阵容配置</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">🏗️</span>
-            </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameRuneStones' })"
+          >
+            <span class="fab-grid-icon">💎</span>
+            <span class="fab-grid-label">符文石</span>
           </div>
-          <!-- 背包 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/inventory')">
-            <span class="fab-label">背包</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">🎒</span>
-            </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameFormations' })"
+          >
+            <span class="fab-grid-icon">🏗️</span>
+            <span class="fab-grid-label">阵容</span>
           </div>
-          <!-- 邮箱 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/mail')">
-            <span class="fab-label">邮箱</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">📬</span>
-            </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameInventory' })"
+          >
+            <span class="fab-grid-icon">🎒</span>
+            <span class="fab-grid-label">背包</span>
           </div>
-          <!-- 交易市场 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/market')">
-            <span class="fab-label">交易市场</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">🏪</span>
-            </div>
+          <div class="fab-grid-item" @click="handleNavTo({ name: 'GameMail' })">
+            <span class="fab-grid-icon">📬</span>
+            <span class="fab-grid-label">邮箱</span>
           </div>
-          <!-- 竞技场 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/arena')">
-            <span class="fab-label">竞技场</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">⚔️</span>
-            </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameMarket' })"
+          >
+            <span class="fab-grid-icon">🏪</span>
+            <span class="fab-grid-label">市场</span>
           </div>
-          <!-- 矿场 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/mine')">
-            <span class="fab-label">矿场</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">⛏️</span>
-            </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameArena' })"
+          >
+            <span class="fab-grid-icon">🏟️</span>
+            <span class="fab-grid-label">竞技场</span>
           </div>
-          <!-- 公会设置 -->
-          <div class="fab-item-wrapper" @click="navTo('/game/guild-settings')">
-            <span class="fab-label">公会设置</span>
-            <div class="fab-item-btn">
-              <span class="text-xl">🏰</span>
-            </div>
+          <div class="fab-grid-item" @click="handleNavTo({ name: 'GameMine' })">
+            <span class="fab-grid-icon">⛏️</span>
+            <span class="fab-grid-label">矿场</span>
+          </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameGuildSettings' })"
+          >
+            <span class="fab-grid-icon">⚙️</span>
+            <span class="fab-grid-label">公会</span>
+          </div>
+          <div
+            class="fab-grid-item"
+            @click="handleNavTo({ name: 'GameGuide' })"
+          >
+            <span class="fab-grid-icon">📖</span>
+            <span class="fab-grid-label">手册</span>
           </div>
         </div>
       </transition>
@@ -167,7 +177,7 @@
       <button
         class="fab-main"
         :class="{ 'fab-main--open': fabOpen }"
-        @click="fabOpen = !fabOpen"
+        @click="toggleFab"
         aria-label="菜单"
       >
         <span
@@ -178,6 +188,15 @@
         </span>
       </button>
     </div>
+
+    <!-- 悬浮菜单遮罩 -->
+    <transition name="fab-overlay">
+      <div
+        v-if="fabOpen && isLoggedIn"
+        class="fixed inset-0 bg-black/40 z-40"
+        @click="fabOpen = false"
+      />
+    </transition>
   </div>
 </template>
 
@@ -197,9 +216,13 @@ const { siteSettings, loadSiteSettings } = useGameSiteSettings()
 // 悬浮菜单控制
 const fabOpen = ref(false)
 
-function navTo(path) {
+function handleNavTo(routeObj) {
   fabOpen.value = false
-  router.push(path)
+  router.push(routeObj)
+}
+
+function toggleFab() {
+  fabOpen.value = !fabOpen.value
 }
 
 // 更新文档标题和 meta
@@ -282,55 +305,61 @@ function handleLogout() {
   box-shadow: 0 4px 16px rgba(124, 92, 191, 0.6);
 }
 
-.fab-item-wrapper {
-  display: flex;
-  align-items: center;
+/* 网格面板 */
+.fab-grid-panel {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  cursor: pointer;
+  padding: 12px;
+  background: rgba(30, 20, 10, 0.92);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  border: 1px solid rgba(200, 160, 80, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  margin-bottom: 8px;
+  max-width: 280px;
 }
 
-.fab-item-wrapper:hover .fab-item-btn {
-  transform: scale(1.1);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+/* 横屏时使用更多列 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .fab-grid-panel {
+    grid-template-columns: repeat(6, 1fr);
+    max-width: 420px;
+    gap: 6px;
+    padding: 10px;
+  }
 }
 
-.fab-item-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(30, 20, 10, 0.85);
-  border: 2px solid rgba(200, 160, 80, 0.5);
+.fab-grid-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-  overflow: hidden;
-  position: relative;
-}
-
-.fab-icon-img {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-}
-
-.fab-fallback-icon {
-  color: #d4a843;
-}
-
-.fab-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  padding: 3px 8px;
+  gap: 4px;
+  padding: 8px 4px;
   border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.fab-grid-item:hover {
+  background: rgba(200, 160, 80, 0.15);
+}
+
+.fab-grid-item:active {
+  background: rgba(200, 160, 80, 0.25);
+}
+
+.fab-grid-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.fab-grid-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8d5b0;
   white-space: nowrap;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  text-align: center;
 }
 
 /* 菜单展开动画 */
@@ -344,5 +373,17 @@ function handleLogout() {
 .fab-menu-leave-to {
   opacity: 0;
   transform: translateY(12px) scale(0.9);
+}
+
+/* 遮罩动画 */
+.fab-overlay-enter-active {
+  transition: opacity 0.25s ease;
+}
+.fab-overlay-leave-active {
+  transition: opacity 0.18s ease;
+}
+.fab-overlay-enter-from,
+.fab-overlay-leave-to {
+  opacity: 0;
 }
 </style>
