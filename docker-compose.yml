@@ -21,19 +21,13 @@ services:
         condition: service_healthy
 
   mongo:
-    image: mongo:8
+    image: mongo:8.2.3-noble
     container_name: wikimoe-guild-mongo
     restart: unless-stopped
     volumes:
       - mongo_data:/data/db
     networks:
       - wikimoe-guild
-    healthcheck:
-      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
 networks:
   wikimoe-guild:
