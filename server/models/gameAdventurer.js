@@ -39,6 +39,11 @@ const gameAdventurerSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    // 自定义头像更新时间
+    customAvatarUpdatedAt: {
+      type: Date,
+      default: null
+    },
     name: {
       type: String,
       required: true,

@@ -20,8 +20,8 @@
       <div class="rpg-card rounded-xl p-4 mb-4">
         <div class="flex items-center gap-4">
           <div class="relative cursor-pointer" @click="handleOpenLogoDialog">
-            <img
-              :src="guildIconUrl"
+            <GameGuildIcon
+              :player-info="playerInfo"
               class="w-20 h-20 rounded-lg object-cover border-2 border-gray-200 dark:border-gray-700"
             />
             <div
@@ -155,7 +155,7 @@ import { useGameUser } from '@/composables/useGameUser.js'
 import Cropper from '@/components/Cropper.vue'
 
 const router = useRouter()
-const { isLoggedIn, playerInfo, guildIconUrl, fetchPlayerInfo } = useGameUser()
+const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })

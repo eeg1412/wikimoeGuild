@@ -155,6 +155,7 @@ export async function customizeAvatar(accountId, adventurerId, avatarBase64) {
 
     // 更新冒险家
     adventurer.hasCustomAvatar = true
+    adventurer.customAvatarUpdatedAt = new Date()
     await adventurer.save()
 
     return await GameAdventurer.findById(adventurer._id)

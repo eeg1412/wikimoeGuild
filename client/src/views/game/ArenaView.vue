@@ -294,8 +294,8 @@
                     (row - 1) * 5 + col
                   }}</span>
                   <template v-if="getArenaCell(row - 1, col - 1)">
-                    <img
-                      :src="getAdvAvatarUrl(getArenaCell(row - 1, col - 1))"
+                    <GameAdventurerAvatar
+                      :adventurer="getArenaCell(row - 1, col - 1)"
                       class="w-full h-full rounded object-cover"
                     />
                     <div
@@ -490,8 +490,8 @@
           class="mb-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg"
         >
           <div class="flex items-center gap-2">
-            <img
-              :src="getAdvAvatarUrl(arenaCellAdventurer)"
+            <GameAdventurerAvatar
+              :adventurer="arenaCellAdventurer"
               class="w-8 h-8 rounded-full"
             />
             <span
@@ -525,8 +525,8 @@
             class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             @click="placeArenaAdventurer(adv)"
           >
-            <img
-              :src="getAdvAvatarUrl(adv)"
+            <GameAdventurerAvatar
+              :adventurer="adv"
               class="w-8 h-8 rounded-full border"
               :style="{ borderColor: getElementColor(adv.elements) }"
             />
@@ -724,12 +724,8 @@
                       <template
                         v-if="getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)"
                       >
-                        <img
-                          :src="
-                            getAdvAvatarUrl(
-                              getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)
-                            )
-                          "
+                        <GameAdventurerAvatar
+                          :adventurer="getUnitAt(logDetail.attackerUnits, 5 - c, r - 1)"
                           class="w-full h-full object-cover"
                         />
                         <span
@@ -764,12 +760,8 @@
                       <template
                         v-if="getUnitAt(logDetail.defenderUnits, c - 1, r - 1)"
                       >
-                        <img
-                          :src="
-                            getAdvAvatarUrl(
-                              getUnitAt(logDetail.defenderUnits, c - 1, r - 1)
-                            )
-                          "
+                        <GameAdventurerAvatar
+                          :adventurer="getUnitAt(logDetail.defenderUnits, c - 1, r - 1)"
                           class="w-full h-full object-cover"
                         />
                         <span
@@ -796,8 +788,8 @@
                 :key="unit.adventurerId + unit.row + unit.col"
                 class="bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs flex items-center gap-2"
               >
-                <img
-                  :src="getAdvAvatarUrl(unit)"
+                <GameAdventurerAvatar
+                  :adventurer="unit"
                   class="w-8 h-8 rounded-full flex-shrink-0"
                 />
                 <div class="min-w-0 flex-1">
@@ -1281,16 +1273,7 @@ function getElementName(el) {
   return ELEMENT_MAP[el]?.name || el
 }
 
-function getAdvAvatarUrl(adv) {
-  if (!adv) return ''
-  if (adv.hasCustomAvatar) {
-    return `/uploads/custom-adventurer-avatar/${adv.adventurerId || adv._id}.webp`
-  }
-  if (adv.isDemon) {
-    return `/publicgame/demon/${adv.defaultAvatarId || 1}.webp`
-  }
-  return `/publicgame/avatar/${adv.defaultAvatarId || 1}.webp`
-}
+
 
 function getUnitAt(units, row, col) {
   if (!units) return null

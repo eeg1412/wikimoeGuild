@@ -166,7 +166,7 @@ export async function getArenaFormation(accountId) {
     adventurerIds.length > 0
       ? await GameAdventurer.find({ _id: { $in: adventurerIds } })
           .select(
-            '_id name elements defaultAvatarId hasCustomAvatar comprehensiveLevel'
+            '_id name elements defaultAvatarId hasCustomAvatar customAvatarUpdatedAt comprehensiveLevel'
           )
           .lean()
       : []
@@ -820,7 +820,7 @@ export async function getBattleLogDetail(accountId, logId) {
   const adventurers =
     allAdvIds.length > 0
       ? await GameAdventurer.find({ _id: { $in: allAdvIds } })
-          .select('_id name defaultAvatarId hasCustomAvatar')
+          .select('_id name defaultAvatarId hasCustomAvatar customAvatarUpdatedAt')
           .lean()
       : []
 
@@ -841,7 +841,8 @@ export async function getBattleLogDetail(accountId, logId) {
         ...unit,
         name: unit.npcName || '未知',
         defaultAvatarId: unit.npcDefaultAvatarId || 1,
-        hasCustomAvatar: false
+        hasCustomAvatar: false,
+        customAvatarUpdatedAt: null
       }
     }
     const realAdv = advMap.get(unit.adventurerId)
@@ -849,7 +850,8 @@ export async function getBattleLogDetail(accountId, logId) {
       ...unit,
       name: realAdv?.name || '未知',
       defaultAvatarId: realAdv?.defaultAvatarId || 1,
-      hasCustomAvatar: realAdv?.hasCustomAvatar || false
+      hasCustomAvatar: realAdv?.hasCustomAvatar || false,
+      customAvatarUpdatedAt: realAdv?.customAvatarUpdatedAt || null
     }
   }
 

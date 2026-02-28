@@ -28,6 +28,11 @@ const gamePlayerInfoSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    // 自定义公会图标更新时间
+    customGuildIconUpdatedAt: {
+      type: Date,
+      default: null
+    },
     // 地图可切换次数
     mapCanChangeUses: {
       type: Number,

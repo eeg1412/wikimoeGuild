@@ -51,8 +51,8 @@
 
         <!-- 头像 -->
         <div class="relative w-16 h-16 sm:w-20 sm:h-20 mb-2">
-          <img
-            :src="getAvatarUrl(adv)"
+          <GameAdventurerAvatar
+            :adventurer="adv"
             :alt="adv.name"
             class="w-full h-full rounded-full object-cover border-2 border-gray-200 dark:border-gray-600 group-hover:border-yellow-400 transition-colors"
           />
@@ -116,8 +116,8 @@
       <div v-if="detailAdv" class="flex flex-col items-center gap-4">
         <!-- 头像 -->
         <div class="relative cursor-pointer" @click="showAvatarDialog = true">
-          <img
-            :src="getAvatarUrl(detailAdv)"
+          <GameAdventurerAvatar
+            :adventurer="detailAdv"
             :alt="detailAdv.name"
             class="w-24 h-24 rounded-full object-cover border-4"
             :style="{ borderColor: getElementColor(detailAdv.elements) }"
@@ -579,12 +579,7 @@ function getAttackPreferenceName(type) {
   if (!type) return '—'
   return attackPreferenceMap.value.get(type) || type
 }
-function getAvatarUrl(adv) {
-  if (adv.hasCustomAvatar) {
-    return `/uploads/custom-adventurer-avatar/${adv._id}.webp?t=${Date.now()}`
-  }
-  return `/publicgame/avatar/${adv.defaultAvatarId}.webp`
-}
+
 
 function rarityName(r) {
   return { normal: '普通', rare: '稀有', legendary: '传说' }[r] || r

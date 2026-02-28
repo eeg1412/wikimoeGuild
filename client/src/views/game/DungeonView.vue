@@ -215,8 +215,9 @@
                 :key="idx"
                 class="flex flex-col items-center p-1"
               >
-                <img
-                  :src="`/publicgame/demon/${demon.defaultAvatarId}.webp`"
+                <GameAdventurerAvatar
+                  :adventurer="demon"
+                  :is-demon="true"
                   class="w-8 h-8 rounded-full border"
                   :style="{ borderColor: getElementColor(demon.elements) }"
                 />

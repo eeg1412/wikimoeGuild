@@ -47,9 +47,9 @@
         <ResponsiveTableColumn label="头像" width="70" align="center">
           <template #default="{ row }">
             <div class="relative inline-block">
-              <el-avatar
-                :size="40"
-                :src="`/publicgame/avatar/${row.defaultAvatarId}.webp`"
+              <GameAdventurerAvatar
+                :adventurer="row"
+                class="w-10 h-10 rounded-full object-cover"
               />
               <span
                 class="absolute -top-1 -right-1 w-3 h-3 rotate-45 border border-white dark:border-gray-700 rounded-sm"

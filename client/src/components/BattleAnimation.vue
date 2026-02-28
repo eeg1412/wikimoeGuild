@@ -45,8 +45,8 @@
                     :style="{ fontSize: Math.max(10, nameFontSize - 1) + 'px' }"
                     >{{ unit.row * 5 + unit.col + 1 }}</span
                   >
-                  <img
-                    :src="getUnitAvatar(unit)"
+                  <GameAdventurerAvatar
+                    :adventurer="unit"
                     class="battle-avatar"
                     :class="{ 'grayscale opacity-40': !unit.alive }"
                     :style="{
@@ -105,8 +105,8 @@
                     :style="{ fontSize: Math.max(10, nameFontSize - 1) + 'px' }"
                     >{{ unit.row * 5 + unit.col + 1 }}</span
                   >
-                  <img
-                    :src="getUnitAvatar(unit)"
+                  <GameAdventurerAvatar
+                    :adventurer="unit"
                     class="battle-avatar"
                     :class="{ 'grayscale opacity-40': !unit.alive }"
                     :style="{
@@ -305,17 +305,7 @@ const logFontSize = computed(() =>
   Math.max(10, Math.round(cellSize.value * 0.2))
 )
 
-// 获取单位头像URL
-function getUnitAvatar(unit) {
-  if (!unit) return ''
-  if (unit.isDemon) {
-    return `/publicgame/demon/${unit.defaultAvatarId || 1}.webp`
-  }
-  if (unit.hasCustomAvatar) {
-    return `/uploads/custom-adventurer-avatar/${unit.id}.webp`
-  }
-  return `/publicgame/avatar/${unit.defaultAvatarId || 1}.webp`
-}
+
 
 // 单位状态跟踪
 const unitState = ref(new Map())

@@ -38,7 +38,10 @@
         <template v-if="isLoggedIn && playerInfo">
           <el-dropdown trigger="click">
             <div class="flex items-center gap-2 cursor-pointer">
-              <el-avatar :size="28" :src="guildIconUrl" shape="square" />
+              <GameGuildIcon
+                :player-info="playerInfo"
+                class="w-7 h-7 rounded object-cover"
+              />
               <span
                 class="text-sm text-gray-700 dark:text-gray-200 hidden sm:inline"
               >
@@ -188,7 +191,7 @@ import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
 
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
-const { isLoggedIn, playerInfo, guildIconUrl, fetchPlayerInfo, logout } =
+const { isLoggedIn, playerInfo, fetchPlayerInfo, logout } =
   useGameUser()
 const { siteSettings, loadSiteSettings } = useGameSiteSettings()
 

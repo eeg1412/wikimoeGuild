@@ -56,8 +56,8 @@
             >
               <span class="grid-cell-seq">{{ (row - 1) * 5 + col }}</span>
               <template v-if="getCell(row - 1, col - 1)">
-                <img
-                  :src="getAdvAvatarUrl(getCell(row - 1, col - 1))"
+                <GameAdventurerAvatar
+                  :adventurer="getCell(row - 1, col - 1)"
                   class="w-full h-full rounded object-cover"
                 />
                 <div
@@ -119,8 +119,8 @@
           class="mb-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg"
         >
           <div class="flex items-center gap-2">
-            <img
-              :src="getAdvAvatarUrl(cellAdventurer)"
+            <GameAdventurerAvatar
+              :adventurer="cellAdventurer"
               class="w-8 h-8 rounded-full"
             />
             <span
@@ -142,8 +142,8 @@
             class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             @click="placeAdventurer(adv)"
           >
-            <img
-              :src="getAdvAvatarUrl(adv)"
+            <GameAdventurerAvatar
+              :adventurer="adv"
               class="w-8 h-8 rounded-full border"
               :style="{ borderColor: getElementColor(adv.elements) }"
             />
@@ -212,13 +212,7 @@ function getElementName(el) {
   return ELEMENT_MAP[el]?.name || el
 }
 
-function getAdvAvatarUrl(adv) {
-  if (!adv) return ''
-  if (adv.hasCustomAvatar) {
-    return `/uploads/custom-adventurer-avatar/${adv._id}.webp`
-  }
-  return `/publicgame/avatar/${adv.defaultAvatarId || 1}.webp`
-}
+
 
 // ── 数据 ──
 const loading = ref(true)

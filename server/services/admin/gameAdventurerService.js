@@ -43,6 +43,7 @@ export async function list({ page = 1, pageSize = 20, name, guildName }) {
               passiveBuffType: 1,
               defaultAvatarId: 1,
               hasCustomAvatar: 1,
+              customAvatarUpdatedAt: 1,
               attackLevel: 1,
               defenseLevel: 1,
               speedLevel: 1,

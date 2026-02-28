@@ -48,6 +48,7 @@ export async function list({ page = 1, pageSize = 20, email, guildName }) {
               account: 1,
               guildName: 1,
               hasCustomGuildIcon: 1,
+              customGuildIconUpdatedAt: 1,
               mapCanChangeUses: 1,
               miningCanUses: 1,
               createdAt: 1,

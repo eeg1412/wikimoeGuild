@@ -16,7 +16,10 @@ export function useGameUser() {
     if (!playerInfo.value) return ''
     const id = playerInfo.value.account
     if (playerInfo.value.hasCustomGuildIcon) {
-      return `/uploads/custom-guild-icon/${id}.png`
+      const t = playerInfo.value.customGuildIconUpdatedAt
+        ? new Date(playerInfo.value.customGuildIconUpdatedAt).getTime()
+        : ''
+      return `/uploads/custom-guild-icon/${id}.png${t ? '?t=' + t : ''}`
     }
     return `/uploads/default-guild-icon/${id}.png`
   })

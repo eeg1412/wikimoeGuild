@@ -32,6 +32,7 @@ export async function changeGuildLogo(accountId, logoBase64) {
     // 扣除金币
     playerInfo.gold -= logoPrice
     playerInfo.hasCustomGuildIcon = true
+    playerInfo.customGuildIconUpdatedAt = new Date()
     await playerInfo.save()
 
     return { success: true, gold: playerInfo.gold }

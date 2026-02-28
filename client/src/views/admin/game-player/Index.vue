@@ -46,7 +46,12 @@
       >
         <ResponsiveTableColumn label="公会图标" width="80" align="center">
           <template #default="{ row }">
-            <el-avatar :size="36" :src="getGuildIcon(row)" shape="square" />
+            <GameGuildIcon
+              :account-id="row.account"
+              :has-custom-guild-icon="row.hasCustomGuildIcon"
+              :custom-guild-icon-updated-at="row.customGuildIconUpdatedAt"
+              class="w-9 h-9 rounded object-cover"
+            />
           </template>
         </ResponsiveTableColumn>
         <ResponsiveTableColumn
@@ -224,12 +229,7 @@ const banForm = reactive({ banExpires: null })
 const passwordDialogVisible = ref(false)
 const passwordForm = reactive({ newPassword: '' })
 
-function getGuildIcon(row) {
-  if (row.hasCustomGuildIcon) {
-    return `/uploads/custom-guild-icon/${row.account}.png`
-  }
-  return `/uploads/default-guild-icon/${row.account}.png`
-}
+
 
 function disablePastDate(date) {
   return date < new Date()

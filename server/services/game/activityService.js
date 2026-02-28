@@ -44,7 +44,7 @@ export async function getActivities({ page = 1, pageSize = 20 }) {
   const accountIds = list.filter(a => a.account).map(a => a.account)
   if (accountIds.length > 0) {
     const infos = await GamePlayerInfo.find({ account: { $in: accountIds } })
-      .select('account hasCustomGuildIcon')
+      .select('account hasCustomGuildIcon customGuildIconUpdatedAt')
       .lean()
     const infoMap = new Map()
     for (const info of infos) {
@@ -53,6 +53,7 @@ export async function getActivities({ page = 1, pageSize = 20 }) {
     for (const item of list) {
       const info = item.account ? infoMap.get(item.account.toString()) : null
       item.hasCustomGuildIcon = info?.hasCustomGuildIcon || false
+      item.customGuildIconUpdatedAt = info?.customGuildIconUpdatedAt || null
     }
   }
 

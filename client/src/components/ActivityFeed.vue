@@ -22,9 +22,11 @@
       >
         <div class="flex items-start gap-2">
           <!-- 公会头像 -->
-          <img
+          <GameGuildIcon
             v-if="item.account"
-            :src="getGuildIconUrl(item)"
+            :account-id="item.account"
+            :has-custom-guild-icon="item.hasCustomGuildIcon"
+            :custom-guild-icon-updated-at="item.customGuildIconUpdatedAt"
             class="w-12 h-12 rounded-full shrink-0 mt-0.5 border border-gray-200 dark:border-gray-600 object-cover"
           />
           <!-- 类型图标（无账号时回退） -->
@@ -86,14 +88,7 @@ function typeIcon(type) {
   return icons[type] || '📌'
 }
 
-function getGuildIconUrl(item) {
-  const id = item.account
-  if (!id) return ''
-  if (item.hasCustomGuildIcon) {
-    return `/uploads/custom-guild-icon/${id}.png`
-  }
-  return `/uploads/default-guild-icon/${id}.png`
-}
+
 
 function formatTime(t) {
   if (!t) return ''
