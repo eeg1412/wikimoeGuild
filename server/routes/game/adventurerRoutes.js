@@ -6,5 +6,19 @@ const router = Router()
 
 // 获取我的冒险家列表（需鉴权）
 router.get('/my', authPlayer, adventurerController.listMyAdventurers)
+// 招募冒险家
+router.post('/recruit', authPlayer, adventurerController.recruitAdventurer)
+// 获取冒险家详情
+router.get('/:id', authPlayer, adventurerController.getAdventurerDetail)
+// 自定义头像
+router.post('/:id/avatar', authPlayer, adventurerController.customizeAvatar)
+// 自定义名字
+router.post('/:id/name', authPlayer, adventurerController.customizeName)
+// 属性升级
+router.post('/:id/level-up', authPlayer, adventurerController.levelUpStat)
+// 装备符文石
+router.post('/:id/equip', authPlayer, adventurerController.equipRuneStone)
+// 卸下符文石
+router.post('/:id/unequip', authPlayer, adventurerController.unequipRuneStone)
 
 export default router

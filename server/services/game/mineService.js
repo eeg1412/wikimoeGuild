@@ -1,0 +1,881 @@
+import mongoose from 'mongoose'
+import GameMine from '../../models/gameMine.js'
+import GameMineRevenue from '../../models/gameMineRevenue.js'
+import GamePlayerInfo from '../../models/gamePlayerInfos.js'
+import GamePlayerInventory from '../../models/gamePlayerInventory.js'
+import GameFormation from '../../models/gameFormation.js'
+import GameAdventurer from '../../models/gameAdventurer.js'
+import { executeInLock } from '../../utils/utils.js'
+import { recordActivity } from './activityService.js'
+import { executeBattle } from './battleEngine.js'
+import * as runeStoneService from './runeStoneService.js'
+import {
+  generateRandomAdventurerName,
+  generateRandomAdventurerAvatarId
+} from '../../utils/utils.js'
+import {
+  runeStoneActiveSkillDataBase,
+  passiveBuffTypeDataBase,
+  attackPreferenceDataBase
+} from 'shared/utils/gameDatabase.js'
+
+// SSE 连接管理：mineId → Set<{ res, accountId }>
+const sseClients = new Map()
+
+// 发现矿场概率（万分之）
+const MINE_DISCOVERY_RATE = 1000
+// 每10级最多2个矿场
+const MAX_MINES_PER_BRACKET = 2
+
+/**
+ * 计算等级区间
+ * level 1-10 → 1, 11-20 → 2, ...
+ */
+function getLevelBracket(level) {
+  return Math.ceil(level / 10)
+}
+
+/**
+ * 生成扫雷棋盘（10x10），10-30 个奖励区域
+ */
+function generateMineGrid() {
+  const SIZE = 10
+  const rewardCount = Math.floor(Math.random() * 21) + 10 // 10-30
+  const grid = Array.from({ length: SIZE }, () =>
+    Array.from({ length: SIZE }, () => ({
+      type: 'number',
+      adjacentRewards: 0,
+      revealed: false,
+      exploredBy: null,
+      exploredByGuildName: null,
+      challengeDefeated: false
+    }))
+  )
+
+  // 随机放置奖励区域
+  const positions = []
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      positions.push([r, c])
+    }
+  }
+  // Fisher-Yates shuffle
+  for (let i = positions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[positions[i], positions[j]] = [positions[j], positions[i]]
+  }
+
+  const rewardPositions = positions.slice(0, rewardCount)
+  for (const [r, c] of rewardPositions) {
+    grid[r][c].type = 'reward'
+  }
+
+  // 计算每个数字格子周围的奖励数
+  const DIRS = [
+    [-1, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, -1],
+    [0, 1],
+    [1, -1],
+    [1, 0],
+    [1, 1]
+  ]
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (grid[r][c].type === 'reward') continue
+      let count = 0
+      for (const [dr, dc] of DIRS) {
+        const nr = r + dr
+        const nc = c + dc
+        if (
+          nr >= 0 &&
+          nr < SIZE &&
+          nc >= 0 &&
+          nc < SIZE &&
+          grid[nr][nc].type === 'reward'
+        ) {
+          count++
+        }
+      }
+      grid[r][c].adjacentRewards = count
+    }
+  }
+
+  return { grid, totalRewards: rewardCount }
+}
+
+/**
+ * 尝试在切换迷宫时发现矿场
+ * @param {string} accountId
+ * @param {number} dungeonLevel - 当前迷宫等级
+ * @param {object} crystalRates - 当前水晶概率
+ * @returns {object|null} 发现的矿场或null
+ */
+export async function tryDiscoverMine(accountId, dungeonLevel, crystalRates) {
+  // 概率判定
+  const roll = Math.floor(Math.random() * 10000)
+  if (roll >= MINE_DISCOVERY_RATE) return null
+
+  const bracket = getLevelBracket(dungeonLevel)
+
+  // 检查该等级区间的矿场数量
+  const bracketCount = await GameMine.countDocuments({
+    levelBracket: bracket,
+    depleted: false
+  })
+  if (bracketCount >= MAX_MINES_PER_BRACKET) return null
+
+  // 使用锁确保并发安全，防止超量创建
+  return await executeInLock(`mine-discover:${bracket}`, async () => {
+    // 双重检查
+    const doubleCheck = await GameMine.countDocuments({
+      levelBracket: bracket,
+      depleted: false
+    })
+    if (doubleCheck >= MAX_MINES_PER_BRACKET) return null
+
+    const playerInfo = await GamePlayerInfo.findOne({
+      account: accountId
+    }).lean()
+    if (!playerInfo) return null
+
+    const { grid, totalRewards } = generateMineGrid()
+
+    const mine = await GameMine.create({
+      owner: accountId,
+      ownerGuildName: playerInfo.guildName,
+      level: dungeonLevel,
+      levelBracket: bracket,
+      grid,
+      totalRewards,
+      crystalRates: crystalRates || {
+        attackCryRate: 2500,
+        defenseCryRate: 2500,
+        speedCryRate: 2500,
+        SANCryRate: 2500
+      }
+    })
+
+    // 记录动态：发现矿场
+    recordActivity({
+      type: 'mine_discovered',
+      account: accountId,
+      guildName: playerInfo.guildName,
+      title: `「${playerInfo.guildName}」发现了 Lv.${dungeonLevel} 矿场`,
+      content: '探索迷宫时发现了新矿场！',
+      extra: { mineId: mine._id, level: dungeonLevel }
+    })
+
+    return mine
+  })
+}
+
+/**
+ * 获取矿场列表（支持按等级筛选）
+ */
+export async function listMines({
+  page = 1,
+  pageSize = 20,
+  minLevel,
+  maxLevel
+} = {}) {
+  page = Math.max(page, 1)
+  pageSize = Math.min(Math.max(pageSize, 1), 50)
+  const filter = { depleted: false }
+  if (minLevel) filter.level = { ...filter.level, $gte: parseInt(minLevel) }
+  if (maxLevel) filter.level = { ...filter.level, $lte: parseInt(maxLevel) }
+
+  const total = await GameMine.countDocuments(filter)
+  const list = await GameMine.find(filter)
+    .sort({ level: 1, createdAt: -1 })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .select('owner ownerGuildName level totalRewards exploredRewards createdAt')
+    .lean()
+
+  return { list, total }
+}
+
+/**
+ * 获取矿场详情（含棋盘状态，隐藏未探索格子的内部数据）
+ */
+export async function getMineDetail(mineId) {
+  const mine = await GameMine.findById(mineId).lean()
+  if (!mine) {
+    const err = new Error('矿场不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+  if (mine.depleted) {
+    const err = new Error('矿场已废弃')
+    err.statusCode = 410
+    err.expose = true
+    throw err
+  }
+
+  // 返回棋盘，但隐藏未探索格子的类型信息（仅显示是否已探索），不泄漏内部accountId
+  const safeGrid = mine.grid.map(row =>
+    row.map(cell => {
+      if (cell.revealed) {
+        return {
+          type: cell.type,
+          adjacentRewards:
+            cell.type === 'number' ? cell.adjacentRewards : undefined,
+          revealed: true,
+          exploredByGuildName: cell.exploredByGuildName,
+          challengeDefeated: cell.challengeDefeated
+        }
+      }
+      return { revealed: false }
+    })
+  )
+
+  return {
+    _id: mine._id,
+    owner: mine.owner,
+    ownerGuildName: mine.ownerGuildName,
+    level: mine.level,
+    totalRewards: mine.totalRewards,
+    exploredRewards: mine.exploredRewards,
+    crystalRates: mine.crystalRates,
+    grid: safeGrid,
+    createdAt: mine.createdAt
+  }
+}
+
+/**
+ * 恢复挖矿次数（内部使用）
+ */
+function recoverMiningUses(playerInfo) {
+  const now = Date.now()
+  const lastRecover = new Date(playerInfo.lastMiningRecoverAt || now).getTime()
+  const hoursElapsed = Math.floor((now - lastRecover) / (60 * 60 * 1000))
+  if (hoursElapsed > 0) {
+    playerInfo.miningCanUses = Math.min(
+      playerInfo.miningCanUses + hoursElapsed,
+      24
+    )
+    playerInfo.lastMiningRecoverAt = new Date(
+      lastRecover + hoursElapsed * 60 * 60 * 1000
+    )
+  }
+  return playerInfo.miningCanUses
+}
+
+/**
+ * 挖矿（探索格子）
+ */
+export async function digCell(accountId, mineId, row, col, formationSlot) {
+  // 参数验证
+  if (row < 0 || row > 9 || col < 0 || col > 9) {
+    const err = new Error('无效的坐标')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 使用矿场级锁确保并发安全（整个矿场一把锁，防止并发写入grid丢失和挖矿次数绕过）
+  return await executeInLock(`mine-dig:${mineId}`, async () => {
+    const mine = await GameMine.findById(mineId)
+    if (!mine || mine.depleted) {
+      const err = new Error('矿场不存在或已废弃')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const cell = mine.grid[row][col]
+
+    // 如果格子已被探索且不是失败的奖励区域挑战
+    if (cell.revealed && !(cell.type === 'reward' && !cell.challengeDefeated)) {
+      const err = new Error('该格子已被探索')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    // 奖励区域挑战冷却（10秒）
+    if (cell.type === 'reward') {
+      if (playerInfo.lastBattleAt) {
+        const cooldownMs =
+          Date.now() - new Date(playerInfo.lastBattleAt).getTime()
+        if (cooldownMs < 10000) {
+          const remainSec = Math.ceil((10000 - cooldownMs) / 1000)
+          const err = new Error(`对战冷却中，请等待 ${remainSec} 秒`)
+          err.statusCode = 429
+          err.expose = true
+          throw err
+        }
+      }
+    }
+
+    // 已探索的奖励区域（失败挑战）不消耗挖矿次数
+    const isRetryRewardChallenge =
+      cell.revealed && cell.type === 'reward' && !cell.challengeDefeated
+    if (!isRetryRewardChallenge) {
+      // 恢复并检查挖矿次数
+      recoverMiningUses(playerInfo)
+      if (playerInfo.miningCanUses <= 0) {
+        const err = new Error('挖矿次数不足，每小时恢复1次')
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+      playerInfo.miningCanUses -= 1
+    }
+
+    let result = {
+      row,
+      col,
+      type: cell.type,
+      crystals: null,
+      battleResult: null,
+      runeStone: null,
+      mineDepleted: false
+    }
+
+    if (cell.type === 'number') {
+      // 数字格子：获得水晶
+      cell.revealed = true
+      cell.exploredBy = accountId
+      cell.exploredByGuildName = playerInfo.guildName
+      result.adjacentRewards = cell.adjacentRewards
+
+      if (cell.adjacentRewards > 0) {
+        const totalCrystals = cell.adjacentRewards * 10
+        const crystalResult = await awardCrystals(
+          accountId,
+          totalCrystals,
+          mine
+        )
+        result.crystals = crystalResult
+
+        // 矿主收益
+        if (mine.owner.toString() !== accountId) {
+          await awardOwnerRevenue(
+            mine,
+            accountId,
+            playerInfo.guildName,
+            crystalResult
+          )
+        }
+      }
+    } else {
+      // 奖励区域：战斗
+      if (!formationSlot) {
+        // 恢复挖矿机会（因为没消耗）
+        if (!isRetryRewardChallenge) {
+          playerInfo.miningCanUses += 1
+        }
+        await playerInfo.save()
+        const err = new Error('挑战奖励区域需要选择阵容')
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+
+      playerInfo.lastBattleAt = new Date()
+
+      // 加载玩家阵容
+      const formation = await GameFormation.findOne({
+        account: accountId,
+        slot: formationSlot
+      })
+      if (!formation) {
+        if (!isRetryRewardChallenge) {
+          playerInfo.miningCanUses += 1
+        }
+        await playerInfo.save()
+        const err = new Error('阵容不存在')
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+
+      const adventurerIds = formation.grid.flat().filter(id => id !== null)
+      if (adventurerIds.length === 0) {
+        if (!isRetryRewardChallenge) {
+          playerInfo.miningCanUses += 1
+        }
+        await playerInfo.save()
+        const err = new Error('阵容中没有冒险家')
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+
+      const adventurers = await GameAdventurer.find({
+        _id: { $in: adventurerIds },
+        account: accountId
+      })
+        .populate('runeStone')
+        .lean()
+
+      const advMap = new Map()
+      for (const adv of adventurers) {
+        advMap.set(adv._id.toString(), adv)
+      }
+      const playerGrid = formation.grid.map(row =>
+        row.map(id => (id ? advMap.get(id.toString()) || null : null))
+      )
+
+      // 生成军团（同等级迷宫军团逻辑）
+      const demonGrid = generateMineLegion(mine.level)
+
+      // 执行战斗
+      const allSkillsDB = runeStoneActiveSkillDataBase()
+      const battleResult = executeBattle(playerGrid, demonGrid, allSkillsDB)
+      result.battleResult = {
+        winner: battleResult.winner,
+        rounds: battleResult.rounds,
+        log: battleResult.log,
+        attackerUnits: battleResult.attackerUnits,
+        defenderUnits: battleResult.defenderUnits
+      }
+
+      if (battleResult.winner === 'attacker') {
+        // 胜利
+        cell.revealed = true
+        cell.exploredBy = accountId
+        cell.exploredByGuildName = playerInfo.guildName
+        cell.challengeDefeated = true
+        mine.exploredRewards += 1
+
+        // 奖励：100个水晶 + 1个符文石
+        const crystalResult = await awardCrystals(accountId, 100, mine)
+        result.crystals = crystalResult
+
+        // 矿主收益（水晶）
+        if (mine.owner.toString() !== accountId) {
+          await awardOwnerRevenue(
+            mine,
+            accountId,
+            playerInfo.guildName,
+            crystalResult
+          )
+        }
+
+        // 符文石（矿场奖励区域必掉，使用符文石稀有度概率算法）
+        const gameSettings = global.$globalConfig?.gameSettings || {}
+        const normalRate = gameSettings.normalRuneStoneRate ?? 8000
+        const rareRate = gameSettings.rareRuneStoneRate ?? 1500
+        const rarityRoll = Math.floor(Math.random() * 10000)
+        let rarity
+        if (rarityRoll < normalRate) rarity = 'normal'
+        else if (rarityRoll < normalRate + rareRate) rarity = 'rare'
+        else rarity = 'legendary'
+        result.runeStone = await runeStoneService.generateRuneStone(
+          accountId,
+          rarity
+        )
+
+        // 记录动态：矿场获得符文石
+        const rarityLabels = { normal: '普通', rare: '稀有', legendary: '传说' }
+        recordActivity({
+          type: 'rune_stone_found',
+          account: accountId,
+          guildName: playerInfo.guildName,
+          title: `「${playerInfo.guildName}」在矿场获得了${rarityLabels[rarity]}符文石`,
+          content: `在 Lv.${mine.level} 矿场探索中获得了一颗${rarityLabels[rarity]}符文石！`,
+          extra: { rarity, mineLevel: mine.level }
+        })
+
+        // 检查矿场是否废弃
+        if (mine.exploredRewards >= mine.totalRewards) {
+          mine.depleted = true
+          result.mineDepleted = true
+        }
+      } else {
+        // 失败：标记为已显示但未攻克
+        cell.revealed = true
+        cell.exploredBy = accountId
+        cell.exploredByGuildName = playerInfo.guildName
+        cell.challengeDefeated = false
+        result.challengeFailed = true
+      }
+    }
+
+    // 标记 grid 为已修改
+    mine.markModified('grid')
+    await mine.save()
+    await playerInfo.save()
+
+    // 通知 SSE 客户端（不泄漏内部accountId）
+    broadcastMineUpdate(mineId.toString(), {
+      type: 'cellUpdate',
+      row,
+      col,
+      cell: {
+        type: cell.type,
+        adjacentRewards:
+          cell.type === 'number' ? cell.adjacentRewards : undefined,
+        revealed: cell.revealed,
+        exploredByGuildName: cell.exploredByGuildName,
+        challengeDefeated: cell.challengeDefeated
+      },
+      exploredRewards: mine.exploredRewards,
+      depleted: mine.depleted
+    })
+
+    return result
+  })
+}
+
+/**
+ * 按概率分配水晶
+ */
+async function awardCrystals(accountId, totalAmount, mine) {
+  const rates = mine.crystalRates || {
+    attackCryRate: 2500,
+    defenseCryRate: 2500,
+    speedCryRate: 2500,
+    SANCryRate: 2500
+  }
+  const totalRate =
+    rates.attackCryRate +
+    rates.defenseCryRate +
+    rates.speedCryRate +
+    rates.SANCryRate
+  const attackCrystals = Math.floor(
+    (totalAmount * rates.attackCryRate) / totalRate
+  )
+  const defenseCrystals = Math.floor(
+    (totalAmount * rates.defenseCryRate) / totalRate
+  )
+  const speedCrystals = Math.floor(
+    (totalAmount * rates.speedCryRate) / totalRate
+  )
+  const sanCrystals = Math.floor((totalAmount * rates.SANCryRate) / totalRate)
+
+  // 修正取整误差
+  const allocated =
+    attackCrystals + defenseCrystals + speedCrystals + sanCrystals
+  const remainder = totalAmount - allocated
+
+  const result = {
+    attackCrystal: attackCrystals,
+    defenseCrystal: defenseCrystals,
+    speedCrystal: speedCrystals,
+    sanCrystal: sanCrystals
+  }
+
+  // 余量分给第一个非零概率的水晶
+  if (remainder > 0) {
+    if (rates.attackCryRate > 0) result.attackCrystal += remainder
+    else if (rates.defenseCryRate > 0) result.defenseCrystal += remainder
+    else if (rates.speedCryRate > 0) result.speedCrystal += remainder
+    else result.sanCrystal += remainder
+  }
+
+  await GamePlayerInventory.findOneAndUpdate(
+    { account: accountId },
+    {
+      $inc: {
+        attackCrystal: result.attackCrystal,
+        defenseCrystal: result.defenseCrystal,
+        speedCrystal: result.speedCrystal,
+        sanCrystal: result.sanCrystal
+      }
+    },
+    { upsert: true }
+  )
+
+  return result
+}
+
+/**
+ * 矿主收益（每次有玩家获得水晶时，矿主获得10个同种水晶）
+ */
+async function awardOwnerRevenue(
+  mine,
+  triggeredByAccountId,
+  triggeredByGuildName,
+  crystalResult
+) {
+  const ownerId = mine.owner
+  const increments = {}
+  const revenueEntries = []
+
+  for (const [crystalType, amount] of Object.entries(crystalResult)) {
+    if (amount > 0) {
+      increments[crystalType] = 10
+      revenueEntries.push({
+        owner: ownerId,
+        mine: mine._id,
+        triggeredBy: triggeredByAccountId,
+        triggeredByGuildName,
+        crystalType,
+        crystalAmount: 10
+      })
+    }
+  }
+
+  if (Object.keys(increments).length > 0) {
+    await GamePlayerInventory.findOneAndUpdate(
+      { account: ownerId },
+      { $inc: increments },
+      { upsert: true }
+    )
+    await GameMineRevenue.insertMany(revenueEntries)
+  }
+}
+
+/**
+ * 生成矿场军团（同等级迷宫军团逻辑）
+ */
+function generateMineLegion(level) {
+  const ELEMENTS = ['1', '2', '3', '4', '5', '6']
+  const allBuffTypes = passiveBuffTypeDataBase()
+  const allPreferences = attackPreferenceDataBase()
+  const allSkills = runeStoneActiveSkillDataBase()
+  const DEMON_AVATAR_COUNT = 3
+
+  const demons = []
+
+  if (level <= 25) {
+    const demonCount = Math.min(level, 25)
+    for (let i = 0; i < demonCount; i++) {
+      demons.push(
+        createMineDemon(
+          1,
+          ELEMENTS,
+          allBuffTypes,
+          allPreferences,
+          DEMON_AVATAR_COUNT,
+          null,
+          allSkills
+        )
+      )
+    }
+  } else {
+    const totalLevel = 25 + level * 10
+    const levels = distributeMineLevels(totalLevel, 25)
+    for (let i = 0; i < 25; i++) {
+      const compLevel = levels[i]
+      const runeStone = generateMineDemonRuneStone(compLevel, allSkills)
+      demons.push(
+        createMineDemon(
+          compLevel,
+          ELEMENTS,
+          allBuffTypes,
+          allPreferences,
+          DEMON_AVATAR_COUNT,
+          runeStone,
+          allSkills
+        )
+      )
+    }
+  }
+
+  const grid = Array.from({ length: 5 }, () => Array(5).fill(null))
+  let idx = 0
+  for (let row = 0; row < 5 && idx < demons.length; row++) {
+    for (let col = 0; col < 5 && idx < demons.length; col++) {
+      grid[row][col] = demons[idx]
+      idx++
+    }
+  }
+
+  return grid
+}
+
+function createMineDemon(
+  comprehensiveLevel,
+  elements,
+  allBuffTypes,
+  allPreferences,
+  avatarCount,
+  runeStone
+) {
+  const element = elements[Math.floor(Math.random() * elements.length)]
+  const passiveBuff =
+    allBuffTypes[Math.floor(Math.random() * allBuffTypes.length)]
+  const preference =
+    allPreferences[Math.floor(Math.random() * allPreferences.length)]
+
+  const remaining = Math.max(comprehensiveLevel - 4, 0)
+  const parts = [0, 0, 0, 0]
+  for (let i = 0; i < remaining; i++) {
+    parts[Math.floor(Math.random() * 4)]++
+  }
+
+  return {
+    _id: `mine_demon_${Math.random().toString(36).slice(2, 10)}`,
+    name: generateRandomAdventurerName(),
+    elements: element,
+    passiveBuffType: passiveBuff.value,
+    attackPreference: preference.value,
+    defaultAvatarId: Math.floor(Math.random() * avatarCount) + 1,
+    attackLevel: parts[0] + 1,
+    defenseLevel: parts[1] + 1,
+    speedLevel: parts[2] + 1,
+    SANLevel: parts[3] + 1,
+    comprehensiveLevel,
+    runeStone,
+    isDemon: true
+  }
+}
+
+function distributeMineLevels(totalLevel, count) {
+  const levels = new Array(count).fill(1)
+  let remaining = Math.max(totalLevel - count, 0)
+  while (remaining > 0) {
+    const idx = Math.floor(Math.random() * count)
+    levels[idx]++
+    remaining--
+  }
+  return levels
+}
+
+function generateMineDemonRuneStone(level, allSkills) {
+  const shuffledSkills = [...allSkills].sort(() => Math.random() - 0.5)
+  const activeSkills = shuffledSkills
+    .slice(0, 3)
+    .map(s => ({ skillId: s.value }))
+  const buffTypes = ['attack', 'defense', 'speed', 'san']
+  const passiveBuffs = []
+  for (let i = 0; i < 6; i++) {
+    passiveBuffs.push({
+      buffType: buffTypes[Math.floor(Math.random() * 4)],
+      buffLevel: Math.floor(Math.random() * 10) + 21
+    })
+  }
+  return {
+    rarity: 'legendary',
+    level: Math.max(level, 1),
+    activeSkills,
+    passiveBuffs
+  }
+}
+
+/**
+ * 获取矿主收益（近7天）
+ */
+export async function getOwnerRevenue(
+  accountId,
+  { page = 1, pageSize = 20 } = {}
+) {
+  page = Math.max(page, 1)
+  pageSize = Math.min(Math.max(pageSize, 1), 50)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const filter = { owner: accountId, createdAt: { $gte: sevenDaysAgo } }
+
+  const total = await GameMineRevenue.countDocuments(filter)
+  const list = await GameMineRevenue.find(filter)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .lean()
+
+  // 汇总统计（近7天，aggregate需要ObjectId格式）
+  const ownerObjectId = new mongoose.Types.ObjectId(accountId)
+  const summary = await GameMineRevenue.aggregate([
+    { $match: { owner: ownerObjectId, createdAt: { $gte: sevenDaysAgo } } },
+    {
+      $group: {
+        _id: '$crystalType',
+        totalAmount: { $sum: '$crystalAmount' }
+      }
+    }
+  ])
+
+  const summaryMap = {}
+  for (const s of summary) {
+    summaryMap[s._id] = s.totalAmount
+  }
+
+  return { list, total, summary: summaryMap }
+}
+
+/**
+ * 获取矿场挖矿信息（当前挖矿次数等）
+ */
+export async function getMiningInfo(accountId) {
+  const playerInfo = await GamePlayerInfo.findOne({ account: accountId }).lean()
+  if (!playerInfo) {
+    const err = new Error('玩家信息不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  const now = Date.now()
+  const lastRecover = new Date(playerInfo.lastMiningRecoverAt || now).getTime()
+  const hoursElapsed = Math.floor((now - lastRecover) / (60 * 60 * 1000))
+  const currentUses = Math.min(playerInfo.miningCanUses + hoursElapsed, 24)
+  const nextRecoverIn =
+    60 * 60 * 1000 - ((now - lastRecover) % (60 * 60 * 1000))
+
+  return {
+    miningCanUses: currentUses,
+    nextRecoverIn: Math.ceil(nextRecoverIn / 1000)
+  }
+}
+
+// ===== SSE 管理 =====
+
+// 每个用户对每个矿场最大连接数
+const MAX_SSE_PER_USER_PER_MINE = 2
+
+/**
+ * 注册 SSE 连接（限制每用户每矿场最多2个连接，超出时关闭旧连接）
+ */
+export function registerSSEClient(mineId, accountId, res) {
+  if (!sseClients.has(mineId)) {
+    sseClients.set(mineId, new Set())
+  }
+  const clients = sseClients.get(mineId)
+
+  // 检查同一用户已有连接数，超出时关闭最早的
+  const userClients = [...clients].filter(c => c.accountId === accountId)
+  while (userClients.length >= MAX_SSE_PER_USER_PER_MINE) {
+    const oldClient = userClients.shift()
+    try {
+      oldClient.res.end()
+    } catch {
+      /* 忽略 */
+    }
+    clients.delete(oldClient)
+  }
+
+  const client = { res, accountId }
+  clients.add(client)
+
+  // 清理断开的连接
+  res.on('close', () => {
+    const clientSet = sseClients.get(mineId)
+    if (clientSet) {
+      clientSet.delete(client)
+      if (clientSet.size === 0) {
+        sseClients.delete(mineId)
+      }
+    }
+  })
+}
+
+/**
+ * 广播矿场更新
+ */
+function broadcastMineUpdate(mineId, data) {
+  const clients = sseClients.get(mineId)
+  if (!clients || clients.size === 0) return
+
+  const message = `data: ${JSON.stringify(data)}\n\n`
+  for (const client of clients) {
+    try {
+      client.res.write(message)
+    } catch {
+      // 连接已断开，忽略
+    }
+  }
+}

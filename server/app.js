@@ -10,6 +10,7 @@ import routes from './routes/index.js'
 import { responseHandler } from './middlewares/responseHandler.js'
 import { errorHandler } from './middlewares/errorHandler.js'
 import { checkInited } from './services/admin/installService.js'
+import { initCronJobs } from './config/cron.js'
 
 // import { generateIconAsync } from './utils/utils.js'
 
@@ -110,6 +111,7 @@ async function start() {
   initJwtKeys()
   await connectDB()
   initIp2location()
+  initCronJobs()
   app.listen(config.port, () => {
     logger.info(`Server running on http://localhost:${config.port}`)
   })

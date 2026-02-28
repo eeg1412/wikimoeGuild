@@ -19,6 +19,7 @@
     "joi": "18.0.2",
     "jsonwebtoken": "9.0.3",
     "mongoose": "9.2.1",
+    "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
     "shared": "workspace:*",
     "ua-parser-js": "^2.0.9",

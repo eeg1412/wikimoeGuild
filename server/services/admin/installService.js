@@ -66,7 +66,7 @@ export async function install({
     await GlobalConfig.findOneAndUpdate(
       { name: item.name },
       { value: item.value },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
   }
 

@@ -10,6 +10,7 @@ import gameMailCodeRoutes from './gameMailCodeRoutes.js'
 import gamePlayerLoginLogRoutes from './gamePlayerLoginLogRoutes.js'
 import gamePlayerRegisterLogRoutes from './gamePlayerRegisterLogRoutes.js'
 import gameAdventurerRoutes from './gameAdventurerRoutes.js'
+import gameMailRoutes from './gameMailRoutes.js'
 // ===GENERATOR_IMPORT===
 
 const router = Router()
@@ -23,6 +24,7 @@ router.use('/game-mail-codes', authAdmin, gameMailCodeRoutes)
 router.use('/game-player-login-logs', authAdmin, gamePlayerLoginLogRoutes)
 router.use('/game-player-register-logs', authAdmin, gamePlayerRegisterLogRoutes)
 router.use('/game-adventurers', authAdmin, gameAdventurerRoutes)
+router.use('/game-mails', authAdmin, gameMailRoutes)
 router.use('/', installRoutes)
 // ===GENERATOR_ROUTE===
 

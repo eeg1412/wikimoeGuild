@@ -3,6 +3,7 @@ import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GamePlayerLoginLog from '../../models/gamePlayerLoginLogs.js'
 import GamePlayerRegisterLog from '../../models/gamePlayerRegisterLogs.js'
 import GameMailCode from '../../models/gameMailCodes.js'
+import GamePlayerInventory from '../../models/gamePlayerInventory.js'
 import GamePlayerBanLog from '../../models/gamePlayerBanLogs.js'
 import GameAdventurer from '../../models/gameAdventurer.js'
 import {
@@ -20,6 +21,7 @@ import jwt from 'jsonwebtoken'
 import { jwtKeys } from '../../config/jwtKeys.js'
 import { JWT_CONFIG } from '../../config/jwt.js'
 import { operationalLogger } from '../../utils/logger.js'
+import { recordActivity } from './activityService.js'
 
 /**
  * 签发玩家双 Token
@@ -260,6 +262,9 @@ export async function register(req, { email, password, guildName, code }) {
       { $inc: { adventurerCount: 1 } }
     )
 
+    // 创建玩家背包
+    await GamePlayerInventory.create({ account: account._id })
+
     // 记录注册日志
     const log = await GamePlayerRegisterLog.create({
       email,
@@ -273,6 +278,15 @@ export async function register(req, { email, password, guildName, code }) {
     // 异步生成公会图标
     generateIconAsync(String(account._id)).catch(err => {
       console.error('生成公会图标失败', err)
+    })
+
+    // 记录动态：创建公会
+    recordActivity({
+      type: 'guild_created',
+      account: account._id,
+      guildName,
+      title: `公会「${guildName}」已创建`,
+      content: '欢迎新公会加入冒险！'
     })
 
     // 注册成功后自动签发 Token 实现免登录跳转

@@ -28,6 +28,7 @@ const gamePlayerInfoSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    // 地图可切换次数
     mapCanChangeUses: {
       type: Number,
       min: 0,
@@ -40,7 +41,7 @@ const gamePlayerInfoSchema = new mongoose.Schema(
     miningCanUses: {
       type: Number,
       min: 0,
-      default: 20
+      default: 24
     },
     lastMiningRecoverAt: {
       type: Date,
@@ -94,6 +95,11 @@ const gamePlayerInfoSchema = new mongoose.Schema(
     lastDungeonSettleAt: {
       type: Date,
       default: Date.now
+    },
+    // 上次对战时间（对战冷却用）
+    lastBattleAt: {
+      type: Date,
+      default: null
     }
   },
   {

@@ -20,7 +20,7 @@ export async function findOneAndUpdate(req, res, next) {
       const updatedItem = await globalConfigService.findOneAndUpdate(
         { name: item.id },
         { value: item.value },
-        { new: true }
+        { returnDocument: 'after' }
       )
       results.success.push(updatedItem)
     } catch (error) {

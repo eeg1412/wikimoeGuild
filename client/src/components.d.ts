@@ -11,6 +11,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ActivityFeed: typeof import('./components/ActivityFeed.vue')['default']
+    BattleAnimation: typeof import('./components/BattleAnimation.vue')['default']
     Cropper: typeof import('./components/Cropper.vue')['default']
     DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
     IpInfoDisplay: typeof import('./components/IpInfoDisplay.vue')['default']

@@ -61,6 +61,40 @@ const initGlobalConfig = async () => {
     googleAdAdsTxt: ''
   }
 
+  // 游戏设置
+  const gameSettingsConfig = {
+    // 冒险家招募价格
+    adventurerRecruitPrice: 10000,
+    // 冒险家自定义头像价格
+    adventurerCustomAvatarPrice: 5000,
+    // 冒险家自定义名字价格
+    adventurerCustomNamePrice: 1000,
+    // 符文石掉率概率，最大值10000
+    runeStoneDropRate: 100,
+    // 普通符文石概率，最大值10000
+    normalRuneStoneRate: 8000,
+    // 稀有符文石概率，最大值10000
+    rareRuneStoneRate: 1500,
+    // 传说符文石概率，最大值10000
+    legendaryRuneStoneRate: 500,
+    // 官方市场水晶收购价格
+    officialCrystalBuyPrice: 100,
+    // 官方市场水晶售卖价格
+    officialCrystalSellPrice: 10000,
+    // 自由市场素材最低价格
+    freeMarketMinPrice: 100,
+    // 自由市场符文石最低价格
+    freeMarketRuneStoneMinPrice: 100,
+    // 竞技场奖池金额
+    arenaPoolAmount: 100000,
+    // 竞技场参与奖奖金
+    arenaParticipationReward: 500,
+    // 竞技场每次战斗获得金币
+    arenaBattleGold: 50,
+    // 赛季持续天数，最少3天
+    seasonDays: 3
+  }
+
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型
   const formatResToForm = (form, obj) => {
     Object.keys(form).forEach(key => {
@@ -91,7 +125,8 @@ const initGlobalConfig = async () => {
         siteSettings: siteSettingsConfig,
         securitySettings: securitySettingsConfig,
         emailSettings: emailSettingsConfig,
-        adSettings: adSettingsConfig
+        adSettings: adSettingsConfig,
+        gameSettings: gameSettingsConfig
       }
       // 将data转换为object
       const obj = {}
@@ -102,6 +137,7 @@ const initGlobalConfig = async () => {
       formatResToForm(config.securitySettings, obj)
       formatResToForm(config.emailSettings, obj)
       formatResToForm(config.adSettings, obj)
+      formatResToForm(config.gameSettings, obj)
       // 将配置挂载到global上
       global.$globalConfig = config
       filter.reload([...config.securitySettings.siteBannedKeywordList])

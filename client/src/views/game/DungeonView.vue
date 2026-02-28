@@ -13,7 +13,9 @@
           🏰 地下迷宫
         </h1>
         <p class="text-gray-300 text-sm mt-1">
-          迷宫等级 Lv.{{ playerInfo?.dungeonsLevel || 1 }}
+          迷宫等级 Lv.{{
+            dungeonInfo.dungeonsLevel || playerInfo?.dungeonsLevel || 1
+          }}
         </p>
       </div>
 
@@ -75,34 +77,364 @@
             <span class="text-gray-300 text-sm">上次结算时间</span>
             <span class="text-gray-400 text-xs">{{ lastSettleStr }}</span>
           </div>
+          <div class="dungeon-info-row">
+            <span class="text-gray-300 text-sm">距上次收取</span>
+            <span class="text-orange-300 font-semibold text-xs rpg-num">{{
+              elapsedTimeStr
+            }}</span>
+          </div>
+          <div class="dungeon-info-row">
+            <span class="text-gray-300 text-sm">剩余切换次数</span>
+            <span class="text-blue-300 font-semibold rpg-num">
+              {{
+                dungeonInfo.mapCanChangeUses ??
+                playerInfo?.mapCanChangeUses ??
+                0
+              }}
+              / 24
+            </span>
+          </div>
         </div>
       </div>
 
-      <!-- 收取按钮（预留，暂不实现） -->
-      <div class="text-center mt-6">
-        <el-button type="warning" size="large" round disabled class="rpg-btn">
-          ✨ 收取水晶（施工中）
+      <!-- 操作按钮 -->
+      <div class="flex flex-col gap-3 mt-6">
+        <!-- 收取水晶 -->
+        <el-button
+          type="warning"
+          size="large"
+          round
+          class="rpg-btn"
+          :loading="settleLoading"
+          :disabled="settleLoading || currentOutput < 1"
+          @click="handleSettle"
+        >
+          ✨ 收取水晶
+        </el-button>
+
+        <!-- 切换地牢 -->
+        <el-button
+          type="info"
+          size="large"
+          round
+          class="rpg-btn"
+          :loading="switchLoading"
+          :disabled="
+            switchLoading ||
+            (dungeonInfo.mapCanChangeUses ??
+              playerInfo?.mapCanChangeUses ??
+              0) <= 0
+          "
+          @click="handleSwitch"
+        >
+          🔄 切换地牢
+        </el-button>
+
+        <!-- 挑战军团 -->
+        <el-button
+          type="danger"
+          size="large"
+          round
+          class="rpg-btn"
+          :disabled="battleCooldown > 0"
+          @click="showLegionDialog = true"
+        >
+          {{
+            battleCooldown > 0
+              ? `⚔️ 冷却中 (${battleCooldown}s)`
+              : '⚔️ 挑战地牢军团'
+          }}
         </el-button>
       </div>
+
+      <!-- 结算结果弹窗 -->
+      <el-dialog
+        v-model="settleResultVisible"
+        title="结算结果"
+        width="320px"
+        align-center
+      >
+        <div v-if="settleResult" class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span>⚔️ 攻击水晶</span>
+            <span class="text-red-400 font-bold"
+              >+{{ settleResult.crystals?.attackCrystal || 0 }}</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span>🛡️ 防御水晶</span>
+            <span class="text-blue-400 font-bold"
+              >+{{ settleResult.crystals?.defenseCrystal || 0 }}</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span>💨 速度水晶</span>
+            <span class="text-green-400 font-bold"
+              >+{{ settleResult.crystals?.speedCrystal || 0 }}</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span>🌀 SAN水晶</span>
+            <span class="text-purple-400 font-bold"
+              >+{{ settleResult.crystals?.sanCrystal || 0 }}</span
+            >
+          </div>
+          <el-divider />
+          <div v-if="settleResult.runeStone" class="text-center">
+            <span class="text-yellow-400 font-bold text-lg"
+              >🎉 获得符文石！</span
+            >
+            <p class="text-xs text-gray-400 mt-1">
+              {{ rarityName(settleResult.runeStone.rarity) }} 符文石 Lv.{{
+                settleResult.runeStone.level
+              }}
+            </p>
+          </div>
+        </div>
+      </el-dialog>
+
+      <!-- 军团挑战弹窗 -->
+      <el-dialog
+        v-model="showLegionDialog"
+        title="⚔️ 挑战地牢军团"
+        width="380px"
+        align-center
+      >
+        <div class="space-y-4">
+          <!-- 军团预览 -->
+          <div v-if="legionPreviewLoading" class="text-center py-4">
+            <span class="animate-spin inline-block text-2xl">⏳</span>
+          </div>
+          <div v-else-if="legionPreview">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              敌方军团（{{ legionPreview.demons?.length || 0 }} 只恶魔）
+            </p>
+            <div class="grid grid-cols-5 gap-1 max-h-40 overflow-y-auto">
+              <div
+                v-for="(demon, idx) in legionPreview.demons"
+                :key="idx"
+                class="flex flex-col items-center p-1"
+              >
+                <img
+                  :src="`/publicgame/demon/${demon.defaultAvatarId}.webp`"
+                  class="w-8 h-8 rounded-full border"
+                  :style="{ borderColor: getElementColor(demon.elements) }"
+                />
+                <span class="text-[10px] text-gray-400"
+                  >Lv.{{ demon.comprehensiveLevel }}</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- 选择阵容 -->
+          <div>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+              选择出战阵容：
+            </p>
+            <el-select
+              v-model="selectedFormationSlot"
+              placeholder="选择阵容"
+              class="w-full"
+            >
+              <el-option
+                v-for="f in myFormations"
+                :key="f.slot"
+                :label="f.name || `阵容 ${f.slot}`"
+                :value="f.slot"
+              />
+            </el-select>
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="showLegionDialog = false">取消</el-button>
+          <el-button
+            type="danger"
+            :loading="challengeLoading"
+            :disabled="challengeLoading || !selectedFormationSlot"
+            @click="handleChallenge"
+          >
+            开始挑战
+          </el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 战斗结果弹窗 -->
+      <el-dialog
+        v-model="battleResultVisible"
+        title="战斗结果"
+        width="340px"
+        align-center
+      >
+        <div v-if="battleResult" class="text-center space-y-3">
+          <div class="text-4xl">
+            {{
+              battleResultDisplay === 'win'
+                ? '🎉'
+                : battleResultDisplay === 'lose'
+                  ? '💀'
+                  : '🤝'
+            }}
+          </div>
+          <p
+            class="text-xl font-bold"
+            :class="{
+              'text-yellow-400': battleResultDisplay === 'win',
+              'text-red-400': battleResultDisplay === 'lose',
+              'text-gray-400': battleResultDisplay === 'draw'
+            }"
+          >
+            {{
+              { win: '胜利！', lose: '失败...', draw: '平局' }[
+                battleResultDisplay
+              ]
+            }}
+          </p>
+          <p class="text-sm text-gray-500">
+            战斗回合数：{{ battleResult.battleResult?.rounds || 0 }}
+          </p>
+          <div
+            v-if="battleResultDisplay === 'win'"
+            class="text-sm text-green-400"
+          >
+            <p>地牢等级提升！</p>
+            <p
+              v-if="battleResult.droppedRuneStone"
+              class="text-yellow-400 mt-1"
+            >
+              🎁 获得传说符文石！
+            </p>
+          </div>
+        </div>
+      </el-dialog>
+
+      <!-- 战斗演出 -->
+      <BattleAnimation
+        v-if="showBattleAnimation"
+        :battle-log="battleResult.battleResult.log"
+        :attacker-units="battleResult.battleResult.attackerUnits"
+        :defender-units="battleResult.battleResult.defenderUnits"
+        :total-rounds="battleResult.battleResult.rounds"
+        attacker-label="我方"
+        defender-label="恶魔军团"
+        @done="onBattleAnimationDone"
+      />
+
+      <!-- 发现矿场弹窗 -->
+      <el-dialog
+        v-model="showMineDiscovery"
+        title="⛏️ 发现矿场！"
+        width="340px"
+        align-center
+      >
+        <div v-if="discoveredMine" class="text-center space-y-3">
+          <div class="text-4xl">⛰️</div>
+          <p class="text-lg font-bold text-yellow-500">
+            恭喜！你发现了一座矿场！
+          </p>
+          <div
+            class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-sm space-y-1"
+          >
+            <p class="text-gray-600 dark:text-gray-300">
+              矿场等级:
+              <span class="font-bold text-blue-500"
+                >Lv.{{ discoveredMine.level }}</span
+              >
+            </p>
+            <p class="text-gray-600 dark:text-gray-300">
+              矿主:
+              <span class="font-bold text-yellow-500">{{
+                discoveredMine.ownerGuildName
+              }}</span>
+            </p>
+          </div>
+          <p class="text-xs text-gray-400">
+            作为矿主，其他玩家挖矿时你将获得额外水晶奖励
+          </p>
+          <el-button type="primary" size="small" @click="handleGoToMine"
+            >前往矿场</el-button
+          >
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useGameUser } from '@/composables/useGameUser.js'
+import {
+  getDungeonInfoApi,
+  switchDungeonApi,
+  settleCrystalsApi,
+  previewLegionApi,
+  challengeLegionApi
+} from '@/api/game/dungeon.js'
+import { getMyFormationsApi } from '@/api/game/formation.js'
+import BattleAnimation from '@/components/BattleAnimation.vue'
 
 const router = useRouter()
-const { isLoggedIn, playerInfo } = useGameUser()
+const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace('/game/login')
 }
 
+// ── 元素工具 ──
+const ELEMENT_MAP = {
+  1: { name: '地', color: '#a0855b' },
+  2: { name: '水', color: '#4fa3e0' },
+  3: { name: '火', color: '#e05c4f' },
+  4: { name: '风', color: '#6abf69' },
+  5: { name: '光明', color: '#f5c842' },
+  6: { name: '黑暗', color: '#7c5cbf' }
+}
+function getElementColor(el) {
+  return ELEMENT_MAP[el]?.color || '#999'
+}
+function rarityName(r) {
+  return { normal: '普通', rare: '稀有', legendary: '传说' }[r] || r
+}
+
+// ── 地牢信息 ──
+const dungeonInfo = ref({})
+
+async function fetchDungeonInfo() {
+  try {
+    const res = await getDungeonInfoApi()
+    dungeonInfo.value = res.data.data || {}
+    // 初始化战斗冷却（若服务器有 lastBattleAt）
+    if (dungeonInfo.value.lastBattleAt && battleCooldown.value <= 0) {
+      const remain = Math.ceil(
+        10 -
+          (Date.now() - new Date(dungeonInfo.value.lastBattleAt).getTime()) /
+            1000
+      )
+      if (remain > 0) {
+        battleCooldown.value = remain
+        if (cooldownTimer) clearInterval(cooldownTimer)
+        cooldownTimer = setInterval(() => {
+          battleCooldown.value--
+          if (battleCooldown.value <= 0) {
+            clearInterval(cooldownTimer)
+            cooldownTimer = null
+          }
+        }, 1000)
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
 // 背景
 const dungeonBgStyle = computed(() => {
-  const bgId = playerInfo.value?.dungeonsBackgroundId || 1
+  const bgId =
+    dungeonInfo.value?.dungeonsBackgroundId ||
+    playerInfo.value?.dungeonsBackgroundId ||
+    1
   return {
     backgroundImage: `url(/publicgame/dungeons/${bgId}.webp)`,
     backgroundSize: 'cover',
@@ -112,16 +444,20 @@ const dungeonBgStyle = computed(() => {
 })
 
 // 冒险家数量
-const adventurerCount = computed(() => playerInfo.value?.adventurerCount || 0)
+const adventurerCount = computed(
+  () =>
+    dungeonInfo.value?.adventurerCount || playerInfo.value?.adventurerCount || 0
+)
 
 // 水晶爆率
 const crystalRates = computed(() => {
-  const rates = playerInfo.value?.dungeonsCryRates || {
-    attackCryRate: 2500,
-    defenseCryRate: 2500,
-    speedCryRate: 2500,
-    SANCryRate: 2500
-  }
+  const rates = dungeonInfo.value?.dungeonsCryRates ||
+    playerInfo.value?.dungeonsCryRates || {
+      attackCryRate: 2500,
+      defenseCryRate: 2500,
+      speedCryRate: 2500,
+      SANCryRate: 2500
+    }
   return [
     {
       key: 'attack',
@@ -154,28 +490,31 @@ const crystalRates = computed(() => {
   ]
 })
 
-// 产出率：adventurerCount*100% + (adventurerCount-1)*10%，最大 2750%
+// 产出率
 const productionRate = computed(() => {
   const cnt = adventurerCount.value
   if (cnt <= 0) return '0%'
   const rate = cnt * 100 + (cnt - 1) * 10
-  const capped = Math.min(rate, 2750)
-  return `${capped}%`
+  return `${Math.min(rate, 2750)}%`
 })
 
-// 结算时间字符串
+// 结算时间
 const lastSettleStr = computed(() => {
-  const d = playerInfo.value?.lastDungeonSettleAt
+  const d =
+    dungeonInfo.value?.lastDungeonSettleAt ||
+    playerInfo.value?.lastDungeonSettleAt
   if (!d) return '—'
   return new Date(d).toLocaleString('zh-CN')
 })
 
-// 当前产物数量（每分钟+1，定时刷新）
+// 当前产物数量
 const currentOutput = ref(0)
 let outputTimer = null
 
 function calcOutput() {
-  const settleAt = playerInfo.value?.lastDungeonSettleAt
+  const settleAt =
+    dungeonInfo.value?.lastDungeonSettleAt ||
+    playerInfo.value?.lastDungeonSettleAt
   if (!settleAt) {
     currentOutput.value = 0
     return
@@ -184,15 +523,205 @@ function calcOutput() {
   currentOutput.value = Math.floor(ms / 60000)
 }
 
+// 距上次收取经过的时间（实时更新）
+const elapsedTimeStr = ref('—')
+
+function calcElapsedTime() {
+  const settleAt =
+    dungeonInfo.value?.lastDungeonSettleAt ||
+    playerInfo.value?.lastDungeonSettleAt
+  if (!settleAt) {
+    elapsedTimeStr.value = '—'
+    return
+  }
+  const totalSec = Math.floor(
+    (Date.now() - new Date(settleAt).getTime()) / 1000
+  )
+  if (totalSec < 0) {
+    elapsedTimeStr.value = '0秒'
+    return
+  }
+  const days = Math.floor(totalSec / 86400)
+  const hours = Math.floor((totalSec % 86400) / 3600)
+  const minutes = Math.floor((totalSec % 3600) / 60)
+  const seconds = totalSec % 60
+  const parts = []
+  if (days > 0) parts.push(`${days}天`)
+  if (hours > 0) parts.push(`${hours}小时`)
+  if (minutes > 0) parts.push(`${minutes}分`)
+  parts.push(`${seconds}秒`)
+  elapsedTimeStr.value = parts.join('')
+}
+
+// ── 收取水晶 ──
+const settleLoading = ref(false)
+const settleResultVisible = ref(false)
+const settleResult = ref(null)
+
+async function handleSettle() {
+  settleLoading.value = true
+  try {
+    const res = await settleCrystalsApi()
+    settleResult.value = res.data.data
+    settleResultVisible.value = true
+    ElMessage.success('收取成功！')
+    await fetchDungeonInfo()
+    await fetchPlayerInfo()
+    calcOutput()
+  } catch (e) {
+    // 错误已由拦截器处理
+  } finally {
+    settleLoading.value = false
+  }
+}
+
+// ── 切换地牢 ──
+const switchLoading = ref(false)
+const discoveredMine = ref(null)
+const showMineDiscovery = ref(false)
+
+async function handleSwitch() {
+  switchLoading.value = true
+  try {
+    // 切换地牢时自动收取水晶
+    if (currentOutput.value >= 1) {
+      try {
+        const settleRes = await settleCrystalsApi()
+        settleResult.value = settleRes.data.data
+        settleResultVisible.value = true
+      } catch {
+        // 收取失败不影响切换
+      }
+    }
+    const switchRes = await switchDungeonApi()
+    ElMessage.success('切换成功！')
+
+    // 检查是否发现矿场
+    const resData = switchRes.data?.data
+    if (resData?.discoveredMine) {
+      discoveredMine.value = resData.discoveredMine
+      showMineDiscovery.value = true
+    }
+
+    await fetchDungeonInfo()
+    await fetchPlayerInfo()
+    calcOutput()
+  } catch (e) {
+    // 错误已由拦截器处理
+  } finally {
+    switchLoading.value = false
+  }
+}
+
+// ── 军团挑战 ──
+const showLegionDialog = ref(false)
+const legionPreviewLoading = ref(false)
+const legionPreview = ref(null)
+const myFormations = ref([])
+const selectedFormationSlot = ref(null)
+const challengeLoading = ref(false)
+const battleResultVisible = ref(false)
+const battleResult = ref(null)
+const showBattleAnimation = ref(false)
+const battleCooldown = ref(0)
+let cooldownTimer = null
+
+function startBattleCooldown() {
+  battleCooldown.value = 10
+  if (cooldownTimer) clearInterval(cooldownTimer)
+  cooldownTimer = setInterval(() => {
+    battleCooldown.value--
+    if (battleCooldown.value <= 0) {
+      clearInterval(cooldownTimer)
+      cooldownTimer = null
+    }
+  }, 1000)
+}
+
+// 将后端的 winner ('attacker'/'defender'/'draw') 映射为前端显示
+const battleResultDisplay = computed(() => {
+  if (!battleResult.value) return ''
+  const winner = battleResult.value.battleResult?.winner
+  if (winner === 'attacker') return 'win'
+  if (winner === 'defender') return 'lose'
+  return 'draw'
+})
+
+watch(showLegionDialog, async val => {
+  if (val) {
+    legionPreviewLoading.value = true
+    try {
+      const [previewRes, formRes] = await Promise.all([
+        previewLegionApi(),
+        getMyFormationsApi()
+      ])
+      legionPreview.value = previewRes.data.data
+      myFormations.value = formRes.data.data || []
+      if (myFormations.value.length > 0 && !selectedFormationSlot.value) {
+        selectedFormationSlot.value = myFormations.value[0].slot
+      }
+    } catch (e) {
+      // 错误已由拦截器处理
+    } finally {
+      legionPreviewLoading.value = false
+    }
+  }
+})
+
+async function handleChallenge() {
+  if (!selectedFormationSlot.value) return
+  challengeLoading.value = true
+  try {
+    const res = await challengeLegionApi({
+      formationSlot: selectedFormationSlot.value
+    })
+    battleResult.value = res.data.data
+    showLegionDialog.value = false
+    // 先展示战斗演出
+    showBattleAnimation.value = true
+    // 启动前端冷却
+    startBattleCooldown()
+    await fetchDungeonInfo()
+    await fetchPlayerInfo()
+  } catch (e) {
+    // 错误已由拦截器处理
+  } finally {
+    challengeLoading.value = false
+  }
+}
+
+function onBattleAnimationDone() {
+  showBattleAnimation.value = false
+  battleResultVisible.value = true
+  if (battleResult.value?.battleResult?.winner === 'attacker') {
+    ElMessage.success('胜利！地牢等级提升！')
+  }
+}
+
+function handleGoToMine() {
+  showMineDiscovery.value = false
+  router.push('/game/mine')
+}
+
+// ── 初始化 ──
 onMounted(() => {
+  fetchDungeonInfo()
   calcOutput()
-  outputTimer = setInterval(calcOutput, 5000)
+  calcElapsedTime()
+  outputTimer = setInterval(() => {
+    calcOutput()
+    calcElapsedTime()
+  }, 1000)
 })
 
 onUnmounted(() => {
   if (outputTimer) {
     clearInterval(outputTimer)
     outputTimer = null
+  }
+  if (cooldownTimer) {
+    clearInterval(cooldownTimer)
+    cooldownTimer = null
   }
 })
 </script>
@@ -203,7 +732,6 @@ onUnmounted(() => {
   animation: dungeonTitleGlow 3s ease-in-out infinite;
   letter-spacing: 0.1em;
 }
-
 @keyframes dungeonTitleGlow {
   0%,
   100% {
@@ -232,7 +760,6 @@ onUnmounted(() => {
   border: 1px solid;
   transition: transform 0.2s ease;
 }
-
 .crystal-item:hover {
   transform: scale(1.05);
 }
@@ -244,7 +771,6 @@ onUnmounted(() => {
   padding: 4px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
-
 .dungeon-info-row:last-child {
   border-bottom: none;
 }
@@ -253,11 +779,9 @@ onUnmounted(() => {
   font-family: 'monospace';
   letter-spacing: 0.05em;
 }
-
 .counting-animation {
   animation: countUp 0.3s ease-out;
 }
-
 @keyframes countUp {
   from {
     transform: scale(1.2);

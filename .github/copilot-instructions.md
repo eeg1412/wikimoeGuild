@@ -18,3 +18,8 @@
 - 服务端使用$sensitiveFilter.contains(text)函数检查文本中是否包含敏感词，以便进行相应的处理。
 - 除非用户明确指示，否则禁止使用 terminal command 来修改文件。
 - 分析哪些代码可以作为通用组件或函数提取出来，并将它们放在适当的目录中，以便在整个项目中重用。
+- model命名规范，管理员相关需要admin开头，游戏相关的需要game相关，和游戏用户相关需要gamePlayer开头。
+- 图片采用base64格式上传，和游戏相关的图片需要前端转成webp格式，减少图片体积。
+- 玩家所有可以自由输入的文本都需要进行敏感词过滤，禁止包含敏感词。
+- 游戏端图标采用emoji
+- 禁止 @click="materialSubTab = 'sell'; fetchMaterialOrders()" 这种在click中直接写逻辑的写法。

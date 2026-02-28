@@ -48,6 +48,24 @@ const routes = [
         meta: { title: '地下迷宫', requiresPlayerAuth: true }
       },
       {
+        path: 'rune-stones',
+        name: 'GameRuneStones',
+        component: () => import('../views/game/RuneStonesView.vue'),
+        meta: { title: '符文石', requiresPlayerAuth: true }
+      },
+      {
+        path: 'formations',
+        name: 'GameFormations',
+        component: () => import('../views/game/FormationView.vue'),
+        meta: { title: '阵容配置', requiresPlayerAuth: true }
+      },
+      {
+        path: 'inventory',
+        name: 'GameInventory',
+        component: () => import('../views/game/InventoryView.vue'),
+        meta: { title: '背包', requiresPlayerAuth: true }
+      },
+      {
         path: 'login',
         name: 'GameLogin',
         component: () => import('../views/game/auth/LoginView.vue'),
@@ -64,6 +82,30 @@ const routes = [
         name: 'GameForgotPassword',
         component: () => import('../views/game/auth/ForgotPasswordView.vue'),
         meta: { title: '找回密码' }
+      },
+      {
+        path: 'mail',
+        name: 'GameMail',
+        component: () => import('../views/game/MailView.vue'),
+        meta: { title: '邮箱', requiresPlayerAuth: true }
+      },
+      {
+        path: 'market',
+        name: 'GameMarket',
+        component: () => import('../views/game/MarketView.vue'),
+        meta: { title: '交易市场', requiresPlayerAuth: true }
+      },
+      {
+        path: 'arena',
+        name: 'GameArena',
+        component: () => import('../views/game/ArenaView.vue'),
+        meta: { title: '竞技场', requiresPlayerAuth: true }
+      },
+      {
+        path: 'mine',
+        name: 'GameMine',
+        component: () => import('../views/game/MineView.vue'),
+        meta: { title: '矿场', requiresPlayerAuth: true }
       }
     ]
   },
@@ -164,6 +206,12 @@ const routes = [
         name: 'AdminGameAdventurer',
         component: () => import('../views/admin/game-adventurer/Index.vue'),
         meta: { title: '冒险家列表' }
+      },
+      {
+        path: 'game-mail',
+        name: 'AdminGameMail',
+        component: () => import('../views/admin/game-mail/Index.vue'),
+        meta: { title: '发送邮件' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]

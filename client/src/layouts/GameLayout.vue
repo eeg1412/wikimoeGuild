@@ -31,10 +31,7 @@
 
         <!-- 暗模式切换 -->
         <el-button text circle @click="toggleTheme">
-          <el-icon :size="18">
-            <Moon v-if="!isDark" />
-            <Sunny v-else />
-          </el-icon>
+          <span class="text-lg">{{ isDark ? '☀️' : '🌙' }}</span>
         </el-button>
 
         <!-- 已登录：显示公会图标和公会名 -->
@@ -47,7 +44,7 @@
               >
                 {{ playerInfo.guildName }}
               </span>
-              <el-icon :size="12" class="text-gray-400"><ArrowDown /></el-icon>
+              <span class="text-xs text-gray-400">▼</span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
@@ -72,9 +69,7 @@
     </header>
 
     <!-- 主体 -->
-    <main
-      class="flex-1 flex items-center justify-center px-4 w-full mx-auto max-w-[720px]"
-    >
+    <main class="flex-1 flex items-start px-4 w-full mx-auto max-w-[720px]">
       <router-view />
     </main>
 
@@ -96,36 +91,63 @@
           <div class="fab-item-wrapper" @click="navTo('/game/adventurers')">
             <span class="fab-label">冒险家</span>
             <div class="fab-item-btn">
-              <!-- <img
-                src="/publicgame/menu/adventurer.png"
-                alt="冒险家"
-                class="fab-icon-img"
-                @error="onFabIconError"
-              /> -->
-              <el-icon
-                v-if="fabIconError.adventurer"
-                :size="22"
-                class="fab-fallback-icon"
-                ><User
-              /></el-icon>
+              <span class="text-xl">⚔️</span>
             </div>
           </div>
           <!-- 地下迷宫 -->
           <div class="fab-item-wrapper" @click="navTo('/game/dungeon')">
             <span class="fab-label">地下迷宫</span>
             <div class="fab-item-btn">
-              <!-- <img
-                src="/publicgame/menu/dungeon.png"
-                alt="地下迷宫"
-                class="fab-icon-img"
-                @error="onFabIconError"
-              /> -->
-              <el-icon
-                v-if="fabIconError.dungeon"
-                :size="22"
-                class="fab-fallback-icon"
-                ><House
-              /></el-icon>
+              <span class="text-xl">🏰</span>
+            </div>
+          </div>
+          <!-- 符文石 -->
+          <div class="fab-item-wrapper" @click="navTo('/game/rune-stones')">
+            <span class="fab-label">符文石</span>
+            <div class="fab-item-btn">
+              <span class="text-xl">💎</span>
+            </div>
+          </div>
+          <!-- 阵容配置 -->
+          <div class="fab-item-wrapper" @click="navTo('/game/formations')">
+            <span class="fab-label">阵容配置</span>
+            <div class="fab-item-btn">
+              <span class="text-xl">🏗️</span>
+            </div>
+          </div>
+          <!-- 背包 -->
+          <div class="fab-item-wrapper" @click="navTo('/game/inventory')">
+            <span class="fab-label">背包</span>
+            <div class="fab-item-btn">
+              <span class="text-xl">🎒</span>
+            </div>
+          </div>
+          <!-- 邮箱 -->
+          <div class="fab-item-wrapper" @click="navTo('/game/mail')">
+            <span class="fab-label">邮箱</span>
+            <div class="fab-item-btn">
+              <span class="text-xl">📬</span>
+            </div>
+          </div>
+          <!-- 交易市场 -->
+          <div class="fab-item-wrapper" @click="navTo('/game/market')">
+            <span class="fab-label">交易市场</span>
+            <div class="fab-item-btn">
+              <span class="text-xl">🏪</span>
+            </div>
+          </div>
+          <!-- 竞技场 -->
+          <div class="fab-item-wrapper" @click="navTo('/game/arena')">
+            <span class="fab-label">竞技场</span>
+            <div class="fab-item-btn">
+              <span class="text-xl">⚔️</span>
+            </div>
+          </div>
+          <!-- 矿场 -->
+          <div class="fab-item-wrapper" @click="navTo('/game/mine')">
+            <span class="fab-label">矿场</span>
+            <div class="fab-item-btn">
+              <span class="text-xl">⛏️</span>
             </div>
           </div>
         </div>
@@ -138,13 +160,12 @@
         @click="fabOpen = !fabOpen"
         aria-label="菜单"
       >
-        <el-icon
-          :size="24"
-          class="transition-transform duration-300"
+        <span
+          class="text-2xl transition-transform duration-300"
           :class="{ 'rotate-45': fabOpen }"
         >
-          <Plus />
-        </el-icon>
+          ➕
+        </span>
       </button>
     </div>
   </div>
@@ -153,7 +174,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, User, House } from '@element-plus/icons-vue'
+
 import { useTheme } from '@/composables/useTheme.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
@@ -166,14 +187,6 @@ const { siteSettings, loadSiteSettings } = useGameSiteSettings()
 
 // 悬浮菜单控制
 const fabOpen = ref(false)
-const fabIconError = ref({ adventurer: false, dungeon: false })
-
-function onFabIconError(e) {
-  const alt = e.target?.alt
-  if (alt === '冒险家') fabIconError.value.adventurer = true
-  if (alt === '地下迷宫') fabIconError.value.dungeon = true
-  e.target.style.display = 'none'
-}
 
 function navTo(path) {
   fabOpen.value = false

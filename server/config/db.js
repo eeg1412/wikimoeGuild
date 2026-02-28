@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import config from './index.js'
 import { initGlobalConfig } from './globalConfig.js'
+import { ensureCappedCollection } from '../models/gamePlayerActivity.js'
 import logger from '../utils/logger.js'
 
 export async function connectDB() {
@@ -11,6 +12,7 @@ export async function connectDB() {
     })
     db.once('open', async () => {
       await initGlobalConfig()
+      await ensureCappedCollection()
       global.$DBinited = true
       logger.info('MongoDB connected successfully')
     })

@@ -34,6 +34,13 @@
           <AdSettings />
         </el-card>
       </el-tab-pane>
+
+      <!-- 游戏设置 -->
+      <el-tab-pane label="游戏设置" name="game" :lazy="true">
+        <el-card shadow="never" class="mt-4">
+          <GameSettings />
+        </el-card>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -44,6 +51,7 @@ import SiteSettings from './components/SiteSettings.vue'
 import EmailSettings from './components/EmailSettings.vue'
 import SecuritySettings from './components/SecuritySettings.vue'
 import AdSettings from './components/AdSettings.vue'
+import GameSettings from './components/GameSettings.vue'
 
 const activeTab = ref('site')
 </script>

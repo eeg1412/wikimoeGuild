@@ -98,6 +98,30 @@ export async function updateAdSettings(req, res, next) {
 }
 
 /**
+ * 获取游戏设置
+ */
+export async function getGameSettings(req, res, next) {
+  try {
+    const data = await globalConfigService.getGameSettings()
+    res.success(data)
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 更新游戏设置
+ */
+export async function updateGameSettings(req, res, next) {
+  try {
+    const data = await globalConfigService.updateGameSettings(req.body)
+    res.success(data, '游戏设置已保存')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
  * 测试邮件连接
  * 使用当前邮箱配置发送一封测试邮件到指定收件人
  */

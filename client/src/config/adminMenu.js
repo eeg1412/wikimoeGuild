@@ -31,6 +31,7 @@ export const adminMenu = [
         icon: 'Promotion'
       },
       { path: '/admin/game-mail-code', title: '邮件验证码', icon: 'Message' },
+      { path: '/admin/game-mail', title: '发送邮件', icon: 'Promotion' },
       {
         path: '/admin/game-player-ban-log',
         title: '封禁记录',

@@ -60,7 +60,7 @@ export async function updateSiteSettings(data) {
       await GlobalConfig.findOneAndUpdate(
         { name: key },
         { name: key, value: data[key] },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       )
     }
   }
@@ -70,7 +70,7 @@ export async function updateSiteSettings(data) {
     await GlobalConfig.findOneAndUpdate(
       { name: 'siteFavicon' },
       { name: 'siteFavicon', value: data.siteFavicon },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
   }
 
@@ -116,7 +116,7 @@ export async function updateEmailSettings(data) {
       await GlobalConfig.findOneAndUpdate(
         { name: key },
         { name: key, value },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       )
     }
   }
@@ -150,7 +150,7 @@ export async function updateSecuritySettings(data) {
     await GlobalConfig.findOneAndUpdate(
       { name: 'siteIPBlockList' },
       { name: 'siteIPBlockList', value },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
   }
 
@@ -161,7 +161,7 @@ export async function updateSecuritySettings(data) {
     await GlobalConfig.findOneAndUpdate(
       { name: 'siteBannedKeywordList' },
       { name: 'siteBannedKeywordList', value },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
   }
 
@@ -191,7 +191,7 @@ export async function updateAdSettings(data) {
     await GlobalConfig.findOneAndUpdate(
       { name: 'googleAdEnabled' },
       { name: 'googleAdEnabled', value },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
   }
 
@@ -199,7 +199,7 @@ export async function updateAdSettings(data) {
     await GlobalConfig.findOneAndUpdate(
       { name: 'googleAdId' },
       { name: 'googleAdId', value: data.googleAdId },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
   }
 
@@ -207,10 +207,90 @@ export async function updateAdSettings(data) {
     await GlobalConfig.findOneAndUpdate(
       { name: 'googleAdAdsTxt' },
       { name: 'googleAdAdsTxt', value: data.googleAdAdsTxt },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
   }
 
   await initGlobalConfig()
   return getAdSettings()
+}
+
+/**
+ * 获取游戏设置
+ */
+export async function getGameSettings() {
+  const config = global.$globalConfig?.gameSettings || {}
+  return {
+    adventurerRecruitPrice: config.adventurerRecruitPrice ?? 10000,
+    adventurerCustomAvatarPrice: config.adventurerCustomAvatarPrice ?? 5000,
+    adventurerCustomNamePrice: config.adventurerCustomNamePrice ?? 1000,
+    runeStoneDropRate: config.runeStoneDropRate ?? 100,
+    normalRuneStoneRate: config.normalRuneStoneRate ?? 8000,
+    rareRuneStoneRate: config.rareRuneStoneRate ?? 1500,
+    legendaryRuneStoneRate: config.legendaryRuneStoneRate ?? 500,
+    officialCrystalBuyPrice: config.officialCrystalBuyPrice ?? 100,
+    officialCrystalSellPrice: config.officialCrystalSellPrice ?? 10000,
+    freeMarketMinPrice: config.freeMarketMinPrice ?? 100,
+    freeMarketRuneStoneMinPrice: config.freeMarketRuneStoneMinPrice ?? 100,
+    arenaPoolAmount: config.arenaPoolAmount ?? 100000,
+    arenaParticipationReward: config.arenaParticipationReward ?? 500,
+    arenaBattleGold: config.arenaBattleGold ?? 50,
+    seasonDays: config.seasonDays ?? 3
+  }
+}
+
+/**
+ * 更新游戏设置
+ */
+export async function updateGameSettings(data) {
+  const numericKeys = [
+    'adventurerRecruitPrice',
+    'adventurerCustomAvatarPrice',
+    'adventurerCustomNamePrice',
+    'runeStoneDropRate',
+    'normalRuneStoneRate',
+    'rareRuneStoneRate',
+    'legendaryRuneStoneRate',
+    'officialCrystalBuyPrice',
+    'officialCrystalSellPrice',
+    'freeMarketMinPrice',
+    'freeMarketRuneStoneMinPrice',
+    'arenaPoolAmount',
+    'arenaParticipationReward',
+    'arenaBattleGold',
+    'seasonDays'
+  ]
+
+  // 验证符文石概率
+  const normalRate = data.normalRuneStoneRate ?? 8000
+  const rareRate = data.rareRuneStoneRate ?? 1500
+  const legendaryRate = data.legendaryRuneStoneRate ?? 500
+  if (normalRate + rareRate + legendaryRate > 10000) {
+    const err = new Error('三种符文石概率加起来不得超过10000')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 验证赛季天数
+  if (data.seasonDays !== undefined && data.seasonDays < 3) {
+    const err = new Error('赛季持续天数最少3天')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  for (const key of numericKeys) {
+    if (key in data) {
+      const value = String(Number(data[key]))
+      await GlobalConfig.findOneAndUpdate(
+        { name: key },
+        { name: key, value },
+        { upsert: true, returnDocument: 'after' }
+      )
+    }
+  }
+
+  await initGlobalConfig()
+  return getGameSettings()
 }

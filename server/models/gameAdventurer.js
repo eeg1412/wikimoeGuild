@@ -17,17 +17,23 @@ const gameAdventurerSchema = new mongoose.Schema(
     // 被动增益类型，默认1
     passiveBuffType: {
       type: String,
+      required: true
+    },
+    // 攻击偏好，默认1
+    attackPreference: {
+      type: String,
       required: true,
-      enum: ['1', '2', '3', '4', '5', '6']
+      default: '1'
     },
 
     // 默认头像ID 1-10
     defaultAvatarId: {
-      type: String,
+      type: Number,
       min: 1,
       max: 10,
       default: 1
     },
+
     // 是否自定义头像
     hasCustomAvatar: {
       type: Boolean,
@@ -45,29 +51,42 @@ const gameAdventurerSchema = new mongoose.Schema(
     attackLevel: {
       type: Number,
       min: 1,
-      max: 999999999,
+      max: 9999999,
       default: 1
     },
     // 防御等级
     defenseLevel: {
       type: Number,
       min: 1,
-      max: 999999999,
+      max: 9999999,
       default: 1
     },
     // 速度等级
     speedLevel: {
       type: Number,
       min: 1,
-      max: 999999999,
+      max: 9999999,
       default: 1
     },
     // SAN值等级
     SANLevel: {
       type: Number,
       min: 1,
-      max: 999999999,
+      max: 9999999,
       default: 1
+    },
+    // 综合等级
+    comprehensiveLevel: {
+      type: Number,
+      min: 1,
+      max: 9999999,
+      default: 4
+    },
+    // 装备的符文石
+    runeStone: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'game_rune_stone',
+      default: null
     }
   },
   {

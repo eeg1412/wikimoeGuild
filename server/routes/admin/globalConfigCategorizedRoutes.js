@@ -22,4 +22,7 @@ router.put(
 router.get('/ad', globalConfigCategorizedController.getAdSettings)
 router.put('/ad', globalConfigCategorizedController.updateAdSettings)
 
+router.get('/game', globalConfigCategorizedController.getGameSettings)
+router.put('/game', globalConfigCategorizedController.updateGameSettings)
+
 export default router

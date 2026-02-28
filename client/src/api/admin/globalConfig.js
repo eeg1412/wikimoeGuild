@@ -61,3 +61,12 @@ export function getAdSettingsApi() {
 export function updateAdSettingsApi(data) {
   return adminRequest.put('/global-config/ad', data)
 }
+
+// 游戏设置
+export function getGameSettingsApi() {
+  return adminRequest.get('/global-config/game')
+}
+
+export function updateGameSettingsApi(data) {
+  return adminRequest.put('/global-config/game', data)
+}

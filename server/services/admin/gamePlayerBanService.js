@@ -28,7 +28,7 @@ export async function banPlayer(email, banExpires) {
       // 重置自动过期时间（封禁到期时间 + 7 天后自动删除记录）
       expires: new Date(expires.getTime() + 7 * 24 * 60 * 60 * 1000)
     },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   )
 
   // tokenVersion + 1，强制下线
