@@ -4,9 +4,9 @@ services:
     container_name: wikimoe-guild-server
     restart: unless-stopped
     ports:
-      - '3000:3000'
+      - '3120:3120'
     environment:
-      - PORT=3000
+      - PORT=3120
       - MONGODB_URI=mongodb://mongo:27017/wikimoe-guild
       - LOG_LEVEL=info
     volumes:
@@ -14,6 +14,8 @@ services:
       - ./server/logs:/app/server/logs
       - ./server/public:/app/server/public
       - ./server/lock:/app/server/lock
+    networks:
+      - wikimoe-guild
     depends_on:
       mongo:
         condition: service_healthy
@@ -22,16 +24,20 @@ services:
     image: mongo:8
     container_name: wikimoe-guild-mongo
     restart: unless-stopped
-    ports:
-      - '27017:27017'
     volumes:
       - mongo_data:/data/db
+    networks:
+      - wikimoe-guild
     healthcheck:
       test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+
+networks:
+  wikimoe-guild:
+    driver: bridge
 
 volumes:
   mongo_data:
