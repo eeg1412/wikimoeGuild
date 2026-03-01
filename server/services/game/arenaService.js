@@ -765,7 +765,8 @@ export async function getMyBattleLogs(
       isAttacker,
       isWin,
       isDraw,
-      opponentName
+      opponentName,
+      pointsChange: isAttacker ? log.pointsChange : -log.pointsChange
     }
   })
 
@@ -802,7 +803,7 @@ export async function getBattleLogDetail(accountId, logId) {
       basicInfo: {
         winner: log.winner,
         rounds: log.rounds,
-        pointsChange: log.pointsChange,
+        pointsChange: isAttacker ? log.pointsChange : -log.pointsChange,
         goldEarned: log.goldEarned,
         attackerGuildName: log.attackerGuildName,
         defenderGuildName: log.defenderGuildName,
@@ -862,7 +863,7 @@ export async function getBattleLogDetail(accountId, logId) {
     _id: log._id,
     winner: log.winner,
     rounds: log.rounds,
-    pointsChange: log.pointsChange,
+    pointsChange: isAttacker ? log.pointsChange : -log.pointsChange,
     goldEarned: log.goldEarned,
     attackerGuildName: log.attackerGuildName,
     defenderGuildName: log.defenderGuildName,

@@ -1,6 +1,11 @@
 import { Router } from 'express'
 import * as runeStoneController from '../../controllers/game/runeStoneController.js'
 import { authPlayer } from '../../middlewares/auth.js'
+import { validate } from '../../middlewares/validate.js'
+import {
+  runeStonePreviewSynthesisSchema,
+  runeStoneConfirmSynthesisSchema
+} from '../../../shared/validators/index.js'
 
 const router = Router()
 
@@ -17,11 +22,13 @@ router.post('/:id/upgrade', authPlayer, runeStoneController.upgradeRuneStone)
 router.post(
   '/synthesis/preview',
   authPlayer,
+  validate(runeStonePreviewSynthesisSchema),
   runeStoneController.previewSynthesis
 )
 router.post(
   '/synthesis/confirm',
   authPlayer,
+  validate(runeStoneConfirmSynthesisSchema),
   runeStoneController.confirmSynthesis
 )
 

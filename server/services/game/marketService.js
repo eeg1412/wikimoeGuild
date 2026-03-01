@@ -31,6 +31,11 @@ export async function getOfficialMarketInfo() {
       defenseCrystal: stock.defenseCrystal,
       speedCrystal: stock.speedCrystal,
       sanCrystal: stock.sanCrystal
+    },
+    runeStoneOfficialPrices: {
+      normal: gameSettings.officialNormalRuneStoneBuyPrice ?? 100,
+      rare: gameSettings.officialRareRuneStoneBuyPrice ?? 400,
+      legendary: gameSettings.officialLegendaryRuneStoneBuyPrice ?? 2000
     }
   }
 }
@@ -85,12 +90,19 @@ export async function sellCrystalToOfficial(accountId, crystalType, quantity) {
       { $inc: { gold: totalGold } }
     )
 
-    // 增加官方库存
-    await GameOfficialMarketStock.findOneAndUpdate(
+    // 增加官方库存（上限 99999999，超过不再增加）
+    const MAX_STOCK = 99999999
+    const stock = await GameOfficialMarketStock.findOneAndUpdate(
       { key: 'global' },
       { $inc: { [crystalType]: quantity } },
-      { upsert: true }
+      { upsert: true, new: true }
     )
+    if (stock[crystalType] > MAX_STOCK) {
+      await GameOfficialMarketStock.updateOne(
+        { key: 'global' },
+        { $set: { [crystalType]: MAX_STOCK } }
+      )
+    }
 
     return { goldEarned: totalGold, quantity }
   })
@@ -162,6 +174,86 @@ export async function buyCrystalFromOfficial(accountId, crystalType, quantity) {
     )
 
     return { goldSpent: totalCost, quantity }
+  })
+}
+
+/**
+ * 出售符文石给官方市场
+ */
+export async function sellRuneStoneToOfficial(accountId, runeStoneId) {
+  return await executeInLock(`official-rune-sell:${accountId}`, async () => {
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const officialPriceMap = {
+      normal: gameSettings.officialNormalRuneStoneBuyPrice ?? 100,
+      rare: gameSettings.officialRareRuneStoneBuyPrice ?? 400,
+      legendary: gameSettings.officialLegendaryRuneStoneBuyPrice ?? 2000
+    }
+
+    // 检查符文石
+    const runeStone = await GameRuneStone.findOne({
+      _id: runeStoneId,
+      account: accountId
+    })
+    if (!runeStone) {
+      const err = new Error('符文石不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+    if (runeStone.equippedBy) {
+      const err = new Error('装备中的符文石不可出售，请先卸下')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+    if (runeStone.listedOnMarket) {
+      const err = new Error('该符文石已在市场出售中，请先下架')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    const officialPrice = officialPriceMap[runeStone.rarity]
+    if (!officialPrice) {
+      const err = new Error('无法识别符文石稀有度')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 删除符文石
+    await GameRuneStone.deleteOne({ _id: runeStoneId })
+
+    // 给玩家金币
+    await GamePlayerInfo.updateOne(
+      { account: accountId },
+      { $inc: { gold: officialPrice } }
+    )
+
+    // 记录动态
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+      .select('guildName')
+      .lean()
+    const rarityLabels = { normal: '普通', rare: '稀有', legendary: '传说' }
+    recordActivity({
+      type: 'market_listing',
+      account: accountId,
+      guildName: playerInfo?.guildName,
+      title: `「${playerInfo?.guildName}」出售符文石给官方`,
+      content: `${rarityLabels[runeStone.rarity] || runeStone.rarity} Lv.${runeStone.level} 符文石以 ${officialPrice} 金币出售给官方市场`,
+      extra: {
+        orderType: 'rune_sell_official',
+        rarity: runeStone.rarity,
+        level: runeStone.level,
+        price: officialPrice
+      }
+    })
+
+    return {
+      goldEarned: officialPrice,
+      rarity: runeStone.rarity,
+      level: runeStone.level
+    }
   })
 }
 
@@ -783,6 +875,58 @@ export async function createRuneStoneListing(accountId, runeStoneId, price) {
     // 暂扣符文石（设置 listedOnMarket 标记）
     runeStone.listedOnMarket = true
     await runeStone.save()
+
+    // 检查是否低于官方市场收购价格，如果低于则立即被官方收购
+    const officialPriceMap = {
+      normal: gameSettings.officialNormalRuneStoneBuyPrice ?? 100,
+      rare: gameSettings.officialRareRuneStoneBuyPrice ?? 400,
+      legendary: gameSettings.officialLegendaryRuneStoneBuyPrice ?? 2000
+    }
+    const officialPrice = officialPriceMap[runeStone.rarity]
+    if (officialPrice && price <= officialPrice) {
+      // 官方市场立即收购：删除符文石，给玩家官方收购价金币
+      await GameRuneStone.deleteOne({ _id: runeStoneId })
+
+      // 给卖家官方收购价金币
+      await GamePlayerInfo.updateOne(
+        { account: accountId },
+        { $inc: { gold: officialPrice } }
+      )
+
+      // 创建一个已完成的挂单记录
+      const listing = await GameRuneStoneListing.create({
+        account: accountId,
+        runeStone: runeStoneId,
+        price: officialPrice,
+        status: 'completed'
+      })
+
+      // 记录动态：符文石被官方收购
+      const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+        .select('guildName')
+        .lean()
+      const rarityLabels = { normal: '普通', rare: '稀有', legendary: '传说' }
+      recordActivity({
+        type: 'market_listing',
+        account: accountId,
+        guildName: playerInfo?.guildName,
+        title: `「${playerInfo?.guildName}」的符文石被官方收购`,
+        content: `${rarityLabels[runeStone.rarity] || runeStone.rarity} Lv.${runeStone.level} 符文石被官方以 ${officialPrice} 金币收购`,
+        extra: {
+          orderType: 'rune_sell',
+          rarity: runeStone.rarity,
+          level: runeStone.level,
+          price: officialPrice,
+          officialPurchase: true
+        }
+      })
+
+      return {
+        ...listing.toJSON(),
+        officialPurchased: true,
+        goldEarned: officialPrice
+      }
+    }
 
     const listing = await GameRuneStoneListing.create({
       account: accountId,

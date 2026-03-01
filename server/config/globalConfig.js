@@ -81,6 +81,12 @@ const initGlobalConfig = async () => {
     officialCrystalBuyPrice: 100,
     // 官方市场水晶售卖价格
     officialCrystalSellPrice: 10000,
+    // 官方市场普通符文石收购价格
+    officialNormalRuneStoneBuyPrice: 100,
+    // 官方市场稀有符文石收购价格
+    officialRareRuneStoneBuyPrice: 400,
+    // 官方市场传说符文石收购价格
+    officialLegendaryRuneStoneBuyPrice: 2000,
     // 自由市场素材最低价格
     freeMarketMinPrice: 100,
     // 自由市场符文石最低价格
@@ -96,7 +102,11 @@ const initGlobalConfig = async () => {
     // 公会自定义标志价格
     guildCustomLogoPrice: 5000,
     // 公会修改名字价格
-    guildChangeNamePrice: 1000
+    guildChangeNamePrice: 1000,
+    // 游客模式开关
+    guestModeEnabled: true,
+    // 每个IP每天可注册游客账号数
+    guestMaxPerIpPerDay: 3
   }
 
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型

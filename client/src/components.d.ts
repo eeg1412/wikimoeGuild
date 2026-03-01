@@ -17,10 +17,12 @@ declare module 'vue' {
     DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
     GameAdventurerAvatar: typeof import('./components/GameAdventurerAvatar.vue')['default']
     GameGuildIcon: typeof import('./components/GameGuildIcon.vue')['default']
+    GuestResultDialog: typeof import('./components/GuestResultDialog.vue')['default']
     IpInfoDisplay: typeof import('./components/IpInfoDisplay.vue')['default']
     ResponsiveTable: typeof import('./components/ResponsiveTable.vue')['default']
     ResponsiveTableColumn: typeof import('./components/ResponsiveTableColumn.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    RuneStoneInfoCard: typeof import('./components/RuneStoneInfoCard.vue')['default']
   }
 }

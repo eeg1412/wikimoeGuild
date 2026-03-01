@@ -525,10 +525,16 @@
           </div>
         </div>
 
+        <!-- 分组 Tabs -->
+        <el-tabs v-model="arenaPickTab" class="mb-2">
+          <el-tab-pane label="未放置" name="unplaced" />
+          <el-tab-pane label="已放置" name="placed" />
+        </el-tabs>
+
         <!-- 可选列表 -->
         <div class="space-y-1 max-h-60 overflow-y-auto">
           <div
-            v-for="adv in arenaAvailableAdventurers"
+            v-for="adv in arenaFilteredPickAdventurers"
             :key="adv._id"
             class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             @click="placeArenaAdventurer(adv)"
@@ -558,7 +564,7 @@
         </div>
 
         <div
-          v-if="arenaAvailableAdventurers.length === 0"
+          v-if="arenaFilteredPickAdventurers.length === 0"
           class="text-center py-4 text-gray-400 text-sm"
         >
           暂无可添加的冒险家
@@ -792,13 +798,45 @@
           <div class="space-y-2">
             <p class="text-sm text-gray-400">👥 冒险家属性快照</p>
             <div class="max-h-60 overflow-y-auto space-y-1">
+              <!-- 挑战方 -->
+              <p class="text-xs font-semibold text-blue-500 mt-1">
+                挑战方 · {{ logDetail.attackerGuildName }}
+              </p>
               <div
-                v-for="unit in [
-                  ...logDetail.attackerUnits,
-                  ...logDetail.defenderUnits
-                ]"
-                :key="unit.adventurerId + unit.row + unit.col"
-                class="bg-gray-50 dark:bg-gray-800 rounded p-2 text-sm flex items-center gap-2"
+                v-for="unit in logDetail.attackerUnits"
+                :key="'au-' + unit.adventurerId + unit.row + unit.col"
+                class="bg-blue-50 dark:bg-blue-900/20 rounded p-2 text-sm flex items-center gap-2"
+              >
+                <GameAdventurerAvatar
+                  :adventurer="unit"
+                  class="w-8 h-8 rounded-full flex-shrink-0"
+                />
+                <div class="min-w-0 flex-1">
+                  <p
+                    class="font-semibold text-gray-700 dark:text-gray-200 truncate"
+                  >
+                    {{ unit.name }}
+                    <span v-if="unit.isDemon" class="text-red-400">(恶魔)</span>
+                  </p>
+                  <p class="text-gray-400">
+                    ⚔️{{ unit.attackLevel }} 🛡️{{ unit.defenseLevel }} 💨{{
+                      unit.speedLevel
+                    }}
+                    💚{{ unit.SANLevel }}
+                    <span v-if="unit.runeStone" class="ml-1"
+                      >💎Lv{{ unit.runeStone.level }}</span
+                    >
+                  </p>
+                </div>
+              </div>
+              <!-- 防守方 -->
+              <p class="text-xs font-semibold text-red-500 mt-2">
+                防守方 · {{ logDetail.defenderGuildName }}
+              </p>
+              <div
+                v-for="unit in logDetail.defenderUnits"
+                :key="'du-' + unit.adventurerId + unit.row + unit.col"
+                class="bg-red-50 dark:bg-red-900/20 rounded p-2 text-sm flex items-center gap-2"
               >
                 <GameAdventurerAvatar
                   :adventurer="unit"
@@ -856,6 +894,11 @@ import {
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
+import {
+  createEmptyGrid,
+  isAdventurerPlaced,
+  placeAdventurerOnGrid
+} from '@/composables/useFormationGrid.js'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
@@ -917,10 +960,6 @@ const arenaPickDialogVisible = ref(false)
 const arenaPickRow = ref(0)
 const arenaPickCol = ref(0)
 
-function createEmptyGrid() {
-  return Array.from({ length: 5 }, () => Array.from({ length: 5 }, () => null))
-}
-
 const arenaPlacedCount = computed(() => {
   let count = 0
   for (const row of arenaGrid.value) {
@@ -942,12 +981,7 @@ function isAdventurerLocked(advId) {
 }
 
 function isArenaPlaced(advId) {
-  for (const row of arenaGrid.value) {
-    for (const cell of row) {
-      if (cell && cell._id === advId) return true
-    }
-  }
-  return false
+  return isAdventurerPlaced(arenaGrid.value, advId)
 }
 
 const arenaCellAdventurer = computed(() => {
@@ -958,6 +992,15 @@ const arenaAvailableAdventurers = computed(() => {
   return arenaAllAdventurers.value
 })
 
+const arenaPickTab = ref('unplaced')
+
+const arenaFilteredPickAdventurers = computed(() => {
+  if (arenaPickTab.value === 'placed') {
+    return arenaAllAdventurers.value.filter(adv => isArenaPlaced(adv._id))
+  }
+  return arenaAllAdventurers.value.filter(adv => !isArenaPlaced(adv._id))
+})
+
 function handleArenaCellClick(row, col) {
   arenaPickRow.value = row
   arenaPickCol.value = col
@@ -965,33 +1008,12 @@ function handleArenaCellClick(row, col) {
 }
 
 function placeArenaAdventurer(adv) {
-  const targetRow = arenaPickRow.value
-  const targetCol = arenaPickCol.value
-  // 记住目标格子上原来的冒险家（可能为null）
-  const existingAdv = arenaGrid.value[targetRow][targetCol]
-  // 找到该冒险家当前所在的旧位置
-  let oldRow = -1
-  let oldCol = -1
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 5; c++) {
-      if (arenaGrid.value[r][c] && arenaGrid.value[r][c]._id === adv._id) {
-        oldRow = r
-        oldCol = c
-        break
-      }
-    }
-    if (oldRow >= 0) break
-  }
-  // 如果旧位置存在，先清空
-  if (oldRow >= 0) {
-    arenaGrid.value[oldRow][oldCol] = null
-  }
-  // 将选中的冒险家放到目标格子
-  arenaGrid.value[targetRow][targetCol] = adv
-  // 如果目标格子原来有冒险家，且来源冒险家有旧位置，则互换
-  if (existingAdv && existingAdv._id !== adv._id && oldRow >= 0) {
-    arenaGrid.value[oldRow][oldCol] = existingAdv
-  }
+  placeAdventurerOnGrid(
+    arenaGrid.value,
+    arenaPickRow.value,
+    arenaPickCol.value,
+    adv
+  )
   arenaPickDialogVisible.value = false
 }
 

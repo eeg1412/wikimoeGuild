@@ -134,10 +134,16 @@
           </div>
         </div>
 
+        <!-- 分组 Tabs -->
+        <el-tabs v-model="pickTab" class="mb-2">
+          <el-tab-pane label="未放置" name="unplaced" />
+          <el-tab-pane label="已放置" name="placed" />
+        </el-tabs>
+
         <!-- 可选列表 -->
         <div class="space-y-1 max-h-60 overflow-y-auto">
           <div
-            v-for="adv in availableAdventurers"
+            v-for="adv in filteredPickAdventurers"
             :key="adv._id"
             class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             @click="placeAdventurer(adv)"
@@ -167,7 +173,7 @@
         </div>
 
         <div
-          v-if="availableAdventurers.length === 0"
+          v-if="filteredPickAdventurers.length === 0"
           class="text-center py-4 text-gray-400 text-sm"
         >
           暂无冒险家
@@ -188,6 +194,11 @@ import {
 } from '@/api/game/formation.js'
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import { useGameUser } from '@/composables/useGameUser.js'
+import {
+  createEmptyGrid,
+  isAdventurerPlaced,
+  placeAdventurerOnGrid
+} from '@/composables/useFormationGrid.js'
 
 const router = useRouter()
 const { isLoggedIn } = useGameUser()
@@ -222,10 +233,6 @@ const currentSlot = ref(1)
 const formationName = ref('')
 // 5x5 grid: grid[row][col] = adventurer object or null
 const grid = ref(createEmptyGrid())
-
-function createEmptyGrid() {
-  return Array.from({ length: 5 }, () => Array.from({ length: 5 }, () => null))
-}
 
 const existingFormation = computed(() => {
   return allFormations.value.find(f => f.slot === currentSlot.value)
@@ -325,13 +332,17 @@ const availableAdventurers = computed(() => {
   return allAdventurers.value
 })
 
-function isPlaced(advId) {
-  for (const row of grid.value) {
-    for (const cell of row) {
-      if (cell && cell._id === advId) return true
-    }
+const pickTab = ref('unplaced')
+
+const filteredPickAdventurers = computed(() => {
+  if (pickTab.value === 'placed') {
+    return allAdventurers.value.filter(adv => isPlaced(adv._id))
   }
-  return false
+  return allAdventurers.value.filter(adv => !isPlaced(adv._id))
+})
+
+function isPlaced(advId) {
+  return isAdventurerPlaced(grid.value, advId)
 }
 
 function handleCellClick(row, col) {
@@ -341,15 +352,7 @@ function handleCellClick(row, col) {
 }
 
 function placeAdventurer(adv) {
-  // 如果这个冒险家已经在其他位置，先移除
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 5; c++) {
-      if (grid.value[r][c] && grid.value[r][c]._id === adv._id) {
-        grid.value[r][c] = null
-      }
-    }
-  }
-  grid.value[pickRow.value][pickCol.value] = adv
+  placeAdventurerOnGrid(grid.value, pickRow.value, pickCol.value, adv)
   pickDialogVisible.value = false
 }
 

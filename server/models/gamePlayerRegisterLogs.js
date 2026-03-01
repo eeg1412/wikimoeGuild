@@ -29,6 +29,11 @@ const gamePlayerRegisterLogSchema = new mongoose.Schema(
       default: false,
       index: true
     },
+    isGuest: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
     success: {
       type: Boolean,
       default: false,

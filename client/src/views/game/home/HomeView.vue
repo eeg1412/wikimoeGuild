@@ -14,11 +14,20 @@
       </el-button>
 
       <!-- 未登录：显示登录/注册按钮 -->
-      <div v-if="!isLoggedIn" class="flex gap-3 justify-center mb-6">
+      <div v-if="!isLoggedIn" class="flex flex-wrap gap-3 justify-center mb-6">
         <el-button type="primary" size="large" @click="handleNavLogin">
           🔑 登录
         </el-button>
         <el-button size="large" @click="handleNavRegister"> 📝 注册 </el-button>
+        <el-button
+          v-if="guestModeEnabled"
+          size="large"
+          type="success"
+          :loading="guestLoading"
+          @click="handleNavGuestLogin"
+        >
+          🎮 游客模式
+        </el-button>
       </div>
 
       <!-- 已登录：快捷菜单 -->
@@ -174,20 +183,33 @@
       </div>
       <ActivityFeed ref="activityFeedRef" />
     </div>
+
+    <!-- 游客注册结果弹窗 -->
+    <GuestResultDialog
+      v-model="guestResultVisible"
+      :email="guestResult.email"
+      :password="guestResult.password"
+      @confirm="handleGuestResultConfirm"
+    />
   </div>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useGameUser } from '@/composables/useGameUser.js'
 import ActivityFeed from '@/components/ActivityFeed.vue'
+import GuestResultDialog from '@/components/GuestResultDialog.vue'
+import { getGuestConfigApi, guestRegisterApi } from '@/api/game/auth.js'
 
 const router = useRouter()
-const { isLoggedIn, playerInfo } = useGameUser()
+const { isLoggedIn, playerInfo, setLogin } = useGameUser()
 
 const activityFeedRef = ref(null)
 const refreshingFeed = ref(false)
+const guestModeEnabled = ref(false)
+const guestLoading = ref(false)
 
 async function handleRefreshFeed() {
   refreshingFeed.value = true
@@ -213,4 +235,57 @@ function handleNav(routeName) {
 function handleNavGuide() {
   router.push({ name: 'GameGuide' })
 }
+
+async function loadGuestConfig() {
+  try {
+    const res = await getGuestConfigApi()
+    guestModeEnabled.value = res.data.data?.guestModeEnabled ?? false
+  } catch {
+    // ignore
+  }
+}
+
+const guestResultVisible = ref(false)
+const guestResult = reactive({ email: '', password: '' })
+let pendingGuestLogin = null
+
+async function handleNavGuestLogin() {
+  guestLoading.value = true
+  try {
+    const res = await guestRegisterApi()
+    const {
+      accessToken,
+      refreshToken,
+      playerInfo: pInfo,
+      guestEmail,
+      guestPassword
+    } = res.data.data
+    // 先显示账号信息弹窗
+    guestResult.email = guestEmail
+    guestResult.password = guestPassword
+    pendingGuestLogin = { accessToken, refreshToken, playerInfo: pInfo }
+    guestResultVisible.value = true
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    guestLoading.value = false
+  }
+}
+
+function handleGuestResultConfirm() {
+  guestResultVisible.value = false
+  if (pendingGuestLogin) {
+    const { accessToken, refreshToken, playerInfo: pInfo } = pendingGuestLogin
+    setLogin(accessToken, refreshToken, pInfo)
+    pendingGuestLogin = null
+    ElMessage.success('欢迎来到游戏！')
+    router.replace({ name: 'GameHome' })
+  }
+}
+
+onMounted(() => {
+  if (!isLoggedIn.value) {
+    loadGuestConfig()
+  }
+})
 </script>

@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import * as mineController from '../../controllers/game/mineController.js'
 import { authPlayer } from '../../middlewares/auth.js'
+import { validate } from '../../middlewares/validate.js'
+import { mineDigSchema } from '../../../shared/validators/index.js'
 import jwt from 'jsonwebtoken'
 import { jwtKeys } from '../../config/jwtKeys.js'
 
@@ -42,6 +44,11 @@ router.get('/:mineId', authPlayer, mineController.getMineDetail)
 router.get('/:mineId/sse', authPlayerSSE, mineController.sseConnect)
 
 // 挖矿（探索格子）
-router.post('/:mineId/dig', authPlayer, mineController.digCell)
+router.post(
+  '/:mineId/dig',
+  authPlayer,
+  validate(mineDigSchema),
+  mineController.digCell
+)
 
 export default router

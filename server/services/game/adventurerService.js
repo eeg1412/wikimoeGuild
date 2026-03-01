@@ -14,6 +14,90 @@ import {
 } from 'shared/utils/gameDatabase.js'
 
 /**
+ * 冒险家洗属性（元素/被动增益/攻击偏好）
+ */
+export async function rerollAttribute(accountId, adventurerId, rerollType) {
+  const priceKeyMap = {
+    element: 'adventurerRerollElementPrice',
+    passiveBuff: 'adventurerRerollPassiveBuffPrice',
+    attackPreference: 'adventurerRerollAttackPreferencePrice'
+  }
+
+  return await executeInLock(`reroll:${accountId}`, async () => {
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const adventurer = await GameAdventurer.findOne({
+      _id: adventurerId,
+      account: accountId
+    })
+    if (!adventurer) {
+      const err = new Error('冒险家不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const priceKey = priceKeyMap[rerollType]
+    const price = gameSettings[priceKey] ?? 1000
+
+    if (playerInfo.gold < price) {
+      const err = new Error(`金币不足，需要 ${price} 金币`)
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 扣除金币
+    playerInfo.gold -= price
+    await playerInfo.save()
+
+    // 随机新属性
+    if (rerollType === 'element') {
+      const ELEMENTS = ['1', '2', '3', '4', '5', '6']
+      let newElement
+      do {
+        newElement = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)]
+      } while (newElement === adventurer.elements && ELEMENTS.length > 1)
+      adventurer.elements = newElement
+    } else if (rerollType === 'passiveBuff') {
+      const allBuffTypes = passiveBuffTypeDataBase()
+      let newBuff
+      do {
+        newBuff = allBuffTypes[Math.floor(Math.random() * allBuffTypes.length)]
+      } while (
+        newBuff.value === adventurer.passiveBuffType &&
+        allBuffTypes.length > 1
+      )
+      adventurer.passiveBuffType = newBuff.value
+    } else if (rerollType === 'attackPreference') {
+      const allPreferences = attackPreferenceDataBase()
+      let newPref
+      do {
+        newPref =
+          allPreferences[Math.floor(Math.random() * allPreferences.length)]
+      } while (
+        newPref.value === adventurer.attackPreference &&
+        allPreferences.length > 1
+      )
+      adventurer.attackPreference = newPref.value
+    }
+
+    await adventurer.save()
+
+    return await GameAdventurer.findById(adventurer._id)
+      .populate('runeStone')
+      .lean()
+  })
+}
+
+/**
  * 获取当前玩家的冒险家列表
  */
 export async function listMyAdventurers(accountId) {

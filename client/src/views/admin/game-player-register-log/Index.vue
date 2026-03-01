@@ -38,6 +38,17 @@
             <el-option label="注册失败" value="false" />
           </el-select>
         </el-form-item>
+        <el-form-item label="游客">
+          <el-select
+            v-model="searchForm.isGuest"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="是" value="true" />
+            <el-option label="否" value="false" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="loading" @click="handleSearch"
             >搜索</el-button
@@ -114,6 +125,13 @@
             </el-tag>
           </template>
         </ResponsiveTableColumn>
+        <ResponsiveTableColumn label="游客" width="70" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.isGuest" type="warning" size="small">
+              游客
+            </el-tag>
+          </template>
+        </ResponsiveTableColumn>
         <ResponsiveTableColumn label="设备信息" min-width="220">
           <template #default="{ row }">
             <DeviceInfoDisplay :deviceInfo="row.deviceInfo" />
@@ -177,7 +195,7 @@ const tableData = ref([])
 const deletingId = ref(null)
 const batchDeleting = ref(false)
 
-const searchForm = reactive({ email: '', ip: '', success: '' })
+const searchForm = reactive({ email: '', ip: '', success: '', isGuest: '' })
 const batchForm = reactive({ startTime: null, endTime: null })
 const pagination = reactive({ page: 1, pageSize: 20, total: 0 })
 
@@ -188,6 +206,7 @@ async function fetchData() {
     if (searchForm.email) params.email = searchForm.email
     if (searchForm.ip) params.ip = searchForm.ip
     if (searchForm.success !== '') params.success = searchForm.success
+    if (searchForm.isGuest !== '') params.isGuest = searchForm.isGuest
     const res = await listGamePlayerRegisterLogsApi(params)
     tableData.value = res.data.data.list || []
     pagination.total = res.data.data.total || 0
@@ -207,6 +226,7 @@ function handleReset() {
   searchForm.email = ''
   searchForm.ip = ''
   searchForm.success = ''
+  searchForm.isGuest = ''
   pagination.page = 1
   fetchData()
 }

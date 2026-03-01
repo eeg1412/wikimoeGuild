@@ -54,6 +54,7 @@ export async function list({ page = 1, pageSize = 20, email, guildName }) {
               createdAt: 1,
               updatedAt: 1,
               'accountInfo.email': 1,
+              'accountInfo.isGuest': 1,
               'accountInfo.createdAt': 1
             }
           }

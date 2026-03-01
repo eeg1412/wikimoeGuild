@@ -1,6 +1,16 @@
 import { Router } from 'express'
 import * as marketController from '../../controllers/game/marketController.js'
 import { authPlayer } from '../../middlewares/auth.js'
+import { validate } from '../../middlewares/validate.js'
+import {
+  officialSellCrystalSchema,
+  officialBuyCrystalSchema,
+  officialSellRuneStoneSchema,
+  createMaterialSellOrderSchema,
+  createMaterialBuyOrderSchema,
+  fulfillMaterialOrderSchema,
+  createRuneStoneListingSchema
+} from '../../../shared/validators/index.js'
 
 const router = Router()
 
@@ -9,12 +19,20 @@ router.get('/official/info', authPlayer, marketController.getOfficialMarketInfo)
 router.post(
   '/official/sell',
   authPlayer,
+  validate(officialSellCrystalSchema),
   marketController.sellCrystalToOfficial
 )
 router.post(
   '/official/buy',
   authPlayer,
+  validate(officialBuyCrystalSchema),
   marketController.buyCrystalFromOfficial
+)
+router.post(
+  '/official/sell-rune-stone',
+  authPlayer,
+  validate(officialSellRuneStoneSchema),
+  marketController.sellRuneStoneToOfficial
 )
 
 // 素材交易 - 浏览
@@ -33,11 +51,13 @@ router.get(
 router.post(
   '/material/sell',
   authPlayer,
+  validate(createMaterialSellOrderSchema),
   marketController.createMaterialSellOrder
 )
 router.post(
   '/material/buy',
   authPlayer,
+  validate(createMaterialBuyOrderSchema),
   marketController.createMaterialBuyOrder
 )
 
@@ -45,11 +65,13 @@ router.post(
 router.post(
   '/material/sell-orders/:id/fulfill',
   authPlayer,
+  validate(fulfillMaterialOrderSchema),
   marketController.fulfillMaterialSellOrder
 )
 router.post(
   '/material/buy-orders/:id/fulfill',
   authPlayer,
+  validate(fulfillMaterialOrderSchema),
   marketController.fulfillMaterialBuyOrder
 )
 
@@ -78,6 +100,7 @@ router.get(
 router.post(
   '/rune-stone/list',
   authPlayer,
+  validate(createRuneStoneListingSchema),
   marketController.createRuneStoneListing
 )
 

@@ -38,3 +38,17 @@ export async function settleCrystals(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 选择迷宫等级
+ */
+export async function selectDungeonLevel(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { level } = req.body
+    const result = await dungeonService.selectDungeonLevel(accountId, level)
+    res.success(result, '迷宫等级设置成功')
+  } catch (error) {
+    next(error)
+  }
+}

@@ -302,8 +302,6 @@
           <ul class="guide-list">
             <li>挑战并击败迷宫军团可<strong>升级迷宫等级</strong></li>
             <li>击败军团必定掉落 <strong>1 个传说级符文石</strong></li>
-            <li>前 25 级：军团恶魔数量 = 迷宫等级，等级为 1</li>
-            <li>25 级后：恶魔综合等级递增，全员携带传说级符文石</li>
           </ul>
         </div>
 

@@ -12,18 +12,32 @@
 
     <!-- 排序 & 筛选 -->
     <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
-      <el-select
-        v-model="sortMode"
-        size="small"
-        style="width: 140px"
-        @change="handleSortChange"
-      >
-        <el-option label="入手顺序（新→旧）" value="newest" />
-        <el-option label="入手顺序（旧→新）" value="oldest" />
-        <el-option label="等级（高→低）" value="level_desc" />
-        <el-option label="等级（低→高）" value="level_asc" />
-        <el-option label="稀有度优先" value="rarity" />
-      </el-select>
+      <div class="flex items-center gap-2">
+        <el-select
+          v-model="sortMode"
+          size="small"
+          style="width: 140px"
+          @change="handleSortChange"
+        >
+          <el-option label="入手顺序（新→旧）" value="newest" />
+          <el-option label="入手顺序（旧→新）" value="oldest" />
+          <el-option label="等级（高→低）" value="level_desc" />
+          <el-option label="等级（低→高）" value="level_asc" />
+          <el-option label="稀有度优先" value="rarity" />
+        </el-select>
+        <el-select
+          v-model="rarityFilter"
+          size="small"
+          placeholder="稀有度"
+          clearable
+          style="width: 100px"
+          @change="handleRarityFilterChange"
+        >
+          <el-option label="普通" value="normal" />
+          <el-option label="稀有" value="rare" />
+          <el-option label="传说" value="legendary" />
+        </el-select>
+      </div>
       <el-button type="warning" size="small" @click="openSynthesisDialog">
         🔮 合成
       </el-button>
@@ -51,9 +65,9 @@
           class="rpg-card rounded-xl p-4 cursor-pointer"
           @click="openDetail(rs)"
         >
-          <div class="flex items-center justify-between">
+          <!-- 顶部：稀有度 + 等级 + 状态 -->
+          <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-3">
-              <!-- 稀有度图标 -->
               <div
                 class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
                 :class="rarityBgClass(rs.rarity)"
@@ -67,10 +81,7 @@
                 >
                   {{ rarityName(rs.rarity) }}符文石
                 </p>
-                <p class="text-sm text-gray-400">
-                  Lv.{{ rs.level }} · 主动 {{ rs.activeSkills?.length || 0 }} ·
-                  被动 {{ rs.passiveBuffs?.length || 0 }}
-                </p>
+                <p class="text-sm text-gray-400">Lv.{{ rs.level }}</p>
               </div>
             </div>
             <div class="flex items-center gap-1">
@@ -89,6 +100,8 @@
               <span class="text-gray-400">▶</span>
             </div>
           </div>
+          <!-- 完整的技能/增益信息 -->
+          <RuneStoneInfoCard :rune-stone="rs" />
         </div>
       </div>
 
@@ -133,74 +146,8 @@
           <p class="text-sm text-gray-400">等级 {{ detailRS.level }}</p>
         </div>
 
-        <!-- 主动技能 -->
-        <div>
-          <h4 class="text-sm font-semibold text-yellow-500 mb-2">
-            ⚡ 主动技能
-          </h4>
-          <div
-            v-for="(skill, idx) in detailRS.activeSkills"
-            :key="idx"
-            class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
-          >
-            <template v-if="getSkillInfo(skill.skillId || skill)">
-              <p class="font-semibold text-gray-800 dark:text-gray-100">
-                {{ getSkillInfo(skill.skillId || skill).label }}
-              </p>
-              <p class="mt-0.5 text-gray-500 dark:text-gray-400">
-                {{ getSkillInfo(skill.skillId || skill).description }}
-              </p>
-              <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                <span
-                  >类型:
-                  {{
-                    skillTypeName(getSkillInfo(skill.skillId || skill).type)
-                  }}</span
-                >
-                <span v-if="getSkillInfo(skill.skillId || skill).element">
-                  元素:
-                  {{
-                    elementName(getSkillInfo(skill.skillId || skill).element)
-                  }}
-                </span>
-                <span
-                  >时机:
-                  {{
-                    triggerTimingName(
-                      getSkillInfo(skill.skillId || skill).triggerTiming
-                    )
-                  }}</span
-                >
-                <span
-                  >目标:
-                  {{
-                    targetName(getSkillInfo(skill.skillId || skill).target)
-                  }}</span
-                >
-                <span
-                  >基础值:
-                  {{ getSkillInfo(skill.skillId || skill).baseValue }}</span
-                >
-              </div>
-            </template>
-            <template v-else>
-              {{ skill.skillId || skill }}
-            </template>
-          </div>
-        </div>
-
-        <!-- 被动增益 -->
-        <div>
-          <h4 class="text-sm font-semibold text-blue-400 mb-2">🔮 被动增益</h4>
-          <div
-            v-for="(buff, idx) in detailRS.passiveBuffs"
-            :key="idx"
-            class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
-          >
-            <span>{{ buffTypeName(buff.buffType) }}</span>
-            <span class="font-mono text-yellow-500">+{{ buff.buffLevel }}</span>
-          </div>
-        </div>
+        <!-- 主动技能 & 被动增益 -->
+        <RuneStoneInfoCard :rune-stone="detailRS" />
 
         <!-- 操作按钮 -->
         <div v-if="!detailRS.equippedBy" class="flex gap-3 pt-2">
@@ -354,81 +301,174 @@
             </p>
             <p class="text-sm text-gray-400">
               等级 {{ synthesisPreview.level }}
+              <template v-if="synthesisPreview.level !== synthesisMain?.level">
+                <span
+                  :class="
+                    synthesisPreview.level > synthesisMain?.level
+                      ? 'text-green-500'
+                      : 'text-red-500'
+                  "
+                >
+                  ({{ synthesisPreview.level > synthesisMain?.level ? '↑' : '↓'
+                  }}{{
+                    Math.abs(
+                      synthesisPreview.level - (synthesisMain?.level || 0)
+                    )
+                  }})
+                </span>
+              </template>
             </p>
           </div>
 
-          <!-- 主动技能 -->
-          <div>
-            <h4 class="text-sm font-semibold text-yellow-500 mb-1">
-              ⚡ 主动技能
-            </h4>
-            <div
-              v-for="(skill, idx) in synthesisPreview.activeSkills"
-              :key="idx"
-              class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
-            >
-              <template v-if="getSkillInfo(skill.skillId || skill)">
-                <p class="font-semibold text-gray-800 dark:text-gray-100">
-                  {{ getSkillInfo(skill.skillId || skill).label }}
-                </p>
-                <p class="mt-0.5 text-gray-500 dark:text-gray-400">
-                  {{ getSkillInfo(skill.skillId || skill).description }}
-                </p>
-                <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                  <span
-                    >类型:
-                    {{
-                      skillTypeName(getSkillInfo(skill.skillId || skill).type)
-                    }}</span
-                  >
-                  <span v-if="getSkillInfo(skill.skillId || skill).element">
-                    元素:
-                    {{
-                      elementName(getSkillInfo(skill.skillId || skill).element)
-                    }}
-                  </span>
-                  <span
-                    >时机:
-                    {{
-                      triggerTimingName(
-                        getSkillInfo(skill.skillId || skill).triggerTiming
-                      )
-                    }}</span
-                  >
-                  <span
-                    >目标:
-                    {{
-                      targetName(getSkillInfo(skill.skillId || skill).target)
-                    }}</span
-                  >
-                  <span
-                    >基础值:
-                    {{ getSkillInfo(skill.skillId || skill).baseValue }}</span
+          <!-- 与主石对比 -->
+          <div
+            v-if="synthesisMain"
+            class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2 text-xs text-gray-500 dark:text-gray-400"
+          >
+            <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
+              📊 与主石对比
+            </p>
+            <p>
+              稀有度：{{ rarityName(synthesisMain.rarity) }} →
+              <span
+                :class="
+                  synthesisPreview.rarity !== synthesisMain.rarity
+                    ? 'text-yellow-500 font-bold'
+                    : ''
+                "
+              >
+                {{ rarityName(synthesisPreview.rarity) }}
+              </span>
+            </p>
+
+            <!-- 主动技能变化详情 -->
+            <div>
+              <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                ⚡ 主动技能变化
+              </p>
+              <template v-if="synthesisSkillDiff.removed.length">
+                <div
+                  v-for="(s, i) in synthesisSkillDiff.removed"
+                  :key="'sr' + i"
+                  class="bg-red-50 dark:bg-red-900/20 rounded px-2 py-1 mb-1"
+                >
+                  <span class="text-red-500 font-bold">- 移除：</span>
+                  <span class="text-red-400">{{ s.label }}</span>
+                </div>
+              </template>
+              <template v-if="synthesisSkillDiff.added.length">
+                <div
+                  v-for="(s, i) in synthesisSkillDiff.added"
+                  :key="'sa' + i"
+                  class="bg-green-50 dark:bg-green-900/20 rounded px-2 py-1 mb-1"
+                >
+                  <span class="text-green-500 font-bold">+ 新增：</span>
+                  <span class="text-green-400">{{ s.label }}</span>
+                </div>
+              </template>
+              <template v-if="synthesisSkillDiff.kept.length">
+                <div
+                  v-for="(s, i) in synthesisSkillDiff.kept"
+                  :key="'sk' + i"
+                  class="rounded px-2 py-1 mb-1"
+                >
+                  <span class="text-gray-400">= 保留：{{ s.label }}</span>
+                </div>
+              </template>
+              <p
+                v-if="
+                  !synthesisSkillDiff.removed.length &&
+                  !synthesisSkillDiff.added.length &&
+                  !synthesisSkillDiff.kept.length
+                "
+                class="text-gray-400"
+              >
+                无主动技能
+              </p>
+            </div>
+
+            <!-- 被动增益变化详情 -->
+            <div>
+              <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                🔮 被动增益变化
+              </p>
+              <template v-if="synthesisBuffDiff.removed.length">
+                <div
+                  v-for="(b, i) in synthesisBuffDiff.removed"
+                  :key="'br' + i"
+                  class="bg-red-50 dark:bg-red-900/20 rounded px-2 py-1 mb-1"
+                >
+                  <span class="text-red-500 font-bold">- 移除：</span>
+                  <span class="text-red-400"
+                    >{{ buffTypeName(b.buffType) }} Lv.{{ b.buffLevel }}</span
                   >
                 </div>
               </template>
-              <template v-else>
-                {{ skill.skillId || skill }}
+              <template v-if="synthesisBuffDiff.added.length">
+                <div
+                  v-for="(b, i) in synthesisBuffDiff.added"
+                  :key="'ba' + i"
+                  class="bg-green-50 dark:bg-green-900/20 rounded px-2 py-1 mb-1"
+                >
+                  <span class="text-green-500 font-bold">+ 新增：</span>
+                  <span class="text-green-400"
+                    >{{ buffTypeName(b.buffType) }} Lv.{{ b.buffLevel }}</span
+                  >
+                </div>
               </template>
+              <template v-if="synthesisBuffDiff.changed.length">
+                <div
+                  v-for="(c, i) in synthesisBuffDiff.changed"
+                  :key="'bc' + i"
+                  class="bg-blue-50 dark:bg-blue-900/20 rounded px-2 py-1 mb-1"
+                >
+                  <span class="text-blue-500 font-bold">~ 变化：</span>
+                  <span class="text-blue-400"
+                    >{{ buffTypeName(c.buffType) }} Lv.{{ c.oldLevel }} → Lv.{{
+                      c.newLevel
+                    }}
+                    <span
+                      :class="
+                        c.newLevel > c.oldLevel
+                          ? 'text-green-500'
+                          : 'text-red-500'
+                      "
+                    >
+                      ({{ c.newLevel > c.oldLevel ? '↑' : '↓'
+                      }}{{ Math.abs(c.newLevel - c.oldLevel) }})
+                    </span>
+                  </span>
+                </div>
+              </template>
+              <template v-if="synthesisBuffDiff.kept.length">
+                <div
+                  v-for="(b, i) in synthesisBuffDiff.kept"
+                  :key="'bk' + i"
+                  class="rounded px-2 py-1 mb-1"
+                >
+                  <span class="text-gray-400"
+                    >= 保留：{{ buffTypeName(b.buffType) }} Lv.{{
+                      b.buffLevel
+                    }}</span
+                  >
+                </div>
+              </template>
+              <p
+                v-if="
+                  !synthesisBuffDiff.removed.length &&
+                  !synthesisBuffDiff.added.length &&
+                  !synthesisBuffDiff.changed.length &&
+                  !synthesisBuffDiff.kept.length
+                "
+                class="text-gray-400"
+              >
+                无被动增益
+              </p>
             </div>
           </div>
 
-          <!-- 被动增益 -->
-          <div>
-            <h4 class="text-sm font-semibold text-blue-400 mb-1">
-              🔮 被动增益
-            </h4>
-            <div
-              v-for="(buff, idx) in synthesisPreview.passiveBuffs"
-              :key="idx"
-              class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
-            >
-              <span>{{ buffTypeName(buff.buffType) }}</span>
-              <span class="font-mono text-yellow-500"
-                >+{{ buff.buffLevel }}</span
-              >
-            </div>
-          </div>
+          <!-- 主动技能 & 被动增益 -->
+          <RuneStoneInfoCard :rune-stone="synthesisPreview" />
 
           <p class="text-sm text-red-400 text-center">
             ⚠️ 不论接受或放弃，素材符文石都将被销毁
@@ -463,42 +503,61 @@
     <el-dialog
       v-model="pickRuneVisible"
       title="选择符文石"
-      width="360px"
+      width="380px"
       align-center
     >
+      <!-- 稀有度筛选 -->
+      <div class="flex items-center gap-2 mb-3">
+        <el-select
+          v-model="pickRarityFilter"
+          size="small"
+          placeholder="稀有度筛选"
+          clearable
+          style="width: 120px"
+        >
+          <el-option label="普通" value="normal" />
+          <el-option label="稀有" value="rare" />
+          <el-option label="传说" value="legendary" />
+        </el-select>
+      </div>
       <div
-        v-if="pickableRuneStones.length === 0"
+        v-if="filteredPickableRuneStones.length === 0"
         class="text-center py-8 text-gray-400"
       >
         无可选的符文石
       </div>
-      <div v-else class="space-y-2 max-h-[50vh] overflow-y-auto">
+      <div v-else class="space-y-3 max-h-[60vh] overflow-y-auto">
         <div
-          v-for="rs in pickableRuneStones"
+          v-for="rs in filteredPickableRuneStones"
           :key="rs._id"
-          class="rpg-card rounded-lg p-3 cursor-pointer hover:border-yellow-400 transition-colors border"
+          class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border"
           @click="confirmPick(rs)"
         >
-          <div class="flex items-center gap-2">
-            <div
-              class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-              :class="rarityBgClass(rs.rarity)"
-            >
-              💎
-            </div>
-            <div class="flex-1">
-              <p
-                class="text-sm font-semibold"
-                :class="rarityTextClass(rs.rarity)"
+          <!-- 标题行 -->
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <div
+                class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                :class="rarityBgClass(rs.rarity)"
               >
-                {{ rarityName(rs.rarity) }}符文石 Lv.{{ rs.level }}
-              </p>
-              <p class="text-sm text-gray-400">
-                主动 {{ rs.activeSkills?.length || 0 }} · 被动
-                {{ rs.passiveBuffs?.length || 0 }}
-              </p>
+                💎
+              </div>
+              <div>
+                <p
+                  class="text-sm font-semibold"
+                  :class="rarityTextClass(rs.rarity)"
+                >
+                  {{ rarityName(rs.rarity) }}符文石 Lv.{{ rs.level }}
+                </p>
+              </div>
             </div>
+            <span
+              class="text-xs text-yellow-500 border border-yellow-400 px-1.5 py-0.5 rounded-full"
+              >选择</span
+            >
           </div>
+          <!-- 完整信息 -->
+          <RuneStoneInfoCard :rune-stone="rs" />
         </div>
       </div>
     </el-dialog>
@@ -519,6 +578,7 @@ import {
 } from '@/api/game/runeStone.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
+import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 
 const router = useRouter()
 const { isLoggedIn } = useGameUser()
@@ -531,6 +591,7 @@ if (!isLoggedIn.value) {
 const loading = ref(false)
 const runeStones = ref([])
 const sortMode = ref('newest')
+const rarityFilter = ref('')
 const runeStonePageNum = ref(1)
 const runeStonePageSize = 20
 const runeStoneTotal = ref(0)
@@ -540,14 +601,23 @@ function handleSortChange() {
   fetchRuneStones()
 }
 
+function handleRarityFilterChange() {
+  runeStonePageNum.value = 1
+  fetchRuneStones()
+}
+
 async function fetchRuneStones() {
   loading.value = true
   try {
-    const res = await getMyRuneStonesApi({
+    const params = {
       sort: sortMode.value,
       page: runeStonePageNum.value,
       pageSize: runeStonePageSize
-    })
+    }
+    if (rarityFilter.value) {
+      params.rarity = rarityFilter.value
+    }
+    const res = await getMyRuneStonesApi(params)
     runeStones.value = res.data.data?.list || []
     runeStoneTotal.value = res.data.data?.total || 0
   } catch {
@@ -713,6 +783,7 @@ const synthesisConfirmLoading = ref(false)
 // 选择器
 const pickRuneVisible = ref(false)
 const pickingSlot = ref('') // 'main' | 'material'
+const pickRarityFilter = ref('')
 
 function openSynthesisDialog() {
   synthesisStep.value = 'select'
@@ -741,6 +812,84 @@ const pickableRuneStones = computed(() => {
     if (targetRarity && rs.rarity !== targetRarity) return false
     return true
   })
+})
+
+const filteredPickableRuneStones = computed(() => {
+  if (!pickRarityFilter.value) return pickableRuneStones.value
+  return pickableRuneStones.value.filter(
+    rs => rs.rarity === pickRarityFilter.value
+  )
+})
+
+// 合成对比 - 主动技能差异
+const synthesisSkillDiff = computed(() => {
+  const result = { removed: [], added: [], kept: [] }
+  if (!synthesisMain.value || !synthesisPreview.value) return result
+
+  const oldSkills = (synthesisMain.value.activeSkills || []).map(
+    s => s.skillId || s
+  )
+  const newSkills = (synthesisPreview.value.activeSkills || []).map(
+    s => s.skillId || s
+  )
+
+  // 统计每个 skillId 出现次数
+  const oldMap = new Map()
+  for (const id of oldSkills) oldMap.set(id, (oldMap.get(id) || 0) + 1)
+  const newMap = new Map()
+  for (const id of newSkills) newMap.set(id, (newMap.get(id) || 0) + 1)
+
+  const allIds = new Set([...oldMap.keys(), ...newMap.keys()])
+  for (const id of allIds) {
+    const oldCount = oldMap.get(id) || 0
+    const newCount = newMap.get(id) || 0
+    const info = getSkillInfo(id)
+    const label = info ? info.label : id
+    const shared = Math.min(oldCount, newCount)
+    for (let i = 0; i < shared; i++) result.kept.push({ skillId: id, label })
+    for (let i = 0; i < oldCount - shared; i++)
+      result.removed.push({ skillId: id, label })
+    for (let i = 0; i < newCount - shared; i++)
+      result.added.push({ skillId: id, label })
+  }
+  return result
+})
+
+// 合成对比 - 被动增益差异
+const synthesisBuffDiff = computed(() => {
+  const result = { removed: [], added: [], changed: [], kept: [] }
+  if (!synthesisMain.value || !synthesisPreview.value) return result
+
+  const oldBuffs = synthesisMain.value.passiveBuffs || []
+  const newBuffs = synthesisPreview.value.passiveBuffs || []
+
+  // 按 buffType 分组
+  const oldByType = new Map()
+  for (const b of oldBuffs) oldByType.set(b.buffType, b)
+  const newByType = new Map()
+  for (const b of newBuffs) newByType.set(b.buffType, b)
+
+  const allTypes = new Set([...oldByType.keys(), ...newByType.keys()])
+  for (const type of allTypes) {
+    const oldBuff = oldByType.get(type)
+    const newBuff = newByType.get(type)
+    if (oldBuff && !newBuff) {
+      result.removed.push(oldBuff)
+    } else if (!oldBuff && newBuff) {
+      result.added.push(newBuff)
+    } else if (oldBuff && newBuff) {
+      if (oldBuff.buffLevel !== newBuff.buffLevel) {
+        result.changed.push({
+          buffType: type,
+          oldLevel: oldBuff.buffLevel,
+          newLevel: newBuff.buffLevel
+        })
+      } else {
+        result.kept.push(oldBuff)
+      }
+    }
+  }
+  return result
 })
 
 function pickSynthesisSlot(slot) {

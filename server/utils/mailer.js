@@ -62,7 +62,8 @@ export async function sendVerifyCodeMail(to, code, type = 'register') {
 
   const sceneMap = {
     register: '注册',
-    resetPassword: '重置密码'
+    resetPassword: '重置密码',
+    guestBind: '绑定邮箱'
   }
   const scene = sceneMap[type] || '验证'
 

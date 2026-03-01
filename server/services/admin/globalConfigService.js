@@ -235,7 +235,16 @@ export async function getGameSettings() {
     arenaPoolAmount: config.arenaPoolAmount ?? 100000,
     arenaParticipationReward: config.arenaParticipationReward ?? 500,
     arenaBattleGold: config.arenaBattleGold ?? 50,
-    seasonDays: config.seasonDays ?? 3
+    seasonDays: config.seasonDays ?? 3,
+    guildCustomLogoPrice: config.guildCustomLogoPrice ?? 5000,
+    guildChangeNamePrice: config.guildChangeNamePrice ?? 1000,
+    adventurerRerollElementPrice: config.adventurerRerollElementPrice ?? 1000,
+    adventurerRerollPassiveBuffPrice:
+      config.adventurerRerollPassiveBuffPrice ?? 1000,
+    adventurerRerollAttackPreferencePrice:
+      config.adventurerRerollAttackPreferencePrice ?? 1000,
+    guestModeEnabled: config.guestModeEnabled !== false,
+    guestMaxPerIpPerDay: config.guestMaxPerIpPerDay ?? 3
   }
 }
 
@@ -258,8 +267,16 @@ export async function updateGameSettings(data) {
     'arenaPoolAmount',
     'arenaParticipationReward',
     'arenaBattleGold',
-    'seasonDays'
+    'seasonDays',
+    'guildCustomLogoPrice',
+    'guildChangeNamePrice',
+    'adventurerRerollElementPrice',
+    'adventurerRerollPassiveBuffPrice',
+    'adventurerRerollAttackPreferencePrice',
+    'guestMaxPerIpPerDay'
   ]
+
+  const booleanKeys = ['guestModeEnabled']
 
   // 验证符文石概率
   const normalRate = data.normalRuneStoneRate ?? 8000
@@ -283,6 +300,17 @@ export async function updateGameSettings(data) {
   for (const key of numericKeys) {
     if (key in data) {
       const value = String(Number(data[key]))
+      await GlobalConfig.findOneAndUpdate(
+        { name: key },
+        { name: key, value },
+        { upsert: true, returnDocument: 'after' }
+      )
+    }
+  }
+
+  for (const key of booleanKeys) {
+    if (key in data) {
+      const value = String(data[key])
       await GlobalConfig.findOneAndUpdate(
         { name: key },
         { name: key, value },

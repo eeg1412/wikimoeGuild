@@ -95,6 +95,29 @@
               class="w-28!"
             />
           </div>
+          <div class="flex gap-2 mb-3">
+            <el-button
+              size="small"
+              :loading="sellOfficialLoading"
+              :disabled="sellOfficialLoading"
+              @click="handleQuickSellToOfficial(10)"
+              >快速 10</el-button
+            >
+            <el-button
+              size="small"
+              :loading="sellOfficialLoading"
+              :disabled="sellOfficialLoading"
+              @click="handleQuickSellToOfficial(100)"
+              >快速 100</el-button
+            >
+            <el-button
+              size="small"
+              :loading="sellOfficialLoading"
+              :disabled="sellOfficialLoading"
+              @click="handleQuickSellToOfficial(1000)"
+              >快速 1000</el-button
+            >
+          </div>
           <div class="text-sm text-gray-400 mb-2">
             预计获得:
             <span class="text-yellow-500 font-semibold"
@@ -178,6 +201,125 @@
           >
             确认购买
           </el-button>
+        </div>
+
+        <!-- 出售符文石给官方 -->
+        <div class="rpg-card rounded-xl p-4 mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              💎 出售符文石给官方
+            </h3>
+            <el-button
+              type="primary"
+              text
+              size="small"
+              :loading="officialRsLoading"
+              @click="loadOfficialRuneStones"
+            >
+              刷新列表
+            </el-button>
+          </div>
+
+          <!-- 官方收购价 -->
+          <div
+            v-if="officialInfo.runeStoneOfficialPrices"
+            class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 mb-3"
+          >
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              💰 官方符文石收购报价
+            </p>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="text-gray-600 dark:text-gray-300"
+                >普通: 🪙
+                {{ officialInfo.runeStoneOfficialPrices.normal }}</span
+              >
+              <span class="text-blue-500"
+                >稀有: 🪙 {{ officialInfo.runeStoneOfficialPrices.rare }}</span
+              >
+              <span class="text-yellow-500"
+                >传说: 🪙
+                {{ officialInfo.runeStoneOfficialPrices.legendary }}</span
+              >
+            </div>
+          </div>
+
+          <!-- 稀有度筛选 -->
+          <div class="flex items-center gap-2 mb-3">
+            <el-select
+              v-model="officialRsRarityFilter"
+              size="small"
+              placeholder="稀有度筛选"
+              clearable
+              style="width: 120px"
+              @change="filterOfficialRuneStones"
+            >
+              <el-option label="普通" value="normal" />
+              <el-option label="稀有" value="rare" />
+              <el-option label="传说" value="legendary" />
+            </el-select>
+          </div>
+
+          <div v-if="officialRsLoading" class="flex justify-center py-6">
+            <span class="animate-spin inline-block text-2xl">⏳</span>
+          </div>
+          <div
+            v-else-if="filteredOfficialRuneStones.length === 0"
+            class="text-center py-6 text-gray-400 text-sm"
+          >
+            暂无可出售的符文石（需未装备且未上架）
+          </div>
+          <div v-else class="space-y-3">
+            <div
+              v-for="rs in filteredOfficialRuneStones"
+              :key="rs._id"
+              class="rpg-card rounded-xl p-3"
+            >
+              <!-- 顶部信息 -->
+              <div class="flex items-center gap-3 mb-2">
+                <div
+                  class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                  :class="rarityBgClass(rs.rarity)"
+                >
+                  💎
+                </div>
+                <div>
+                  <p
+                    class="text-sm font-semibold"
+                    :class="rarityTextClass(rs.rarity)"
+                  >
+                    {{ rarityName(rs.rarity) }}符文石
+                  </p>
+                  <p class="text-sm text-gray-400">Lv.{{ rs.level }}</p>
+                </div>
+                <div class="ml-auto text-right">
+                  <p class="text-xs text-gray-400">收购价</p>
+                  <p class="text-sm text-yellow-500 font-semibold">
+                    🪙
+                    {{
+                      officialInfo.runeStoneOfficialPrices?.[
+                        rs.rarity
+                      ]?.toLocaleString()
+                    }}
+                  </p>
+                </div>
+              </div>
+              <!-- 完整技能/增益卡片 -->
+              <RuneStoneInfoCard :rune-stone="rs" />
+              <!-- 出售按钮 -->
+              <div class="mt-3">
+                <el-button
+                  type="success"
+                  class="w-full"
+                  size="small"
+                  :loading="sellRsOfficialLoading === rs._id"
+                  :disabled="!!sellRsOfficialLoading"
+                  @click="handleSellRuneStoneToOfficial(rs)"
+                >
+                  出售给官方
+                </el-button>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
     </div>
@@ -278,6 +420,15 @@
           <span class="text-yellow-500 font-semibold"
             >{{ matSellForm.quantity }} 个素材</span
           >
+          <template v-if="matSellForm.unitPrice">
+            ，预计获得:
+            <span class="text-yellow-500 font-semibold"
+              >🪙
+              {{
+                (matSellForm.quantity * matSellForm.unitPrice).toLocaleString()
+              }}</span
+            >
+          </template>
         </div>
         <el-button
           type="primary"
@@ -333,7 +484,9 @@
           <span class="text-yellow-500 font-semibold"
             >🪙
             {{
-              (matBuyForm.quantity * matBuyForm.unitPrice).toLocaleString()
+              matBuyForm.unitPrice
+                ? (matBuyForm.quantity * matBuyForm.unitPrice).toLocaleString()
+                : '--'
             }}</span
           >
         </div>
@@ -531,48 +684,120 @@
         </el-button>
       </div>
 
+      <!-- 稀有度筛选 -->
+      <div class="flex items-center gap-2 mb-3">
+        <el-select
+          v-model="rsMarketRarityFilter"
+          size="small"
+          placeholder="稀有度筛选"
+          clearable
+          style="width: 120px"
+          @change="handleRsMarketRarityChange"
+        >
+          <el-option label="普通" value="normal" />
+          <el-option label="稀有" value="rare" />
+          <el-option label="传说" value="legendary" />
+        </el-select>
+      </div>
+
       <!-- 上架符文石 -->
       <div v-if="rsSubTab === 'my'" class="rpg-card rounded-xl p-4 mb-4">
-        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-          📝 上架符文石
-        </h3>
-        <div class="flex flex-wrap items-center gap-2 mb-3">
-          <el-select
-            v-model="rsListForm.runeStoneId"
-            placeholder="选择符文石"
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            📝 上架符文石
+          </h3>
+          <el-button
+            type="primary"
+            text
             size="small"
-            class="flex-1"
-            @focus="loadMyRuneStones"
+            :loading="myRuneStonesLoading"
+            @click="loadMyRuneStones"
           >
-            <el-option
-              v-for="rs in myRuneStones"
-              :key="rs._id"
-              :label="`${rarityName(rs.rarity)} Lv.${rs.level}`"
-              :value="rs._id"
-            >
-              <span>💎 {{ rarityName(rs.rarity) }} Lv.{{ rs.level }}</span>
-            </el-option>
-          </el-select>
-          <el-input-number
-            v-model="rsListForm.price"
-            :min="1"
-            :max="2000000000"
-            :step="100"
-            size="small"
-            class="w-32!"
-            placeholder="价格"
-          />
+            刷新列表
+          </el-button>
         </div>
-        <el-button
-          type="primary"
-          class="w-full"
-          size="small"
-          :loading="createRsListingLoading"
-          :disabled="createRsListingLoading"
-          @click="handleCreateRuneStoneListing"
+
+        <!-- 官方收购价参考 -->
+        <div
+          v-if="officialInfo.runeStoneOfficialPrices"
+          class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 mb-3"
         >
-          上架出售
-        </el-button>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+            ⚠️ 低于官方收购价的符文石将被官方立即收购
+          </p>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span class="text-gray-600 dark:text-gray-300"
+              >普通: 🪙 {{ officialInfo.runeStoneOfficialPrices.normal }}</span
+            >
+            <span class="text-blue-500"
+              >稀有: 🪙 {{ officialInfo.runeStoneOfficialPrices.rare }}</span
+            >
+            <span class="text-yellow-500"
+              >传说: 🪙
+              {{ officialInfo.runeStoneOfficialPrices.legendary }}</span
+            >
+          </div>
+        </div>
+
+        <div v-if="myRuneStonesLoading" class="flex justify-center py-6">
+          <span class="animate-spin inline-block text-2xl">⏳</span>
+        </div>
+        <div
+          v-else-if="filteredMyRuneStones.length === 0"
+          class="text-center py-6 text-gray-400 text-sm"
+        >
+          暂无可上架的符文石（需未装备且未上架）
+        </div>
+        <div v-else class="space-y-3">
+          <div
+            v-for="rs in filteredMyRuneStones"
+            :key="rs._id"
+            class="rpg-card rounded-xl p-3"
+          >
+            <!-- 顶部信息 -->
+            <div class="flex items-center gap-3 mb-2">
+              <div
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                :class="rarityBgClass(rs.rarity)"
+              >
+                💎
+              </div>
+              <div>
+                <p
+                  class="text-sm font-semibold"
+                  :class="rarityTextClass(rs.rarity)"
+                >
+                  {{ rarityName(rs.rarity) }}符文石
+                </p>
+                <p class="text-sm text-gray-400">Lv.{{ rs.level }}</p>
+              </div>
+            </div>
+            <!-- 完整技能/增益卡片 -->
+            <RuneStoneInfoCard :rune-stone="rs" />
+            <!-- 价格输入 & 上架按钮 -->
+            <div class="flex items-center gap-2 mt-3">
+              <el-input-number
+                v-model="rsListPriceMap[rs._id]"
+                :min="1"
+                :max="2000000000"
+                :step="100"
+                size="small"
+                class="flex-1"
+                placeholder="设置价格"
+                controls-position="right"
+              />
+              <el-button
+                type="primary"
+                size="small"
+                :loading="createRsListingLoading === rs._id"
+                :disabled="!!createRsListingLoading"
+                @click="handleCreateRuneStoneListing(rs)"
+              >
+                上架出售
+              </el-button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 符文石列表 -->
@@ -592,7 +817,8 @@
             :key="listing._id"
             class="rpg-card rounded-xl p-3"
           >
-            <div class="flex items-center justify-between">
+            <!-- 顶部：图标、名称、价格、操作 -->
+            <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
                 <div
                   class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
@@ -609,10 +835,6 @@
                     <span class="text-xs text-gray-400 font-normal"
                       >Lv.{{ listing.runeStone?.level }}</span
                     >
-                  </p>
-                  <p class="text-sm text-gray-400">
-                    主动 {{ listing.runeStone?.activeSkills?.length || 0 }} ·
-                    被动 {{ listing.runeStone?.passiveBuffs?.length || 0 }}
                   </p>
                   <p class="text-sm text-yellow-500 font-semibold">
                     🪙 {{ listing.price?.toLocaleString() }}
@@ -651,6 +873,8 @@
                 </template>
               </div>
             </div>
+            <!-- 完整技能/增益卡片 -->
+            <RuneStoneInfoCard :rune-stone="listing.runeStone" />
           </div>
         </div>
 
@@ -674,7 +898,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -693,11 +917,13 @@ import {
   createRuneStoneListingApi,
   buyRuneStoneListingApi,
   cancelRuneStoneListingApi,
-  listMyRuneStoneListingsApi
+  listMyRuneStoneListingsApi,
+  sellRuneStoneToOfficialApi
 } from '@/api/game/market.js'
 import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { useGameUser } from '@/composables/useGameUser.js'
+import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
@@ -791,6 +1017,24 @@ async function handleSellToOfficial() {
   }
 }
 
+async function handleQuickSellToOfficial(qty) {
+  sellOfficialLoading.value = true
+  try {
+    await sellCrystalToOfficialApi({
+      crystalType: sellCrystalType.value,
+      quantity: qty
+    })
+    ElMessage.success('出售成功！')
+    await fetchOfficialInfo()
+    await fetchPlayerInfo()
+    await fetchPlayerInventory()
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    sellOfficialLoading.value = false
+  }
+}
+
 async function handleBuyFromOfficial() {
   try {
     await ElMessageBox.confirm(
@@ -831,12 +1075,12 @@ const matOrdersTotal = ref(0)
 const matSellForm = reactive({
   materialType: 'attackCrystal',
   quantity: 1,
-  unitPrice: 100
+  unitPrice: null
 })
 const matBuyForm = reactive({
   materialType: 'attackCrystal',
   quantity: 1,
-  unitPrice: 100
+  unitPrice: null
 })
 const createMatSellLoading = ref(false)
 const createMatBuyLoading = ref(false)
@@ -888,6 +1132,20 @@ async function fetchMaterialOrders() {
 }
 
 async function handleCreateMaterialSellOrder() {
+  if (!matSellForm.unitPrice || matSellForm.unitPrice <= 0) {
+    ElMessage.warning('请设置单价')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确定发布出售 ${matSellForm.quantity} 个 ${getMaterialName(matSellForm.materialType)}？\n单价: ${matSellForm.unitPrice.toLocaleString()} 金币`,
+      '确认发布出售',
+      { confirmButtonText: '确认发布', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+
   createMatSellLoading.value = true
   try {
     await createMaterialSellOrderApi({
@@ -907,6 +1165,21 @@ async function handleCreateMaterialSellOrder() {
 }
 
 async function handleCreateMaterialBuyOrder() {
+  if (!matBuyForm.unitPrice || matBuyForm.unitPrice <= 0) {
+    ElMessage.warning('请设置单价')
+    return
+  }
+  const totalCost = matBuyForm.quantity * matBuyForm.unitPrice
+  try {
+    await ElMessageBox.confirm(
+      `确定发布求购 ${matBuyForm.quantity} 个 ${getMaterialName(matBuyForm.materialType)}？\n单价: ${matBuyForm.unitPrice.toLocaleString()} 金币\n将冻结: ${totalCost.toLocaleString()} 金币`,
+      '确认发布求购',
+      { confirmButtonText: '确认发布', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+
   createMatBuyLoading.value = true
   try {
     await createMaterialBuyOrderApi({
@@ -997,28 +1270,117 @@ const rsPageSize = 20
 const rsListingsTotal = ref(0)
 
 const myRuneStones = ref([])
-const rsListForm = reactive({ runeStoneId: '', price: 100 })
-const createRsListingLoading = ref(false)
+const myRuneStonesLoading = ref(false)
+const rsListPriceMap = reactive({})
+const createRsListingLoading = ref(null)
 const buyRsLoading = ref(null)
 const cancelRsLoading = ref(null)
+
+// 符文石市场稀有度筛选
+const rsMarketRarityFilter = ref('')
+
+// 「我的」上架列表客户端筛选(复用rsMarketRarityFilter)
+const filteredMyRuneStones = computed(() => {
+  if (!rsMarketRarityFilter.value) return myRuneStones.value
+  return myRuneStones.value.filter(
+    rs => rs.rarity === rsMarketRarityFilter.value
+  )
+})
+
+// ===== 官方市场 - 出售符文石 =====
+const officialRuneStones = ref([])
+const officialRsLoading = ref(false)
+const sellRsOfficialLoading = ref(null)
+const officialRsRarityFilter = ref('')
+
+const filteredOfficialRuneStones = computed(() => {
+  if (!officialRsRarityFilter.value) return officialRuneStones.value
+  return officialRuneStones.value.filter(
+    rs => rs.rarity === officialRsRarityFilter.value
+  )
+})
+
+function filterOfficialRuneStones() {
+  // 仅触发 computed 重算，无需额外操作
+}
+
+async function loadOfficialRuneStones() {
+  officialRsLoading.value = true
+  try {
+    const res = await getMyRuneStonesApi({ pageSize: 999 })
+    officialRuneStones.value = (res.data.data?.list || []).filter(
+      rs => !rs.equippedBy && !rs.listedOnMarket
+    )
+  } catch {
+  } finally {
+    officialRsLoading.value = false
+  }
+}
+
+async function handleSellRuneStoneToOfficial(rs) {
+  const officialPrices = officialInfo.value.runeStoneOfficialPrices || {}
+  const price = officialPrices[rs.rarity] || 0
+  try {
+    await ElMessageBox.confirm(
+      `确定将这块 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石出售给官方？\n获得: ${price.toLocaleString()} 金币`,
+      '确认出售给官方',
+      { confirmButtonText: '确认出售', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+
+  sellRsOfficialLoading.value = rs._id
+  try {
+    const res = await sellRuneStoneToOfficialApi({ runeStoneId: rs._id })
+    const data = res.data.data
+    ElMessage.success(
+      `出售成功！获得 ${(data?.goldEarned || price).toLocaleString()} 金币`
+    )
+    await loadOfficialRuneStones()
+    await fetchPlayerInfo()
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    sellRsOfficialLoading.value = null
+  }
+}
+
+function handleRsMarketRarityChange() {
+  rsPage.value = 1
+  fetchRuneStoneListings()
+}
 
 function switchRsTab(tab) {
   rsSubTab.value = tab
   rsPage.value = 1
   fetchRuneStoneListings()
+  if (tab === 'my') {
+    loadMyRuneStones()
+  }
 }
 
 async function fetchRuneStoneListings() {
   rsListingsLoading.value = true
   try {
     const params = { page: rsPage.value, pageSize: rsPageSize }
+    if (rsMarketRarityFilter.value) {
+      params.rarity = rsMarketRarityFilter.value
+    }
     let res
     if (rsSubTab.value === 'my') {
       res = await listMyRuneStoneListingsApi({ ...params, status: 'active' })
-      rsListings.value = (res.data.data?.list || []).map(l => ({
+      let list = (res.data.data?.list || []).map(l => ({
         ...l,
         isMine: true
       }))
+      // 「我的」上架列表客户端筛选稀有度
+      if (rsMarketRarityFilter.value) {
+        list = list.filter(
+          l => l.runeStone?.rarity === rsMarketRarityFilter.value
+        )
+      }
+      rsListings.value = list
     } else {
       res = await listRuneStoneListingsApi(params)
       rsListings.value = (res.data.data?.list || []).map(l => ({
@@ -1035,33 +1397,79 @@ async function fetchRuneStoneListings() {
 }
 
 async function loadMyRuneStones() {
+  myRuneStonesLoading.value = true
   try {
-    const res = await getMyRuneStonesApi()
-    // 只显示未装备的
+    const res = await getMyRuneStonesApi({ pageSize: 999 })
+    // 只显示未装备且未上架的
     myRuneStones.value = (res.data.data?.list || []).filter(
-      rs => !rs.equippedBy
+      rs => !rs.equippedBy && !rs.listedOnMarket
     )
-  } catch {}
+  } catch {
+  } finally {
+    myRuneStonesLoading.value = false
+  }
 }
 
-async function handleCreateRuneStoneListing() {
-  if (!rsListForm.runeStoneId) {
-    ElMessage.warning('请选择要上架的符文石')
+async function handleCreateRuneStoneListing(rs) {
+  const price = rsListPriceMap[rs._id]
+  if (!price || price <= 0) {
+    ElMessage.warning('请设置价格')
     return
   }
-  createRsListingLoading.value = true
+
+  // 检查是否低于官方收购价
+  const officialPrices = officialInfo.value.runeStoneOfficialPrices || {}
+  const officialPrice = officialPrices[rs.rarity]
+  if (officialPrice && price <= officialPrice) {
+    try {
+      await ElMessageBox.confirm(
+        `你设置的价格 ${price.toLocaleString()} 金币低于或等于官方收购价 ${officialPrice.toLocaleString()} 金币，该符文石将被官方立即收购，你将获得 ${officialPrice.toLocaleString()} 金币。是否继续？`,
+        '⚠️ 官方收购提示',
+        {
+          confirmButtonText: '确认出售给官方',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+    } catch {
+      return
+    }
+  } else {
+    try {
+      await ElMessageBox.confirm(
+        `确定以 ${price.toLocaleString()} 金币的价格上架该 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石？`,
+        '确认上架',
+        { confirmButtonText: '确认上架', cancelButtonText: '取消' }
+      )
+    } catch {
+      return
+    }
+  }
+
+  createRsListingLoading.value = rs._id
   try {
-    await createRuneStoneListingApi({
-      runeStoneId: rsListForm.runeStoneId,
-      price: rsListForm.price
+    const res = await createRuneStoneListingApi({
+      runeStoneId: rs._id,
+      price
     })
-    ElMessage.success('符文石已上架！')
-    rsListForm.runeStoneId = ''
+    const result = res.data.data
+    if (result?.officialPurchased) {
+      await ElMessageBox.alert(
+        `你的 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石已被官方市场以 ${result.goldEarned.toLocaleString()} 金币收购！`,
+        '🏛️ 官方收购完成',
+        { confirmButtonText: '确定', type: 'success' }
+      )
+      await fetchPlayerInfo()
+    } else {
+      ElMessage.success('符文石已上架！')
+    }
+    delete rsListPriceMap[rs._id]
+    await loadMyRuneStones()
     await fetchRuneStoneListings()
   } catch {
     // 错误已由拦截器处理
   } finally {
-    createRsListingLoading.value = false
+    createRsListingLoading.value = null
   }
 }
 
@@ -1138,6 +1546,7 @@ function rarityBgClass(r) {
 onMounted(() => {
   fetchOfficialInfo()
   fetchPlayerInventory()
+  loadOfficialRuneStones()
 })
 
 // 切换顶级标签时自动加载对应数据

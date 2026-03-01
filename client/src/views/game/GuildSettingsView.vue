@@ -77,6 +77,42 @@
             修改
           </el-button>
         </div>
+        <el-divider class="my-2!" />
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              🔑 修改密码
+            </p>
+            <p class="text-sm text-gray-400 mt-0.5">修改登录密码</p>
+          </div>
+          <el-button
+            type="primary"
+            size="small"
+            @click="handleOpenPasswordDialog"
+          >
+            修改
+          </el-button>
+        </div>
+
+        <!-- 游客绑定邮箱 -->
+        <template v-if="playerInfo?.isGuest">
+          <el-divider class="my-2!" />
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                📧 绑定邮箱
+              </p>
+              <p class="text-sm text-gray-400 mt-0.5">绑定正式邮箱以保护账号</p>
+            </div>
+            <el-button
+              type="warning"
+              size="small"
+              @click="handleOpenBindEmailDialog"
+            >
+              绑定
+            </el-button>
+          </div>
+        </template>
       </div>
     </template>
 
@@ -142,20 +178,137 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- ===== 修改密码弹窗 ===== -->
+    <el-dialog
+      v-model="passwordDialogVisible"
+      title="修改密码"
+      width="360px"
+      align-center
+    >
+      <el-form
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-position="top"
+      >
+        <el-form-item label="当前密码" prop="currentPassword">
+          <el-input
+            v-model="passwordForm.currentPassword"
+            type="password"
+            placeholder="请输入当前密码"
+            show-password
+            :disabled="passwordSaving"
+          />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input
+            v-model="passwordForm.newPassword"
+            type="password"
+            placeholder="包含大小写字母和数字，至少6位"
+            show-password
+            :disabled="passwordSaving"
+          />
+        </el-form-item>
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input
+            v-model="passwordForm.confirmPassword"
+            type="password"
+            placeholder="再次输入新密码"
+            show-password
+            :disabled="passwordSaving"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="passwordDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="passwordSaving"
+          :disabled="passwordSaving"
+          @click="handleSavePassword"
+        >
+          确定
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- ===== 绑定邮箱弹窗 ===== -->
+    <el-dialog
+      v-model="bindEmailDialogVisible"
+      title="绑定邮箱"
+      width="360px"
+      align-center
+    >
+      <p class="text-sm text-gray-500 mb-3">
+        绑定正式邮箱后，游客标记将被移除，您将使用新邮箱登录。
+      </p>
+      <el-form
+        ref="bindEmailFormRef"
+        :model="bindEmailForm"
+        :rules="bindEmailRules"
+        label-position="top"
+      >
+        <el-form-item label="邮箱" prop="email">
+          <el-input
+            v-model="bindEmailForm.email"
+            type="email"
+            placeholder="请输入要绑定的邮箱"
+            clearable
+            :disabled="bindEmailSaving"
+          />
+        </el-form-item>
+        <el-form-item label="验证码" prop="code">
+          <div class="flex gap-2 w-full">
+            <el-input
+              v-model="bindEmailForm.code"
+              placeholder="6 位验证码"
+              clearable
+              :maxlength="6"
+              :disabled="bindEmailSaving"
+              class="flex-1"
+            />
+            <el-button
+              :disabled="bindEmailSendCodeDisabled || bindEmailSaving"
+              :loading="bindEmailSendingCode"
+              @click="handleBindEmailSendCode"
+            >
+              {{ bindEmailCountdownText }}
+            </el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="bindEmailDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="bindEmailSaving"
+          :disabled="bindEmailSaving"
+          @click="handleBindEmail"
+        >
+          绑定
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { changeGuildLogoApi, changeGuildNameApi } from '@/api/game/guild.js'
+import {
+  changePasswordApi,
+  guestBindEmailSendCodeApi,
+  guestBindEmailApi
+} from '@/api/game/auth.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import Cropper from '@/components/Cropper.vue'
 
 const router = useRouter()
-const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
+const { isLoggedIn, playerInfo, fetchPlayerInfo, logout } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
@@ -222,6 +375,162 @@ async function handleSaveName() {
     // 错误已由拦截器处理
   } finally {
     nameSaving.value = false
+  }
+}
+
+// ── 修改密码 ──
+const passwordDialogVisible = ref(false)
+const passwordFormRef = ref(null)
+const passwordSaving = ref(false)
+const passwordForm = reactive({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const passwordRules = {
+  currentPassword: [
+    { required: true, message: '请输入当前密码', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, max: 64, message: '密码长度 6-64 位', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (
+          !/[a-z]/.test(value) ||
+          !/[A-Z]/.test(value) ||
+          !/[0-9]/.test(value)
+        ) {
+          callback(new Error('密码必须包含大小写字母和数字'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== passwordForm.newPassword) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+
+function handleOpenPasswordDialog() {
+  passwordForm.currentPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordDialogVisible.value = true
+}
+
+async function handleSavePassword() {
+  await passwordFormRef.value?.validate()
+  passwordSaving.value = true
+  try {
+    await changePasswordApi({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword
+    })
+    ElMessage.success('密码修改成功，请重新登录')
+    passwordDialogVisible.value = false
+    logout()
+    router.replace({ name: 'GameLogin' })
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    passwordSaving.value = false
+  }
+}
+
+// ── 绑定邮箱（游客） ──
+const bindEmailDialogVisible = ref(false)
+const bindEmailFormRef = ref(null)
+const bindEmailSaving = ref(false)
+const bindEmailSendingCode = ref(false)
+const bindEmailCountdown = ref(0)
+
+const bindEmailForm = reactive({
+  email: '',
+  code: ''
+})
+
+const bindEmailSendCodeDisabled = computed(
+  () => bindEmailCountdown.value > 0 || !bindEmailForm.email
+)
+const bindEmailCountdownText = computed(() =>
+  bindEmailCountdown.value > 0
+    ? `${bindEmailCountdown.value}s 后重发`
+    : '发送验证码'
+)
+
+const bindEmailRules = {
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+  ],
+  code: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { len: 6, message: '验证码为 6 位', trigger: 'blur' }
+  ]
+}
+
+function handleOpenBindEmailDialog() {
+  bindEmailForm.email = ''
+  bindEmailForm.code = ''
+  bindEmailDialogVisible.value = true
+}
+
+function startBindEmailCountdown() {
+  bindEmailCountdown.value = 60
+  const timer = setInterval(() => {
+    bindEmailCountdown.value--
+    if (bindEmailCountdown.value <= 0) clearInterval(timer)
+  }, 1000)
+}
+
+async function handleBindEmailSendCode() {
+  if (!bindEmailForm.email) {
+    ElMessage.warning('请先填写邮箱')
+    return
+  }
+  bindEmailSendingCode.value = true
+  try {
+    await guestBindEmailSendCodeApi({ email: bindEmailForm.email })
+    ElMessage.success('验证码已发送，请查收邮件')
+    startBindEmailCountdown()
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    bindEmailSendingCode.value = false
+  }
+}
+
+async function handleBindEmail() {
+  await bindEmailFormRef.value?.validate()
+  bindEmailSaving.value = true
+  try {
+    const res = await guestBindEmailApi({
+      email: bindEmailForm.email,
+      code: bindEmailForm.code
+    })
+    const { accessToken, refreshToken } = res.data.data
+    ElMessage.success('邮箱绑定成功，请重新登录')
+    bindEmailDialogVisible.value = false
+    logout()
+    router.replace({ name: 'GameLogin' })
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    bindEmailSaving.value = false
   }
 }
 

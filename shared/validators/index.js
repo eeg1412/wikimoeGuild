@@ -11,4 +11,45 @@ export {
   listGlobalConfigSchema
 } from './globalConfigValidator.js'
 export { installSchema } from './installValidator.js'
+export {
+  playerChangePasswordSchema,
+  guestRegisterSchema,
+  guestBindEmailSendCodeSchema,
+  guestBindEmailSchema
+} from './gameAuthValidator.js'
+export {
+  officialSellCrystalSchema,
+  officialBuyCrystalSchema,
+  officialSellRuneStoneSchema,
+  createMaterialSellOrderSchema,
+  createMaterialBuyOrderSchema,
+  fulfillMaterialOrderSchema,
+  createRuneStoneListingSchema
+} from './gameMarketValidator.js'
+export {
+  arenaRegisterSchema,
+  arenaFormationUpdateSchema,
+  arenaChallengeSchema
+} from './gameArenaValidator.js'
+export { saveFormationSchema } from './gameFormationValidator.js'
+export {
+  runeStonePreviewSynthesisSchema,
+  runeStoneConfirmSynthesisSchema
+} from './gameRuneStoneValidator.js'
+export {
+  adventurerCustomAvatarSchema,
+  adventurerCustomNameSchema,
+  adventurerLevelUpSchema,
+  adventurerEquipRuneStoneSchema,
+  adventurerRerollSchema
+} from './gameAdventurerValidator.js'
+export {
+  dungeonLegionChallengeSchema,
+  dungeonSelectLevelSchema
+} from './gameDungeonValidator.js'
+export {
+  changeGuildLogoSchema,
+  changeGuildNameSchema
+} from './gameGuildValidator.js'
+export { mineDigSchema } from './gameMineValidator.js'
 // ===GENERATOR_VALIDATOR===

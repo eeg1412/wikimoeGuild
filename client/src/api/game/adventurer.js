@@ -55,3 +55,10 @@ export function equipRuneStoneApi(id, data) {
 export function unequipRuneStoneApi(id) {
   return gameRequest.post(`/adventurers/${id}/unequip`)
 }
+
+/**
+ * 冒险家洗属性（元素/被动增益/攻击偏好）
+ */
+export function rerollAttributeApi(id, data) {
+  return gameRequest.post(`/adventurers/${id}/reroll`, data)
+}

@@ -133,3 +133,22 @@ export async function unequipRuneStone(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 冒险家洗属性（元素/被动增益/攻击偏好）
+ */
+export async function rerollAttribute(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { id } = req.params
+    const { rerollType } = req.body
+    const result = await adventurerService.rerollAttribute(
+      accountId,
+      id,
+      rerollType
+    )
+    res.success(result, '洗属性成功')
+  } catch (error) {
+    next(error)
+  }
+}

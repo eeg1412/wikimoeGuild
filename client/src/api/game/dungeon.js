@@ -29,6 +29,13 @@ export function previewLegionApi() {
 }
 
 /**
+ * 选择迷宫产出等级
+ */
+export function selectDungeonLevelApi(data) {
+  return gameRequest.post('/dungeon/select-level', data)
+}
+
+/**
  * 挑战军团
  */
 export function challengeLegionApi(data) {

@@ -76,3 +76,64 @@ export async function refresh(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 玩家修改密码
+ */
+export async function changePassword(req, res, next) {
+  try {
+    await authService.changePassword(req.player.id, req.body)
+    res.success(null, '密码修改成功，请重新登录')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 游客注册
+ */
+export async function guestRegister(req, res, next) {
+  try {
+    const result = await authService.guestRegister(req)
+    res.success(result, '游客注册成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 游客绑定邮箱 - 发送验证码
+ */
+export async function guestBindEmailSendCode(req, res, next) {
+  try {
+    const { email } = req.body
+    await authService.guestBindEmailSendCode(req, email)
+    res.success(null, '验证码已发送，请查收邮件')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 游客绑定邮箱
+ */
+export async function guestBindEmail(req, res, next) {
+  try {
+    const result = await authService.guestBindEmail(req.player.id, req.body)
+    res.success(result, '邮箱绑定成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 获取游客模式配置
+ */
+export async function getGuestConfig(req, res, next) {
+  try {
+    const config = authService.getGuestConfig()
+    res.success(config, '获取成功')
+  } catch (error) {
+    next(error)
+  }
+}

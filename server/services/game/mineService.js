@@ -645,12 +645,14 @@ function generateMineLegion(level) {
 
   const demons = []
 
-  if (level <= 25) {
-    const demonCount = Math.min(level, 25)
+  //  前10级：迷宫等级 数量的 等级为 迷宫等级×1 的恶魔
+  if (level <= 10) {
+    const demonCount = Math.min(level, 10)
+    const compLevel = level * 1
     for (let i = 0; i < demonCount; i++) {
       demons.push(
         createMineDemon(
-          level,
+          compLevel,
           ELEMENTS,
           allBuffTypes,
           allPreferences,
@@ -660,7 +662,26 @@ function generateMineLegion(level) {
         )
       )
     }
+  } else if (level <= 25) {
+    // 前25级：迷宫等级 数量的恶魔，等级为 迷宫等级 × 1，必定携带1个随机传说级符文石
+    const demonCount = Math.min(level, 25)
+    const compLevel = level * 1
+    for (let i = 0; i < demonCount; i++) {
+      const runeStone = generateMineDemonRuneStone(compLevel, allSkills)
+      demons.push(
+        createMineDemon(
+          compLevel,
+          ELEMENTS,
+          allBuffTypes,
+          allPreferences,
+          DEMON_AVATAR_COUNT,
+          runeStone,
+          allSkills
+        )
+      )
+    }
   } else {
+    // 后25级：25名恶魔，综合等级 = 25 + (迷宫等级 × 10)
     const totalLevel = 25 + level * 10
     const levels = distributeMineLevels(totalLevel, 25)
     for (let i = 0; i < 25; i++) {

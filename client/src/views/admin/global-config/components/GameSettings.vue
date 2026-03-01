@@ -121,6 +121,48 @@
         <span class="ml-2 text-gray-400 text-sm">金币/个</span>
       </el-form-item>
 
+      <el-form-item
+        label="官方普通符文石收购价"
+        prop="officialNormalRuneStoneBuyPrice"
+      >
+        <el-input-number
+          v-model="form.officialNormalRuneStoneBuyPrice"
+          :min="1"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">金币/个</span>
+      </el-form-item>
+
+      <el-form-item
+        label="官方稀有符文石收购价"
+        prop="officialRareRuneStoneBuyPrice"
+      >
+        <el-input-number
+          v-model="form.officialRareRuneStoneBuyPrice"
+          :min="1"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">金币/个</span>
+      </el-form-item>
+
+      <el-form-item
+        label="官方传说符文石收购价"
+        prop="officialLegendaryRuneStoneBuyPrice"
+      >
+        <el-input-number
+          v-model="form.officialLegendaryRuneStoneBuyPrice"
+          :min="1"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">金币/个</span>
+      </el-form-item>
+
       <el-form-item label="自由市场素材最低价" prop="freeMarketMinPrice">
         <el-input-number
           v-model="form.freeMarketMinPrice"
@@ -185,6 +227,89 @@
         <span class="ml-2 text-gray-400 text-sm">最少3天</span>
       </el-form-item>
 
+      <el-divider content-position="left">🏰 公会设置</el-divider>
+
+      <el-form-item label="公会标志价格（金币）" prop="guildCustomLogoPrice">
+        <el-input-number
+          v-model="form.guildCustomLogoPrice"
+          :min="0"
+          :max="2000000000"
+          :step="500"
+          controls-position="right"
+        />
+      </el-form-item>
+
+      <el-form-item label="公会改名价格（金币）" prop="guildChangeNamePrice">
+        <el-input-number
+          v-model="form.guildChangeNamePrice"
+          :min="0"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+      </el-form-item>
+
+      <el-divider content-position="left">� 冒险家洗属性</el-divider>
+
+      <el-form-item
+        label="洗元素价格（金币）"
+        prop="adventurerRerollElementPrice"
+      >
+        <el-input-number
+          v-model="form.adventurerRerollElementPrice"
+          :min="0"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+      </el-form-item>
+
+      <el-form-item
+        label="洗被动增益价格（金币）"
+        prop="adventurerRerollPassiveBuffPrice"
+      >
+        <el-input-number
+          v-model="form.adventurerRerollPassiveBuffPrice"
+          :min="0"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+      </el-form-item>
+
+      <el-form-item
+        label="洗攻击偏好价格（金币）"
+        prop="adventurerRerollAttackPreferencePrice"
+      >
+        <el-input-number
+          v-model="form.adventurerRerollAttackPreferencePrice"
+          :min="0"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+      </el-form-item>
+
+      <el-divider content-position="left">�🎮 游客模式</el-divider>
+
+      <el-form-item label="启用游客模式" prop="guestModeEnabled">
+        <el-switch v-model="form.guestModeEnabled" />
+        <span class="ml-2 text-gray-400 text-sm">
+          {{ form.guestModeEnabled ? '已开启' : '已关闭' }}
+        </span>
+      </el-form-item>
+
+      <el-form-item label="每IP每日游客上限" prop="guestMaxPerIpPerDay">
+        <el-input-number
+          v-model="form.guestMaxPerIpPerDay"
+          :min="1"
+          :max="100"
+          :step="1"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">次/天</span>
+      </el-form-item>
+
       <el-form-item>
         <el-button
           type="primary"
@@ -219,12 +344,22 @@ const form = reactive({
   legendaryRuneStoneRate: 500,
   officialCrystalBuyPrice: 100,
   officialCrystalSellPrice: 10000,
+  officialNormalRuneStoneBuyPrice: 100,
+  officialRareRuneStoneBuyPrice: 400,
+  officialLegendaryRuneStoneBuyPrice: 2000,
   freeMarketMinPrice: 100,
   freeMarketRuneStoneMinPrice: 100,
   arenaPoolAmount: 100000,
   arenaParticipationReward: 500,
   arenaBattleGold: 50,
-  seasonDays: 3
+  seasonDays: 3,
+  guildCustomLogoPrice: 5000,
+  guildChangeNamePrice: 1000,
+  adventurerRerollElementPrice: 1000,
+  adventurerRerollPassiveBuffPrice: 1000,
+  adventurerRerollAttackPreferencePrice: 1000,
+  guestModeEnabled: true,
+  guestMaxPerIpPerDay: 3
 })
 
 const rateTotal = computed(() => {

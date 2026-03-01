@@ -25,6 +25,12 @@ export async function getGameSettings(req, res, next) {
           gameSettings.adventurerCustomNamePrice ?? 1000,
         guildCustomLogoPrice: gameSettings.guildCustomLogoPrice ?? 5000,
         guildChangeNamePrice: gameSettings.guildChangeNamePrice ?? 1000,
+        adventurerRerollElementPrice:
+          gameSettings.adventurerRerollElementPrice ?? 1000,
+        adventurerRerollPassiveBuffPrice:
+          gameSettings.adventurerRerollPassiveBuffPrice ?? 1000,
+        adventurerRerollAttackPreferencePrice:
+          gameSettings.adventurerRerollAttackPreferencePrice ?? 1000,
         runeStoneDropRate: gameSettings.runeStoneDropRate ?? 100,
         normalRuneStoneRate: gameSettings.normalRuneStoneRate ?? 8000,
         rareRuneStoneRate: gameSettings.rareRuneStoneRate ?? 1500,

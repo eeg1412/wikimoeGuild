@@ -35,6 +35,8 @@ export async function getDungeonInfo(accountId) {
 
   return {
     dungeonsLevel: playerInfo.dungeonsLevel,
+    selectedDungeonsLevel:
+      playerInfo.selectedDungeonsLevel || playerInfo.dungeonsLevel,
     dungeonsBackgroundId: playerInfo.dungeonsBackgroundId,
     dungeonsCryRates: playerInfo.dungeonsCryRates,
     mapCanChangeUses: recoveredUses,
@@ -180,12 +182,26 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     SANCryRate: 2500
   }
 
-  const attackCrystals = Math.floor((totalOutput * rates.attackCryRate) / 10000)
-  const defenseCrystals = Math.floor(
-    (totalOutput * rates.defenseCryRate) / 10000
-  )
-  const speedCrystals = Math.floor((totalOutput * rates.speedCryRate) / 10000)
-  const sanCrystals = Math.floor((totalOutput * rates.SANCryRate) / 10000)
+  // 先按比例 floor 分配（节约算力）
+  let attackCrystals = Math.floor((totalOutput * rates.attackCryRate) / 10000)
+  let defenseCrystals = Math.floor((totalOutput * rates.defenseCryRate) / 10000)
+  let speedCrystals = Math.floor((totalOutput * rates.speedCryRate) / 10000)
+  let sanCrystals = Math.floor((totalOutput * rates.SANCryRate) / 10000)
+
+  // 计算 floor 截断后遗漏的水晶数，对每个遗漏水晶单独随机分配
+  const remainder =
+    totalOutput -
+    (attackCrystals + defenseCrystals + speedCrystals + sanCrystals)
+  const cumAttack = rates.attackCryRate
+  const cumDefense = cumAttack + rates.defenseCryRate
+  const cumSpeed = cumDefense + rates.speedCryRate
+  for (let i = 0; i < remainder; i++) {
+    const roll = Math.floor(Math.random() * 10000)
+    if (roll < cumAttack) attackCrystals++
+    else if (roll < cumDefense) defenseCrystals++
+    else if (roll < cumSpeed) speedCrystals++
+    else sanCrystals++
+  }
 
   // 增加水晶
   await GamePlayerInventory.findOneAndUpdate(
@@ -205,11 +221,14 @@ async function settleCrystalsInternal(playerInfo, accountId) {
   let droppedRuneStone = null
   const totalCrystals =
     attackCrystals + defenseCrystals + speedCrystals + sanCrystals
+  // 使用玩家选择的迷宫等级控制符文石产出等级
+  const runeStoneLevel =
+    playerInfo.selectedDungeonsLevel || playerInfo.dungeonsLevel
   // 每个水晶都有一次掉落机会
   for (let i = 0; i < totalCrystals; i++) {
     const dropped = await runeStoneService.tryDropRuneStone(
       accountId,
-      playerInfo.dungeonsLevel
+      runeStoneLevel
     )
     if (dropped) {
       droppedRuneStone = dropped
@@ -259,5 +278,39 @@ export async function settleCrystals(accountId) {
     await playerInfo.save()
 
     return result
+  })
+}
+
+/**
+ * 选择迷宫等级（控制符文石产出等级）
+ * 只能选择 1 ~ 当前最高等级的迷宫
+ */
+export async function selectDungeonLevel(accountId, level) {
+  return await executeInLock(`dungeon:${accountId}`, async () => {
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    if (
+      !Number.isInteger(level) ||
+      level < 1 ||
+      level > playerInfo.dungeonsLevel
+    ) {
+      const err = new Error(
+        `迷宫等级必须在 1 ~ ${playerInfo.dungeonsLevel} 之间`
+      )
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    playerInfo.selectedDungeonsLevel = level
+    await playerInfo.save()
+
+    return { selectedDungeonsLevel: level }
   })
 }

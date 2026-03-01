@@ -64,6 +64,13 @@
             {{ row.accountInfo?.email || '—' }}
           </template>
         </ResponsiveTableColumn>
+        <ResponsiveTableColumn label="游客" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.accountInfo?.isGuest" type="warning" size="small">
+              游客
+            </el-tag>
+          </template>
+        </ResponsiveTableColumn>
         <ResponsiveTableColumn label="地图更换次数" width="120" align="center">
           <template #default="{ row }">
             {{ row.mapCanChangeUses }}

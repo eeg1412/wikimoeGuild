@@ -3,7 +3,14 @@ import GamePlayerRegisterLog from '../../models/gamePlayerRegisterLogs.js'
 /**
  * 玩家注册日志列表（分页）
  */
-export async function list({ page = 1, pageSize = 20, email, ip, success }) {
+export async function list({
+  page = 1,
+  pageSize = 20,
+  email,
+  ip,
+  success,
+  isGuest
+}) {
   page = Math.max(1, Number(page))
   pageSize = Math.min(100, Math.max(1, Number(pageSize)))
 
@@ -12,6 +19,9 @@ export async function list({ page = 1, pageSize = 20, email, ip, success }) {
   if (ip) filter.ip = { $regex: ip, $options: 'i' }
   if (success !== undefined && success !== '') {
     filter.success = success === 'true' || success === true
+  }
+  if (isGuest !== undefined && isGuest !== '') {
+    filter.isGuest = isGuest === 'true' || isGuest === true
   }
 
   const [total, list] = await Promise.all([

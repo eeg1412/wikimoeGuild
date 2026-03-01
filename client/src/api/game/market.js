@@ -13,6 +13,11 @@ export function buyCrystalFromOfficialApi(data) {
   return gameRequest.post('/market/official/buy', data)
 }
 
+// 官方市场 - 出售符文石
+export function sellRuneStoneToOfficialApi(data) {
+  return gameRequest.post('/market/official/sell-rune-stone', data)
+}
+
 // 素材交易 - 出售列表
 export function listMaterialSellOrdersApi(params) {
   return gameRequest.get('/market/material/sell-orders', { params })

@@ -147,24 +147,66 @@
         <div class="w-full space-y-2 text-sm">
           <div class="info-row">
             <span class="info-label">元素</span>
-            <span
-              class="info-value font-semibold"
-              :style="{ color: getElementColor(detailAdv.elements) }"
-            >
-              {{ getElementName(detailAdv.elements) }}
-            </span>
+            <div class="flex items-center gap-1">
+              <span
+                class="info-value font-semibold"
+                :style="{ color: getElementColor(detailAdv.elements) }"
+              >
+                {{ getElementName(detailAdv.elements) }}
+              </span>
+              <el-button
+                type="warning"
+                text
+                size="small"
+                :loading="rerollLoading"
+                :disabled="rerollLoading"
+                @click="handleReroll('element')"
+              >
+                🎲 {{ gameSettings.adventurerRerollElementPrice ?? 1000 }}金
+              </el-button>
+            </div>
           </div>
           <div class="info-row">
             <span class="info-label">被动增益</span>
-            <span class="info-value text-sm">{{
-              getPassiveBuffName(detailAdv.passiveBuffType)
-            }}</span>
+            <div
+              class="flex items-center gap-1 flex-wrap justify-end"
+              style="max-width: 65%"
+            >
+              <span class="info-value text-sm text-right">{{
+                getPassiveBuffName(detailAdv.passiveBuffType)
+              }}</span>
+              <el-button
+                type="warning"
+                text
+                size="small"
+                :loading="rerollLoading"
+                :disabled="rerollLoading"
+                @click="handleReroll('passiveBuff')"
+              >
+                🎲 {{ gameSettings.adventurerRerollPassiveBuffPrice ?? 1000 }}金
+              </el-button>
+            </div>
           </div>
           <div class="info-row">
             <span class="info-label">攻击偏好</span>
-            <span class="info-value text-sm">{{
-              getAttackPreferenceName(detailAdv.attackPreference)
-            }}</span>
+            <div class="flex items-center gap-1 flex-wrap justify-end">
+              <span class="info-value text-sm">{{
+                getAttackPreferenceName(detailAdv.attackPreference)
+              }}</span>
+              <el-button
+                type="warning"
+                text
+                size="small"
+                :loading="rerollLoading"
+                :disabled="rerollLoading"
+                @click="handleReroll('attackPreference')"
+              >
+                🎲
+                {{
+                  gameSettings.adventurerRerollAttackPreferencePrice ?? 1000
+                }}金
+              </el-button>
+            </div>
           </div>
           <div class="info-row">
             <span class="info-label">综合等级</span>
@@ -195,28 +237,15 @@
             </div>
           </div>
           <div class="w-full grid grid-cols-4 gap-1 text-sm mt-1">
-            <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
-              <p class="text-xs text-gray-400">⚔️水晶</p>
+            <div
+              v-for="cType in CRYSTAL_TYPES"
+              :key="cType.key"
+              class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center cursor-pointer hover:ring-1 ring-yellow-400 transition"
+              @click="openQuickSellDialog(cType.key)"
+            >
+              <p class="text-xs text-gray-400">{{ cType.icon }}水晶</p>
               <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
-                {{ inventory?.attackCrystal ?? 0 }}
-              </p>
-            </div>
-            <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
-              <p class="text-xs text-gray-400">🛡️水晶</p>
-              <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
-                {{ inventory?.defenseCrystal ?? 0 }}
-              </p>
-            </div>
-            <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
-              <p class="text-xs text-gray-400">💨水晶</p>
-              <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
-                {{ inventory?.speedCrystal ?? 0 }}
-              </p>
-            </div>
-            <div class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center">
-              <p class="text-xs text-gray-400">🌀水晶</p>
-              <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
-                {{ inventory?.sanCrystal ?? 0 }}
+                {{ inventory?.[cType.key] ?? 0 }}
               </p>
             </div>
           </div>
@@ -365,27 +394,42 @@
       >
         暂无可用符文石
       </div>
-      <div v-else class="space-y-2 max-h-60 overflow-y-auto">
+      <div v-else class="space-y-3 max-h-60 overflow-y-auto">
         <div
           v-for="rs in availableRuneStones"
           :key="rs._id"
-          class="flex items-center justify-between p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-yellow-400 cursor-pointer transition-colors"
+          class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border"
           @click="handleEquip(rs._id)"
         >
-          <div>
-            <span :class="rarityClass(rs.rarity)" class="text-sm font-semibold">
-              {{ rarityName(rs.rarity) }}
-            </span>
-            <span class="text-sm text-gray-500 ml-1">Lv.{{ rs.level }}</span>
+          <!-- 标题行 -->
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <div
+                class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                :class="rarityBgClass(rs.rarity)"
+              >
+                💎
+              </div>
+              <div>
+                <p
+                  :class="rarityClass(rs.rarity)"
+                  class="text-sm font-semibold"
+                >
+                  {{ rarityName(rs.rarity) }}符文石 Lv.{{ rs.level }}
+                </p>
+              </div>
+            </div>
+            <el-button
+              type="primary"
+              size="small"
+              :loading="equipLoading"
+              :disabled="equipLoading"
+            >
+              装备
+            </el-button>
           </div>
-          <el-button
-            type="primary"
-            size="small"
-            :loading="equipLoading"
-            :disabled="equipLoading"
-          >
-            装备
-          </el-button>
+          <!-- 完整信息 -->
+          <RuneStoneInfoCard :rune-stone="rs" />
         </div>
       </div>
     </el-dialog>
@@ -417,75 +461,64 @@
           </p>
         </div>
 
-        <!-- 主动技能 -->
-        <div>
-          <h4 class="text-sm font-semibold text-yellow-500 mb-2">
-            ⚡ 主动技能
-          </h4>
-          <div
-            v-for="(skill, idx) in runeStoneDetailData.activeSkills"
-            :key="idx"
-            class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1"
-          >
-            <template v-if="getSkillInfo(skill.skillId || skill)">
-              <p class="font-semibold text-gray-800 dark:text-gray-100">
-                {{ getSkillInfo(skill.skillId || skill).label }}
-              </p>
-              <p class="mt-0.5 text-gray-500 dark:text-gray-400">
-                {{ getSkillInfo(skill.skillId || skill).description }}
-              </p>
-              <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                <span
-                  >类型:
-                  {{
-                    skillTypeName(getSkillInfo(skill.skillId || skill).type)
-                  }}</span
-                >
-                <span v-if="getSkillInfo(skill.skillId || skill).element">
-                  元素:
-                  {{
-                    elementNameForSkill(
-                      getSkillInfo(skill.skillId || skill).element
-                    )
-                  }}
-                </span>
-                <span
-                  >时机:
-                  {{
-                    triggerTimingName(
-                      getSkillInfo(skill.skillId || skill).triggerTiming
-                    )
-                  }}</span
-                >
-                <span
-                  >目标:
-                  {{
-                    targetName(getSkillInfo(skill.skillId || skill).target)
-                  }}</span
-                >
-                <span
-                  >基础值:
-                  {{ getSkillInfo(skill.skillId || skill).baseValue }}</span
-                >
-              </div>
-            </template>
-            <template v-else>
-              {{ skill.skillId || skill }}
-            </template>
-          </div>
-        </div>
+        <!-- 主动技能 & 被动增益 -->
+        <RuneStoneInfoCard :rune-stone="runeStoneDetailData" />
+      </div>
+    </el-dialog>
 
-        <!-- 被动增益 -->
-        <div>
-          <h4 class="text-sm font-semibold text-blue-400 mb-2">🔮 被动增益</h4>
-          <div
-            v-for="(buff, idx) in runeStoneDetailData.passiveBuffs"
-            :key="idx"
-            class="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 mb-1 flex justify-between"
+    <!-- ===== 快速出售水晶弹窗 ===== -->
+    <el-dialog
+      v-model="quickSellVisible"
+      :title="`快速出售 ${quickSellCrystalLabel}`"
+      width="320px"
+      align-center
+    >
+      <div class="space-y-3">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          当前持有:
+          <span class="font-bold text-yellow-500">{{
+            inventory?.[quickSellCrystalType] ?? 0
+          }}</span>
+        </p>
+        <div class="flex gap-2">
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(10)"
+            >出售 10</el-button
           >
-            <span>{{ buffTypeName(buff.buffType) }}</span>
-            <span class="font-mono text-yellow-500">+{{ buff.buffLevel }}</span>
-          </div>
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(100)"
+            >出售 100</el-button
+          >
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(1000)"
+            >出售 1000</el-button
+          >
+        </div>
+        <div class="flex items-center gap-2">
+          <el-input-number
+            v-model="quickSellCustomAmount"
+            :min="1"
+            :max="99999"
+            size="small"
+            class="flex-1"
+          />
+          <el-button
+            type="primary"
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(quickSellCustomAmount)"
+            >出售</el-button
+          >
         </div>
       </div>
     </el-dialog>
@@ -495,7 +528,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getMyAdventurersApi,
   getAdventurerDetailApi,
@@ -504,10 +537,12 @@ import {
   customizeNameApi,
   levelUpStatApi,
   equipRuneStoneApi,
-  unequipRuneStoneApi
+  unequipRuneStoneApi,
+  rerollAttributeApi
 } from '@/api/game/adventurer.js'
 import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
+import { sellCrystalToOfficialApi } from '@/api/game/market.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import {
@@ -516,6 +551,7 @@ import {
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
 import Cropper from '@/components/Cropper.vue'
+import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo, playerInfo } = useGameUser()
@@ -549,6 +585,13 @@ const STAT_LIST = [
   { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: '🛡️' },
   { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: '💨' },
   { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '🌀' }
+]
+
+const CRYSTAL_TYPES = [
+  { key: 'attackCrystal', icon: '⚔️', label: '攻击水晶' },
+  { key: 'defenseCrystal', icon: '🛡️', label: '防御水晶' },
+  { key: 'speedCrystal', icon: '💨', label: '速度水晶' },
+  { key: 'sanCrystal', icon: '🌀', label: 'SAN水晶' }
 ]
 
 function getElementColor(el) {
@@ -797,6 +840,48 @@ async function handleUnequip() {
   }
 }
 
+// ── 洗属性 ──
+const rerollLoading = ref(false)
+const REROLL_TYPE_LABEL = {
+  element: '元素',
+  passiveBuff: '被动增益',
+  attackPreference: '攻击偏好'
+}
+const REROLL_PRICE_KEY = {
+  element: 'adventurerRerollElementPrice',
+  passiveBuff: 'adventurerRerollPassiveBuffPrice',
+  attackPreference: 'adventurerRerollAttackPreferencePrice'
+}
+
+async function handleReroll(rerollType) {
+  if (!detailAdv.value) return
+  const label = REROLL_TYPE_LABEL[rerollType]
+  const priceKey = REROLL_PRICE_KEY[rerollType]
+  const price = gameSettings.value[priceKey] ?? 1000
+  try {
+    await ElMessageBox.confirm(
+      `确定花费 ${price} 金币随机更换${label}？`,
+      `洗${label}`,
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  rerollLoading.value = true
+  try {
+    const res = await rerollAttributeApi(detailAdv.value._id, { rerollType })
+    ElMessage.success(`${label}已更换！`)
+    detailAdv.value = res.data.data
+    const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
+    if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
+    await fetchPlayerInfo()
+  } catch (e) {
+    // 错误已由拦截器处理
+  } finally {
+    rerollLoading.value = false
+  }
+}
+
 // ── 符文石详情弹窗 ──
 const runeStoneDetailVisible = ref(false)
 const runeStoneDetailData = ref(null)
@@ -861,6 +946,43 @@ const allSkillsMap = computed(() => {
 
 function getSkillInfo(skillId) {
   return allSkillsMap.value.get(skillId) || null
+}
+
+// ── 快速出售水晶 ──
+const quickSellVisible = ref(false)
+const quickSellCrystalType = ref('attackCrystal')
+const quickSellCustomAmount = ref(10)
+const quickSellLoading = ref(false)
+
+const quickSellCrystalLabel = computed(() => {
+  return (
+    CRYSTAL_TYPES.find(c => c.key === quickSellCrystalType.value)?.label ||
+    '水晶'
+  )
+})
+
+function openQuickSellDialog(crystalType) {
+  quickSellCrystalType.value = crystalType
+  quickSellCustomAmount.value = 10
+  quickSellVisible.value = true
+}
+
+async function handleQuickSell(amount) {
+  if (!amount || amount <= 0) return
+  quickSellLoading.value = true
+  try {
+    const res = await sellCrystalToOfficialApi({
+      crystalType: quickSellCrystalType.value,
+      quantity: amount
+    })
+    const { goldEarned } = res.data.data
+    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
+    await Promise.all([fetchInventory(), fetchPlayerInfo()])
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    quickSellLoading.value = false
+  }
 }
 
 // ── 初始化 ──

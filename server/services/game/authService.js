@@ -14,7 +14,8 @@ import {
   executeInLock,
   generateIconAsync,
   generateRandomAdventurerAvatarId,
-  generateRandomAdventurerName
+  generateRandomAdventurerName,
+  generateRandomGuildName
 } from '../../utils/utils.js'
 import { sendVerifyCodeMail } from '../../utils/mailer.js'
 import jwt from 'jsonwebtoken'
@@ -29,7 +30,7 @@ import { recordActivity } from './activityService.js'
  * @param {boolean} rememberMe - 是否保持登录
  * @returns {{ accessToken: string, refreshToken: string }}
  */
-function signPlayerTokens(account, rememberMe) {
+function signPlayerTokens(account, rememberMe, { isGuest = false } = {}) {
   const payload = {
     id: account._id,
     email: account.email,
@@ -40,14 +41,20 @@ function signPlayerTokens(account, rememberMe) {
     jwtKeys.playerSecret,
     { expiresIn: JWT_CONFIG.player.accessTokenExpiresIn }
   )
+
+  let refreshExpiresIn
+  if (isGuest) {
+    refreshExpiresIn = JWT_CONFIG.player.guestRefreshTokenExpiresIn
+  } else if (rememberMe) {
+    refreshExpiresIn = JWT_CONFIG.player.rememberMeRefreshTokenExpiresIn
+  } else {
+    refreshExpiresIn = JWT_CONFIG.player.refreshTokenExpiresIn
+  }
+
   const refreshToken = jwt.sign(
-    { ...payload, tokenType: 'refresh', rememberMe: !!rememberMe },
+    { ...payload, tokenType: 'refresh', rememberMe: !!(rememberMe || isGuest) },
     jwtKeys.playerSecret,
-    {
-      expiresIn: rememberMe
-        ? JWT_CONFIG.player.rememberMeRefreshTokenExpiresIn
-        : JWT_CONFIG.player.refreshTokenExpiresIn
-    }
+    { expiresIn: refreshExpiresIn }
   )
   return { accessToken, refreshToken }
 }
@@ -84,8 +91,8 @@ export async function sendMailCode(req, email, type) {
     }
   }
 
-  // 注册：检查邮箱是否已被注册
-  if (type === 'register') {
+  // 注册 / 游客绑定：检查邮箱是否已被注册
+  if (type === 'register' || type === 'guestBind') {
     const exists = await GamePlayerAccount.exists({ email })
     if (exists) {
       const err = new Error('该邮箱已被注册')
@@ -468,6 +475,343 @@ export async function resetPassword(req, { email, code, newPassword }) {
 // 获取当前玩家信息
 // ──────────────────────────────────────────────
 export async function getPlayerInfo(playerId) {
-  const playerInfo = await GamePlayerInfo.findOne({ account: playerId })
+  const account = await GamePlayerAccount.findById(playerId)
+    .select('isGuest email')
+    .lean()
+  const playerInfo = await GamePlayerInfo.findOne({ account: playerId }).lean()
+  if (playerInfo && account) {
+    playerInfo.isGuest = account.isGuest || false
+    playerInfo.email = account.email
+  }
   return playerInfo
+}
+
+// ──────────────────────────────────────────────
+// 修改密码
+// ──────────────────────────────────────────────
+
+/**
+ * 玩家修改密码（需要验证原密码）
+ */
+export async function changePassword(
+  playerId,
+  { currentPassword, newPassword }
+) {
+  const account = await GamePlayerAccount.findById(playerId)
+  if (!account) {
+    const err = new Error('用户不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  const passwordMatch = await account.comparePassword(currentPassword)
+  if (!passwordMatch) {
+    const err = new Error('当前密码错误')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  account.password = newPassword
+  account.tokenVersion = (account.tokenVersion || 0) + 1
+  await account.save()
+}
+
+// ──────────────────────────────────────────────
+// 游客注册
+// ──────────────────────────────────────────────
+
+/**
+ * 生成 10 位随机账号（小写字母 + 数字）
+ */
+function generateGuestUsername() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < 10; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+/**
+ * 生成 8 位随机密码（必须包含大小写字母、数字和符号）
+ */
+function generateGuestPassword() {
+  const lower = 'abcdefghijklmnopqrstuvwxyz'
+  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const digits = '0123456789'
+  const symbols = '!@#$%^&*'
+  const all = lower + upper + digits + symbols
+
+  // 确保每种字符至少一个
+  const password = [
+    lower[Math.floor(Math.random() * lower.length)],
+    upper[Math.floor(Math.random() * upper.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    symbols[Math.floor(Math.random() * symbols.length)]
+  ]
+
+  // 补足剩余4位
+  for (let i = 0; i < 4; i++) {
+    password.push(all[Math.floor(Math.random() * all.length)])
+  }
+
+  // 打乱顺序
+  for (let i = password.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[password[i], password[j]] = [password[j], password[i]]
+  }
+
+  return password.join('')
+}
+
+/**
+ * 游客注册
+ */
+export async function guestRegister(req) {
+  const ip = getUserIp(req)
+
+  // 检查是否开启游客模式
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  if (gameSettings.guestModeEnabled === false) {
+    const err = new Error('游客模式已关闭')
+    err.statusCode = 403
+    err.expose = true
+    throw err
+  }
+
+  // 检测 isBot
+  const ua = deviceUAInfoUtils(req)
+  const type = ua?.browser?.type || null
+  const botTypes = ['cli', 'crawler', 'fetcher', 'library']
+  const isBot = type && botTypes.includes(type)
+  if (isBot) {
+    const err = new Error('检测到机器人行为，注册被拒绝')
+    err.statusCode = 403
+    err.expose = true
+    throw err
+  }
+
+  // 每日同 IP 游客注册次数限制
+  const maxGuestPerIpPerDay = gameSettings.guestMaxPerIpPerDay ?? 3
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const ipGuestCount = await GamePlayerRegisterLog.countDocuments({
+    ip,
+    success: true,
+    isGuest: true,
+    createdAt: { $gte: todayStart }
+  })
+  if (ipGuestCount >= maxGuestPerIpPerDay) {
+    const err = new Error(
+      `该 IP 今日游客注册次数已达上限（${maxGuestPerIpPerDay} 次）`
+    )
+    err.statusCode = 429
+    err.expose = true
+    throw err
+  }
+
+  // 生成游客邮箱
+  const siteSettings = global.$globalConfig?.siteSettings || {}
+  const siteUrl = siteSettings.siteUrl || 'wikimoe.com'
+  // 从 siteUrl 提取域名
+  let domain = siteUrl
+  try {
+    const url = new URL(
+      siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`
+    )
+    domain = url.hostname
+  } catch {
+    // 使用原始值
+  }
+
+  // 生成唯一的游客邮箱
+  let guestEmail = ''
+  let attempts = 0
+  while (attempts < 10) {
+    guestEmail = `${generateGuestUsername()}@${domain}`
+    const existing = await GamePlayerAccount.findOne({ email: guestEmail })
+    if (!existing) break
+    attempts++
+  }
+  if (attempts >= 10) {
+    const err = new Error('游客账号生成失败，请稍后重试')
+    err.statusCode = 500
+    err.expose = true
+    throw err
+  }
+
+  const guestPassword = generateGuestPassword()
+  const guildName = generateRandomGuildName()
+
+  return await executeInLock(`guest-register:${ip}`, async () => {
+    // 公会名唯一性检查（极低概率冲突，但需要）
+    const existingGuildName = await GamePlayerInfo.findOne({ guildName })
+    if (existingGuildName) {
+      const err = new Error('公会名冲突，请重试')
+      err.statusCode = 409
+      err.expose = true
+      throw err
+    }
+
+    // 创建账号
+    const account = await GamePlayerAccount.create({
+      email: guestEmail,
+      password: guestPassword,
+      isGuest: true
+    })
+
+    // 创建玩家信息
+    const playerInfo = await GamePlayerInfo.create({
+      account: account._id,
+      guildName
+    })
+
+    // 创建初始冒险家
+    const ELEMENTS = ['1', '2', '3', '4', '5', '6']
+    const PASSIVE_BUFF_TYPES = ['1', '2', '3', '4', '5', '6']
+    const randomElement = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)]
+    const randomPassiveBuff =
+      PASSIVE_BUFF_TYPES[Math.floor(Math.random() * PASSIVE_BUFF_TYPES.length)]
+    await GameAdventurer.create({
+      account: account._id,
+      elements: randomElement,
+      passiveBuffType: randomPassiveBuff,
+      defaultAvatarId: generateRandomAdventurerAvatarId(),
+      name: generateRandomAdventurerName()
+    })
+    // 冒险家计数 +1
+    await GamePlayerInfo.updateOne(
+      { _id: playerInfo._id },
+      { $inc: { adventurerCount: 1 } }
+    )
+
+    // 创建玩家背包
+    await GamePlayerInventory.create({ account: account._id })
+
+    // 记录注册日志
+    const log = await GamePlayerRegisterLog.create({
+      email: guestEmail,
+      ip,
+      success: true,
+      isGuest: true,
+      message: '游客注册成功'
+    })
+    IP2LocationUtils(ip, log._id, GamePlayerRegisterLog).catch(() => {})
+    deviceUtils(req, log._id, GamePlayerRegisterLog)
+
+    // 生成公会图标
+    await generateIconAsync(String(account._id)).catch(err => {
+      console.error('生成公会图标失败', err)
+    })
+
+    // 记录动态：创建公会
+    recordActivity({
+      type: 'guild_created',
+      account: account._id,
+      guildName,
+      title: `公会「${guildName}」已创建`,
+      content: '欢迎新公会加入冒险！'
+    })
+
+    // 签发 Token（游客使用10年有效期）
+    const tokens = signPlayerTokens(account, false, { isGuest: true })
+    const info = await GamePlayerInfo.findOne({ account: account._id }).lean()
+
+    return {
+      ...tokens,
+      playerInfo: info,
+      guestEmail,
+      guestPassword
+    }
+  })
+}
+
+// ──────────────────────────────────────────────
+// 游客绑定邮箱
+// ──────────────────────────────────────────────
+
+/**
+ * 游客绑定邮箱 - 发送验证码
+ */
+export async function guestBindEmailSendCode(req, email) {
+  const account = await GamePlayerAccount.findById(req.player.id)
+  if (!account) {
+    const err = new Error('用户不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+  if (!account.isGuest) {
+    const err = new Error('非游客账号无法使用此功能')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 检查邮箱是否已被注册
+  const existing = await GamePlayerAccount.findOne({ email })
+  if (existing) {
+    const err = new Error('该邮箱已被注册')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 调用已有的 sendMailCode 逻辑
+  await sendMailCode(req, email, 'guestBind')
+}
+
+/**
+ * 游客绑定邮箱
+ */
+export async function guestBindEmail(playerId, { email, code }) {
+  // 校验验证码
+  await verifyMailCode(email, code)
+
+  return await executeInLock(`guest-bind:${playerId}`, async () => {
+    const account = await GamePlayerAccount.findById(playerId)
+    if (!account) {
+      const err = new Error('用户不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+    if (!account.isGuest) {
+      const err = new Error('非游客账号无法使用此功能')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 再次检查邮箱唯一性
+    const existing = await GamePlayerAccount.findOne({ email })
+    if (existing) {
+      const err = new Error('该邮箱已被注册')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 更新邮箱并取消游客标记
+    account.email = email
+    account.isGuest = false
+    account.tokenVersion = (account.tokenVersion || 0) + 1
+    await account.save()
+
+    // 重新签发 token
+    const tokens = signPlayerTokens(account, false)
+    return { ...tokens, email }
+  })
+}
+
+// ──────────────────────────────────────────────
+// 获取游客模式配置（前端用）
+// ──────────────────────────────────────────────
+export function getGuestConfig() {
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  return {
+    guestModeEnabled: gameSettings.guestModeEnabled !== false
+  }
 }

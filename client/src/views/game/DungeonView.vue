@@ -19,6 +19,41 @@
         </p>
       </div>
 
+      <!-- 选择产出等级 -->
+      <div class="dungeon-card rounded-2xl p-4 mb-4">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <span
+            class="text-yellow-300 font-semibold text-sm flex items-center gap-1"
+          >
+            <span>🎯</span> 符文石产出等级
+          </span>
+          <div class="flex items-center gap-2">
+            <el-select
+              v-model="selectedLevel"
+              size="small"
+              style="width: 120px"
+              :disabled="selectLevelLoading"
+              @change="handleSelectLevel"
+            >
+              <el-option
+                v-for="lv in maxDungeonLevel"
+                :key="lv"
+                :label="`Lv.${lv}`"
+                :value="lv"
+              />
+            </el-select>
+            <span
+              v-if="selectLevelLoading"
+              class="animate-spin inline-block text-sm"
+              >⏳</span
+            >
+          </div>
+        </div>
+        <p class="text-gray-400 text-xs mt-2">
+          收取水晶时，符文石掉落等级将以所选等级为准。仅最高等级可挑战军团。
+        </p>
+      </div>
+
       <!-- 冒险家探索动画框 -->
       <div class="dungeon-explorer-box rounded-2xl mb-4">
         <div class="dungeon-explorer-inner">
@@ -384,14 +419,15 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameUser } from '@/composables/useGameUser.js'
 import {
   getDungeonInfoApi,
   switchDungeonApi,
   settleCrystalsApi,
   previewLegionApi,
-  challengeLegionApi
+  challengeLegionApi,
+  selectDungeonLevelApi
 } from '@/api/game/dungeon.js'
 import { getMyFormationsApi } from '@/api/game/formation.js'
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
@@ -423,10 +459,36 @@ function rarityName(r) {
 // ── 迷宫信息 ──
 const dungeonInfo = ref({})
 
+// ── 产出等级选择 ──
+const selectedLevel = ref(1)
+const selectLevelLoading = ref(false)
+const maxDungeonLevel = computed(
+  () => dungeonInfo.value?.dungeonsLevel || playerInfo.value?.dungeonsLevel || 1
+)
+
+async function handleSelectLevel(level) {
+  selectLevelLoading.value = true
+  try {
+    await selectDungeonLevelApi({ level })
+    ElMessage.success('产出等级已更新')
+  } catch {
+    // 恢复为服务器值
+    selectedLevel.value =
+      dungeonInfo.value?.selectedDungeonsLevel || maxDungeonLevel.value
+  } finally {
+    selectLevelLoading.value = false
+  }
+}
+
 async function fetchDungeonInfo() {
   try {
     const res = await getDungeonInfoApi()
     dungeonInfo.value = res.data.data || {}
+    // 同步产出等级
+    selectedLevel.value =
+      dungeonInfo.value.selectedDungeonsLevel ||
+      dungeonInfo.value.dungeonsLevel ||
+      1
     // 初始化战斗冷却（若服务器有 lastBattleAt）
     if (dungeonInfo.value.lastBattleAt && battleCooldown.value <= 0) {
       const remain = Math.ceil(
@@ -592,6 +654,21 @@ const settleResultVisible = ref(false)
 const settleResult = ref(null)
 
 async function handleSettle() {
+  // 如果符文石产出等级和当前迷宫等级不一致，提示用户确认
+  if (selectedLevel.value !== (dungeonInfo.value?.dungeonsLevel || 1)) {
+    const confirm = await ElMessageBox.confirm(
+      `当前符文石产出等级为 Lv.${selectedLevel.value}，与迷宫等级 Lv.${
+        dungeonInfo.value?.dungeonsLevel || 1
+      } 不一致。是否继续？`,
+      '确认收取',
+      {
+        confirmButtonText: '继续收取',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).catch(() => false)
+    if (!confirm) return
+  }
   settleLoading.value = true
   try {
     const res = await settleCrystalsApi()

@@ -41,6 +41,20 @@ export async function buyCrystalFromOfficial(req, res, next) {
   }
 }
 
+export async function sellRuneStoneToOfficial(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { runeStoneId } = req.body
+    const result = await marketService.sellRuneStoneToOfficial(
+      accountId,
+      runeStoneId
+    )
+    res.success(result, '出售成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
 // ========== 素材交易 ==========
 
 export async function listMaterialSellOrders(req, res, next) {

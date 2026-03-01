@@ -77,8 +77,30 @@
     </header>
 
     <!-- 主体 -->
-    <main class="flex-1 flex items-start px-4 w-full mx-auto max-w-[720px]">
-      <router-view />
+    <main
+      class="flex-1 flex flex-col items-start px-4 w-full mx-auto max-w-[720px]"
+    >
+      <!-- 游客提醒横幅 -->
+      <div
+        v-if="isLoggedIn && playerInfo?.isGuest"
+        class="w-full bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg px-4 py-2 mt-4 flex items-center justify-between gap-2"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-yellow-500 text-lg flex-shrink-0">⚠️</span>
+          <span class="text-sm text-yellow-700 dark:text-yellow-300 truncate">
+            您正在使用游客账号，请及时绑定邮箱
+          </span>
+        </div>
+        <el-button
+          type="warning"
+          size="small"
+          class="flex-shrink-0"
+          @click="handleNavTo({ name: 'GameGuildSettings' })"
+        >
+          去绑定
+        </el-button>
+      </div>
+      <router-view class="w-full" />
     </main>
 
     <!-- 页脚 -->

@@ -19,6 +19,11 @@ const gamePlayerAccountsSchema = new mongoose.Schema(
       minlength: 6,
       index: true
     },
+    isGuest: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
     tokenVersion: {
       type: Number,
       default: 0,

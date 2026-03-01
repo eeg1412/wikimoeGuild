@@ -46,3 +46,41 @@ export function resetPasswordApi(data) {
 export function getMeApi() {
   return gameRequest.get('/auth/me')
 }
+
+/**
+ * 玩家修改密码
+ * @param {{ currentPassword: string, newPassword: string }} data
+ */
+export function changePasswordApi(data) {
+  return gameRequest.post('/auth/change-password', data)
+}
+
+/**
+ * 获取游客模式配置
+ */
+export function getGuestConfigApi() {
+  return gameRequest.get('/auth/guest-config')
+}
+
+/**
+ * 游客注册
+ */
+export function guestRegisterApi() {
+  return gameRequest.post('/auth/guest-register', {})
+}
+
+/**
+ * 游客绑定邮箱 - 发送验证码
+ * @param {{ email: string }} data
+ */
+export function guestBindEmailSendCodeApi(data) {
+  return gameRequest.post('/auth/guest-bind-email/send-code', data)
+}
+
+/**
+ * 游客绑定邮箱
+ * @param {{ email: string, code: string }} data
+ */
+export function guestBindEmailApi(data) {
+  return gameRequest.post('/auth/guest-bind-email', data)
+}

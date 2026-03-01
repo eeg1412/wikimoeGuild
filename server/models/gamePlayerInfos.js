@@ -15,7 +15,7 @@ const gamePlayerInfoSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       minlength: 2,
-      maxlength: 8,
+      maxlength: 20,
       index: true
     },
     gold: {
@@ -92,6 +92,12 @@ const gamePlayerInfoSchema = new mongoose.Schema(
     },
     // 地下迷宫等级
     dungeonsLevel: {
+      type: Number,
+      min: 1,
+      default: 1
+    },
+    // 玩家选择的迷宫等级（用于控制符文石产出等级，默认跟随最高等级）
+    selectedDungeonsLevel: {
       type: Number,
       min: 1,
       default: 1

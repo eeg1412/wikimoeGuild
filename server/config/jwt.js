@@ -16,7 +16,9 @@ export const JWT_CONFIG = {
     /** 刷新 token 有效期（普通登录） */
     refreshTokenExpiresIn: '24h',
     /** 刷新 token 有效期（保持登录状态） */
-    rememberMeRefreshTokenExpiresIn: '365d'
+    rememberMeRefreshTokenExpiresIn: '365d',
+    /** 刷新 token 有效期（游客模式，10 年） */
+    guestRefreshTokenExpiresIn: '3650d'
   },
 
   /**
