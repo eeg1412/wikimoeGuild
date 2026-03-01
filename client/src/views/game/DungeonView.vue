@@ -229,7 +229,7 @@
             >
           </div>
           <div class="flex justify-between">
-            <span>🌀 SAN水晶</span>
+            <span>❤️ SAN水晶</span>
             <span class="text-purple-400 font-bold"
               >+{{ settleResult.crystals?.sanCrystal || 0 }}</span
             >
@@ -567,7 +567,7 @@ const crystalRates = computed(() => {
     {
       key: 'san',
       name: 'SAN值',
-      icon: '🌀',
+      icon: '❤️',
       color: '#c070e0',
       rate: (rates.SANCryRate / 100).toFixed(0)
     }

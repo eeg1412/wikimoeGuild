@@ -69,7 +69,7 @@ const crystalList = [
   { key: 'attackCrystal', name: '攻击', icon: '⚔️', color: '#e05c4f' },
   { key: 'defenseCrystal', name: '防御', icon: '🛡️', color: '#4fa3e0' },
   { key: 'speedCrystal', name: '速度', icon: '💨', color: '#6abf69' },
-  { key: 'sanCrystal', name: 'SAN值', icon: '🌀', color: '#c070e0' }
+  { key: 'sanCrystal', name: 'SAN值', icon: '❤️', color: '#c070e0' }
 ]
 
 async function fetchInventory() {

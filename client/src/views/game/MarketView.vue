@@ -935,14 +935,14 @@ const crystalList = [
   { key: 'attackCrystal', name: '攻击', icon: '⚔️', color: '#e05c4f' },
   { key: 'defenseCrystal', name: '防御', icon: '🛡️', color: '#4fa3e0' },
   { key: 'speedCrystal', name: '速度', icon: '💨', color: '#6abf69' },
-  { key: 'sanCrystal', name: 'SAN值', icon: '🌀', color: '#c070e0' }
+  { key: 'sanCrystal', name: 'SAN值', icon: '❤️', color: '#c070e0' }
 ]
 
 const materialTypes = [
   { key: 'attackCrystal', name: '攻击水晶', icon: '⚔️' },
   { key: 'defenseCrystal', name: '防御水晶', icon: '🛡️' },
   { key: 'speedCrystal', name: '速度水晶', icon: '💨' },
-  { key: 'sanCrystal', name: 'SAN值水晶', icon: '🌀' },
+  { key: 'sanCrystal', name: 'SAN值水晶', icon: '❤️' },
   { key: 'runeFragment', name: '符文石碎片', icon: '🔮' }
 ]
 

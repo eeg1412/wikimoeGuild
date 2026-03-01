@@ -145,7 +145,9 @@
 
         <!-- 基本信息 -->
         <div class="w-full space-y-2 text-sm">
-          <div class="info-row">
+          <div
+            class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
+          >
             <span class="info-label">元素</span>
             <div class="flex items-center gap-1">
               <span
@@ -166,7 +168,9 @@
               </el-button>
             </div>
           </div>
-          <div class="info-row">
+          <div
+            class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
+          >
             <span class="info-label">被动增益</span>
             <div
               class="flex items-center gap-1 flex-wrap justify-end"
@@ -187,7 +191,9 @@
               </el-button>
             </div>
           </div>
-          <div class="info-row">
+          <div
+            class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
+          >
             <span class="info-label">攻击偏好</span>
             <div class="flex items-center gap-1 flex-wrap justify-end">
               <span class="info-value text-sm">{{
@@ -208,7 +214,9 @@
               </el-button>
             </div>
           </div>
-          <div class="info-row">
+          <div
+            class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
+          >
             <span class="info-label">综合等级</span>
             <span class="info-value rpg-number">{{
               detailAdv.comprehensiveLevel
@@ -218,7 +226,7 @@
           <el-divider class="my-2!" />
 
           <!-- 资源信息 -->
-          <div class="w-full grid grid-cols-2 gap-2 text-sm">
+          <div class="w-full grid grid-cols-1 gap-2 text-sm">
             <div
               class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2 text-center"
             >
@@ -227,26 +235,33 @@
                 {{ (playerInfo?.gold ?? 0).toLocaleString() }}
               </p>
             </div>
-            <div
+            <!-- <div
               class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 text-center"
             >
               <p class="text-xs text-gray-400">💎 符文石碎片</p>
               <p class="text-sm font-bold text-purple-500">
                 {{ (inventory?.runeFragment ?? 0).toLocaleString() }}
               </p>
-            </div>
+            </div> -->
           </div>
           <div class="w-full grid grid-cols-4 gap-1 text-sm mt-1">
             <div
               v-for="cType in CRYSTAL_TYPES"
               :key="cType.key"
               class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center cursor-pointer hover:ring-1 ring-yellow-400 transition"
-              @click="openQuickSellDialog(cType.key)"
             >
               <p class="text-xs text-gray-400">{{ cType.icon }}水晶</p>
               <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
                 {{ inventory?.[cType.key] ?? 0 }}
               </p>
+              <!-- 快速出售按钮 -->
+              <el-button
+                type="warning"
+                size="small"
+                @click.stop="openQuickSellDialog(cType.key)"
+              >
+                出售
+              </el-button>
             </div>
           </div>
 
@@ -584,14 +599,14 @@ const STAT_LIST = [
   { key: 'attack', levelKey: 'attackLevel', name: '攻击', icon: '⚔️' },
   { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: '🛡️' },
   { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: '💨' },
-  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '🌀' }
+  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '❤️' }
 ]
 
 const CRYSTAL_TYPES = [
   { key: 'attackCrystal', icon: '⚔️', label: '攻击水晶' },
   { key: 'defenseCrystal', icon: '🛡️', label: '防御水晶' },
   { key: 'speedCrystal', icon: '💨', label: '速度水晶' },
-  { key: 'sanCrystal', icon: '🌀', label: 'SAN水晶' }
+  { key: 'sanCrystal', icon: '❤️', label: 'SAN水晶' }
 ]
 
 function getElementColor(el) {
