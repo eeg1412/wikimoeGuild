@@ -26,7 +26,7 @@ services:
     container_name: wikimoe-guild-mongo
     restart: unless-stopped
     volumes:
-      - mongo_data:/data/db
+      - ./mongo_data:/data/db
     networks:
       - wikimoe-guild
 
