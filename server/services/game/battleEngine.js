@@ -5,11 +5,11 @@
  * - 符文石攻击被动增益系数: 10
  * - 符文石防御被动增益系数: 10
  * - 符文石速度被动增益系数: 10
- * - 符文石SAN被动增益系数: 15
+ * - 符文石SAN被动增益系数: 10
  * - 攻击基础值: 100
  * - 防御基础值: 100
  * - 速度基础值: 100
- * - SAN基础值: 150
+ * - SAN基础值: 100
  * - 被克制伤害倍率: 15000 (150%)
  */
 
@@ -22,14 +22,14 @@ const PASSIVE_BUFF_COEFF = {
   attack: 10,
   defense: 10,
   speed: 10,
-  san: 15
+  san: 10
 }
 
 const BASE_STATS = {
   attack: 100,
   defense: 100,
   speed: 100,
-  san: 150
+  san: 100
 }
 
 const COUNTER_DAMAGE_RATE = 15000 // 150%, 以10000为基数
@@ -78,7 +78,7 @@ function initBattleUnits(grid, side) {
         for (const buff of adventurer.runeStone.passiveBuffs) {
           const coeff = PASSIVE_BUFF_COEFF[buff.buffType] || 0
           const bonus =
-            buff.buffLevel * coeff * (adventurer.runeStone.level || 1)
+            (buff.buffLevel + (adventurer.runeStone.level || 1)) * coeff
           switch (buff.buffType) {
             case 'attack':
               attack += bonus
@@ -162,8 +162,8 @@ function applyPassiveBuffTypes(units) {
   const DIRECTION_OFFSET = {
     left: [0, -1],
     right: [0, 1],
-    up: [-1, 0],
-    down: [1, 0]
+    top: [-1, 0],
+    bottom: [1, 0]
   }
 
   for (const unit of units) {
@@ -444,34 +444,46 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
             .sort((a, b) => a.currentSan - b.currentSan)[0]
         if (!target) break
 
-        // 概率计算：对比符文石等级和目标综合等级
+        // 概率计算：目标等级 ≤ 符文石等级时100%，每高1级减少3%，最低30%
         const runeLevel = unit.runeStone?.level || 1
-        let probability = skill.baseValue
+        let probability = 100
         const levelDiff = (target.comprehensiveLevel || 4) - runeLevel
         if (levelDiff > 0) {
-          probability = Math.max(
-            probability - levelDiff,
-            Math.floor(skill.baseValue * 0.3)
-          )
+          probability = Math.max(100 - levelDiff * 3, 30)
         }
 
         const roll = Math.floor(Math.random() * 100)
         if (roll < probability) {
-          // 弹到随机位置（排除自身，避免无效交换）
-          const otherCandidates = enemyUnits.filter(
-            u => u.alive && u.id !== target.id
+          // 随机选择一个不同于当前位置的5x5棋盘位置
+          const allPositions = []
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+              if (r !== target.row || c !== target.col) {
+                allPositions.push({ row: r, col: c })
+              }
+            }
+          }
+          const newPos =
+            allPositions[Math.floor(Math.random() * allPositions.length)]
+
+          // 检查新位置是否有冒险家
+          const otherUnit = enemyUnits.find(
+            u => u.alive && u.row === newPos.row && u.col === newPos.col
           )
-          if (otherCandidates.length > 0) {
-            const otherUnit =
-              otherCandidates[
-                Math.floor(Math.random() * otherCandidates.length)
-              ]
-            const tempRow = target.row
-            const tempCol = target.col
-            target.row = otherUnit.row
-            target.col = otherUnit.col
-            otherUnit.row = tempRow
-            otherUnit.col = tempCol
+
+          const fromRow = target.row
+          const fromCol = target.col
+
+          if (otherUnit) {
+            // 互换位置
+            otherUnit.row = fromRow
+            otherUnit.col = fromCol
+            target.row = newPos.row
+            target.col = newPos.col
+          } else {
+            // 直接移动到空位
+            target.row = newPos.row
+            target.col = newPos.col
           }
 
           log.push({
@@ -483,7 +495,14 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
             target: target.id,
             targetName: target.name,
             success: true,
-            probability
+            probability,
+            fromRow,
+            fromCol,
+            toRow: newPos.row,
+            toCol: newPos.col,
+            swapped: !!otherUnit,
+            swappedTarget: otherUnit ? otherUnit.id : null,
+            swappedTargetName: otherUnit ? otherUnit.name : null
           })
         } else {
           log.push({

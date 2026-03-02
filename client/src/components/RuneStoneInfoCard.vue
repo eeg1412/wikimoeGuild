@@ -67,9 +67,9 @@
           </span>
         </div>
         <p class="text-xs text-gray-400 mt-0.5">
-          增益等级 {{ buff.buffLevel }} × 系数
-          {{ PASSIVE_BUFF_COEFF[buff.buffType] || 10 }} × 符文石等级
-          {{ runeStone.level }}
+          (增益等级 {{ buff.buffLevel }} + 符文石等级
+          {{ runeStone.level }}) × 系数
+          {{ PASSIVE_BUFF_COEFF[buff.buffType] || 10 }}
         </p>
       </div>
     </div>
@@ -88,7 +88,7 @@ const props = defineProps({
 })
 
 // 被动增益系数（与 battleEngine 一致）
-const PASSIVE_BUFF_COEFF = { attack: 10, defense: 10, speed: 10, san: 15 }
+const PASSIVE_BUFF_COEFF = { attack: 10, defense: 10, speed: 10, san: 10 }
 
 const allSkillsMap = computed(() => {
   const map = new Map()
@@ -118,7 +118,8 @@ function computeActiveEffect(skillInfo) {
   } else if (type === 'debuff') {
     return `-${effect} ${buffTypeName(skillInfo.debuffType)}`
   } else if (type === 'changeOrder') {
-    return `${Math.min(effect, 100)}% 概率改变排序`
+    const runeLevel = props.runeStone.level || 1
+    return `等级≤${runeLevel}时100%，每高1级-3%，最低30%`
   } else if (type === 'sanRecover') {
     return `恢复 ${effect} SAN值`
   }
@@ -126,11 +127,11 @@ function computeActiveEffect(skillInfo) {
 }
 
 /**
- * 被动增益实际值 = buffLevel × 系数 × 符文石等级
+ * 被动增益实际值 = (buffLevel + 符文石等级) × 系数
  */
 function computePassiveEffect(buff) {
   const coeff = PASSIVE_BUFF_COEFF[buff.buffType] || 10
-  return buff.buffLevel * coeff * (props.runeStone.level || 1)
+  return (buff.buffLevel + (props.runeStone.level || 1)) * coeff
 }
 
 function buffTypeName(t) {
