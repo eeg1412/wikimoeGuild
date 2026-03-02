@@ -16,7 +16,8 @@
     "shared": "workspace:*",
     "vue": "3.5.28",
     "vue-cropperjs": "^5.0.0",
-    "vue-router": "4.5.1"
+    "vue-router": "4.5.1",
+    "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.0",
