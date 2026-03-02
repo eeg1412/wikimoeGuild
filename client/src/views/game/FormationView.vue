@@ -45,118 +45,16 @@
         <p class="text-sm text-gray-400 text-center mb-2">
           ↑ 前排（面向敌人）· ↓ 后排
         </p>
-        <div class="flex justify-center mb-2">
-          <el-checkbox v-model="dragMode" size="small">
-            ☰ 拖拽排序模式
-          </el-checkbox>
-        </div>
-        <div class="grid-board mx-auto">
-          <draggable
-            :list="flatGrid"
-            item-key="_key"
-            :disabled="!dragMode"
-            :animation="200"
-            :swap-threshold="0.65"
-            ghost-class="grid-cell--ghost"
-            class="grid-board-inner"
-            :move="checkDragMove"
-            @start="onDragStart"
-            @end="onDragEnd"
-          >
-            <template #item="{ element, index }">
-              <div
-                class="grid-cell"
-                :class="{
-                  'grid-cell--occupied': element.adventurer,
-                  'grid-cell--draggable': dragMode && element.adventurer
-                }"
-                @click="handleCellClick(Math.floor(index / 5), index % 5)"
-                @contextmenu.prevent
-              >
-                <span class="grid-cell-seq">{{ index + 1 }}</span>
-                <!-- 被动增益元素色块 -->
-                <template v-if="element.adventurer">
-                  <div
-                    v-for="indicator in getPassiveIndicators(
-                      element.adventurer
-                    )"
-                    :key="indicator.position"
-                    class="passive-indicator"
-                    :class="'passive-indicator--' + indicator.position"
-                    :style="{ backgroundColor: indicator.color }"
-                    :title="indicator.label"
-                  />
-                  <GameAdventurerAvatar
-                    :adventurer="element.adventurer"
-                    class="w-full h-full rounded object-cover pointer-events-none select-none"
-                  />
-                  <div
-                    class="absolute bottom-0 left-0 right-0 text-center bg-black/50 text-[10px] text-white leading-tight py-px truncate"
-                  >
-                    {{ element.adventurer.name }}
-                  </div>
-                  <!-- 标记图标（带 Popover 选择） -->
-                  <el-popover :width="160" trigger="click" placement="bottom">
-                    <template #reference>
-                      <span
-                        class="absolute top-0 right-0 z-10 rounded-bl text-xs leading-none p-0.5 cursor-pointer"
-                        :class="
-                          element.adventurer.roleTag &&
-                          ROLE_TAG_MAP[element.adventurer.roleTag]
-                            ? 'bg-black/65'
-                            : 'bg-black/30 opacity-60'
-                        "
-                        @click.stop
-                        @mousedown.stop
-                      >
-                        {{
-                          element.adventurer.roleTag &&
-                          ROLE_TAG_MAP[element.adventurer.roleTag]
-                            ? ROLE_TAG_MAP[element.adventurer.roleTag].emoji
-                            : '🏷️'
-                        }}
-                      </span>
-                    </template>
-                    <div class="flex items-center justify-center gap-2 py-1">
-                      <span
-                        v-for="tag in ROLE_TAGS"
-                        :key="tag.value"
-                        class="cursor-pointer text-xl px-1 py-0.5 rounded"
-                        :class="[
-                          element.adventurer.roleTag === tag.value
-                            ? 'bg-yellow-200 dark:bg-yellow-700'
-                            : '',
-                          roleTagLoading ? 'opacity-50 pointer-events-none' : ''
-                        ]"
-                        :title="tag.label"
-                        @click="
-                          handleGridRoleTag(
-                            Math.floor(index / 5),
-                            index % 5,
-                            tag.value
-                          )
-                        "
-                      >
-                        {{ tag.emoji }}
-                      </span>
-                    </div>
-                  </el-popover>
-                  <!-- 清除按钮 -->
-                  <span
-                    v-if="!dragMode"
-                    class="clear-btn"
-                    @click.stop="
-                      handleClearCell(Math.floor(index / 5), index % 5)
-                    "
-                    >✕</span
-                  >
-                </template>
-                <template v-else>
-                  <span class="text-gray-400 text-lg">➕</span>
-                </template>
-              </div>
-            </template>
-          </draggable>
+        <div class="flex justify-center">
+          <FormationGrid
+            v-model="grid"
+            show-role-tag
+            :role-tag-list="ROLE_TAGS"
+            :role-tag-loading="roleTagLoading"
+            @cell-click="handleCellClick"
+            @clear-cell="handleClearCell"
+            @set-role-tag="handleGridRoleTag"
+          />
         </div>
       </div>
 
@@ -288,10 +186,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import draggable from 'vuedraggable'
+import FormationGrid from '@/components/FormationGrid.vue'
 import {
   getMyFormationsApi,
   saveFormationApi,
@@ -335,34 +233,6 @@ const currentSlot = ref(1)
 const formationName = ref('')
 // 5x5 grid: grid[row][col] = adventurer object or null
 const grid = ref(createEmptyGrid())
-
-// ── 扁平化棋盘（供 vuedraggable 使用） ──
-const flatGrid = ref([])
-
-function buildFlatGrid() {
-  let emptyId = 0
-  const cells = []
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 5; c++) {
-      const adv = grid.value[r][c]
-      cells.push({
-        _key: adv ? `adv-${adv._id}` : `empty-${emptyId++}`,
-        adventurer: adv
-      })
-    }
-  }
-  flatGrid.value = cells
-}
-
-function syncFlatToGrid() {
-  for (let i = 0; i < 25; i++) {
-    grid.value[Math.floor(i / 5)][i % 5] = flatGrid.value[i].adventurer
-  }
-}
-
-// grid 变动时自动重建 flatGrid
-watch(grid, buildFlatGrid, { deep: true })
-buildFlatGrid()
 
 const existingFormation = computed(() => {
   return allFormations.value.find(f => f.slot === currentSlot.value)
@@ -479,9 +349,7 @@ function isPlaced(advId) {
   return isAdventurerPlaced(grid.value, advId)
 }
 
-const cellClickLoading = ref(false)
-async function handleCellClick(row, col) {
-  if (cellClickLoading.value) return
+function handleCellClick(row, col) {
   const cell = getCell(row, col)
   if (cell) {
     // 已放置冒险家 → 先加载数据再显示详情弹窗
@@ -586,32 +454,6 @@ async function handleGridRoleTag(row, col, tagValue) {
   }
 }
 
-// ── 拖拽排序（vuedraggable） ──
-const dragMode = ref(false)
-let preDragSnapshot = null
-
-function checkDragMove(evt) {
-  // 只允许拖拽有冒险家的格子
-  return !!evt.draggedContext.element?.adventurer
-}
-
-function onDragStart() {
-  preDragSnapshot = flatGrid.value.map(item => ({ ...item }))
-}
-
-function onDragEnd(evt) {
-  const { oldIndex, newIndex } = evt
-  if (oldIndex !== newIndex && preDragSnapshot) {
-    // vuedraggable 已执行 move 操作，恢复快照后执行交换
-    flatGrid.value.splice(0, 25, ...preDragSnapshot)
-    const temp = flatGrid.value[oldIndex]
-    flatGrid.value[oldIndex] = flatGrid.value[newIndex]
-    flatGrid.value[newIndex] = temp
-    syncFlatToGrid()
-  }
-  preDragSnapshot = null
-}
-
 // ── 保存 ──
 const saving = ref(false)
 async function handleSave() {
@@ -622,19 +464,22 @@ async function handleSave() {
 
   saving.value = true
   try {
+    const actualName = formationName.value || `阵容 ${currentSlot.value}`
     await saveFormationApi({
       slot: currentSlot.value,
-      name: formationName.value || `阵容 ${currentSlot.value}`,
+      name: actualName,
       grid: gridData
     })
     ElMessage.success('阵容保存成功！')
+    // 写回实际使用的名称，保证输入框与保存结果同步
+    formationName.value = actualName
     // 更新本地数据而不是重新加载，避免页面抖动
     const existIdx = allFormations.value.findIndex(
       f => f.slot === currentSlot.value
     )
     const savedFormation = {
       slot: currentSlot.value,
-      name: formationName.value || `阵容 ${currentSlot.value}`,
+      name: actualName,
       grid: grid.value
     }
     if (existIdx >= 0) {
@@ -777,31 +622,31 @@ onMounted(async () => {
   position: absolute;
   z-index: 2;
   border-radius: 2px;
-  opacity: 0.85;
   pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 .passive-indicator--left {
   left: 0;
-  top: 20%;
-  bottom: 20%;
+  top: 30%;
+  bottom: 30%;
   width: 4px;
 }
 .passive-indicator--right {
   right: 0;
-  top: 20%;
-  bottom: 20%;
+  top: 30%;
+  bottom: 30%;
   width: 4px;
 }
 .passive-indicator--top {
   top: 0;
-  left: 20%;
-  right: 20%;
+  left: 30%;
+  right: 30%;
   height: 4px;
 }
 .passive-indicator--bottom {
   bottom: 0;
-  left: 20%;
-  right: 20%;
+  left: 30%;
+  right: 30%;
   height: 4px;
   z-index: 3;
 }
@@ -820,15 +665,10 @@ onMounted(async () => {
   font-size: 10px;
   line-height: 1;
   color: #fff;
-  background: rgba(220, 60, 60, 0.75);
+  background: rgba(220, 60, 60, 0.9);
   border-radius: 3px;
   padding: 1px 3px;
-  opacity: 0.7;
   transition: opacity 0.2s;
-}
-.clear-btn:hover {
-  opacity: 1;
-  background: rgba(240, 40, 40, 0.9);
 }
 
 /* 选择列表中的被动增益色块 */

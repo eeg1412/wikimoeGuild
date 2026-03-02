@@ -38,9 +38,9 @@ export const playerRegisterSchema = Joi.object({
   password: playerPassword.required().messages({
     'any.required': '请输入密码'
   }),
-  guildName: Joi.string().trim().min(1).max(20).required().messages({
+  guildName: Joi.string().trim().min(2).max(20).required().messages({
     'any.required': '请输入公会名',
-    'string.min': '公会名不能为空',
+    'string.min': '公会名至少 2 个字符',
     'string.max': '公会名最多 20 个字符'
   }),
   code: Joi.string().length(6).required().messages({

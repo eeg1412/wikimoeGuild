@@ -49,14 +49,54 @@
           :style="{ backgroundColor: getElementColor(adv.elements) }"
         />
 
-        <!-- 角色标记 -->
-        <span
-          v-if="adv.roleTag && ROLE_TAG_MAP[adv.roleTag]"
-          class="absolute top-1 left-1 z-10 bg-black/65 text-white rounded px-1.5 py-1 leading-none text-xs flex items-center gap-0.5"
+        <!-- 角色标记（点击可切换） -->
+        <el-popover
+          :width="190"
+          trigger="click"
+          placement="bottom-start"
+          @click.stop
         >
-          {{ ROLE_TAG_MAP[adv.roleTag].emoji }}
-          {{ ROLE_TAG_MAP[adv.roleTag].label }}
-        </span>
+          <template #reference>
+            <span
+              class="absolute top-1 left-1 z-10 bg-black/65 text-white rounded px-1.5 py-1 leading-none text-xs flex items-center gap-0.5 cursor-pointer hover:bg-black/80 transition-colors select-none"
+              @click.stop
+            >
+              <template v-if="adv.roleTag && ROLE_TAG_MAP[adv.roleTag]">
+                {{ ROLE_TAG_MAP[adv.roleTag].emoji }}
+                {{ ROLE_TAG_MAP[adv.roleTag].label }}
+              </template>
+              <template v-else>🏷️ 未设定</template>
+            </span>
+          </template>
+          <div>
+            <!-- 标题 -->
+            <p
+              class="text-sm font-medium mb-2 text-gray-700 dark:text-gray-200"
+            >
+              设置角色标记
+            </p>
+            <!-- 选择 -->
+            <div class="flex flex-wrap gap-1 p-1 justify-center">
+              <span
+                v-for="tag in ROLE_TAGS"
+                :key="tag.value"
+                class="cursor-pointer text-base px-1.5 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                :class="[
+                  adv.roleTag === tag.value
+                    ? 'bg-yellow-200 dark:bg-yellow-700'
+                    : '',
+                  roleTagLoadingId === adv._id
+                    ? 'opacity-50 pointer-events-none'
+                    : ''
+                ]"
+                :title="tag.label"
+                @click="handleSetRoleTag(adv, tag.value)"
+              >
+                {{ tag.emoji }}
+              </span>
+            </div>
+          </div>
+        </el-popover>
 
         <!-- 头像 -->
         <div class="relative w-16 h-16 sm:w-20 sm:h-20 mb-2">
@@ -92,14 +132,14 @@
         </p>
 
         <!-- 装备状态标签 -->
-        <span
+        <div
           v-if="adv.runeStone"
-          class="mt-1 text-xs px-1.5 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
+          class="mt-1 text-xs px-1.5 py-0.5 rounded-full border cursor-pointer hover:opacity-80 text-center w-full"
           :class="runeStoneCardClass(adv.runeStone.rarity)"
           @click.stop="handleShowRuneStonePreview(adv)"
         >
           💎 {{ rarityName(adv.runeStone.rarity) }} Lv.{{ adv.runeStone.level }}
-        </span>
+        </div>
       </div>
 
       <!-- 快捷入口 -->
@@ -116,492 +156,41 @@
       <p>暂无冒险家，快去招募吧！</p>
     </div>
 
-    <!-- ==================== 冒险家详情弹窗 ==================== -->
-    <el-dialog
+    <!-- ==================== 冒险家详情弹窗（统一组件） ==================== -->
+    <AdventurerDetailDialog
       v-model="detailVisible"
-      :title="detailAdv?.name || '冒险家详情'"
-      width="360px"
-      align-center
-      destroy-on-close
-      class="rpg-dialog"
-    >
-      <div v-if="detailAdv" class="flex flex-col items-center gap-4">
-        <!-- 头像 -->
-        <div class="relative cursor-pointer" @click="showAvatarDialog = true">
-          <GameAdventurerAvatar
-            :adventurer="detailAdv"
-            :alt="detailAdv.name"
-            class="w-24 h-24 rounded-full object-cover border-4"
-            :style="{ borderColor: getElementColor(detailAdv.elements) }"
-          />
-          <div
-            class="absolute -top-1 -right-1 w-6 h-6 rotate-45 border-2 border-white dark:border-gray-700 shadow"
-            :style="{ backgroundColor: getElementColor(detailAdv.elements) }"
-          />
-          <div
-            class="absolute bottom-0 right-0 bg-black/60 rounded-full px-1.5 py-0.5 text-[10px] text-white"
-          >
-            ✏️
-          </div>
-        </div>
-
-        <!-- 名字编辑 -->
-        <div class="flex items-center gap-2">
-          <span class="text-lg font-bold text-gray-800 dark:text-gray-100">{{
-            detailAdv.name
-          }}</span>
-          <el-button text size="small" @click="showNameDialog = true"
-            >✏️</el-button
-          >
-        </div>
-
-        <!-- 角色标记设置 -->
-        <div class="flex items-center gap-1">
-          <span class="text-xs text-gray-400 mr-1">标记</span>
-          <el-popover :width="160" trigger="click" placement="bottom">
-            <template #reference>
-              <span
-                class="cursor-pointer text-lg bg-black/10 dark:bg-white/10 rounded px-1.5 py-0.5"
-              >
-                {{
-                  detailAdv.roleTag && ROLE_TAG_MAP[detailAdv.roleTag]
-                    ? ROLE_TAG_MAP[detailAdv.roleTag].emoji
-                    : '🏷️'
-                }}
-              </span>
-            </template>
-            <div class="flex items-center justify-center gap-2 py-1">
-              <span
-                v-for="tag in ROLE_TAGS"
-                :key="tag.value"
-                class="cursor-pointer text-xl px-1 py-0.5 rounded"
-                :class="
-                  detailAdv.roleTag === tag.value
-                    ? 'bg-yellow-200 dark:bg-yellow-700'
-                    : ''
-                "
-                :title="tag.label"
-                @click="handleSetRoleTag(tag.value)"
-              >
-                {{ tag.emoji }}
-              </span>
-            </div>
-          </el-popover>
-        </div>
-
-        <!-- 基本信息 -->
-        <div class="w-full space-y-2 text-sm">
-          <div
-            class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
-          >
-            <span class="info-label">元素</span>
-            <div class="flex items-center gap-1">
-              <span
-                class="info-value font-semibold"
-                :style="{ color: getElementColor(detailAdv.elements) }"
-              >
-                {{ getElementName(detailAdv.elements) }}
-              </span>
-              <el-button
-                type="warning"
-                text
-                size="small"
-                :loading="rerollLoading"
-                :disabled="rerollLoading"
-                @click="handleReroll('element')"
-              >
-                🎲 {{ gameSettings.adventurerRerollElementPrice ?? 1000 }}金
-              </el-button>
-            </div>
-          </div>
-          <div
-            class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
-          >
-            <span class="info-label">被动增益</span>
-            <div
-              class="flex items-center gap-1 flex-wrap justify-end"
-              style="max-width: 65%"
-            >
-              <span class="info-value text-sm text-right">{{
-                getPassiveBuffName(detailAdv.passiveBuffType)
-              }}</span>
-              <el-button
-                type="warning"
-                text
-                size="small"
-                :loading="rerollLoading"
-                :disabled="rerollLoading"
-                @click="handleReroll('passiveBuff')"
-              >
-                🎲 {{ gameSettings.adventurerRerollPassiveBuffPrice ?? 1000 }}金
-              </el-button>
-            </div>
-          </div>
-          <div
-            class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
-          >
-            <span class="info-label">攻击偏好</span>
-            <div class="flex items-center gap-1 flex-wrap justify-end">
-              <span class="info-value text-sm">{{
-                getAttackPreferenceName(detailAdv.attackPreference)
-              }}</span>
-              <el-button
-                type="warning"
-                text
-                size="small"
-                :loading="rerollLoading"
-                :disabled="rerollLoading"
-                @click="handleReroll('attackPreference')"
-              >
-                🎲
-                {{
-                  gameSettings.adventurerRerollAttackPreferencePrice ?? 1000
-                }}金
-              </el-button>
-            </div>
-          </div>
-          <div
-            class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
-          >
-            <span class="info-label">综合等级</span>
-            <span class="info-value rpg-number">{{
-              detailAdv.comprehensiveLevel
-            }}</span>
-          </div>
-
-          <el-divider class="my-2!" />
-
-          <!-- 资源信息 -->
-          <div class="w-full grid grid-cols-1 gap-2 text-sm">
-            <div
-              class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2 text-center"
-            >
-              <p class="text-xs text-gray-400">🪙 金币</p>
-              <p class="text-sm font-bold text-yellow-500">
-                {{ (playerInfo?.gold ?? 0).toLocaleString() }}
-              </p>
-            </div>
-            <!-- <div
-              class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 text-center"
-            >
-              <p class="text-xs text-gray-400">💎 符文石碎片</p>
-              <p class="text-sm font-bold text-purple-500">
-                {{ (inventory?.runeFragment ?? 0).toLocaleString() }}
-              </p>
-            </div> -->
-          </div>
-          <div class="w-full grid grid-cols-4 gap-1 text-sm mt-1">
-            <div
-              v-for="cType in CRYSTAL_TYPES"
-              :key="cType.key"
-              class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center cursor-pointer hover:ring-1 ring-yellow-400 transition"
-            >
-              <p class="text-xs text-gray-400">{{ cType.icon }}水晶</p>
-              <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
-                {{ inventory?.[cType.key] ?? 0 }}
-              </p>
-              <!-- 快速出售按钮 -->
-              <el-button
-                type="warning"
-                size="small"
-                @click.stop="openQuickSellDialog(cType.key)"
-              >
-                出售
-              </el-button>
-            </div>
-          </div>
-
-          <el-divider class="my-2!" />
-
-          <!-- 最终属性 -->
-          <AdventurerFinalStats :adventurer="detailAdv" />
-
-          <el-divider class="my-2!" />
-
-          <!-- 属性升级区 -->
-          <div v-for="stat in STAT_LIST" :key="stat.key" class="info-row">
-            <span class="info-label"
-              >{{ stat.icon }} {{ stat.name }} Lv.{{
-                detailAdv[stat.levelKey]
-              }}</span
-            >
-            <el-button
-              type="warning"
-              size="small"
-              :loading="levelUpLoading"
-              :disabled="levelUpLoading"
-              @click="handleLevelUp(stat.key)"
-            >
-              升级
-            </el-button>
-          </div>
-          <p class="text-sm text-gray-400 text-center">
-            升级消耗：50水晶 + 500金币
-          </p>
-
-          <el-divider class="my-2!" />
-
-          <!-- 符文石 -->
-          <div class="info-row">
-            <span class="info-label">💎 符文石</span>
-            <div class="flex items-center gap-1">
-              <template v-if="detailAdv.runeStone">
-                <span
-                  class="text-sm cursor-pointer hover:underline"
-                  :class="rarityClass(detailAdv.runeStone.rarity)"
-                  @click="openRuneStoneDetail(detailAdv.runeStone)"
-                >
-                  {{ rarityName(detailAdv.runeStone.rarity) }} Lv.{{
-                    detailAdv.runeStone.level
-                  }}
-                </span>
-                <el-button
-                  type="danger"
-                  text
-                  size="small"
-                  :loading="unequipLoading"
-                  :disabled="unequipLoading"
-                  @click="handleUnequip"
-                >
-                  卸下
-                </el-button>
-              </template>
-              <template v-else>
-                <span class="text-sm text-gray-400">无</span>
-                <el-button
-                  type="primary"
-                  text
-                  size="small"
-                  :disabled="runeStoneListLoading"
-                  @click="handleOpenEquipDialog"
-                >
-                  装备
-                </el-button>
-              </template>
-            </div>
-          </div>
-        </div>
-      </div>
-    </el-dialog>
-
-    <!-- ==================== 自定义头像弹窗 ==================== -->
-    <el-dialog
-      v-model="showAvatarDialog"
-      title="自定义头像"
-      width="360px"
-      align-center
-      destroy-on-close
-    >
-      <p class="text-sm text-gray-500 mb-3">
-        消耗 {{ gameSettings.adventurerCustomAvatarPrice ?? 5000 }} 金币
-      </p>
-      <Cropper
-        :src="avatarPreview"
-        :width="200"
-        :height="200"
-        :aspect-ratio="1"
-        put-image-type="image/webp"
-        :put-image-quality="0.8"
-        @crop="onAvatarCrop"
-      />
-      <template #footer>
-        <el-button @click="showAvatarDialog = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="avatarSaving"
-          :disabled="avatarSaving || !avatarBase64"
-          @click="handleSaveAvatar"
-        >
-          确定
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- ==================== 自定义名字弹窗 ==================== -->
-    <el-dialog
-      v-model="showNameDialog"
-      title="自定义名字"
-      width="320px"
-      align-center
-      destroy-on-close
-    >
-      <p class="text-sm text-gray-500 mb-3">
-        消耗 {{ gameSettings.adventurerCustomNamePrice ?? 1000 }} 金币
-      </p>
-      <el-input
-        v-model="newName"
-        placeholder="输入新名字（2-20字符）"
-        maxlength="20"
-        show-word-limit
-      />
-      <template #footer>
-        <el-button @click="showNameDialog = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="nameSaving"
-          :disabled="nameSaving || !newName || newName.length < 2"
-          @click="handleSaveName"
-        >
-          确定
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- ==================== 装备符文石弹窗 ==================== -->
-    <el-dialog
-      v-model="showEquipDialog"
-      title="选择符文石"
-      width="380px"
-      align-center
-      destroy-on-close
-    >
-      <RuneStoneSelectPanel
-        :rune-stones="availableRuneStones"
-        :loading="runeStoneListLoading"
-        @select="handleEquipSelect"
-      >
-        <template #action="{ runeStone }">
-          <el-button
-            type="primary"
-            size="small"
-            :loading="equipLoading"
-            :disabled="equipLoading"
-            @click.stop="handleEquip(runeStone._id)"
-          >
-            装备
-          </el-button>
-        </template>
-      </RuneStoneSelectPanel>
-    </el-dialog>
-
-    <!-- ==================== 符文石详情弹窗 ==================== -->
-    <el-dialog
-      v-model="runeStoneDetailVisible"
-      :title="runeStoneDetailTitle"
-      width="360px"
-      align-center
-      destroy-on-close
-    >
-      <div v-if="runeStoneDetailData" class="space-y-4">
-        <!-- 基本信息 -->
-        <div class="text-center">
-          <div
-            class="inline-flex w-16 h-16 rounded-2xl items-center justify-center text-3xl mb-2"
-            :class="rarityBgClass(runeStoneDetailData.rarity)"
-          >
-            💎
-          </div>
-          <p
-            class="text-lg font-bold"
-            :class="rarityClass(runeStoneDetailData.rarity)"
-          >
-            {{ rarityName(runeStoneDetailData.rarity) }}符文石
-          </p>
-          <p class="text-sm text-gray-400">
-            等级 {{ runeStoneDetailData.level }}
-          </p>
-        </div>
-
-        <!-- 主动技能 & 被动增益 -->
-        <RuneStoneInfoCard :rune-stone="runeStoneDetailData" />
-      </div>
-    </el-dialog>
-
-    <!-- ===== 快速出售水晶弹窗 ===== -->
-    <el-dialog
-      v-model="quickSellVisible"
-      :title="`快速出售 ${quickSellCrystalLabel}`"
-      width="320px"
-      align-center
-      destroy-on-close
-    >
-      <div class="space-y-3">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          当前持有:
-          <span class="font-bold text-yellow-500">{{
-            inventory?.[quickSellCrystalType] ?? 0
-          }}</span>
-        </p>
-        <div class="flex gap-2">
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(10)"
-            >出售 10</el-button
-          >
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(100)"
-            >出售 100</el-button
-          >
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(1000)"
-            >出售 1000</el-button
-          >
-        </div>
-        <div class="flex items-center gap-2">
-          <el-input-number
-            v-model="quickSellCustomAmount"
-            :min="1"
-            :max="99999"
-            size="small"
-            class="flex-1"
-          />
-          <el-button
-            type="primary"
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(quickSellCustomAmount)"
-            >出售</el-button
-          >
-        </div>
-      </div>
-    </el-dialog>
+      :adventurer-id="detailAdvId"
+      show-manage
+      @updated="handleAdvUpdated"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import {
   getMyAdventurersApi,
-  getAdventurerDetailApi,
   recruitAdventurerApi,
-  customizeAvatarApi,
-  customizeNameApi,
-  levelUpStatApi,
-  equipRuneStoneApi,
-  unequipRuneStoneApi,
-  rerollAttributeApi,
   setRoleTagApi
 } from '@/api/game/adventurer.js'
-import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
-import { getMyInventoryApi } from '@/api/game/inventory.js'
-import { sellCrystalToOfficialApi } from '@/api/game/market.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
-import {
-  runeStoneActiveSkillDataBase,
-  passiveBuffTypeDataBase,
-  attackPreferenceDataBase
-} from 'shared/utils/gameDatabase.js'
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
-import Cropper from '@/components/Cropper.vue'
-import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
-import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
-import AdventurerFinalStats from '@/components/AdventurerFinalStats.vue'
+
+const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(
+  ([value, { emoji, label }]) => ({
+    value,
+    emoji,
+    label
+  })
+)
+import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
 
 const router = useRouter()
-const { isLoggedIn, fetchPlayerInfo, playerInfo } = useGameUser()
+const { isLoggedIn, fetchPlayerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
@@ -615,7 +204,6 @@ function goToFormation() {
 const loading = ref(false)
 const adventurers = ref([])
 const gameSettings = ref({})
-const inventory = ref(null)
 
 // ── 元素映射 ──
 const ELEMENT_MAP = {
@@ -627,60 +215,15 @@ const ELEMENT_MAP = {
   6: { name: '黑暗', color: '#7c5cbf' }
 }
 
-const STAT_LIST = [
-  { key: 'attack', levelKey: 'attackLevel', name: '攻击', icon: '⚔️' },
-  { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: '🛡️' },
-  { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: '💨' },
-  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '❤️' }
-]
-
-const CRYSTAL_TYPES = [
-  { key: 'attackCrystal', icon: '⚔️', label: '攻击水晶' },
-  { key: 'defenseCrystal', icon: '🛡️', label: '防御水晶' },
-  { key: 'speedCrystal', icon: '💨', label: '速度水晶' },
-  { key: 'sanCrystal', icon: '❤️', label: 'SAN水晶' }
-]
-
 function getElementColor(el) {
   return ELEMENT_MAP[el]?.color || '#999'
 }
 function getElementName(el) {
   return ELEMENT_MAP[el]?.name || el
 }
-const passiveBuffMap = computed(() => {
-  const map = new Map()
-  for (const item of passiveBuffTypeDataBase()) {
-    map.set(item.value, item.label)
-  }
-  return map
-})
-const attackPreferenceMap = computed(() => {
-  const map = new Map()
-  for (const item of attackPreferenceDataBase()) {
-    map.set(item.value, item.label)
-  }
-  return map
-})
-function getPassiveBuffName(type) {
-  if (!type) return '—'
-  return passiveBuffMap.value.get(type) || type
-}
-function getAttackPreferenceName(type) {
-  if (!type) return '—'
-  return attackPreferenceMap.value.get(type) || type
-}
 
 function rarityName(r) {
   return { normal: '普通', rare: '稀有', legendary: '传说' }[r] || r
-}
-function rarityClass(r) {
-  return (
-    {
-      normal: 'text-gray-500',
-      rare: 'text-blue-500',
-      legendary: 'text-yellow-500'
-    }[r] || ''
-  )
 }
 
 function runeStoneCardClass(r) {
@@ -695,9 +238,7 @@ function runeStoneCardClass(r) {
 
 function handleShowRuneStonePreview(adv) {
   if (!adv.runeStone) return
-  // 打开符文石详情弹窗（复用已有的符文石详情逻辑）
-  runeStoneDetailData.value = adv.runeStone
-  runeStoneDetailVisible.value = true
+  openDetail(adv)
 }
 
 // ── 冒险家列表 ──
@@ -723,16 +264,6 @@ async function fetchGameSettings() {
   }
 }
 
-// ── 背包（水晶数量） ──
-async function fetchInventory() {
-  try {
-    const res = await getMyInventoryApi()
-    inventory.value = res.data.data || null
-  } catch {
-    // ignore
-  }
-}
-
 // ── 招募 ──
 const recruiting = ref(false)
 async function handleRecruit() {
@@ -742,350 +273,51 @@ async function handleRecruit() {
     ElMessage.success('招募成功！')
     await fetchAdventurers()
     await fetchPlayerInfo()
-  } catch (e) {
+  } catch {
     // 错误已由拦截器处理
   } finally {
     recruiting.value = false
   }
 }
 
+// ── 角色标记 ──
+const roleTagLoadingId = ref('')
+
+async function handleSetRoleTag(adv, tagValue) {
+  if (roleTagLoadingId.value) return
+  const newTag = adv.roleTag === tagValue ? '' : tagValue
+  roleTagLoadingId.value = adv._id
+  try {
+    const res = await setRoleTagApi(adv._id, { roleTag: newTag })
+    const updated = res.data.data
+    const idx = adventurers.value.findIndex(a => a._id === adv._id)
+    if (idx >= 0)
+      adventurers.value[idx] = { ...adventurers.value[idx], ...updated }
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    roleTagLoadingId.value = ''
+  }
+}
+
 // ── 详情弹窗 ──
 const { visible: detailVisible } = useDialogRoute('detail')
-const detailAdv = ref(null)
-const detailOpening = ref(false)
+const detailAdvId = ref('')
 
-async function openDetail(adv) {
-  if (detailOpening.value) return
-  detailOpening.value = true
-  detailAdv.value = { ...adv }
-  // 加载完整详情后再弹出
-  try {
-    const res = await getAdventurerDetailApi(adv._id)
-    detailAdv.value = res.data.data
-  } catch {
-    // fallback to basic data
-  }
+function openDetail(adv) {
+  detailAdvId.value = adv._id
   detailVisible.value = true
-  detailOpening.value = false
 }
 
-// ── 属性升级 ──
-const levelUpLoading = ref(false)
-async function handleLevelUp(stat) {
-  if (!detailAdv.value) return
-  levelUpLoading.value = true
-  try {
-    const res = await levelUpStatApi(detailAdv.value._id, { statType: stat })
-    ElMessage.success('升级成功！')
-    detailAdv.value = res.data.data
-    // 同步列表
-    const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
-    if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
-    await Promise.all([fetchPlayerInfo(), fetchInventory()])
-  } catch (e) {
-    // 错误已由拦截器处理
-  } finally {
-    levelUpLoading.value = false
-  }
-}
-
-// ── 角色标记 ──
-const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(([value, info]) => ({
-  value,
-  ...info
-}))
-
-const roleTagLoading = ref(false)
-async function handleSetRoleTag(tagValue) {
-  if (!detailAdv.value || roleTagLoading.value) return
-  const newTag = detailAdv.value.roleTag === tagValue ? '' : tagValue
-  roleTagLoading.value = true
-  try {
-    const res = await setRoleTagApi(detailAdv.value._id, { roleTag: newTag })
-    detailAdv.value = res.data.data
-    // 同步列表
-    const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
-    if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
-  } catch {
-    // 错误已由拦截器处理
-  } finally {
-    roleTagLoading.value = false
-  }
-}
-
-// ── 自定义头像 ──
-const { visible: showAvatarDialog } = useDialogRoute('avatar')
-const avatarPreview = ref('')
-const avatarBase64 = ref('')
-const avatarSaving = ref(false)
-
-function onAvatarCrop(base64) {
-  avatarBase64.value = base64
-  avatarPreview.value = base64
-}
-
-async function handleSaveAvatar() {
-  if (!detailAdv.value || !avatarBase64.value) return
-  avatarSaving.value = true
-  try {
-    await customizeAvatarApi(detailAdv.value._id, {
-      avatar: avatarBase64.value
-    })
-    ElMessage.success('头像修改成功！')
-    showAvatarDialog.value = false
-    avatarBase64.value = ''
-    avatarPreview.value = ''
-    // 刷新详情
-    const res = await getAdventurerDetailApi(detailAdv.value._id)
-    detailAdv.value = res.data.data
-    const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
-    if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
-    await fetchPlayerInfo()
-  } catch (e) {
-    // 错误已由拦截器处理
-  } finally {
-    avatarSaving.value = false
-  }
-}
-
-// ── 自定义名字 ──
-const { visible: showNameDialog } = useDialogRoute('name')
-const newName = ref('')
-const nameSaving = ref(false)
-
-async function handleSaveName() {
-  if (!detailAdv.value || !newName.value) return
-  nameSaving.value = true
-  try {
-    const res = await customizeNameApi(detailAdv.value._id, {
-      name: newName.value
-    })
-    ElMessage.success('名字修改成功！')
-    showNameDialog.value = false
-    detailAdv.value = res.data.data
-    const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
-    if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
-    newName.value = ''
-    await fetchPlayerInfo()
-  } catch (e) {
-    // 错误已由拦截器处理
-  } finally {
-    nameSaving.value = false
-  }
-}
-
-// ── 装备符文石 ──
-const { visible: showEquipDialog } = useDialogRoute('equip')
-const availableRuneStones = ref([])
-const runeStoneListLoading = ref(false)
-const equipLoading = ref(false)
-const unequipLoading = ref(false)
-
-async function handleOpenEquipDialog() {
-  if (runeStoneListLoading.value) return
-  runeStoneListLoading.value = true
-  try {
-    const res = await getMyRuneStonesApi({ equipped: 'false' })
-    // 过滤等级 <= 冒险家综合等级
-    const compLevel = detailAdv.value?.comprehensiveLevel || 4
-    availableRuneStones.value = (res.data.data?.list || []).filter(
-      rs => rs.level <= compLevel
-    )
-  } catch {
-    availableRuneStones.value = []
-  } finally {
-    runeStoneListLoading.value = false
-  }
-  showEquipDialog.value = true
-}
-
-async function handleEquip(runeStoneId) {
-  if (!detailAdv.value) return
-  equipLoading.value = true
-  try {
-    const res = await equipRuneStoneApi(detailAdv.value._id, { runeStoneId })
-    ElMessage.success('装备成功！')
-    showEquipDialog.value = false
-    detailAdv.value = res.data.data
-    const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
-    if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
-  } catch (e) {
-    // 错误已由拦截器处理
-  } finally {
-    equipLoading.value = false
-  }
-}
-
-function handleEquipSelect(rs) {
-  handleEquip(rs._id)
-}
-
-async function handleUnequip() {
-  if (!detailAdv.value) return
-  unequipLoading.value = true
-  try {
-    const res = await unequipRuneStoneApi(detailAdv.value._id)
-    ElMessage.success('卸下成功！')
-    detailAdv.value = res.data.data
-    const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
-    if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
-  } catch (e) {
-    // 错误已由拦截器处理
-  } finally {
-    unequipLoading.value = false
-  }
-}
-
-// ── 洗属性 ──
-const rerollLoading = ref(false)
-const REROLL_TYPE_LABEL = {
-  element: '元素',
-  passiveBuff: '被动增益',
-  attackPreference: '攻击偏好'
-}
-const REROLL_PRICE_KEY = {
-  element: 'adventurerRerollElementPrice',
-  passiveBuff: 'adventurerRerollPassiveBuffPrice',
-  attackPreference: 'adventurerRerollAttackPreferencePrice'
-}
-
-async function handleReroll(rerollType) {
-  if (!detailAdv.value) return
-  const label = REROLL_TYPE_LABEL[rerollType]
-  const priceKey = REROLL_PRICE_KEY[rerollType]
-  const price = gameSettings.value[priceKey] ?? 1000
-  try {
-    await ElMessageBox.confirm(
-      `确定花费 ${price} 金币随机更换${label}？`,
-      `洗${label}`,
-      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-    )
-  } catch {
-    return
-  }
-  rerollLoading.value = true
-  try {
-    const res = await rerollAttributeApi(detailAdv.value._id, { rerollType })
-    ElMessage.success(`${label}已更换！`)
-    detailAdv.value = res.data.data
-    const idx = adventurers.value.findIndex(a => a._id === detailAdv.value._id)
-    if (idx >= 0) adventurers.value[idx] = { ...detailAdv.value }
-    await fetchPlayerInfo()
-  } catch (e) {
-    // 错误已由拦截器处理
-  } finally {
-    rerollLoading.value = false
-  }
-}
-
-// ── 符文石详情弹窗 ──
-const { visible: runeStoneDetailVisible } = useDialogRoute('runeStoneDetail')
-const runeStoneDetailData = ref(null)
-
-const runeStoneDetailTitle = computed(() => {
-  if (!runeStoneDetailData.value) return '符文石详情'
-  return `${rarityName(runeStoneDetailData.value.rarity)}符文石 Lv.${runeStoneDetailData.value.level}`
-})
-
-function openRuneStoneDetail(rs) {
-  runeStoneDetailData.value = { ...rs }
-  runeStoneDetailVisible.value = true
-}
-
-function rarityBgClass(r) {
-  return (
-    {
-      normal: 'bg-gray-200 dark:bg-gray-700',
-      rare: 'bg-blue-100 dark:bg-blue-900/30',
-      legendary: 'bg-yellow-100 dark:bg-yellow-900/30'
-    }[r] || ''
-  )
-}
-
-function buffTypeName(t) {
-  return (
-    { attack: '攻击', defense: '防御', speed: '速度', san: 'SAN值' }[t] || t
-  )
-}
-
-function skillTypeName(t) {
-  return (
-    {
-      attack: '攻击',
-      buff: '增益',
-      debuff: '减益',
-      changeOrder: '改变排序',
-      sanRecover: 'SAN恢复'
-    }[t] || t
-  )
-}
-
-function elementNameForSkill(el) {
-  return { 1: '地', 2: '水', 3: '火', 4: '风', 5: '光明', 6: '黑暗' }[el] || ''
-}
-
-function triggerTimingName(t) {
-  return { before: '攻击前', after: '攻击后' }[t] || t
-}
-
-function targetName(t) {
-  return { self: '己方', enemy: '敌方' }[t] || t
-}
-const allSkillsMap = computed(() => {
-  const map = new Map()
-  const skills = runeStoneActiveSkillDataBase()
-  for (const s of skills) {
-    map.set(s.value, s)
-  }
-  return map
-})
-
-function getSkillInfo(skillId) {
-  return allSkillsMap.value.get(skillId) || null
-}
-
-// ── 快速出售水晶 ──
-const { visible: quickSellVisible } = useDialogRoute('quickSell')
-const quickSellCrystalType = ref('attackCrystal')
-const quickSellCustomAmount = ref(10)
-const quickSellLoading = ref(false)
-
-const quickSellCrystalLabel = computed(() => {
-  return (
-    CRYSTAL_TYPES.find(c => c.key === quickSellCrystalType.value)?.label ||
-    '水晶'
-  )
-})
-
-function openQuickSellDialog(crystalType) {
-  quickSellCrystalType.value = crystalType
-  quickSellCustomAmount.value = 10
-  quickSellVisible.value = true
-}
-
-async function handleQuickSell(amount) {
-  if (!amount || amount <= 0) return
-  quickSellLoading.value = true
-  try {
-    const res = await sellCrystalToOfficialApi({
-      crystalType: quickSellCrystalType.value,
-      quantity: amount
-    })
-    const { goldEarned } = res.data.data
-    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
-    await Promise.all([fetchInventory(), fetchPlayerInfo()])
-  } catch {
-    // 错误已由拦截器处理
-  } finally {
-    quickSellLoading.value = false
-  }
+function handleAdvUpdated(updatedAdv) {
+  const idx = adventurers.value.findIndex(a => a._id === updatedAdv._id)
+  if (idx >= 0) adventurers.value[idx] = { ...updatedAdv }
 }
 
 // ── 初始化 ──
 onMounted(() => {
   fetchAdventurers()
   fetchGameSettings()
-  fetchInventory()
   fetchPlayerInfo()
 })
 </script>

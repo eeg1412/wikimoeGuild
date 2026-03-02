@@ -280,7 +280,7 @@ const containerStyle = computed(() => {
   const h = Math.max(300, vpHeight.value - PADDING * 2)
   return {
     width: Math.min(w, 720) + 'px',
-    maxHeight: h + 'px'
+    height: h + 'px'
   }
 })
 

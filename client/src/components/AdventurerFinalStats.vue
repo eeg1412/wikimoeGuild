@@ -39,7 +39,7 @@ const STAT_LIST = [
   { key: 'attack', levelKey: 'attackLevel', name: '攻击', icon: '⚔️' },
   { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: '🛡️' },
   { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: '💨' },
-  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '🌀' }
+  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '❤️' }
 ]
 
 const LEVEL_KEY_MAP = {

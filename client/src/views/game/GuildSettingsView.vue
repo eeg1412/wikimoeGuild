@@ -168,8 +168,8 @@
       </p>
       <el-input
         v-model="newGuildName"
-        placeholder="输入新公会名（2-8字符）"
-        maxlength="8"
+        placeholder="输入新公会名（2-20字符）"
+        maxlength="20"
         show-word-limit
       />
       <template #footer>

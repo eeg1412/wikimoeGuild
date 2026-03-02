@@ -151,8 +151,9 @@
         <RuneStoneInfoCard :rune-stone="detailRS" />
 
         <!-- 操作按钮 -->
-        <div v-if="!detailRS.equippedBy" class="flex gap-3 pt-2">
+        <div class="flex gap-3 pt-2">
           <el-button
+            v-if="!detailRS.equippedBy"
             type="danger"
             class="flex-1"
             :loading="decomposeLoading"
@@ -171,8 +172,8 @@
             升级 ({{ upgradeCost }}碎片)
           </el-button>
         </div>
-        <p v-else class="text-center text-sm text-gray-400">
-          已装备中，请先卸下再进行分解或升级
+        <p v-if="detailRS.equippedBy" class="text-center text-xs text-gray-400">
+          已装备中，分解需先卸下
         </p>
       </div>
     </el-dialog>

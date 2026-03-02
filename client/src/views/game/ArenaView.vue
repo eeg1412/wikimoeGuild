@@ -317,95 +317,13 @@
             <p class="text-sm text-red-400 text-center mb-2">
               ⚠️ 已锁定的冒险家不能移除，只能调整位置或添加新冒险家
             </p>
-            <div class="flex justify-center mb-2">
-              <el-checkbox v-model="arenaDragMode" size="small">
-                ☰ 拖拽排序模式
-              </el-checkbox>
-            </div>
-            <div class="arena-grid-board mx-auto mb-4">
-              <draggable
-                :list="arenaFlatGrid"
-                item-key="_key"
-                :disabled="!arenaDragMode"
-                :animation="200"
-                :swap-threshold="0.65"
-                ghost-class="arena-grid-cell--ghost"
-                class="arena-grid-board-inner"
-                :move="checkArenaDragMove"
-                @start="onArenaDragStart"
-                @end="onArenaDragEnd"
-              >
-                <template #item="{ element, index }">
-                  <div
-                    class="arena-grid-cell"
-                    :class="{
-                      'arena-grid-cell--occupied': element.adventurer,
-                      'arena-grid-cell--draggable':
-                        arenaDragMode && element.adventurer
-                    }"
-                    @click="
-                      handleArenaCellClick(Math.floor(index / 5), index % 5)
-                    "
-                    @contextmenu.prevent
-                  >
-                    <span class="arena-grid-cell-seq">{{ index + 1 }}</span>
-                    <template v-if="element.adventurer">
-                      <GameAdventurerAvatar
-                        :adventurer="element.adventurer"
-                        class="w-full h-full rounded object-cover pointer-events-none select-none"
-                      />
-                      <div
-                        v-for="indicator in getPassiveIndicators(
-                          element.adventurer
-                        )"
-                        :key="indicator.position"
-                        class="passive-indicator"
-                        :class="'passive-indicator--' + indicator.position"
-                        :style="{ backgroundColor: indicator.color }"
-                        :title="indicator.label"
-                      />
-                      <div
-                        class="absolute bottom-0 left-0 right-0 text-center bg-black/50 text-[10px] text-white leading-tight py-px truncate"
-                      >
-                        {{ element.adventurer.name }}
-                      </div>
-                      <!-- 标记图标 -->
-                      <span
-                        v-if="
-                          element.adventurer.roleTag &&
-                          ROLE_TAG_MAP[element.adventurer.roleTag]
-                        "
-                        class="absolute top-0 right-0 z-10 bg-black/65 rounded-bl text-xs leading-none p-0.5"
-                      >
-                        {{ ROLE_TAG_MAP[element.adventurer.roleTag].emoji }}
-                      </span>
-                      <div
-                        v-if="isAdventurerLocked(element.adventurer._id)"
-                        class="absolute top-0 right-0.5 text-[10px]"
-                        title="已锁定"
-                      >
-                        🔒
-                      </div>
-                      <span
-                        v-if="
-                          !arenaDragMode &&
-                          !isAdventurerLocked(element.adventurer._id)
-                        "
-                        class="clear-btn"
-                        title="移除"
-                        @click.stop="
-                          handleClearArenaCell(Math.floor(index / 5), index % 5)
-                        "
-                        >✕</span
-                      >
-                    </template>
-                    <template v-else>
-                      <span class="text-gray-400 text-lg">➕</span>
-                    </template>
-                  </div>
-                </template>
-              </draggable>
-            </div>
+            <FormationGrid
+              v-model="arenaGrid"
+              :locked-ids="arenaLockedAdventurers"
+              class="mb-4"
+              @cell-click="handleArenaCellClick"
+              @clear-cell="handleClearArenaCell"
+            />
 
             <p class="text-center text-sm text-gray-400 mb-4">
               已放置 {{ arenaPlacedCount }} 名冒险家
@@ -980,10 +898,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import draggable from 'vuedraggable'
+import FormationGrid from '@/components/FormationGrid.vue'
 import {
   getArenaInfoApi,
   registerArenaApi,
@@ -1085,62 +1003,11 @@ const arenaFormationSaving = ref(false)
 const arenaGrid = ref(createEmptyGrid())
 const arenaLockedAdventurers = ref([])
 
-// ── 扁平化竞技场棋盘（供 vuedraggable 使用） ──
-const arenaFlatGrid = ref([])
-
-function buildArenaFlatGrid() {
-  let emptyId = 0
-  const cells = []
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 5; c++) {
-      const adv = arenaGrid.value[r][c]
-      cells.push({
-        _key: adv ? `adv-${adv._id}` : `empty-${emptyId++}`,
-        adventurer: adv
-      })
-    }
-  }
-  arenaFlatGrid.value = cells
-}
-
-function syncArenaFlatToGrid() {
-  for (let i = 0; i < 25; i++) {
-    arenaGrid.value[Math.floor(i / 5)][i % 5] =
-      arenaFlatGrid.value[i].adventurer
-  }
-}
-
-watch(arenaGrid, buildArenaFlatGrid, { deep: true })
-buildArenaFlatGrid()
 const arenaAllAdventurers = ref([])
 const arenaAdventurersLoading = ref(false)
 const { visible: arenaPickDialogVisible } = useDialogRoute('arenaPick')
 const arenaPickRow = ref(0)
 const arenaPickCol = ref(0)
-
-// 拖拽排序（vuedraggable）
-const arenaDragMode = ref(false)
-let arenaPreDragSnapshot = null
-
-function checkArenaDragMove(evt) {
-  return !!evt.draggedContext.element?.adventurer
-}
-
-function onArenaDragStart() {
-  arenaPreDragSnapshot = arenaFlatGrid.value.map(item => ({ ...item }))
-}
-
-function onArenaDragEnd(evt) {
-  const { oldIndex, newIndex } = evt
-  if (oldIndex !== newIndex && arenaPreDragSnapshot) {
-    arenaFlatGrid.value.splice(0, 25, ...arenaPreDragSnapshot)
-    const temp = arenaFlatGrid.value[oldIndex]
-    arenaFlatGrid.value[oldIndex] = arenaFlatGrid.value[newIndex]
-    arenaFlatGrid.value[newIndex] = temp
-    syncArenaFlatToGrid()
-  }
-  arenaPreDragSnapshot = null
-}
 
 const arenaPlacedCount = computed(() => {
   let count = 0
@@ -1168,10 +1035,6 @@ function isArenaPlaced(advId) {
 
 const arenaCellAdventurer = computed(() => {
   return getArenaCell(arenaPickRow.value, arenaPickCol.value)
-})
-
-const arenaAvailableAdventurers = computed(() => {
-  return arenaAllAdventurers.value
 })
 
 const arenaPickTab = ref('unplaced')
@@ -1233,13 +1096,18 @@ async function fetchArenaFormation() {
     arenaAllAdventurers.value = advRes.data.data || []
 
     // 构建阵容网格
+    // 优先用 getMyAdventurersApi 返回的完整数据（含 passiveBuffType 等字段），
+    // 保证被动增益色块等 UI 能正常显示
+    const advMap = new Map(
+      arenaAllAdventurers.value.map(a => [a._id.toString(), a])
+    )
     const newGrid = createEmptyGrid()
     if (data.grid && Array.isArray(data.grid)) {
       for (let r = 0; r < 5; r++) {
         for (let c = 0; c < 5; c++) {
           const advData = data.grid[r]?.[c]
           if (advData && typeof advData === 'object' && advData._id) {
-            newGrid[r][c] = advData
+            newGrid[r][c] = advMap.get(advData._id.toString()) || advData
           }
         }
       }

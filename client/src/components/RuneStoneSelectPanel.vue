@@ -49,11 +49,11 @@
     >
       暂无可用符文石
     </div>
-    <div v-else class="space-y-2 max-h-80 overflow-y-auto">
+    <div v-else class="space-y-2 overflow-y-auto">
       <div
         v-for="rs in sortedList"
         :key="rs._id"
-        class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border relative"
+        class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border border-gray-300 dark:border-gray-600 relative"
         @click="handleItemClick(rs)"
       >
         <!-- New 标记 -->

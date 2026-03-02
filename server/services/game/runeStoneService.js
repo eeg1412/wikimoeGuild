@@ -242,20 +242,31 @@ export async function upgradeRuneStone(accountId, runeStoneId) {
       throw err
     }
 
-    // 正在装备的符文石禁止升级
-    if (runeStone.equippedBy) {
-      const err = new Error('装备中的符文石不可升级，请先卸下')
-      err.statusCode = 400
-      err.expose = true
-      throw err
-    }
-
     // 上架中的符文石不可升级
     if (runeStone.listedOnMarket) {
       const err = new Error('市场上架中的符文石不可升级，请先下架')
       err.statusCode = 400
       err.expose = true
       throw err
+    }
+
+    // 如果符文石已装备，升级后等级不能超过装备者的综合等级
+    if (runeStone.equippedBy) {
+      const adventurer = await GameAdventurer.findById(runeStone.equippedBy)
+      if (!adventurer) {
+        const err = new Error('装备者信息异常')
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+      if (runeStone.level + 1 > adventurer.comprehensiveLevel) {
+        const err = new Error(
+          `符文石等级不能超过装备者的综合等级（当前综合等级 ${adventurer.comprehensiveLevel}）`
+        )
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
     }
 
     const costCoeff = { normal: 100, rare: 1000, legendary: 5000 }

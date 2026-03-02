@@ -35,9 +35,9 @@
         <el-form-item label="公会名" prop="guildName">
           <el-input
             v-model="form.guildName"
-            placeholder="2-8 个字符"
+            placeholder="2-20 个字符"
             clearable
-            :maxlength="8"
+            :maxlength="20"
             show-word-limit
             :disabled="loading"
           />
@@ -228,7 +228,7 @@ const rules = {
   ],
   guildName: [
     { required: true, message: '请输入公会名', trigger: 'blur' },
-    { min: 2, max: 8, message: '公会名为 2-8 个字符', trigger: 'blur' }
+    { min: 2, max: 20, message: '公会名为 2-20 个字符', trigger: 'blur' }
   ],
   password: [{ required: true, validator: validatePassword, trigger: 'blur' }],
   confirmPassword: [
