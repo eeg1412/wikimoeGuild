@@ -391,8 +391,32 @@
             </table>
           </div>
           <p class="guide-note mt-2">
-            💡 被动增益 = 增益等级 × 被动增益系数 × 符文石等级
+            💡 被动增益 = 对应属性 × (增益等级 × 品质系数)
           </p>
+          <div class="overflow-x-auto mt-2">
+            <table class="guide-table">
+              <thead>
+                <tr>
+                  <th>品质</th>
+                  <th>系数</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>⬜ 普通</td>
+                  <td>0.0012</td>
+                </tr>
+                <tr>
+                  <td>🟦 稀有</td>
+                  <td>0.0022</td>
+                </tr>
+                <tr>
+                  <td>🟧 传说</td>
+                  <td>0.0033</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div class="guide-card mb-4">

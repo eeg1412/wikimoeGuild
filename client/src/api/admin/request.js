@@ -104,7 +104,13 @@ adminRequest.interceptors.response.use(
         return adminRequest(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
-        redirectToLogin('登录已过期，请重新登录')
+        const refreshStatus = refreshError.response?.status
+        // 仅在 token 校验失败（401/403）时清除本地 token，服务器内部错误不清除
+        if (refreshStatus === 401 || refreshStatus === 403) {
+          redirectToLogin('登录已过期，请重新登录')
+        } else {
+          ElMessage.error('刷新登录状态失败，请稍后重试')
+        }
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

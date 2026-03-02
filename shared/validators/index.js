@@ -15,7 +15,11 @@ export {
   playerChangePasswordSchema,
   guestRegisterSchema,
   guestBindEmailSendCodeSchema,
-  guestBindEmailSchema
+  guestBindEmailSchema,
+  sendCodeSchema,
+  playerRegisterSchema,
+  playerLoginSchema,
+  resetPasswordSchema
 } from './gameAuthValidator.js'
 export {
   officialSellCrystalSchema,
@@ -41,7 +45,8 @@ export {
   adventurerCustomNameSchema,
   adventurerLevelUpSchema,
   adventurerEquipRuneStoneSchema,
-  adventurerRerollSchema
+  adventurerRerollSchema,
+  adventurerSetRoleTagSchema
 } from './gameAdventurerValidator.js'
 export {
   dungeonLegionChallengeSchema,

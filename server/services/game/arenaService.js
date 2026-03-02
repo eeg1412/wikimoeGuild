@@ -10,6 +10,7 @@ import {
   generateRandomAdventurerName,
   generateRandomAdventurerAvatarId
 } from '../../utils/utils.js'
+import { getRandomNpcGuildIconId } from 'shared/utils/utils.js'
 import { executeBattle } from './battleEngine.js'
 import * as mailService from './mailService.js'
 import {
@@ -101,12 +102,18 @@ export async function getArenaInfo(accountId) {
 
   // 计算恢复的挑战次数
   let currentChallengeUses = registration?.challengeUses ?? 0
+  let nextRecoverIn = 0
   if (registration) {
     const lastRecover = new Date(registration.lastChallengeRecoverAt).getTime()
     const now = Date.now()
     const hoursElapsed = Math.floor((now - lastRecover) / (60 * 60 * 1000))
     if (hoursElapsed > 0) {
       currentChallengeUses = Math.min(currentChallengeUses + hoursElapsed, 24)
+    }
+    // 如果未满24次，计算下次恢复剩余秒数
+    if (currentChallengeUses < 24) {
+      const nextRecoverAt = lastRecover + (hoursElapsed + 1) * 60 * 60 * 1000
+      nextRecoverIn = Math.max(0, Math.ceil((nextRecoverAt - now) / 1000))
     }
   }
 
@@ -121,6 +128,7 @@ export async function getArenaInfo(accountId) {
       battleGold: season.battleGold,
       participationReward: season.participationReward
     },
+    nextRecoverIn,
     registration: registration
       ? {
           _id: registration._id,
@@ -269,7 +277,10 @@ export async function registerArena(accountId, formationSlot) {
       lastChallengeRecoverAt: new Date()
     })
 
-    return registration
+    const safeReg = registration.toJSON()
+    delete safeReg.account
+    delete safeReg.season
+    return safeReg
   })
 }
 
@@ -377,12 +388,34 @@ export async function getMatchList(accountId) {
     .select('account guildName points')
     .lean()
 
-  const result = opponents.map(op => ({
-    _id: op._id,
-    opponentId: op.account.toString(),
-    guildName: op.guildName,
-    points: op.points
-  }))
+  // 获取对手的 playerInfoId（用于公会信息查看，避免泄露 accountId）
+  const opAccountIds = opponents.map(op => op.account)
+  const GamePlayerInfoModel = (await import('../../models/gamePlayerInfos.js'))
+    .default
+  const opInfos = await GamePlayerInfoModel.find({
+    account: { $in: opAccountIds }
+  })
+    .select('account hasCustomGuildIcon customGuildIconUpdatedAt')
+    .lean()
+  const opInfoMap = new Map()
+  for (const info of opInfos) {
+    opInfoMap.set(info.account.toString(), info)
+  }
+
+  const result = opponents.map(op => {
+    const opInfo = opInfoMap.get(op.account.toString())
+    return {
+      _id: op._id,
+      registrationId: op._id.toString(),
+      playerInfoId: opInfo?._id?.toString() || null,
+      accountId: op.account.toString(),
+      guildName: op.guildName,
+      points: op.points,
+      isNpc: false,
+      hasCustomGuildIcon: opInfo?.hasCustomGuildIcon || false,
+      customGuildIconUpdatedAt: opInfo?.customGuildIconUpdatedAt || null
+    }
+  })
 
   // 不足10名用NPC补足
   while (result.length < 10) {
@@ -390,9 +423,12 @@ export async function getMatchList(accountId) {
     const npcId = `npc_${result.length}`
     result.push({
       _id: npcId,
-      opponentId: npcId,
+      registrationId: npcId,
+      playerInfoId: null,
       guildName: generateRandomAdventurerName() + '公会',
-      points: Math.max(npcPoints, 0)
+      points: Math.max(npcPoints, 0),
+      isNpc: true,
+      npcGuildIconId: getRandomNpcGuildIconId()
     })
   }
 
@@ -401,8 +437,10 @@ export async function getMatchList(accountId) {
 
 /**
  * 挑战对手
+ * @param {string} accountId - 当前玩家accountId
+ * @param {string} registrationId - 对手的报名记录 _id 或 npc_ 前缀的NPC id
  */
-export async function challengeOpponent(accountId, opponentId) {
+export async function challengeOpponent(accountId, registrationId) {
   return await executeInLock(`arena-battle:${accountId}`, async () => {
     const season = await getOrCreateActiveSeason()
     if (!season) {
@@ -443,7 +481,7 @@ export async function challengeOpponent(accountId, opponentId) {
 
     // 服务端判断isNPC：以npc_开头的为NPC
     const isNPC =
-      typeof opponentId === 'string' && opponentId.startsWith('npc_')
+      typeof registrationId === 'string' && registrationId.startsWith('npc_')
 
     // 加载我的阵容
     const myAdventurerIds = myReg.formationGrid.flat().filter(id => id !== null)
@@ -476,7 +514,7 @@ export async function challengeOpponent(accountId, opponentId) {
     } else {
       // 加载对手阵容
       opponentReg = await GameArenaRegistration.findOne({
-        account: opponentId,
+        _id: registrationId,
         season: season._id
       })
       if (!opponentReg) {
@@ -602,7 +640,7 @@ export async function challengeOpponent(accountId, opponentId) {
       season: season._id,
       attacker: accountId,
       attackerGuildName: myReg.guildName,
-      defender: isNPC ? null : opponentId,
+      defender: isNPC ? null : opponentReg.account,
       defenderGuildName: opponentGuildName,
       isNPC,
       winner: battleResult.winner,
@@ -758,8 +796,14 @@ export async function getMyBattleLogs(
     const opponentName = isAttacker
       ? log.defenderGuildName
       : log.attackerGuildName
-    // 不向前端暴露isNPC字段
-    const { isNPC: _isNPC, ...logData } = log
+    // 不向前端暴露isNPC字段和账号ObjectId
+    const {
+      isNPC: _isNPC,
+      attacker: _attacker,
+      defender: _defender,
+      season: _season,
+      ...logData
+    } = log
     return {
       ...logData,
       isAttacker,
@@ -889,11 +933,39 @@ export async function getLeaderboard({ page = 1, pageSize = 20 } = {}) {
     .sort({ points: -1 })
     .skip((page - 1) * pageSize)
     .limit(pageSize)
-    .select('guildName points totalBattleCount')
+    .select('account guildName points totalBattleCount')
     .lean()
 
+  // 获取公会图标信息用于排行榜展示（返回 playerInfoId 而非 accountId，防止泄露）
+  const GamePlayerInfoModel = (await import('../../models/gamePlayerInfos.js'))
+    .default
+  const accountIds = list.map(item => item.account)
+  const infos = await GamePlayerInfoModel.find({
+    account: { $in: accountIds }
+  })
+    .select('account hasCustomGuildIcon customGuildIconUpdatedAt')
+    .lean()
+  const infoMap = new Map()
+  for (const info of infos) {
+    infoMap.set(info.account.toString(), info)
+  }
+  const safeList = list.map(item => {
+    const accId = item.account.toString()
+    const info = infoMap.get(accId)
+    return {
+      _id: item._id,
+      accountId: accId,
+      guildName: item.guildName,
+      points: item.points,
+      totalBattleCount: item.totalBattleCount,
+      playerInfoId: info?._id?.toString() || null,
+      hasCustomGuildIcon: info?.hasCustomGuildIcon || false,
+      customGuildIconUpdatedAt: info?.customGuildIconUpdatedAt || null
+    }
+  })
+
   return {
-    list,
+    list: safeList,
     total,
     season: { seasonNumber: season.seasonNumber, endTime: season.endTime }
   }

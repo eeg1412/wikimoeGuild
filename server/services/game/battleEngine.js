@@ -2,15 +2,15 @@
  * 战斗引擎 - 5x5 回合制棋盘战斗系统
  *
  * 系统全局硬编码变量：
- * - 符文石攻击被动增益系数: 10
- * - 符文石防御被动增益系数: 10
- * - 符文石速度被动增益系数: 10
- * - 符文石SAN被动增益系数: 15
+ * - 符文石品质基础系数: 普通=0.0012, 稀有=0.0022, 传说=0.0033
  * - 攻击基础值: 100
  * - 防御基础值: 100
  * - 速度基础值: 100
- * - SAN基础值: 150
+ * - SAN基础值: 100
  * - 被克制伤害倍率: 15000 (150%)
+ *
+ * 被动增益计算公式: 对应属性 × (增益等级 × 品质系数)
+ * 品质系数: 普通=0.0012, 稀有=0.0022, 传说=0.0033
  */
 
 import {
@@ -18,18 +18,18 @@ import {
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
 
-const PASSIVE_BUFF_COEFF = {
-  attack: 10,
-  defense: 10,
-  speed: 10,
-  san: 15
+// 符文石品质基础系数
+const RUNE_QUALITY_COEFFICIENT = {
+  normal: 0.0012,
+  rare: 0.0022,
+  legendary: 0.0033
 }
 
 const BASE_STATS = {
   attack: 100,
   defense: 100,
   speed: 100,
-  san: 150
+  san: 100
 }
 
 const COUNTER_DAMAGE_RATE = 15000 // 150%, 以10000为基数
@@ -73,24 +73,24 @@ function initBattleUnits(grid, side) {
       let speed = BASE_STATS.speed * (adventurer.speedLevel || 1)
       let maxSan = BASE_STATS.san * (adventurer.SANLevel || 1)
 
-      // 应用符文石被动增益
+      // 应用符文石被动增益: 对应属性 × (增益等级 × 品质系数)
       if (adventurer.runeStone && adventurer.runeStone.passiveBuffs) {
+        const qualityCoeff =
+          RUNE_QUALITY_COEFFICIENT[adventurer.runeStone.rarity] || 0.0012
         for (const buff of adventurer.runeStone.passiveBuffs) {
-          const coeff = PASSIVE_BUFF_COEFF[buff.buffType] || 0
-          const bonus =
-            buff.buffLevel * coeff * (adventurer.runeStone.level || 1)
+          const multiplier = buff.buffLevel * qualityCoeff
           switch (buff.buffType) {
             case 'attack':
-              attack += bonus
+              attack += Math.floor(attack * multiplier)
               break
             case 'defense':
-              defense += bonus
+              defense += Math.floor(defense * multiplier)
               break
             case 'speed':
-              speed += bonus
+              speed += Math.floor(speed * multiplier)
               break
             case 'san':
-              maxSan += bonus
+              maxSan += Math.floor(maxSan * multiplier)
               break
           }
         }
@@ -158,12 +158,12 @@ function applyPassiveBuffTypes(units) {
     posMap.set(`${unit.row},${unit.col}`, unit)
   }
 
-  // 方向偏移量
+  // 方向偏移量（与 gameDatabase.js 的 direction 值一致：left/right/top/bottom）
   const DIRECTION_OFFSET = {
     left: [0, -1],
     right: [0, 1],
-    up: [-1, 0],
-    down: [1, 0]
+    top: [-1, 0],
+    bottom: [1, 0]
   }
 
   for (const unit of units) {
@@ -435,7 +435,7 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
       }
 
       case 'changeOrder': {
-        // 改变排序类
+        // 改变排序类：将目标移动到棋盘上的随机位置
         let targets = enemyFrontRow
         const target =
           selectTarget(unit, targets, skill.preference, skill.order) ||
@@ -444,47 +444,79 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
             .sort((a, b) => a.currentSan - b.currentSan)[0]
         if (!target) break
 
-        // 概率计算：对比符文石等级和目标综合等级
+        // 概率计算：目标等级 ≤ 符文石等级时100%，每高1级减少3%，最低30%
         const runeLevel = unit.runeStone?.level || 1
-        let probability = skill.baseValue
         const levelDiff = (target.comprehensiveLevel || 4) - runeLevel
+        let probability = 100
         if (levelDiff > 0) {
-          probability = Math.max(
-            probability - levelDiff,
-            Math.floor(skill.baseValue * 0.3)
-          )
+          probability = Math.max(100 - levelDiff * 3, 30)
         }
 
         const roll = Math.floor(Math.random() * 100)
+        const oldRow = target.row
+        const oldCol = target.col
         if (roll < probability) {
-          // 弹到随机位置（排除自身，避免无效交换）
-          const otherCandidates = enemyUnits.filter(
-            u => u.alive && u.id !== target.id
-          )
-          if (otherCandidates.length > 0) {
-            const otherUnit =
-              otherCandidates[
-                Math.floor(Math.random() * otherCandidates.length)
-              ]
-            const tempRow = target.row
-            const tempCol = target.col
-            target.row = otherUnit.row
-            target.col = otherUnit.col
-            otherUnit.row = tempRow
-            otherUnit.col = tempCol
+          // 随机选择一个不同的位置（5×5棋盘范围内）
+          const allPositions = []
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+              if (r !== target.row || c !== target.col) {
+                allPositions.push({ row: r, col: c })
+              }
+            }
           }
+          const newPos =
+            allPositions[Math.floor(Math.random() * allPositions.length)]
 
-          log.push({
-            type: 'runeSkill',
-            skillType: 'changeOrder',
-            skillLabel: skill.label,
-            caster: unit.id,
-            casterName: unit.name,
-            target: target.id,
-            targetName: target.name,
-            success: true,
-            probability
-          })
+          // 检查新位置是否有冒险家
+          const occupant = enemyUnits.find(
+            u => u.alive && u.row === newPos.row && u.col === newPos.col
+          )
+          if (occupant) {
+            // 互换位置
+            occupant.row = oldRow
+            occupant.col = oldCol
+            target.row = newPos.row
+            target.col = newPos.col
+            log.push({
+              type: 'runeSkill',
+              skillType: 'changeOrder',
+              skillLabel: skill.label,
+              caster: unit.id,
+              casterName: unit.name,
+              target: target.id,
+              targetName: target.name,
+              swapTarget: occupant.id,
+              swapTargetName: occupant.name,
+              success: true,
+              swapped: true,
+              oldRow,
+              oldCol,
+              newRow: newPos.row,
+              newCol: newPos.col,
+              probability
+            })
+          } else {
+            // 直接移动到空位
+            target.row = newPos.row
+            target.col = newPos.col
+            log.push({
+              type: 'runeSkill',
+              skillType: 'changeOrder',
+              skillLabel: skill.label,
+              caster: unit.id,
+              casterName: unit.name,
+              target: target.id,
+              targetName: target.name,
+              success: true,
+              swapped: false,
+              oldRow,
+              oldCol,
+              newRow: newPos.row,
+              newCol: newPos.col,
+              probability
+            })
+          }
         } else {
           log.push({
             type: 'runeSkill',
@@ -662,8 +694,10 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
         }
       }
 
-      // 增加延迟值
-      unit.delay += unit.baseDelay
+      // 增加延迟值（速度增益/减益影响延迟值）
+      const speedMod = unit.tempBuffs.speed || 0
+      const adjustedDelay = Math.max(1, unit.baseDelay - speedMod)
+      unit.delay += adjustedDelay
     }
   }
 

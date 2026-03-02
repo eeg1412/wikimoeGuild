@@ -106,7 +106,11 @@ const initGlobalConfig = async () => {
     // 游客模式开关
     guestModeEnabled: true,
     // 每个IP每天可注册游客账号数
-    guestMaxPerIpPerDay: 3
+    guestMaxPerIpPerDay: 3,
+    // 每24小时全局邮件发送上限
+    dailyEmailLimit: 500,
+    // 每24小时全局游客注册上限
+    dailyGuestRegisterLimit: 200
   }
 
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型

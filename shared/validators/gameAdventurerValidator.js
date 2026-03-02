@@ -1,4 +1,5 @@
 import Joi from 'joi'
+import { VALID_ROLE_TAGS } from '../constants/index.js'
 
 const objectId = Joi.string()
   .pattern(/^[a-f\d]{24}$/i)
@@ -55,5 +56,19 @@ export const adventurerRerollSchema = Joi.object({
     .messages({
       'any.only': '无效的洗属性类型',
       'any.required': '请选择洗属性类型'
+    })
+})
+
+/**
+ * 冒险家设置角色标记
+ * 使用字符串编号存储：'1'=输出 '2'=坦克 '3'=刺客 '4'=平衡，''=清除
+ */
+export const adventurerSetRoleTagSchema = Joi.object({
+  roleTag: Joi.string()
+    .valid(...VALID_ROLE_TAGS)
+    .required()
+    .messages({
+      'any.only': '无效的角色标记',
+      'any.required': '请选择角色标记'
     })
 })

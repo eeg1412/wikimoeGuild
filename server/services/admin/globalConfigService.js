@@ -244,7 +244,14 @@ export async function getGameSettings() {
     adventurerRerollAttackPreferencePrice:
       config.adventurerRerollAttackPreferencePrice ?? 1000,
     guestModeEnabled: config.guestModeEnabled !== false,
-    guestMaxPerIpPerDay: config.guestMaxPerIpPerDay ?? 3
+    guestMaxPerIpPerDay: config.guestMaxPerIpPerDay ?? 3,
+    dailyEmailLimit: config.dailyEmailLimit ?? 500,
+    dailyGuestRegisterLimit: config.dailyGuestRegisterLimit ?? 200,
+    officialNormalRuneStoneBuyPrice:
+      config.officialNormalRuneStoneBuyPrice ?? 100,
+    officialRareRuneStoneBuyPrice: config.officialRareRuneStoneBuyPrice ?? 400,
+    officialLegendaryRuneStoneBuyPrice:
+      config.officialLegendaryRuneStoneBuyPrice ?? 2000
   }
 }
 
@@ -273,7 +280,12 @@ export async function updateGameSettings(data) {
     'adventurerRerollElementPrice',
     'adventurerRerollPassiveBuffPrice',
     'adventurerRerollAttackPreferencePrice',
-    'guestMaxPerIpPerDay'
+    'guestMaxPerIpPerDay',
+    'dailyEmailLimit',
+    'dailyGuestRegisterLimit',
+    'officialNormalRuneStoneBuyPrice',
+    'officialRareRuneStoneBuyPrice',
+    'officialLegendaryRuneStoneBuyPrice'
   ]
 
   const booleanKeys = ['guestModeEnabled']

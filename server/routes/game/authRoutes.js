@@ -6,25 +6,37 @@ import {
   playerChangePasswordSchema,
   guestRegisterSchema,
   guestBindEmailSendCodeSchema,
-  guestBindEmailSchema
+  guestBindEmailSchema,
+  sendCodeSchema,
+  playerRegisterSchema,
+  playerLoginSchema,
+  resetPasswordSchema
 } from '../../../shared/validators/index.js'
 
 const router = Router()
 
 // 发送验证码（无需登录）
-router.post('/send-code', authController.sendCode)
+router.post('/send-code', validate(sendCodeSchema), authController.sendCode)
 
 // 注册
-router.post('/register', authController.register)
+router.post(
+  '/register',
+  validate(playerRegisterSchema),
+  authController.register
+)
 
 // 登录
-router.post('/login', authController.login)
+router.post('/login', validate(playerLoginSchema), authController.login)
 
 // 刷新 Token
 router.post('/refresh', authController.refresh)
 
 // 重置密码
-router.post('/reset-password', authController.resetPassword)
+router.post(
+  '/reset-password',
+  validate(resetPasswordSchema),
+  authController.resetPassword
+)
 
 // 获取当前登录玩家信息（需鉴权）
 router.get('/me', authPlayer, authController.getMe)

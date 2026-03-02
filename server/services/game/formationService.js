@@ -7,6 +7,7 @@ import { executeInLock } from '../../utils/utils.js'
  */
 export async function listMyFormations(accountId) {
   const formations = await GameFormation.find({ account: accountId })
+    .select('-account')
     .sort({ slot: 1 })
     .lean()
   return formations
@@ -20,10 +21,12 @@ export async function getFormationDetail(accountId, formationId) {
     _id: formationId,
     account: accountId
   })
+    .select('-account')
     .populate({
       path: 'grid',
       model: 'game_adventurer',
-      populate: { path: 'runeStone' }
+      select: '-account',
+      populate: { path: 'runeStone', select: '-account' }
     })
     .lean()
   if (!formation) {
@@ -129,6 +132,8 @@ export async function saveFormation(accountId, slot, name, grid) {
       },
       { upsert: true, returnDocument: 'after' }
     )
+      .select('-account')
+      .lean()
 
     return formation
   })

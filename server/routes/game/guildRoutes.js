@@ -23,5 +23,7 @@ router.post(
   validate(changeGuildNameSchema),
   guildController.changeGuildName
 )
+// 获取指定玩家的公会信息（使用 playerInfoId 而非 accountId，防止泄露 account ObjectId）
+router.get('/info/:playerInfoId', authPlayer, guildController.getGuildInfo)
 
 export default router

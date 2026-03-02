@@ -319,6 +319,7 @@
       title="⛏️ 挖矿结果"
       width="340px"
       align-center
+      destroy-on-close
     >
       <div v-if="digResult" class="text-center space-y-3">
         <!-- 数字格子结果 -->
@@ -419,6 +420,7 @@ import {
 import { getMyFormationsApi } from '@/api/game/formation.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
@@ -454,7 +456,7 @@ let sseSource = null
 const sseConnected = ref(false)
 
 // 挖矿结果
-const digResultVisible = ref(false)
+const { visible: digResultVisible } = useDialogRoute('digResult')
 const digResult = ref(null)
 const showBattleAnimation = ref(false)
 

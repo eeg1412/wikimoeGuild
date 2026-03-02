@@ -55,6 +55,7 @@ export async function listMails(accountId, { page = 1, pageSize = 20 } = {}) {
     .sort({ createdAt: -1 })
     .skip((page - 1) * pageSize)
     .limit(pageSize)
+    .select('-account')
     .lean()
   const unreadCount = await GamePlayerMail.countDocuments({
     ...filter,
@@ -83,6 +84,8 @@ export async function getMailDetail(accountId, mailId) {
   if (!mail.read) {
     await GamePlayerMail.updateOne({ _id: mailId }, { read: true })
   }
+  // 禁止返回 account ObjectId
+  delete mail.account
   return mail
 }
 

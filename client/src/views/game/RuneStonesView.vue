@@ -127,6 +127,7 @@
       :title="detailTitle"
       width="360px"
       align-center
+      destroy-on-close
     >
       <div v-if="detailRS" class="space-y-4">
         <!-- 基本信息 -->
@@ -182,6 +183,7 @@
       title="🔮 符文石合成"
       width="380px"
       align-center
+      destroy-on-close
     >
       <!-- 第 1 步: 选择符文石 -->
       <template v-if="synthesisStep === 'select'">
@@ -505,61 +507,21 @@
       title="选择符文石"
       width="380px"
       align-center
+      destroy-on-close
     >
-      <!-- 稀有度筛选 -->
-      <div class="flex items-center gap-2 mb-3">
-        <el-select
-          v-model="pickRarityFilter"
-          size="small"
-          placeholder="稀有度筛选"
-          clearable
-          style="width: 120px"
-        >
-          <el-option label="普通" value="normal" />
-          <el-option label="稀有" value="rare" />
-          <el-option label="传说" value="legendary" />
-        </el-select>
-      </div>
-      <div
-        v-if="filteredPickableRuneStones.length === 0"
-        class="text-center py-8 text-gray-400"
+      <RuneStoneSelectPanel
+        :rune-stones="pickableRuneStones"
+        @select="confirmPick"
       >
-        无可选的符文石
-      </div>
-      <div v-else class="space-y-3 max-h-[60vh] overflow-y-auto">
-        <div
-          v-for="rs in filteredPickableRuneStones"
-          :key="rs._id"
-          class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border"
-          @click="confirmPick(rs)"
-        >
-          <!-- 标题行 -->
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <div
-                class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-                :class="rarityBgClass(rs.rarity)"
-              >
-                💎
-              </div>
-              <div>
-                <p
-                  class="text-sm font-semibold"
-                  :class="rarityTextClass(rs.rarity)"
-                >
-                  {{ rarityName(rs.rarity) }}符文石 Lv.{{ rs.level }}
-                </p>
-              </div>
-            </div>
-            <span
-              class="text-xs text-yellow-500 border border-yellow-400 px-1.5 py-0.5 rounded-full"
-              >选择</span
-            >
-          </div>
-          <!-- 完整信息 -->
-          <RuneStoneInfoCard :rune-stone="rs" />
-        </div>
-      </div>
+        <template #action="{ runeStone }">
+          <span
+            class="text-xs text-yellow-500 border border-yellow-400 px-1.5 py-0.5 rounded-full cursor-pointer"
+            @click.stop="confirmPick(runeStone)"
+          >
+            选择
+          </span>
+        </template>
+      </RuneStoneSelectPanel>
     </el-dialog>
   </div>
 </template>
@@ -579,6 +541,8 @@ import {
 import { useGameUser } from '@/composables/useGameUser.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
+import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
 const { isLoggedIn } = useGameUser()
@@ -628,8 +592,9 @@ async function fetchRuneStones() {
 }
 
 // ── 详情 ──
-const detailVisible = ref(false)
+const { visible: detailVisible } = useDialogRoute('detail')
 const detailRS = ref(null)
+const detailOpening = ref(false)
 
 const detailTitle = computed(() => {
   if (!detailRS.value) return '符文石详情'
@@ -637,14 +602,18 @@ const detailTitle = computed(() => {
 })
 
 async function openDetail(rs) {
+  if (detailOpening.value) return
+  detailOpening.value = true
   detailRS.value = { ...rs }
-  detailVisible.value = true
+  // 加载完整详情后再弹出
   try {
     const res = await getRuneStoneDetailApi(rs._id)
     detailRS.value = res.data.data
   } catch {
     // fallback
   }
+  detailVisible.value = true
+  detailOpening.value = false
 }
 
 // ── 工具函数 ──
@@ -771,7 +740,7 @@ async function handleUpgrade() {
 }
 
 // ── 合成系统 ──
-const synthesisVisible = ref(false)
+const { visible: synthesisVisible } = useDialogRoute('synthesis')
 const synthesisStep = ref('select') // 'select' | 'preview'
 const synthesisMain = ref(null)
 const synthesisMaterial = ref(null)
@@ -781,9 +750,8 @@ const synthesisPreviewToken = ref('')
 const synthesisConfirmLoading = ref(false)
 
 // 选择器
-const pickRuneVisible = ref(false)
+const { visible: pickRuneVisible } = useDialogRoute('pickRune')
 const pickingSlot = ref('') // 'main' | 'material'
-const pickRarityFilter = ref('')
 
 function openSynthesisDialog() {
   synthesisStep.value = 'select'
@@ -812,13 +780,6 @@ const pickableRuneStones = computed(() => {
     if (targetRarity && rs.rarity !== targetRarity) return false
     return true
   })
-})
-
-const filteredPickableRuneStones = computed(() => {
-  if (!pickRarityFilter.value) return pickableRuneStones.value
-  return pickableRuneStones.value.filter(
-    rs => rs.rarity === pickRarityFilter.value
-  )
 })
 
 // 合成对比 - 主动技能差异

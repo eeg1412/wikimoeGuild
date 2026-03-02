@@ -152,3 +152,18 @@ export async function rerollAttribute(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 设置角色标记
+ */
+export async function setRoleTag(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { id } = req.params
+    const { roleTag } = req.body
+    const result = await adventurerService.setRoleTag(accountId, id, roleTag)
+    res.success(result, '角色标记设置成功')
+  } catch (error) {
+    next(error)
+  }
+}

@@ -102,6 +102,7 @@
       :title="detailMail?.title || '邮件详情'"
       width="380px"
       align-center
+      destroy-on-close
     >
       <div v-if="detailLoading" class="flex justify-center py-8">
         <span class="animate-spin inline-block text-2xl">⏳</span>
@@ -221,6 +222,7 @@ import {
   getUnreadCountApi
 } from '@/api/game/mail.js'
 import { useGameUser } from '@/composables/useGameUser.js'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
@@ -264,13 +266,15 @@ async function fetchUnread() {
 }
 
 // 详情弹窗
-const detailVisible = ref(false)
+const { visible: detailVisible } = useDialogRoute('detail')
 const detailMail = ref(null)
 const detailLoading = ref(false)
+const detailOpening = ref(false)
 
 async function openDetail(mail) {
+  if (detailOpening.value) return
+  detailOpening.value = true
   detailMail.value = { ...mail }
-  detailVisible.value = true
   detailLoading.value = true
   try {
     const res = await getMailDetailApi(mail._id)
@@ -285,6 +289,8 @@ async function openDetail(mail) {
   } finally {
     detailLoading.value = false
   }
+  detailVisible.value = true
+  detailOpening.value = false
 }
 
 // 领取附件

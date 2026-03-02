@@ -64,3 +64,24 @@ a {
 .game-layout .avatar-uploader .el-upload.el-upload--text {
   width: 100%;
 }
+
+/* ── 全局弹窗高度约束 ── */
+.el-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+}
+.el-dialog__body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-gutter: stable both-edges;
+}
+/* 弹窗内容超过300px时保持最小高度，防止空间浪费 */
+@media (min-height: 500px) {
+  .el-dialog {
+    min-height: min(300px, calc(100vh - 40px));
+    min-height: min(300px, calc(100dvh - 40px));
+  }
+}

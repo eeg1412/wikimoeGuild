@@ -127,6 +127,21 @@ export async function sendMailCode(req, email, type) {
     throw err
   }
 
+  // 全局 24 小时邮件发送限制
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  const dailyEmailLimit = gameSettings.dailyEmailLimit ?? 500
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const dailyEmailCount = await GameMailCode.countDocuments({
+    sent: true,
+    createdAt: { $gte: twentyFourHoursAgo }
+  })
+  if (dailyEmailCount >= dailyEmailLimit) {
+    const err = new Error('系统邮件发送已达每日上限，请稍后再试')
+    err.statusCode = 429
+    err.expose = true
+    throw err
+  }
+
   const code = generateCode()
   const codeExpires = new Date(Date.now() + 15 * 60 * 1000) // 15 分钟
 
@@ -309,7 +324,11 @@ export async function register(req, { email, password, guildName, code }) {
 
     // 注册成功后自动签发 Token 实现免登录跳转
     const tokens = signPlayerTokens(account, false)
-    const info = await GamePlayerInfo.findOne({ account: account._id }).lean()
+    const info = await GamePlayerInfo.findOne({ account: account._id })
+      .select(
+        'account guildName gold hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount dungeonsLevel selectedDungeonsLevel dungeonsBackgroundId dungeonsCryRates lastDungeonSettleAt mapCanChangeUses lastMapRecoverAt miningCanUses lastMiningRecoverAt createdAt'
+      )
+      .lean()
     return { ...tokens, playerInfo: info }
   })
 }
@@ -399,6 +418,10 @@ export async function login(req, { email, password, rememberMe = false }) {
 
   // 获取玩家信息
   const playerInfo = await GamePlayerInfo.findOne({ account: account._id })
+    .select(
+      'account guildName gold hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount dungeonsLevel selectedDungeonsLevel dungeonsBackgroundId dungeonsCryRates lastDungeonSettleAt mapCanChangeUses lastMapRecoverAt miningCanUses lastMiningRecoverAt createdAt'
+    )
+    .lean()
 
   // 签发双 Token
   const { accessToken, refreshToken } = signPlayerTokens(account, rememberMe)
@@ -478,7 +501,11 @@ export async function getPlayerInfo(playerId) {
   const account = await GamePlayerAccount.findById(playerId)
     .select('isGuest email')
     .lean()
-  const playerInfo = await GamePlayerInfo.findOne({ account: playerId }).lean()
+  const playerInfo = await GamePlayerInfo.findOne({ account: playerId })
+    .select(
+      'account guildName gold hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount dungeonsLevel selectedDungeonsLevel dungeonsBackgroundId dungeonsCryRates lastDungeonSettleAt mapCanChangeUses lastMapRecoverAt miningCanUses lastMiningRecoverAt createdAt'
+    )
+    .lean()
   if (playerInfo && account) {
     playerInfo.isGuest = account.isGuest || false
     playerInfo.email = account.email
@@ -612,6 +639,21 @@ export async function guestRegister(req) {
     throw err
   }
 
+  // 全局 24 小时游客注册限制
+  const dailyGuestLimit = gameSettings.dailyGuestRegisterLimit ?? 200
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const dailyGuestCount = await GamePlayerRegisterLog.countDocuments({
+    success: true,
+    isGuest: true,
+    createdAt: { $gte: twentyFourHoursAgo }
+  })
+  if (dailyGuestCount >= dailyGuestLimit) {
+    const err = new Error('系统游客注册已达每日上限，请稍后再试')
+    err.statusCode = 429
+    err.expose = true
+    throw err
+  }
+
   // 生成游客邮箱
   const siteSettings = global.$globalConfig?.siteSettings || {}
   const siteUrl = siteSettings.siteUrl || 'wikimoe.com'
@@ -717,7 +759,11 @@ export async function guestRegister(req) {
 
     // 签发 Token（游客使用10年有效期）
     const tokens = signPlayerTokens(account, false, { isGuest: true })
-    const info = await GamePlayerInfo.findOne({ account: account._id }).lean()
+    const info = await GamePlayerInfo.findOne({ account: account._id })
+      .select(
+        'account guildName gold hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount dungeonsLevel selectedDungeonsLevel dungeonsBackgroundId dungeonsCryRates lastDungeonSettleAt mapCanChangeUses lastMapRecoverAt miningCanUses lastMiningRecoverAt createdAt'
+      )
+      .lean()
 
     return {
       ...tokens,

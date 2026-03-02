@@ -64,11 +64,27 @@
             :class="adv.direction"
             :style="adv.animStyle"
           >
-            <div class="dungeon-explorer-bounce">
-              <GameAdventurerAvatar
-                :adventurer="adv"
-                class="dungeon-explorer-avatar"
-              />
+            <div class="dungeon-explorer-body">
+              <div class="dungeon-explorer-bounce">
+                <GameAdventurerAvatar
+                  :adventurer="adv"
+                  class="dungeon-explorer-avatar"
+                />
+              </div>
+              <!-- 对话气泡 -->
+              <Transition name="bubble">
+                <div
+                  v-if="adv.showBubble"
+                  class="explorer-bubble"
+                  :class="
+                    adv.direction === 'walk-left'
+                      ? 'explorer-bubble--left'
+                      : 'explorer-bubble--right'
+                  "
+                >
+                  {{ adv.bubbleEmoji }}
+                </div>
+              </Transition>
             </div>
           </div>
         </div>
@@ -191,8 +207,8 @@
           size="large"
           round
           class="rpg-btn"
-          :disabled="battleCooldown > 0"
-          @click="showLegionDialog = true"
+          :disabled="battleCooldown > 0 || legionPreviewLoading"
+          @click="handleOpenLegionDialog"
         >
           {{
             battleCooldown > 0
@@ -208,6 +224,7 @@
         title="结算结果"
         width="320px"
         align-center
+        destroy-on-close
       >
         <div v-if="settleResult" class="space-y-2 text-sm">
           <div class="flex justify-between">
@@ -254,6 +271,7 @@
         title="⚔️ 挑战迷宫军团"
         width="380px"
         align-center
+        destroy-on-close
       >
         <div class="space-y-4">
           <!-- 军团预览 -->
@@ -321,6 +339,7 @@
         title="战斗结果"
         width="340px"
         align-center
+        destroy-on-close
       >
         <div v-if="battleResult" class="text-center space-y-3">
           <div class="text-4xl">
@@ -382,6 +401,7 @@
         title="⛏️ 发现矿场！"
         width="340px"
         align-center
+        destroy-on-close
       >
         <div v-if="discoveredMine" class="text-center space-y-3">
           <div class="text-4xl">⛰️</div>
@@ -432,6 +452,7 @@ import {
 import { getMyFormationsApi } from '@/api/game/formation.js'
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
@@ -650,7 +671,7 @@ function calcElapsedTime() {
 
 // ── 收取水晶 ──
 const settleLoading = ref(false)
-const settleResultVisible = ref(false)
+const { visible: settleResultVisible } = useDialogRoute('settleResult')
 const settleResult = ref(null)
 
 async function handleSettle() {
@@ -687,8 +708,8 @@ async function handleSettle() {
 
 // ── 切换迷宫 ──
 const switchLoading = ref(false)
+const { visible: showMineDiscovery } = useDialogRoute('mineDiscovery')
 const discoveredMine = ref(null)
-const showMineDiscovery = ref(false)
 
 async function handleSwitch() {
   switchLoading.value = true
@@ -724,13 +745,13 @@ async function handleSwitch() {
 }
 
 // ── 军团挑战 ──
-const showLegionDialog = ref(false)
+const { visible: showLegionDialog } = useDialogRoute('legion')
 const legionPreviewLoading = ref(false)
 const legionPreview = ref(null)
 const myFormations = ref([])
 const selectedFormationSlot = ref(null)
 const challengeLoading = ref(false)
-const battleResultVisible = ref(false)
+const { visible: battleResultVisible } = useDialogRoute('battleResult')
 const battleResult = ref(null)
 const showBattleAnimation = ref(false)
 const battleCooldown = ref(0)
@@ -757,26 +778,25 @@ const battleResultDisplay = computed(() => {
   return 'draw'
 })
 
-watch(showLegionDialog, async val => {
-  if (val) {
-    legionPreviewLoading.value = true
-    try {
-      const [previewRes, formRes] = await Promise.all([
-        previewLegionApi(),
-        getMyFormationsApi()
-      ])
-      legionPreview.value = previewRes.data.data
-      myFormations.value = formRes.data.data || []
-      if (myFormations.value.length > 0 && !selectedFormationSlot.value) {
-        selectedFormationSlot.value = myFormations.value[0].slot
-      }
-    } catch (e) {
-      // 错误已由拦截器处理
-    } finally {
-      legionPreviewLoading.value = false
+async function handleOpenLegionDialog() {
+  legionPreviewLoading.value = true
+  try {
+    const [previewRes, formRes] = await Promise.all([
+      previewLegionApi(),
+      getMyFormationsApi()
+    ])
+    legionPreview.value = previewRes.data.data
+    myFormations.value = formRes.data.data || []
+    if (myFormations.value.length > 0 && !selectedFormationSlot.value) {
+      selectedFormationSlot.value = myFormations.value[0].slot
     }
+    showLegionDialog.value = true
+  } catch (e) {
+    // 错误已由拦截器处理
+  } finally {
+    legionPreviewLoading.value = false
   }
-})
+}
 
 async function handleChallenge() {
   if (!selectedFormationSlot.value) return
@@ -845,11 +865,68 @@ async function fetchExplorers() {
     exploringAdventurers.value = selected.map((adv, idx) => ({
       ...adv,
       direction: idx % 2 === 0 ? 'walk-right' : 'walk-left',
-      animStyle: buildExplorerStyle(idx, selected.length)
+      animStyle: buildExplorerStyle(idx, selected.length),
+      showBubble: false,
+      bubbleEmoji: ''
     }))
+    startBubbleTimer()
   } catch {
     // 获取失败不影响主流程
   }
+}
+
+// ── 对话气泡 ──
+const MOOD_EMOJIS = [
+  '😊',
+  '😤',
+  '🤔',
+  '😴',
+  '🥳',
+  '😎',
+  '🤩',
+  '💪',
+  '😅',
+  '🙄',
+  '😠',
+  '🥶',
+  '🫡',
+  '😈',
+  '✨',
+  '💎',
+  '⚔️',
+  '🛡️',
+  '🔥',
+  '🌟',
+  '👀',
+  '😁',
+  '🫣'
+]
+
+let bubbleTimer = null
+
+function startBubbleTimer() {
+  if (bubbleTimer) clearInterval(bubbleTimer)
+  bubbleTimer = setInterval(
+    () => {
+      const advs = exploringAdventurers.value
+      if (advs.length === 0) return
+      // 随机选一个冒险家显示气泡
+      const idx = Math.floor(Math.random() * advs.length)
+      const adv = advs[idx]
+      if (adv.showBubble) return // 已在显示
+      adv.bubbleEmoji =
+        MOOD_EMOJIS[Math.floor(Math.random() * MOOD_EMOJIS.length)]
+      adv.showBubble = true
+      // 显示 2~3 秒后消失
+      setTimeout(
+        () => {
+          adv.showBubble = false
+        },
+        2000 + Math.random() * 1000
+      )
+    },
+    3000 + Math.random() * 2000
+  ) // 每 3~5 秒出现一次
 }
 
 // ── 初始化 ──
@@ -872,6 +949,10 @@ onUnmounted(() => {
   if (cooldownTimer) {
     clearInterval(cooldownTimer)
     cooldownTimer = null
+  }
+  if (bubbleTimer) {
+    clearInterval(bubbleTimer)
+    bubbleTimer = null
   }
 })
 </script>
@@ -965,13 +1046,21 @@ onUnmounted(() => {
   height: 100%;
   overflow: hidden;
   border-radius: inherit;
+  container-type: inline-size;
 }
 
 .dungeon-explorer {
   position: absolute;
+  left: 0;
+  width: 36px;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+}
+
+.dungeon-explorer-body {
+  position: relative;
   width: 36px;
+  height: 36px;
 }
 
 .dungeon-explorer.walk-right {
@@ -998,6 +1087,79 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.3);
 }
 
+/* 对话气泡 */
+.explorer-bubble {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 16px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.explorer-bubble--left {
+  right: 100%;
+  margin-right: 4px;
+}
+
+.explorer-bubble--right {
+  left: 100%;
+  margin-left: 4px;
+}
+
+/* 右侧气泡箭头（指向左侧头像） */
+.explorer-bubble--right::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 6px solid rgba(255, 255, 255, 0.95);
+}
+
+/* 左侧气泡箭头（指向右侧头像） */
+.explorer-bubble--left::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid rgba(255, 255, 255, 0.95);
+}
+
+/* 气泡进入/离开动画 */
+.bubble-enter-active {
+  animation: bubblePop 0.3s ease-out;
+}
+.bubble-leave-active {
+  animation: bubblePop 0.25s ease-in reverse;
+}
+
+@keyframes bubblePop {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
 /* 走路上下弹跳 */
 .dungeon-explorer-bounce {
   animation: explorerBounce var(--bounce-speed, 0.35s) ease-in-out infinite;
@@ -1006,7 +1168,7 @@ onUnmounted(() => {
 /* 从左到右穿越框体 */
 @keyframes explorerMoveRight {
   0% {
-    left: -40px;
+    transform: translateX(-40px);
     opacity: 0;
   }
   3% {
@@ -1016,7 +1178,7 @@ onUnmounted(() => {
     opacity: 1;
   }
   100% {
-    left: calc(100% + 4px);
+    transform: translateX(calc(100cqw + 4px));
     opacity: 0;
   }
 }
@@ -1024,7 +1186,7 @@ onUnmounted(() => {
 /* 从右到左穿越框体 */
 @keyframes explorerMoveLeft {
   0% {
-    left: calc(100% + 4px);
+    transform: translateX(calc(100cqw + 4px));
     opacity: 0;
   }
   3% {
@@ -1034,7 +1196,7 @@ onUnmounted(() => {
     opacity: 1;
   }
   100% {
-    left: -40px;
+    transform: translateX(-40px);
     opacity: 0;
   }
 }

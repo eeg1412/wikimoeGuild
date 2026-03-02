@@ -58,8 +58,12 @@ export function useGameUser() {
       const res = await getMeApi()
       playerInfo.value = res.data.data
       playerLoaded.value = true
-    } catch {
-      logout()
+    } catch (err) {
+      // 仅在 token 校验失败（401/403）时才登出，避免服务器临时错误清空 token
+      const status = err.response?.status
+      if (status === 401 || status === 403) {
+        logout()
+      }
     }
   }
 

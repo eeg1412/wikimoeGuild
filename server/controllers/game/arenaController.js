@@ -78,21 +78,21 @@ export async function getMatchList(req, res, next) {
 export async function challengeOpponent(req, res, next) {
   try {
     const accountId = req.player.id
-    const { opponentId } = req.body
-    if (!opponentId) {
+    const { registrationId } = req.body
+    if (!registrationId) {
       return res.paramError('缺少对手ID')
     }
-    const opponentIdStr = String(opponentId)
+    const registrationIdStr = String(registrationId)
     // 非NPC对手需要验证ObjectId格式
     if (
-      !opponentIdStr.startsWith('npc_') &&
-      !/^[0-9a-fA-F]{24}$/.test(opponentIdStr)
+      !registrationIdStr.startsWith('npc_') &&
+      !/^[0-9a-fA-F]{24}$/.test(registrationIdStr)
     ) {
       return res.paramError('无效的对手ID')
     }
     const result = await arenaService.challengeOpponent(
       accountId,
-      opponentIdStr
+      registrationIdStr
     )
     res.success(result, '挑战完成')
   } catch (error) {

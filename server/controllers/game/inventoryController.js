@@ -11,6 +11,8 @@ export async function getMyInventory(req, res, next) {
       { $setOnInsert: { account: accountId } },
       { upsert: true, returnDocument: 'after' }
     ).lean()
+    // 移除不必要的 account 字段
+    delete inventory.account
     res.success(inventory, '获取背包成功')
   } catch (error) {
     next(error)

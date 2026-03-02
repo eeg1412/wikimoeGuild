@@ -279,3 +279,14 @@ export function generateRandomAdventurerName() {
 export function generateRandomAdventurerAvatarId() {
   return Math.floor(Math.random() * 10) + 1
 }
+
+// NPC预设公会图标数量（server/publicgame/guildicon/ 下的 1.webp ~ N.webp）
+const NPC_GUILD_ICON_COUNT = 10
+
+/**
+ * 随机获取NPC公会图标ID（1 ~ NPC_GUILD_ICON_COUNT）
+ * @returns {number}
+ */
+export function getRandomNpcGuildIconId() {
+  return Math.floor(Math.random() * NPC_GUILD_ICON_COUNT) + 1
+}

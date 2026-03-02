@@ -67,9 +67,15 @@
           </span>
         </div>
         <p class="text-xs text-gray-400 mt-0.5">
-          增益等级 {{ buff.buffLevel }} × 系数
-          {{ PASSIVE_BUFF_COEFF[buff.buffType] || 10 }} × 符文石等级
-          {{ runeStone.level }}
+          对应属性 × (增益等级 {{ buff.buffLevel }} × 品质系数
+          {{ RUNE_QUALITY_COEFFICIENT[runeStone.rarity] || 0.0012 }}) =
+          {{
+            (
+              buff.buffLevel *
+              (RUNE_QUALITY_COEFFICIENT[runeStone.rarity] || 0.0012) *
+              100
+            ).toFixed(2)
+          }}%
         </p>
       </div>
     </div>
@@ -87,8 +93,12 @@ const props = defineProps({
   }
 })
 
-// 被动增益系数（与 battleEngine 一致）
-const PASSIVE_BUFF_COEFF = { attack: 10, defense: 10, speed: 10, san: 15 }
+// 符文石品质基础系数
+const RUNE_QUALITY_COEFFICIENT = {
+  normal: 0.0012,
+  rare: 0.0022,
+  legendary: 0.0033
+}
 
 const allSkillsMap = computed(() => {
   const map = new Map()
@@ -118,7 +128,8 @@ function computeActiveEffect(skillInfo) {
   } else if (type === 'debuff') {
     return `-${effect} ${buffTypeName(skillInfo.debuffType)}`
   } else if (type === 'changeOrder') {
-    return `${Math.min(effect, 100)}% 概率改变排序`
+    // 等级小于等于符文石等级时100%，每高1级减3%，最低30%
+    return `改变排序（等级≤${level}时100%，每高1级-3%，最低30%）`
   } else if (type === 'sanRecover') {
     return `恢复 ${effect} SAN值`
   }
@@ -126,11 +137,14 @@ function computeActiveEffect(skillInfo) {
 }
 
 /**
- * 被动增益实际值 = buffLevel × 系数 × 符文石等级
+ * 被动增益实际值 = 对应属性 × (增益等级 × 品质系数)
+ * 此处显示百分比增益
  */
 function computePassiveEffect(buff) {
-  const coeff = PASSIVE_BUFF_COEFF[buff.buffType] || 10
-  return buff.buffLevel * coeff * (props.runeStone.level || 1)
+  const qualityCoeff =
+    RUNE_QUALITY_COEFFICIENT[props.runeStone.rarity] || 0.0012
+  const percent = buff.buffLevel * qualityCoeff * 100
+  return `${percent.toFixed(2)}%`
 }
 
 function buffTypeName(t) {

@@ -44,6 +44,12 @@
             <p class="text-sm text-gray-400">
               🪙 {{ (playerInfo?.gold ?? 0).toLocaleString() }} 金币
             </p>
+            <p
+              v-if="playerInfo?.createdAt"
+              class="text-xs text-gray-400 mt-0.5"
+            >
+              📅 创建于 {{ formatDate(playerInfo.createdAt) }}
+            </p>
           </div>
         </div>
       </div>
@@ -122,6 +128,7 @@
       title="修改公会标志"
       width="360px"
       align-center
+      destroy-on-close
     >
       <p class="text-sm text-gray-500 mb-3">
         消耗 {{ gameSettings.guildCustomLogoPrice ?? 5000 }} 金币
@@ -154,6 +161,7 @@
       title="修改公会名字"
       width="320px"
       align-center
+      destroy-on-close
     >
       <p class="text-sm text-gray-500 mb-3">
         消耗 {{ gameSettings.guildChangeNamePrice ?? 1000 }} 金币
@@ -185,6 +193,7 @@
       title="修改密码"
       width="360px"
       align-center
+      destroy-on-close
     >
       <el-form
         ref="passwordFormRef"
@@ -239,6 +248,7 @@
       title="绑定邮箱"
       width="360px"
       align-center
+      destroy-on-close
     >
       <p class="text-sm text-gray-500 mb-3">
         绑定正式邮箱后，游客标记将被移除，您将使用新邮箱登录。
@@ -306,6 +316,7 @@ import {
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import Cropper from '@/components/Cropper.vue'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo, logout } = useGameUser()
@@ -317,8 +328,14 @@ if (!isLoggedIn.value) {
 const loading = ref(false)
 const gameSettings = ref({})
 
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ── 标志修改 ──
-const logoDialogVisible = ref(false)
+const { visible: logoDialogVisible } = useDialogRoute('logoDialog')
 const logoPreview = ref('')
 const logoBase64 = ref('')
 const logoSaving = ref(false)
@@ -352,7 +369,7 @@ async function handleSaveLogo() {
 }
 
 // ── 名字修改 ──
-const nameDialogVisible = ref(false)
+const { visible: nameDialogVisible } = useDialogRoute('nameDialog')
 const newGuildName = ref('')
 const nameSaving = ref(false)
 
@@ -379,7 +396,7 @@ async function handleSaveName() {
 }
 
 // ── 修改密码 ──
-const passwordDialogVisible = ref(false)
+const { visible: passwordDialogVisible } = useDialogRoute('passwordDialog')
 const passwordFormRef = ref(null)
 const passwordSaving = ref(false)
 const passwordForm = reactive({
@@ -452,7 +469,7 @@ async function handleSavePassword() {
 }
 
 // ── 绑定邮箱（游客） ──
-const bindEmailDialogVisible = ref(false)
+const { visible: bindEmailDialogVisible } = useDialogRoute('bindEmailDialog')
 const bindEmailFormRef = ref(null)
 const bindEmailSaving = ref(false)
 const bindEmailSendingCode = ref(false)

@@ -62,3 +62,10 @@ export function unequipRuneStoneApi(id) {
 export function rerollAttributeApi(id, data) {
   return gameRequest.post(`/adventurers/${id}/reroll`, data)
 }
+
+/**
+ * 设置角色标记
+ */
+export function setRoleTagApi(id, data) {
+  return gameRequest.post(`/adventurers/${id}/role-tag`, data)
+}

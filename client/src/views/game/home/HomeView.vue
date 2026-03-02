@@ -199,6 +199,7 @@ import { useRouter } from 'vue-router'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useGameUser } from '@/composables/useGameUser.js'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import ActivityFeed from '@/components/ActivityFeed.vue'
 import GuestResultDialog from '@/components/GuestResultDialog.vue'
 import { getGuestConfigApi, guestRegisterApi } from '@/api/game/auth.js'
@@ -245,7 +246,7 @@ async function loadGuestConfig() {
   }
 }
 
-const guestResultVisible = ref(false)
+const { visible: guestResultVisible } = useDialogRoute('guestResult')
 const guestResult = reactive({ email: '', password: '' })
 let pendingGuestLogin = null
 

@@ -92,6 +92,7 @@ export async function rerollAttribute(accountId, adventurerId, rerollType) {
     await adventurer.save()
 
     return await GameAdventurer.findById(adventurer._id)
+      .select('-account')
       .populate('runeStone')
       .lean()
   })
@@ -102,6 +103,7 @@ export async function rerollAttribute(accountId, adventurerId, rerollType) {
  */
 export async function listMyAdventurers(accountId) {
   const adventurers = await GameAdventurer.find({ account: accountId })
+    .select('-account')
     .populate('runeStone')
     .sort({ createdAt: 1 })
     .lean()
@@ -116,6 +118,7 @@ export async function getAdventurerDetail(accountId, adventurerId) {
     _id: adventurerId,
     account: accountId
   })
+    .select('-account')
     .populate('runeStone')
     .lean()
   if (!adventurer) {
@@ -243,6 +246,7 @@ export async function customizeAvatar(accountId, adventurerId, avatarBase64) {
     await adventurer.save()
 
     return await GameAdventurer.findById(adventurer._id)
+      .select('-account')
       .populate('runeStone')
       .lean()
   })
@@ -299,6 +303,7 @@ export async function customizeName(accountId, adventurerId, newName) {
     await adventurer.save()
 
     return await GameAdventurer.findById(adventurer._id)
+      .select('-account')
       .populate('runeStone')
       .lean()
   })
@@ -383,6 +388,7 @@ export async function levelUpStat(accountId, adventurerId, statType) {
     await adventurer.save()
 
     return await GameAdventurer.findById(adventurer._id)
+      .select('-account')
       .populate('runeStone')
       .lean()
   })
@@ -449,6 +455,7 @@ export async function equipRuneStone(accountId, adventurerId, runeStoneId) {
     await runeStone.save()
 
     return await GameAdventurer.findById(adventurer._id)
+      .select('-account')
       .populate('runeStone')
       .lean()
   })
@@ -487,7 +494,32 @@ export async function unequipRuneStone(accountId, adventurerId) {
     await adventurer.save()
 
     return await GameAdventurer.findById(adventurer._id)
+      .select('-account')
       .populate('runeStone')
       .lean()
   })
+}
+
+/**
+ * 设置冒险家角色标记
+ */
+export async function setRoleTag(accountId, adventurerId, roleTag) {
+  const adventurer = await GameAdventurer.findOne({
+    _id: adventurerId,
+    account: accountId
+  })
+  if (!adventurer) {
+    const err = new Error('冒险家不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  adventurer.roleTag = roleTag
+  await adventurer.save()
+
+  return await GameAdventurer.findById(adventurer._id)
+    .select('-account')
+    .populate('runeStone')
+    .lean()
 }

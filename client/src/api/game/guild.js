@@ -13,3 +13,10 @@ export function changeGuildLogoApi(data) {
 export function changeGuildNameApi(data) {
   return gameRequest.post('/guild/name', data)
 }
+
+/**
+ * 获取指定玩家的公会信息
+ */
+export function getGuildInfoApi(playerInfoId) {
+  return gameRequest.get(`/guild/info/${playerInfoId}`)
+}

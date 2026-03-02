@@ -81,7 +81,9 @@ export async function generateRuneStone(accountId, rarity, level = 1) {
     passiveBuffs
   })
 
-  return runeStone
+  const result = runeStone.toJSON()
+  delete result.account
+  return result
 }
 
 /**
@@ -153,7 +155,7 @@ export async function listMyRuneStones(
   let list
   if (sort === 'rarity') {
     // 稀有度排序需要在内存中处理
-    const allList = await GameRuneStone.find(filter).lean()
+    const allList = await GameRuneStone.find(filter).select('-account').lean()
     allList.sort((a, b) => {
       const diff = (RARITY_ORDER[a.rarity] ?? 9) - (RARITY_ORDER[b.rarity] ?? 9)
       if (diff !== 0) return diff
@@ -165,6 +167,7 @@ export async function listMyRuneStones(
       .sort(sortOption)
       .skip((page - 1) * pageSize)
       .limit(pageSize)
+      .select('-account')
       .lean()
   }
 
@@ -279,7 +282,9 @@ export async function upgradeRuneStone(accountId, runeStoneId) {
     runeStone.level += 1
     await runeStone.save()
 
-    return runeStone
+    const result = runeStone.toJSON()
+    delete result.account
+    return result
   })
 }
 
@@ -290,7 +295,9 @@ export async function getRuneStoneDetail(accountId, runeStoneId) {
   const runeStone = await GameRuneStone.findOne({
     _id: runeStoneId,
     account: accountId
-  }).lean()
+  })
+    .select('-account')
+    .lean()
   if (!runeStone) {
     const err = new Error('符文石不存在')
     err.statusCode = 404
@@ -317,11 +324,15 @@ export async function previewSynthesis(
   }
 
   const [mainRS, materialRS] = await Promise.all([
-    GameRuneStone.findOne({ _id: mainRuneStoneId, account: accountId }).lean(),
+    GameRuneStone.findOne({ _id: mainRuneStoneId, account: accountId })
+      .select('-account')
+      .lean(),
     GameRuneStone.findOne({
       _id: materialRuneStoneId,
       account: accountId
-    }).lean()
+    })
+      .select('-account')
+      .lean()
   ])
 
   if (!mainRS || !materialRS) {
@@ -482,10 +493,14 @@ export async function confirmSynthesis(accountId, previewToken, accept) {
       mainRS.passiveBuffs = preview.passiveBuffs
       await mainRS.save()
 
-      return { accepted: true, runeStone: mainRS }
+      const result = mainRS.toJSON()
+      delete result.account
+      return { accepted: true, runeStone: result }
     } else {
       // 放弃合成：主符文石不变，素材符文石已销毁
-      return { accepted: false, runeStone: mainRS }
+      const result = mainRS.toJSON()
+      delete result.account
+      return { accepted: false, runeStone: result }
     }
   })
 }

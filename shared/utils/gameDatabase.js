@@ -3150,7 +3150,8 @@ export const runeStoneActiveSkillDataBase = () => {
       value: String(id++),
       label: `改变排序符文石·${pref.label}`,
       type: 'changeOrder',
-      description: '根据符文石等级有一定概率将敌方弹到随机位置',
+      description:
+        '根据符文石等级与目标等级差计算概率，将敌方移动到随机位置或与该位置冒险家互换（目标等级≤符文石等级时100%，每高1级-3%，最低30%）',
       baseValue: 100,
       triggerTiming: 'after',
       stackable: false,

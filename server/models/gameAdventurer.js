@@ -92,6 +92,12 @@ const gameAdventurerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'game_rune_stone',
       default: null
+    },
+    // 角色标记编号：'1'=输出 '2'=坦克 '3'=刺客 '4'=平衡，''=无
+    roleTag: {
+      type: String,
+      default: '',
+      maxlength: 2
     }
   },
   {

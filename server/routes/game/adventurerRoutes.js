@@ -7,7 +7,8 @@ import {
   adventurerCustomNameSchema,
   adventurerLevelUpSchema,
   adventurerEquipRuneStoneSchema,
-  adventurerRerollSchema
+  adventurerRerollSchema,
+  adventurerSetRoleTagSchema
 } from '../../../shared/validators/index.js'
 
 const router = Router()
@@ -54,6 +55,13 @@ router.post(
   authPlayer,
   validate(adventurerRerollSchema),
   adventurerController.rerollAttribute
+)
+// 设置角色标记
+router.post(
+  '/:id/role-tag',
+  authPlayer,
+  validate(adventurerSetRoleTagSchema),
+  adventurerController.setRoleTag
 )
 
 export default router

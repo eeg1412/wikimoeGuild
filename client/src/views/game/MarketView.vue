@@ -608,6 +608,7 @@
       "
       width="340px"
       align-center
+      destroy-on-close
     >
       <div v-if="fulfillDialogOrder" class="space-y-3">
         <div class="text-sm text-gray-600 dark:text-gray-300">
@@ -924,6 +925,7 @@ import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
@@ -1088,7 +1090,7 @@ const fulfillMatLoading = ref(null)
 const cancelMatLoading = ref(null)
 
 // 素材交易数量确认弹窗
-const fulfillDialogVisible = ref(false)
+const { visible: fulfillDialogVisible } = useDialogRoute('fulfillDialog')
 const fulfillDialogOrder = ref(null)
 const fulfillQty = ref(1)
 

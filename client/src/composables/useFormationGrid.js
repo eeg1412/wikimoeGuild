@@ -1,7 +1,47 @@
 /**
  * 通用阵容棋盘工具函数
- * 提供创建空棋盘、放置/互换冒险家、检测已放置等通用逻辑
+ * 提供创建空棋盘、放置/互换冒险家、检测已放置、被动增益色块等通用逻辑
  */
+import { passiveBuffTypeDataBase } from 'shared/utils/gameDatabase.js'
+
+export const ELEMENT_MAP = {
+  1: { name: '地', color: '#a0855b' },
+  2: { name: '水', color: '#4fa3e0' },
+  3: { name: '火', color: '#e05c4f' },
+  4: { name: '风', color: '#6abf69' },
+  5: { name: '光明', color: '#f5c842' },
+  6: { name: '黑暗', color: '#7c5cbf' }
+}
+
+export function getElementColor(el) {
+  return ELEMENT_MAP[el]?.color || '#999'
+}
+
+export function getElementName(el) {
+  return ELEMENT_MAP[el]?.name || el
+}
+
+// 预构建被动增益查找表
+const _buffTypeMap = new Map()
+for (const bt of passiveBuffTypeDataBase()) {
+  _buffTypeMap.set(bt.value, bt)
+}
+
+/**
+ * 获取冒险家的被动增益方向色块数据
+ * @param {Object} adv 冒险家对象（需要 passiveBuffType 字段）
+ * @returns {Array<{ position: string, color: string, label: string }>}
+ */
+export function getPassiveIndicators(adv) {
+  if (!adv?.passiveBuffType) return []
+  const buffDef = _buffTypeMap.get(adv.passiveBuffType)
+  if (!buffDef) return []
+  return buffDef.direction.map(dir => {
+    const elementId = buffDef.element[0]
+    const color = ELEMENT_MAP[elementId]?.color || '#999'
+    return { position: dir, color, label: buffDef.label }
+  })
+}
 
 /**
  * 创建 5×5 空棋盘

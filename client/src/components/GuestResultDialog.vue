@@ -6,6 +6,7 @@
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     align-center
+    destroy-on-close
   >
     <div class="space-y-3">
       <el-alert type="warning" :closable="false" show-icon>

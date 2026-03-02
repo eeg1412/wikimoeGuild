@@ -38,3 +38,16 @@ export async function changeGuildName(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 获取指定玩家的公会信息（使用 playerInfoId 而非 accountId）
+ */
+export async function getGuildInfo(req, res, next) {
+  try {
+    const { playerInfoId } = req.params
+    const result = await guildService.getGuildInfo(playerInfoId)
+    res.success(result)
+  } catch (error) {
+    next(error)
+  }
+}

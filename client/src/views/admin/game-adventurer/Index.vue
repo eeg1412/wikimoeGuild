@@ -126,6 +126,7 @@
       title="冒险家改名"
       width="420px"
       :close-on-click-modal="!actioningId"
+      destroy-on-close
     >
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
         为冒险家 <strong>{{ currentRow?.name }}</strong> 设置新名字。

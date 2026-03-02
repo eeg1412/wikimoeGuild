@@ -191,7 +191,7 @@ export async function listMines({
     .sort({ level: 1, createdAt: -1 })
     .skip((page - 1) * pageSize)
     .limit(pageSize)
-    .select('owner ownerGuildName level totalRewards exploredRewards createdAt')
+    .select('ownerGuildName level totalRewards exploredRewards createdAt')
     .lean()
 
   return { list, total }
@@ -234,7 +234,6 @@ export async function getMineDetail(mineId) {
 
   return {
     _id: mine._id,
-    owner: mine.owner,
     ownerGuildName: mine.ownerGuildName,
     level: mine.level,
     totalRewards: mine.totalRewards,
@@ -799,6 +798,7 @@ export async function getOwnerRevenue(
     .sort({ createdAt: -1 })
     .skip((page - 1) * pageSize)
     .limit(pageSize)
+    .select('triggeredByGuildName crystalType crystalAmount mine createdAt')
     .lean()
 
   // 汇总统计（近7天，aggregate需要ObjectId格式）

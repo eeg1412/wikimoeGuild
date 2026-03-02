@@ -54,6 +54,8 @@ export async function getActivities({ page = 1, pageSize = 20 }) {
       const info = item.account ? infoMap.get(item.account.toString()) : null
       item.hasCustomGuildIcon = info?.hasCustomGuildIcon || false
       item.customGuildIconUpdatedAt = info?.customGuildIconUpdatedAt || null
+      // 按公约仅返回 account ID（字符串），用于公会图标展示
+      item.account = item.account ? item.account.toString() : undefined
     }
   }
 

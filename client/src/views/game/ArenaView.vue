@@ -116,13 +116,28 @@
                   <template v-if="cell">
                     <GameAdventurerAvatar
                       :adventurer="cell"
-                      class="w-full h-full rounded object-cover"
+                      class="w-full h-full rounded object-cover pointer-events-none select-none"
                     />
                     <div
-                      class="absolute bottom-0 left-0 right-0 text-center bg-black/60 text-[10px] text-white leading-tight py-px truncate"
+                      v-for="indicator in getPassiveIndicators(cell)"
+                      :key="indicator.position"
+                      class="passive-indicator"
+                      :class="'passive-indicator--' + indicator.position"
+                      :style="{ backgroundColor: indicator.color }"
+                      :title="indicator.label"
+                    />
+                    <div
+                      class="absolute bottom-0 left-0 right-0 text-center bg-black/50 text-[10px] text-white leading-tight py-px truncate"
                     >
                       {{ cell.name }}
                     </div>
+                    <!-- 标记图标 -->
+                    <span
+                      v-if="cell.roleTag && ROLE_TAG_MAP[cell.roleTag]"
+                      class="absolute top-0 right-0 z-10 bg-black/65 rounded-bl text-xs leading-none p-0.5"
+                    >
+                      {{ ROLE_TAG_MAP[cell.roleTag].emoji }}
+                    </span>
                   </template>
                 </div>
               </div>
@@ -228,9 +243,24 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3 min-w-0">
                     <div
-                      class="w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-gray-200 dark:bg-gray-700"
+                      class="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-gray-200 dark:bg-gray-700 cursor-pointer"
+                      @click.stop="handleGuildIconClick(opponent)"
                     >
-                      🏰
+                      <img
+                        v-if="opponent.isNpc"
+                        :src="`/publicgame/guildicon/${opponent.npcGuildIconId || 1}.webp`"
+                        class="w-full h-full object-cover"
+                        alt="NPC公会"
+                      />
+                      <GameGuildIcon
+                        v-else
+                        :account-id="opponent.accountId"
+                        :has-custom-guild-icon="opponent.hasCustomGuildIcon"
+                        :custom-guild-icon-updated-at="
+                          opponent.customGuildIconUpdatedAt
+                        "
+                        class="w-full h-full object-cover"
+                      />
                     </div>
                     <div class="min-w-0">
                       <p
@@ -287,45 +317,94 @@
             <p class="text-sm text-red-400 text-center mb-2">
               ⚠️ 已锁定的冒险家不能移除，只能调整位置或添加新冒险家
             </p>
+            <div class="flex justify-center mb-2">
+              <el-checkbox v-model="arenaDragMode" size="small">
+                ☰ 拖拽排序模式
+              </el-checkbox>
+            </div>
             <div class="arena-grid-board mx-auto mb-4">
-              <div v-for="row in 5" :key="row" class="arena-grid-row">
-                <div
-                  v-for="col in 5"
-                  :key="col"
-                  class="arena-grid-cell"
-                  :class="{
-                    'arena-grid-cell--occupied': getArenaCell(row - 1, col - 1)
-                  }"
-                  @click="handleArenaCellClick(row - 1, col - 1)"
-                >
-                  <span class="arena-grid-cell-seq">{{
-                    (row - 1) * 5 + col
-                  }}</span>
-                  <template v-if="getArenaCell(row - 1, col - 1)">
-                    <GameAdventurerAvatar
-                      :adventurer="getArenaCell(row - 1, col - 1)"
-                      class="w-full h-full rounded object-cover"
-                    />
-                    <div
-                      class="absolute bottom-0 left-0 right-0 text-center bg-black/60 text-[10px] text-white leading-tight py-px truncate"
-                    >
-                      {{ getArenaCell(row - 1, col - 1).name }}
-                    </div>
-                    <div
-                      v-if="
-                        isAdventurerLocked(getArenaCell(row - 1, col - 1)._id)
-                      "
-                      class="absolute top-0 right-0.5 text-[10px]"
-                      title="已锁定"
-                    >
-                      🔒
-                    </div>
-                  </template>
-                  <template v-else>
-                    <span class="text-gray-400 text-lg">➕</span>
-                  </template>
-                </div>
-              </div>
+              <draggable
+                :list="arenaFlatGrid"
+                item-key="_key"
+                :disabled="!arenaDragMode"
+                :animation="200"
+                :swap-threshold="0.65"
+                ghost-class="arena-grid-cell--ghost"
+                class="arena-grid-board-inner"
+                :move="checkArenaDragMove"
+                @start="onArenaDragStart"
+                @end="onArenaDragEnd"
+              >
+                <template #item="{ element, index }">
+                  <div
+                    class="arena-grid-cell"
+                    :class="{
+                      'arena-grid-cell--occupied': element.adventurer,
+                      'arena-grid-cell--draggable':
+                        arenaDragMode && element.adventurer
+                    }"
+                    @click="
+                      handleArenaCellClick(Math.floor(index / 5), index % 5)
+                    "
+                    @contextmenu.prevent
+                  >
+                    <span class="arena-grid-cell-seq">{{ index + 1 }}</span>
+                    <template v-if="element.adventurer">
+                      <GameAdventurerAvatar
+                        :adventurer="element.adventurer"
+                        class="w-full h-full rounded object-cover pointer-events-none select-none"
+                      />
+                      <div
+                        v-for="indicator in getPassiveIndicators(
+                          element.adventurer
+                        )"
+                        :key="indicator.position"
+                        class="passive-indicator"
+                        :class="'passive-indicator--' + indicator.position"
+                        :style="{ backgroundColor: indicator.color }"
+                        :title="indicator.label"
+                      />
+                      <div
+                        class="absolute bottom-0 left-0 right-0 text-center bg-black/50 text-[10px] text-white leading-tight py-px truncate"
+                      >
+                        {{ element.adventurer.name }}
+                      </div>
+                      <!-- 标记图标 -->
+                      <span
+                        v-if="
+                          element.adventurer.roleTag &&
+                          ROLE_TAG_MAP[element.adventurer.roleTag]
+                        "
+                        class="absolute top-0 right-0 z-10 bg-black/65 rounded-bl text-xs leading-none p-0.5"
+                      >
+                        {{ ROLE_TAG_MAP[element.adventurer.roleTag].emoji }}
+                      </span>
+                      <div
+                        v-if="isAdventurerLocked(element.adventurer._id)"
+                        class="absolute top-0 right-0.5 text-[10px]"
+                        title="已锁定"
+                      >
+                        🔒
+                      </div>
+                      <span
+                        v-if="
+                          !arenaDragMode &&
+                          !isAdventurerLocked(element.adventurer._id)
+                        "
+                        class="clear-btn"
+                        title="移除"
+                        @click.stop="
+                          handleClearArenaCell(Math.floor(index / 5), index % 5)
+                        "
+                        >✕</span
+                      >
+                    </template>
+                    <template v-else>
+                      <span class="text-gray-400 text-lg">➕</span>
+                    </template>
+                  </div>
+                </template>
+              </draggable>
             </div>
 
             <p class="text-center text-sm text-gray-400 mb-4">
@@ -371,6 +450,16 @@
                     >
                       {{ idx + 1 }}
                     </div>
+                    <GameGuildIcon
+                      v-if="player.accountId"
+                      :account-id="player.accountId"
+                      :has-custom-guild-icon="player.hasCustomGuildIcon"
+                      :custom-guild-icon-updated-at="
+                        player.customGuildIconUpdatedAt
+                      "
+                      class="w-8 h-8 rounded-lg object-cover cursor-pointer"
+                      @click="handleLeaderboardGuildClick(player)"
+                    />
                     <div>
                       <p
                         class="text-sm font-semibold text-gray-700 dark:text-gray-200"
@@ -486,7 +575,7 @@
       title="选择冒险家"
       width="340px"
       align-center
-      :destroy-on-close="false"
+      :destroy-on-close="true"
     >
       <div v-if="arenaAdventurersLoading" class="text-center py-6">
         <span class="animate-spin inline-block text-2xl">⏳</span>
@@ -539,11 +628,21 @@
             class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             @click="placeArenaAdventurer(adv)"
           >
-            <GameAdventurerAvatar
-              :adventurer="adv"
-              class="w-8 h-8 rounded-full border"
-              :style="{ borderColor: getElementColor(adv.elements) }"
-            />
+            <div class="relative shrink-0">
+              <GameAdventurerAvatar
+                :adventurer="adv"
+                class="w-8 h-8 rounded-full border"
+                :style="{ borderColor: getElementColor(adv.elements) }"
+              />
+              <div
+                v-for="indicator in getPassiveIndicators(adv)"
+                :key="indicator.position"
+                class="passive-dot"
+                :class="'passive-dot--' + indicator.position"
+                :style="{ backgroundColor: indicator.color }"
+                :title="indicator.label"
+              />
+            </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm text-gray-700 dark:text-gray-200 truncate">
                 {{ adv.name }}
@@ -578,6 +677,7 @@
       title="⚔️ 战斗结果"
       width="340px"
       align-center
+      destroy-on-close
     >
       <div v-if="battleResult" class="text-center space-y-3">
         <div class="text-4xl mb-2">
@@ -651,6 +751,7 @@
       width="95%"
       style="max-width: 500px"
       align-center
+      destroy-on-close
     >
       <div v-if="logDetailLoading" class="flex justify-center py-8">
         <span class="animate-spin inline-block text-2xl">⏳</span>
@@ -809,7 +910,7 @@
               >
                 <GameAdventurerAvatar
                   :adventurer="unit"
-                  class="w-8 h-8 rounded-full flex-shrink-0"
+                  class="w-8 h-8 rounded-full shrink-0"
                 />
                 <div class="min-w-0 flex-1">
                   <p
@@ -840,7 +941,7 @@
               >
                 <GameAdventurerAvatar
                   :adventurer="unit"
-                  class="w-8 h-8 rounded-full flex-shrink-0"
+                  class="w-8 h-8 rounded-full shrink-0"
                 />
                 <div class="min-w-0 flex-1">
                   <p
@@ -869,13 +970,20 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 公会信息弹窗 -->
+    <GuildInfoDialog
+      v-model="guildInfoDialogVisible"
+      :player-info-id="guildInfoPlayerInfoId"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import draggable from 'vuedraggable'
 import {
   getArenaInfoApi,
   registerArenaApi,
@@ -897,8 +1005,14 @@ import BattleAnimation from '@/components/BattleAnimation.vue'
 import {
   createEmptyGrid,
   isAdventurerPlaced,
-  placeAdventurerOnGrid
+  placeAdventurerOnGrid,
+  getPassiveIndicators,
+  getElementColor,
+  getElementName,
+  ELEMENT_MAP
 } from '@/composables/useFormationGrid.js'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import { ROLE_TAG_MAP } from 'shared/constants/index.js'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
@@ -940,12 +1054,28 @@ const logsPageSize = 20
 const logsTotal = ref(0)
 
 // 战斗结果
-const battleResultVisible = ref(false)
+const { visible: battleResultVisible } = useDialogRoute('battleResult')
 const battleResult = ref(null)
 const showBattleAnimation = ref(false)
 
 // 战斗记录详情
-const logDetailVisible = ref(false)
+const { visible: logDetailVisible } = useDialogRoute('logDetail')
+
+// 公会信息弹窗
+const { visible: guildInfoDialogVisible } = useDialogRoute('guildInfo')
+const guildInfoPlayerInfoId = ref('')
+
+function handleGuildIconClick(opponent) {
+  if (opponent.isNpc) return // NPC 无公会详情
+  guildInfoPlayerInfoId.value = opponent.playerInfoId
+  guildInfoDialogVisible.value = true
+}
+
+function handleLeaderboardGuildClick(player) {
+  if (!player.playerInfoId) return
+  guildInfoPlayerInfoId.value = player.playerInfoId
+  guildInfoDialogVisible.value = true
+}
 const logDetailLoading = ref(false)
 const logDetail = ref(null)
 
@@ -954,11 +1084,63 @@ const arenaFormationLoading = ref(false)
 const arenaFormationSaving = ref(false)
 const arenaGrid = ref(createEmptyGrid())
 const arenaLockedAdventurers = ref([])
+
+// ── 扁平化竞技场棋盘（供 vuedraggable 使用） ──
+const arenaFlatGrid = ref([])
+
+function buildArenaFlatGrid() {
+  let emptyId = 0
+  const cells = []
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const adv = arenaGrid.value[r][c]
+      cells.push({
+        _key: adv ? `adv-${adv._id}` : `empty-${emptyId++}`,
+        adventurer: adv
+      })
+    }
+  }
+  arenaFlatGrid.value = cells
+}
+
+function syncArenaFlatToGrid() {
+  for (let i = 0; i < 25; i++) {
+    arenaGrid.value[Math.floor(i / 5)][i % 5] =
+      arenaFlatGrid.value[i].adventurer
+  }
+}
+
+watch(arenaGrid, buildArenaFlatGrid, { deep: true })
+buildArenaFlatGrid()
 const arenaAllAdventurers = ref([])
 const arenaAdventurersLoading = ref(false)
-const arenaPickDialogVisible = ref(false)
+const { visible: arenaPickDialogVisible } = useDialogRoute('arenaPick')
 const arenaPickRow = ref(0)
 const arenaPickCol = ref(0)
+
+// 拖拽排序（vuedraggable）
+const arenaDragMode = ref(false)
+let arenaPreDragSnapshot = null
+
+function checkArenaDragMove(evt) {
+  return !!evt.draggedContext.element?.adventurer
+}
+
+function onArenaDragStart() {
+  arenaPreDragSnapshot = arenaFlatGrid.value.map(item => ({ ...item }))
+}
+
+function onArenaDragEnd(evt) {
+  const { oldIndex, newIndex } = evt
+  if (oldIndex !== newIndex && arenaPreDragSnapshot) {
+    arenaFlatGrid.value.splice(0, 25, ...arenaPreDragSnapshot)
+    const temp = arenaFlatGrid.value[oldIndex]
+    arenaFlatGrid.value[oldIndex] = arenaFlatGrid.value[newIndex]
+    arenaFlatGrid.value[newIndex] = temp
+    syncArenaFlatToGrid()
+  }
+  arenaPreDragSnapshot = null
+}
 
 const arenaPlacedCount = computed(() => {
   let count = 0
@@ -1025,6 +1207,16 @@ function removeFromArenaCell() {
   }
   arenaGrid.value[arenaPickRow.value][arenaPickCol.value] = null
   arenaPickDialogVisible.value = false
+}
+
+function handleClearArenaCell(row, col) {
+  const cell = arenaGrid.value[row][col]
+  if (!cell) return
+  if (isAdventurerLocked(cell._id)) {
+    ElMessage.warning('已锁定的冒险家不能移除')
+    return
+  }
+  arenaGrid.value[row][col] = null
 }
 
 async function fetchArenaFormation() {
@@ -1211,7 +1403,7 @@ async function handleChallenge(opponent) {
   challengeLoading.value = id
   try {
     const res = await challengeOpponentApi({
-      opponentId: opponent.opponentId
+      registrationId: opponent.registrationId
     })
     const result = res.data.data
     // 添加便捷字段供模板使用
@@ -1267,15 +1459,15 @@ async function fetchBattleLogs() {
 }
 
 async function handleViewLogDetail(log) {
-  logDetailVisible.value = true
+  if (logDetailLoading.value) return
   logDetailLoading.value = true
   logDetail.value = null
   try {
     const res = await getBattleLogDetailApi(log._id)
     logDetail.value = res.data.data || null
+    logDetailVisible.value = true
   } catch {
     // 错误已由拦截器处理
-    logDetailVisible.value = false
   } finally {
     logDetailLoading.value = false
   }
@@ -1289,22 +1481,8 @@ const ELEMENT_EMOJI_MAP = {
   5: '☀️',
   6: '🌑'
 }
-const ELEMENT_MAP = {
-  1: { name: '地', color: '#a0855b' },
-  2: { name: '水', color: '#4fa3e0' },
-  3: { name: '火', color: '#e05c4f' },
-  4: { name: '风', color: '#6abf69' },
-  5: { name: '光明', color: '#f5c842' },
-  6: { name: '黑暗', color: '#7c5cbf' }
-}
 function elementEmoji(el) {
   return ELEMENT_EMOJI_MAP[el] || '❓'
-}
-function getElementColor(el) {
-  return ELEMENT_MAP[el]?.color || '#999'
-}
-function getElementName(el) {
-  return ELEMENT_MAP[el]?.name || el
 }
 
 function getUnitAt(units, row, col) {
@@ -1394,10 +1572,13 @@ onMounted(async () => {
 }
 
 .arena-grid-board {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   max-width: 320px;
+}
+
+.arena-grid-board-inner {
+  display: grid;
+  grid-template-columns: repeat(5, 56px);
+  gap: 4px;
 }
 
 .arena-grid-row {
@@ -1432,6 +1613,23 @@ onMounted(async () => {
   border-color: rgba(200, 160, 80, 0.6);
 }
 
+.arena-grid-cell--draggable {
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.arena-grid-cell--draggable:active {
+  cursor: grabbing;
+}
+
+.arena-grid-cell--ghost {
+  opacity: 0.4;
+  background: rgba(255, 200, 50, 0.25) !important;
+  border-color: rgba(255, 200, 50, 0.8) !important;
+}
+
 .arena-grid-cell-seq {
   position: absolute;
   top: 1px;
@@ -1447,7 +1645,97 @@ onMounted(async () => {
   background: rgba(30, 25, 20, 0.5);
 }
 
+/* 被动增益元素色块 */
+.passive-indicator {
+  position: absolute;
+  z-index: 2;
+  border-radius: 2px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.passive-indicator--left {
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 4px;
+}
+.passive-indicator--right {
+  right: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 4px;
+}
+.passive-indicator--top {
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 4px;
+}
+.passive-indicator--bottom {
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 4px;
+  z-index: 3;
+}
+
+/* 清除按钮 */
+.clear-btn {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  z-index: 10;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(220, 60, 60, 0.75);
+  border-radius: 3px;
+  padding: 1px 3px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.clear-btn:hover {
+  opacity: 1;
+  background: rgba(240, 40, 40, 0.9);
+}
+
+/* 选择列表中的被动增益色点 */
+.passive-dot {
+  position: absolute;
+  border-radius: 2px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.passive-dot--left {
+  left: -2px;
+  top: 25%;
+  bottom: 25%;
+  width: 3px;
+}
+.passive-dot--right {
+  right: -2px;
+  top: 25%;
+  bottom: 25%;
+  width: 3px;
+}
+.passive-dot--top {
+  top: -2px;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+}
+.passive-dot--bottom {
+  bottom: -2px;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+}
+
 @media (max-width: 400px) {
+  .arena-grid-board-inner {
+    grid-template-columns: repeat(5, 48px);
+  }
   .arena-grid-cell {
     width: 48px;
     height: 48px;

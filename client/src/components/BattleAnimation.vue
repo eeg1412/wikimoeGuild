@@ -70,6 +70,15 @@
                       }"
                     />
                   </div>
+                  <!-- 浮动效果指示器 -->
+                  <div
+                    v-for="effect in getEffects(unit.id)"
+                    :key="effect.id"
+                    class="effect-float"
+                    :class="'effect-' + effect.type"
+                  >
+                    {{ effect.text }}
+                  </div>
                 </template>
               </div>
             </div>
@@ -130,6 +139,15 @@
                       }"
                     />
                   </div>
+                  <!-- 浮动效果指示器 -->
+                  <div
+                    v-for="effect in getEffects(unit.id)"
+                    :key="effect.id"
+                    class="effect-float"
+                    :class="'effect-' + effect.type"
+                  >
+                    {{ effect.text }}
+                  </div>
                 </template>
               </div>
             </div>
@@ -150,7 +168,23 @@
         </div>
 
         <!-- 按钮区域 -->
-        <div class="text-center mt-1 shrink-0">
+        <div
+          class="flex items-center justify-center gap-2 mt-1 shrink-0 flex-wrap"
+        >
+          <!-- 倍速控制 -->
+          <div v-if="!animationFinished" class="flex items-center gap-1">
+            <button
+              v-for="s in speedOptions"
+              :key="s"
+              class="speed-btn"
+              :class="{ 'speed-btn--active': playbackSpeed === s }"
+              :style="{ fontSize: Math.max(10, subFontSize - 2) + 'px' }"
+              @click="handleSetSpeed(s)"
+            >
+              {{ s }}×
+            </button>
+          </div>
+
           <el-button
             v-if="animationFinished"
             type="primary"
@@ -183,7 +217,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  triggerRef
+} from 'vue'
 
 const ELEMENT_COLORS = {
   1: '#a0855b',
@@ -305,6 +346,26 @@ const logFontSize = computed(() =>
   Math.max(10, Math.round(cellSize.value * 0.2))
 )
 
+// 浮动效果指示器系统
+const effectOverlays = ref([])
+let effectCounter = 0
+
+function addEffect(unitId, text, type) {
+  const id = ++effectCounter
+  effectOverlays.value.push({ unitId, text, type, id })
+  setTimeout(
+    () => {
+      effectOverlays.value = effectOverlays.value.filter(e => e.id !== id)
+    },
+    Math.max(800, Math.round(1200 / playbackSpeed.value))
+  )
+}
+
+function getEffects(unitId) {
+  if (!unitId) return []
+  return effectOverlays.value.filter(e => e.unitId === unitId)
+}
+
 // 单位状态跟踪
 const unitState = ref(new Map())
 
@@ -320,14 +381,18 @@ function initUnitState() {
 }
 
 // 5x5 网格显示（攻击方翻转，使前排面向防御方）
+// 使用动态 row/col 因为 changeOrder 会改变位置
 const attackerDisplayUnits = computed(() => {
   const grid = Array(25).fill(null)
   for (const u of props.attackerUnits) {
+    const state = unitState.value.get(u.id)
+    const row = state ? state.row : u.row
+    const col = state ? state.col : u.col
     // 翻转行：前排 (row 0) 放到底部，后排 (row 4) 放到顶部
-    const reversedRow = 4 - u.row
-    const idx = reversedRow * 5 + u.col
+    const reversedRow = 4 - row
+    const idx = reversedRow * 5 + col
     if (idx >= 0 && idx < 25) {
-      grid[idx] = unitState.value.get(u.id) || u
+      grid[idx] = state || u
     }
   }
   return grid
@@ -336,9 +401,12 @@ const attackerDisplayUnits = computed(() => {
 const defenderDisplayUnits = computed(() => {
   const grid = Array(25).fill(null)
   for (const u of props.defenderUnits) {
-    const idx = u.row * 5 + u.col
+    const state = unitState.value.get(u.id)
+    const row = state ? state.row : u.row
+    const col = state ? state.col : u.col
+    const idx = row * 5 + col
     if (idx >= 0 && idx < 25) {
-      grid[idx] = unitState.value.get(u.id) || u
+      grid[idx] = state || u
     }
   }
   return grid
@@ -350,9 +418,31 @@ const currentRound = ref(0)
 const currentLogIndex = ref(0)
 const actingUnitIds = ref(new Set())
 const hitUnitIds = ref(new Set())
+const buffedUnitIds = ref(new Set())
+const debuffedUnitIds = ref(new Set())
+const healedUnitIds = ref(new Set())
+const movedUnitIds = ref(new Set())
 let animationTimer = null
 let hitClearTimer = null
 const logContainer = ref(null)
+
+// 倍速控制：基础间隔450ms（降低3倍，原来150ms）
+const BASE_INTERVAL = 450
+const speedOptions = [1, 2, 3]
+const playbackSpeed = ref(1)
+
+function getInterval() {
+  return Math.round(BASE_INTERVAL / playbackSpeed.value)
+}
+
+function handleSetSpeed(speed) {
+  playbackSpeed.value = speed
+  // 重启动画定时器以应用新速度
+  if (animationTimer) {
+    stopAnimation()
+    startAnimation()
+  }
+}
 
 function isActing(id) {
   return actingUnitIds.value.has(id)
@@ -367,7 +457,11 @@ function cellClass(unit) {
   const cls = unit.alive ? 'cell-alive' : 'cell-dead'
   const acting = isActing(unit.id) ? ' cell-acting' : ''
   const hit = isHit(unit.id) ? ' cell-hit' : ''
-  return cls + acting + hit
+  const buffed = buffedUnitIds.value.has(unit.id) ? ' cell-buffed' : ''
+  const debuffed = debuffedUnitIds.value.has(unit.id) ? ' cell-debuffed' : ''
+  const healed = healedUnitIds.value.has(unit.id) ? ' cell-healed' : ''
+  const moved = movedUnitIds.value.has(unit.id) ? ' cell-moved' : ''
+  return cls + acting + hit + buffed + debuffed + healed + moved
 }
 
 function hpPercent(unit) {
@@ -391,6 +485,9 @@ function logEntryClass(entry) {
   if (entry.type === 'runeSkill') {
     if (entry.skillType === 'sanRecover') return 'log-heal'
     if (entry.skillType === 'buff') return 'log-buff'
+    if (entry.skillType === 'debuff') return 'log-debuff'
+    if (entry.skillType === 'changeOrder')
+      return entry.success ? 'log-move' : 'log-skill'
     return 'log-skill'
   }
   return ''
@@ -423,9 +520,14 @@ function formatLogEntry(entry) {
       case 'debuff':
         return `⬇️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.debuffType}-${entry.value}`
       case 'changeOrder':
-        return entry.success
-          ? `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 打乱了 ${targetLabel}${entry.targetName} 的位置！`
-          : `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 但未命中 ${targetLabel}${entry.targetName}`
+        if (entry.success) {
+          const posInfo = `(${entry.oldRow + 1},${entry.oldCol + 1})→(${entry.newRow + 1},${entry.newCol + 1})`
+          if (entry.swapped) {
+            return `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] ${targetLabel}${entry.targetName} 与 ${targetLabel}${entry.swapTargetName} 互换位置！${posInfo}`
+          }
+          return `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 将 ${targetLabel}${entry.targetName} 移动到了新位置！${posInfo}`
+        }
+        return `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 但未命中 ${targetLabel}${entry.targetName}`
       case 'sanRecover':
         return `💚 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} 恢复 ${entry.healAmount} SAN`
       default:
@@ -435,14 +537,27 @@ function formatLogEntry(entry) {
   return JSON.stringify(entry)
 }
 
+const BUFF_TYPE_LABEL = {
+  attack: '攻击',
+  defense: '防御',
+  speed: '速度',
+  san: 'SAN'
+}
+
 function processLogEntry(entry) {
   const map = unitState.value
-  // 清除上一轮的受击状态
+  // 清除上一轮的特效状态
   if (hitClearTimer) {
     clearTimeout(hitClearTimer)
     hitClearTimer = null
   }
   hitUnitIds.value = new Set()
+  buffedUnitIds.value = new Set()
+  debuffedUnitIds.value = new Set()
+  healedUnitIds.value = new Set()
+  movedUnitIds.value = new Set()
+
+  let needRefreshState = false
 
   if (entry.type === 'roundStart') {
     currentRound.value = entry.round
@@ -455,6 +570,10 @@ function processLogEntry(entry) {
       defender.currentSan = entry.defenderRemainSan
       if (defender.currentSan <= 0) defender.alive = false
       hitUnitIds.value = new Set([entry.defender])
+      // 浮动伤害数字
+      const koText = defender.currentSan <= 0 ? ' 💀' : ''
+      addEffect(entry.defender, `-${entry.damage}${koText}`, 'damage')
+      needRefreshState = true
     }
   }
   if (entry.type === 'runeSkill') {
@@ -465,17 +584,69 @@ function processLogEntry(entry) {
         target.currentSan = entry.targetRemainSan
         if (target.currentSan <= 0) target.alive = false
         hitUnitIds.value = new Set([entry.target])
+        const koText = target.currentSan <= 0 ? ' 💀' : ''
+        addEffect(entry.target, `✨-${entry.damage}${koText}`, 'damage')
+        needRefreshState = true
       }
+    }
+    if (entry.skillType === 'buff') {
+      buffedUnitIds.value = new Set([entry.target])
+      const label = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
+      addEffect(entry.target, `⬆️${label}+${entry.value}`, 'buff')
+    }
+    if (entry.skillType === 'debuff') {
+      debuffedUnitIds.value = new Set([entry.target])
+      const label = BUFF_TYPE_LABEL[entry.debuffType] || entry.debuffType
+      addEffect(entry.target, `⬇️${label}-${entry.value}`, 'debuff')
     }
     if (entry.skillType === 'sanRecover') {
       const target = map.get(entry.target)
-      if (target) target.currentSan = entry.targetRemainSan
+      if (target) {
+        target.currentSan = entry.targetRemainSan
+        needRefreshState = true
+      }
+      healedUnitIds.value = new Set([entry.target])
+      addEffect(entry.target, `+${entry.healAmount} SAN`, 'heal')
+    }
+    if (entry.skillType === 'changeOrder' && entry.success) {
+      // 更新单位的棋盘位置
+      const moved = new Set()
+      const target = map.get(entry.target)
+      if (target) {
+        target.row = entry.newRow
+        target.col = entry.newCol
+        moved.add(entry.target)
+        addEffect(entry.target, '🔀 移动', 'move')
+      }
+      if (entry.swapped && entry.swapTarget) {
+        const swapTarget = map.get(entry.swapTarget)
+        if (swapTarget) {
+          swapTarget.row = entry.oldRow
+          swapTarget.col = entry.oldCol
+          moved.add(entry.swapTarget)
+          addEffect(entry.swapTarget, '🔀 互换', 'move')
+        }
+      }
+      movedUnitIds.value = moved
+      needRefreshState = true
     }
   }
-  // 自动清除受击状态
+
+  // 强制触发响应式更新（解决 Map 内部对象变更不触发 computed 重算的问题）
+  if (needRefreshState) {
+    unitState.value = new Map(unitState.value)
+  }
+
+  // 自动清除特效状态（延长显示时间使效果更明显）
+  const clearDelay = Math.max(300, Math.round(600 / playbackSpeed.value))
   hitClearTimer = setTimeout(() => {
+    actingUnitIds.value = new Set()
     hitUnitIds.value = new Set()
-  }, 300)
+    buffedUnitIds.value = new Set()
+    debuffedUnitIds.value = new Set()
+    healedUnitIds.value = new Set()
+    movedUnitIds.value = new Set()
+  }, clearDelay)
 }
 
 const animationFinished = ref(false)
@@ -498,7 +669,7 @@ function playNextLog() {
 }
 
 function startAnimation() {
-  animationTimer = setInterval(playNextLog, 150)
+  animationTimer = setInterval(playNextLog, getInterval())
 }
 
 function stopAnimation() {
@@ -784,7 +955,173 @@ onUnmounted(() => {
 .log-buff {
   color: #34d399;
 }
+.log-debuff {
+  color: #f87171;
+  font-style: italic;
+}
 .log-heal {
   color: #6ee7b7;
+}
+.log-move {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+/* 倍速按钮 */
+.speed-btn {
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(200, 160, 80, 0.4);
+  background: rgba(50, 50, 80, 0.6);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.4;
+}
+.speed-btn:hover {
+  border-color: rgba(200, 160, 80, 0.8);
+}
+.speed-btn--active {
+  background: rgba(200, 160, 80, 0.5);
+  border-color: #f5c842;
+  color: #f5c842;
+  font-weight: bold;
+}
+
+/* 增益动画 */
+.cell-buffed {
+  border-color: rgba(52, 211, 153, 0.8) !important;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
+  animation: buffGlow 0.5s ease-in-out;
+}
+
+/* 减益动画 */
+.cell-debuffed {
+  border-color: rgba(248, 113, 113, 0.8) !important;
+  box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
+  animation: debuffGlow 0.5s ease-in-out;
+}
+
+/* 恢复动画 */
+.cell-healed {
+  border-color: rgba(110, 231, 183, 0.8) !important;
+  box-shadow: 0 0 12px rgba(110, 231, 183, 0.6);
+  animation: healPulse 0.5s ease-in-out;
+}
+
+/* 位移动画 */
+.cell-moved {
+  border-color: rgba(96, 165, 250, 0.8) !important;
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.6);
+  animation: moveSlide 0.5s ease-in-out;
+}
+
+@keyframes buffGlow {
+  0% {
+    box-shadow: 0 0 0 rgba(52, 211, 153, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(52, 211, 153, 0.8);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
+  }
+}
+
+@keyframes debuffGlow {
+  0% {
+    box-shadow: 0 0 0 rgba(248, 113, 113, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(248, 113, 113, 0.8);
+    transform: scale(0.95);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
+  }
+}
+
+@keyframes healPulse {
+  0% {
+    box-shadow: 0 0 0 rgba(110, 231, 183, 0);
+  }
+  30% {
+    box-shadow: 0 0 20px rgba(110, 231, 183, 0.9);
+    transform: scale(1.08);
+  }
+  100% {
+    box-shadow: 0 0 12px rgba(110, 231, 183, 0.6);
+  }
+}
+
+@keyframes moveSlide {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-10deg);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.2) rotate(5deg);
+  }
+  60% {
+    transform: scale(0.9) rotate(-2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* 浮动效果指示器 */
+.effect-float {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 20;
+  font-weight: bold;
+  font-size: 11px;
+  white-space: nowrap;
+  animation: effectFloatUp 1.2s ease-out forwards;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.9),
+    0 0 6px rgba(0, 0, 0, 0.5);
+}
+.effect-damage {
+  color: #ff4444;
+  font-size: 13px;
+}
+.effect-buff {
+  color: #34d399;
+  font-size: 12px;
+}
+.effect-debuff {
+  color: #ff6b6b;
+  font-size: 12px;
+}
+.effect-heal {
+  color: #6ee7b7;
+  font-size: 12px;
+}
+.effect-move {
+  color: #60a5fa;
+  font-size: 14px;
+}
+
+@keyframes effectFloatUp {
+  0% {
+    transform: translateX(-50%) translateY(0) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    transform: translateX(-50%) translateY(-8px) scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(-30px) scale(0.8);
+    opacity: 0;
+  }
 }
 </style>

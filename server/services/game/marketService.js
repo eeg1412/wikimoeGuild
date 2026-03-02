@@ -285,13 +285,12 @@ export async function listMaterialSellOrders({
     .sort({ unitPrice: 1, createdAt: 1 })
     .skip((page - 1) * pageSize)
     .limit(pageSize)
-    .populate('account', 'email')
     .lean()
 
   // 添加公会名
   const GamePlayerInfoModel = (await import('../../models/gamePlayerInfos.js'))
     .default
-  const accountIds = list.map(item => item.account?._id || item.account)
+  const accountIds = list.map(item => item.account)
   const infos = await GamePlayerInfoModel.find({ account: { $in: accountIds } })
     .select('account guildName')
     .lean()
@@ -300,9 +299,9 @@ export async function listMaterialSellOrders({
     infoMap.set(info.account.toString(), info.guildName)
   }
   for (const item of list) {
-    const accId = item.account?._id?.toString() || item.account?.toString()
+    const accId = item.account?.toString()
     item.guildName = infoMap.get(accId) || '未知'
-    // 隐藏邮箱
+    // 禁止返回 account
     delete item.account
   }
 
@@ -444,7 +443,9 @@ export async function createMaterialSellOrder(
       extra: { orderType: 'sell', materialType, quantity, unitPrice }
     })
 
-    return order
+    const safeOrder = order.toJSON()
+    delete safeOrder.account
+    return safeOrder
   })
 }
 
@@ -536,7 +537,9 @@ export async function createMaterialBuyOrder(
       extra: { orderType: 'buy', materialType, quantity, unitPrice }
     })
 
-    return order
+    const safeOrder = order.toJSON()
+    delete safeOrder.account
+    return safeOrder
   })
 }
 
@@ -764,6 +767,7 @@ export async function listMyMaterialOrders(
     .sort({ createdAt: -1 })
     .skip((page - 1) * pageSize)
     .limit(pageSize)
+    .select('-account')
     .lean()
 
   return { list, total }
@@ -923,6 +927,7 @@ export async function createRuneStoneListing(accountId, runeStoneId, price) {
 
       return {
         ...listing.toJSON(),
+        account: undefined,
         officialPurchased: true,
         goldEarned: officialPrice
       }
@@ -953,7 +958,9 @@ export async function createRuneStoneListing(accountId, runeStoneId, price) {
       }
     })
 
-    return listing
+    const safeListing = listing.toJSON()
+    delete safeListing.account
+    return safeListing
   })
 }
 
@@ -1074,6 +1081,7 @@ export async function listMyRuneStoneListings(
     .sort({ createdAt: -1 })
     .skip((page - 1) * pageSize)
     .limit(pageSize)
+    .select('-account')
     .populate('runeStone')
     .lean()
 

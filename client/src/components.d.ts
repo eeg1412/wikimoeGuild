@@ -12,17 +12,22 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ActivityFeed: typeof import('./components/ActivityFeed.vue')['default']
+    AdventurerDetailDialog: typeof import('./components/AdventurerDetailDialog.vue')['default']
+    AdventurerFinalStats: typeof import('./components/AdventurerFinalStats.vue')['default']
     BattleAnimation: typeof import('./components/BattleAnimation.vue')['default']
     Cropper: typeof import('./components/Cropper.vue')['default']
     DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
     GameAdventurerAvatar: typeof import('./components/GameAdventurerAvatar.vue')['default']
     GameGuildIcon: typeof import('./components/GameGuildIcon.vue')['default']
     GuestResultDialog: typeof import('./components/GuestResultDialog.vue')['default']
+    GuildInfoDialog: typeof import('./components/GuildInfoDialog.vue')['default']
     IpInfoDisplay: typeof import('./components/IpInfoDisplay.vue')['default']
     ResponsiveTable: typeof import('./components/ResponsiveTable.vue')['default']
     ResponsiveTableColumn: typeof import('./components/ResponsiveTableColumn.vue')['default']
+    RoleTagBadge: typeof import('./components/RoleTagBadge.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     RuneStoneInfoCard: typeof import('./components/RuneStoneInfoCard.vue')['default']
+    RuneStoneSelectPanel: typeof import('./components/RuneStoneSelectPanel.vue')['default']
   }
 }

@@ -34,5 +34,7 @@ export const arenaFormationUpdateSchema = Joi.object({
  * 竞技场挑战
  */
 export const arenaChallengeSchema = Joi.object({
-  opponentId: Joi.string().required().messages({ 'any.required': '请选择对手' })
+  registrationId: Joi.string()
+    .required()
+    .messages({ 'any.required': '请选择对手' })
 })

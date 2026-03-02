@@ -310,6 +310,30 @@
         <span class="ml-2 text-gray-400 text-sm">次/天</span>
       </el-form-item>
 
+      <el-form-item label="每24小时游客注册上限" prop="dailyGuestRegisterLimit">
+        <el-input-number
+          v-model="form.dailyGuestRegisterLimit"
+          :min="1"
+          :max="100000"
+          :step="10"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">次/24小时</span>
+      </el-form-item>
+
+      <el-divider content-position="left">✉️ 邮件限制</el-divider>
+
+      <el-form-item label="每24小时邮件发送上限" prop="dailyEmailLimit">
+        <el-input-number
+          v-model="form.dailyEmailLimit"
+          :min="1"
+          :max="100000"
+          :step="50"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">封/24小时</span>
+      </el-form-item>
+
       <el-form-item>
         <el-button
           type="primary"
@@ -359,7 +383,9 @@ const form = reactive({
   adventurerRerollPassiveBuffPrice: 1000,
   adventurerRerollAttackPreferencePrice: 1000,
   guestModeEnabled: true,
-  guestMaxPerIpPerDay: 3
+  guestMaxPerIpPerDay: 3,
+  dailyEmailLimit: 500,
+  dailyGuestRegisterLimit: 200
 })
 
 const rateTotal = computed(() => {

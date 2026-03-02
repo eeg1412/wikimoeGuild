@@ -45,32 +45,118 @@
         <p class="text-sm text-gray-400 text-center mb-2">
           ↑ 前排（面向敌人）· ↓ 后排
         </p>
+        <div class="flex justify-center mb-2">
+          <el-checkbox v-model="dragMode" size="small">
+            ☰ 拖拽排序模式
+          </el-checkbox>
+        </div>
         <div class="grid-board mx-auto">
-          <div v-for="row in 5" :key="row" class="grid-row">
-            <div
-              v-for="col in 5"
-              :key="col"
-              class="grid-cell"
-              :class="{ 'grid-cell--occupied': getCell(row - 1, col - 1) }"
-              @click="handleCellClick(row - 1, col - 1)"
-            >
-              <span class="grid-cell-seq">{{ (row - 1) * 5 + col }}</span>
-              <template v-if="getCell(row - 1, col - 1)">
-                <GameAdventurerAvatar
-                  :adventurer="getCell(row - 1, col - 1)"
-                  class="w-full h-full rounded object-cover"
-                />
-                <div
-                  class="absolute bottom-0 left-0 right-0 text-center bg-black/60 text-[10px] text-white leading-tight py-px truncate"
-                >
-                  {{ getCell(row - 1, col - 1).name }}
-                </div>
-              </template>
-              <template v-else>
-                <span class="text-gray-400 text-lg">➕</span>
-              </template>
-            </div>
-          </div>
+          <draggable
+            :list="flatGrid"
+            item-key="_key"
+            :disabled="!dragMode"
+            :animation="200"
+            :swap-threshold="0.65"
+            ghost-class="grid-cell--ghost"
+            class="grid-board-inner"
+            :move="checkDragMove"
+            @start="onDragStart"
+            @end="onDragEnd"
+          >
+            <template #item="{ element, index }">
+              <div
+                class="grid-cell"
+                :class="{
+                  'grid-cell--occupied': element.adventurer,
+                  'grid-cell--draggable': dragMode && element.adventurer
+                }"
+                @click="handleCellClick(Math.floor(index / 5), index % 5)"
+                @contextmenu.prevent
+              >
+                <span class="grid-cell-seq">{{ index + 1 }}</span>
+                <!-- 被动增益元素色块 -->
+                <template v-if="element.adventurer">
+                  <div
+                    v-for="indicator in getPassiveIndicators(
+                      element.adventurer
+                    )"
+                    :key="indicator.position"
+                    class="passive-indicator"
+                    :class="'passive-indicator--' + indicator.position"
+                    :style="{ backgroundColor: indicator.color }"
+                    :title="indicator.label"
+                  />
+                  <GameAdventurerAvatar
+                    :adventurer="element.adventurer"
+                    class="w-full h-full rounded object-cover pointer-events-none select-none"
+                  />
+                  <div
+                    class="absolute bottom-0 left-0 right-0 text-center bg-black/50 text-[10px] text-white leading-tight py-px truncate"
+                  >
+                    {{ element.adventurer.name }}
+                  </div>
+                  <!-- 标记图标（带 Popover 选择） -->
+                  <el-popover :width="160" trigger="click" placement="bottom">
+                    <template #reference>
+                      <span
+                        class="absolute top-0 right-0 z-10 rounded-bl text-xs leading-none p-0.5 cursor-pointer"
+                        :class="
+                          element.adventurer.roleTag &&
+                          ROLE_TAG_MAP[element.adventurer.roleTag]
+                            ? 'bg-black/65'
+                            : 'bg-black/30 opacity-60'
+                        "
+                        @click.stop
+                        @mousedown.stop
+                      >
+                        {{
+                          element.adventurer.roleTag &&
+                          ROLE_TAG_MAP[element.adventurer.roleTag]
+                            ? ROLE_TAG_MAP[element.adventurer.roleTag].emoji
+                            : '🏷️'
+                        }}
+                      </span>
+                    </template>
+                    <div class="flex items-center justify-center gap-2 py-1">
+                      <span
+                        v-for="tag in ROLE_TAGS"
+                        :key="tag.value"
+                        class="cursor-pointer text-xl px-1 py-0.5 rounded"
+                        :class="[
+                          element.adventurer.roleTag === tag.value
+                            ? 'bg-yellow-200 dark:bg-yellow-700'
+                            : '',
+                          roleTagLoading ? 'opacity-50 pointer-events-none' : ''
+                        ]"
+                        :title="tag.label"
+                        @click="
+                          handleGridRoleTag(
+                            Math.floor(index / 5),
+                            index % 5,
+                            tag.value
+                          )
+                        "
+                      >
+                        {{ tag.emoji }}
+                      </span>
+                    </div>
+                  </el-popover>
+                  <!-- 清除按钮 -->
+                  <span
+                    v-if="!dragMode"
+                    class="clear-btn"
+                    @click.stop="
+                      handleClearCell(Math.floor(index / 5), index % 5)
+                    "
+                    >✕</span
+                  >
+                </template>
+                <template v-else>
+                  <span class="text-gray-400 text-lg">➕</span>
+                </template>
+              </div>
+            </template>
+          </draggable>
         </div>
       </div>
 
@@ -107,7 +193,7 @@
       title="选择冒险家"
       width="340px"
       align-center
-      :destroy-on-close="false"
+      :destroy-on-close="true"
     >
       <div v-if="adventurersLoading" class="text-center py-6">
         <span class="animate-spin inline-block text-2xl">⏳</span>
@@ -180,47 +266,63 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- ==================== 冒险家详情弹窗 ==================== -->
+    <AdventurerDetailDialog
+      v-model="advDetailVisible"
+      :adventurer-id="advDetailId"
+      @updated="handleAdvDetailUpdated"
+    >
+      <template #footer>
+        <div class="flex justify-center gap-2 mt-2">
+          <el-button size="small" @click="handleDetailReplace"
+            >🔄 替换</el-button
+          >
+          <el-button type="danger" size="small" @click="handleDetailRemove"
+            >🗑️ 移除</el-button
+          >
+        </div>
+      </template>
+    </AdventurerDetailDialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import draggable from 'vuedraggable'
 import {
   getMyFormationsApi,
   saveFormationApi,
   deleteFormationApi
 } from '@/api/game/formation.js'
-import { getMyAdventurersApi } from '@/api/game/adventurer.js'
+import { getMyAdventurersApi, setRoleTagApi } from '@/api/game/adventurer.js'
 import { useGameUser } from '@/composables/useGameUser.js'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import {
   createEmptyGrid,
   isAdventurerPlaced,
-  placeAdventurerOnGrid
+  placeAdventurerOnGrid,
+  getPassiveIndicators,
+  getElementColor,
+  getElementName,
+  ELEMENT_MAP
 } from '@/composables/useFormationGrid.js'
+import { ROLE_TAG_MAP } from 'shared/constants/index.js'
+import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
 
 const router = useRouter()
+
+// ── 角色标记 ──
+const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(([value, info]) => ({
+  value,
+  ...info
+}))
 const { isLoggedIn } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
-}
-
-// ── 元素工具 ──
-const ELEMENT_MAP = {
-  1: { name: '地', color: '#a0855b' },
-  2: { name: '水', color: '#4fa3e0' },
-  3: { name: '火', color: '#e05c4f' },
-  4: { name: '风', color: '#6abf69' },
-  5: { name: '光明', color: '#f5c842' },
-  6: { name: '黑暗', color: '#7c5cbf' }
-}
-function getElementColor(el) {
-  return ELEMENT_MAP[el]?.color || '#999'
-}
-function getElementName(el) {
-  return ELEMENT_MAP[el]?.name || el
 }
 
 // ── 数据 ──
@@ -233,6 +335,34 @@ const currentSlot = ref(1)
 const formationName = ref('')
 // 5x5 grid: grid[row][col] = adventurer object or null
 const grid = ref(createEmptyGrid())
+
+// ── 扁平化棋盘（供 vuedraggable 使用） ──
+const flatGrid = ref([])
+
+function buildFlatGrid() {
+  let emptyId = 0
+  const cells = []
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const adv = grid.value[r][c]
+      cells.push({
+        _key: adv ? `adv-${adv._id}` : `empty-${emptyId++}`,
+        adventurer: adv
+      })
+    }
+  }
+  flatGrid.value = cells
+}
+
+function syncFlatToGrid() {
+  for (let i = 0; i < 25; i++) {
+    grid.value[Math.floor(i / 5)][i % 5] = flatGrid.value[i].adventurer
+  }
+}
+
+// grid 变动时自动重建 flatGrid
+watch(grid, buildFlatGrid, { deep: true })
+buildFlatGrid()
 
 const existingFormation = computed(() => {
   return allFormations.value.find(f => f.slot === currentSlot.value)
@@ -324,6 +454,10 @@ const pickDialogVisible = ref(false)
 const pickRow = ref(0)
 const pickCol = ref(0)
 
+// ── 冒险家详情弹窗 ──
+const { visible: advDetailVisible } = useDialogRoute('advDetail')
+const advDetailId = ref('')
+
 const cellAdventurer = computed(() => {
   return getCell(pickRow.value, pickCol.value)
 })
@@ -345,10 +479,40 @@ function isPlaced(advId) {
   return isAdventurerPlaced(grid.value, advId)
 }
 
-function handleCellClick(row, col) {
-  pickRow.value = row
-  pickCol.value = col
-  pickDialogVisible.value = true
+const cellClickLoading = ref(false)
+async function handleCellClick(row, col) {
+  if (cellClickLoading.value) return
+  const cell = getCell(row, col)
+  if (cell) {
+    // 已放置冒险家 → 先加载数据再显示详情弹窗
+    advDetailId.value = cell._id
+    advDetailVisible.value = true
+  } else {
+    // 空格子 → 检查冒险家数据是否已加载
+    if (adventurersLoading.value) {
+      ElMessage.warning('冒险家数据加载中，请稍候')
+      return
+    }
+    pickRow.value = row
+    pickCol.value = col
+    pickDialogVisible.value = true
+  }
+}
+
+function handleAdvDetailUpdated(updatedAdv) {
+  // 同步更新棋盘上的冒险家数据
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      if (grid.value[r][c]?._id === updatedAdv._id) {
+        grid.value[r][c] = updatedAdv
+      }
+    }
+  }
+  // 也更新冒险家列表
+  const idx = allAdventurers.value.findIndex(a => a._id === updatedAdv._id)
+  if (idx !== -1) {
+    allAdventurers.value[idx] = updatedAdv
+  }
 }
 
 function placeAdventurer(adv) {
@@ -361,8 +525,91 @@ function removeFromCell() {
   pickDialogVisible.value = false
 }
 
+// 从详情弹窗中替换冒险家
+function handleDetailReplace() {
+  const pos = findAdvPosition(advDetailId.value)
+  if (!pos) return
+  advDetailVisible.value = false
+  pickRow.value = pos.row
+  pickCol.value = pos.col
+  pickDialogVisible.value = true
+}
+
+// 从详情弹窗中移除冒险家
+function handleDetailRemove() {
+  const pos = findAdvPosition(advDetailId.value)
+  if (!pos) return
+  grid.value[pos.row][pos.col] = null
+  advDetailVisible.value = false
+}
+
+function findAdvPosition(advId) {
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      if (grid.value[r][c]?._id === advId) {
+        return { row: r, col: c }
+      }
+    }
+  }
+  return null
+}
+
 function handleClear() {
   grid.value = createEmptyGrid()
+}
+
+function handleClearCell(row, col) {
+  grid.value[row][col] = null
+}
+
+// ── 角色标记（棋盘） ──
+const roleTagLoading = ref(false)
+async function handleGridRoleTag(row, col, tagValue) {
+  const cell = getCell(row, col)
+  if (!cell || roleTagLoading.value) return
+  const newTag = cell.roleTag === tagValue ? '' : tagValue
+  roleTagLoading.value = true
+  try {
+    const res = await setRoleTagApi(cell._id, { roleTag: newTag })
+    grid.value[row][col] = { ...cell, ...res.data.data }
+    const idx = allAdventurers.value.findIndex(a => a._id === cell._id)
+    if (idx !== -1) {
+      allAdventurers.value[idx] = {
+        ...allAdventurers.value[idx],
+        ...res.data.data
+      }
+    }
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    roleTagLoading.value = false
+  }
+}
+
+// ── 拖拽排序（vuedraggable） ──
+const dragMode = ref(false)
+let preDragSnapshot = null
+
+function checkDragMove(evt) {
+  // 只允许拖拽有冒险家的格子
+  return !!evt.draggedContext.element?.adventurer
+}
+
+function onDragStart() {
+  preDragSnapshot = flatGrid.value.map(item => ({ ...item }))
+}
+
+function onDragEnd(evt) {
+  const { oldIndex, newIndex } = evt
+  if (oldIndex !== newIndex && preDragSnapshot) {
+    // vuedraggable 已执行 move 操作，恢复快照后执行交换
+    flatGrid.value.splice(0, 25, ...preDragSnapshot)
+    const temp = flatGrid.value[oldIndex]
+    flatGrid.value[oldIndex] = flatGrid.value[newIndex]
+    flatGrid.value[newIndex] = temp
+    syncFlatToGrid()
+  }
+  preDragSnapshot = null
 }
 
 // ── 保存 ──
@@ -459,20 +706,19 @@ onMounted(async () => {
 }
 
 .grid-board {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-width: 320px;
+  max-width: 100%;
+  width: fit-content;
 }
 
-.grid-row {
-  display: flex;
+.grid-board-inner {
+  display: grid;
+  grid-template-columns: repeat(5, 68px);
   gap: 4px;
 }
 
 .grid-cell {
-  width: 56px;
-  height: 56px;
+  width: 68px;
+  height: 68px;
   border: 2px dashed rgba(200, 160, 80, 0.4);
   border-radius: 8px;
   display: flex;
@@ -497,6 +743,24 @@ onMounted(async () => {
   border-color: rgba(200, 160, 80, 0.6);
 }
 
+.grid-cell--draggable {
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.grid-cell--draggable:active {
+  cursor: grabbing;
+}
+
+.grid-cell--ghost {
+  opacity: 0.4;
+  border-color: #fbbf24 !important;
+  background: rgba(251, 191, 36, 0.2) !important;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+}
+
 .grid-cell-seq {
   position: absolute;
   top: 1px;
@@ -508,14 +772,104 @@ onMounted(async () => {
   z-index: 1;
 }
 
+/* 被动增益元素色块 */
+.passive-indicator {
+  position: absolute;
+  z-index: 2;
+  border-radius: 2px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.passive-indicator--left {
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 4px;
+}
+.passive-indicator--right {
+  right: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 4px;
+}
+.passive-indicator--top {
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 4px;
+}
+.passive-indicator--bottom {
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 4px;
+  z-index: 3;
+}
+
 .dark .grid-cell {
   background: rgba(30, 25, 20, 0.5);
 }
 
+/* 清除按钮 */
+.clear-btn {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  z-index: 10;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(220, 60, 60, 0.75);
+  border-radius: 3px;
+  padding: 1px 3px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.clear-btn:hover {
+  opacity: 1;
+  background: rgba(240, 40, 40, 0.9);
+}
+
+/* 选择列表中的被动增益色块 */
+.passive-dot {
+  position: absolute;
+  border-radius: 2px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.passive-dot--left {
+  left: -2px;
+  top: 25%;
+  bottom: 25%;
+  width: 3px;
+}
+.passive-dot--right {
+  right: -2px;
+  top: 25%;
+  bottom: 25%;
+  width: 3px;
+}
+.passive-dot--top {
+  top: -2px;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+}
+.passive-dot--bottom {
+  bottom: -2px;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+}
+
 @media (max-width: 400px) {
+  .grid-board-inner {
+    grid-template-columns: repeat(5, 56px);
+  }
   .grid-cell {
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
   }
 }
 </style>

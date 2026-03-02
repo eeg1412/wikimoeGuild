@@ -1,4 +1,5 @@
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
+import GameAdventurer from '../../models/gameAdventurer.js'
 import { executeInLock } from '../../utils/utils.js'
 import { saveBase64Image } from '../../utils/imageUpload.js'
 
@@ -89,4 +90,42 @@ export async function changeGuildName(accountId, newName) {
 
     return { success: true, gold: playerInfo.gold, guildName: newName }
   })
+}
+
+/**
+ * 获取指定玩家的公会信息（公开信息）
+ * 注意：禁止返回 account 字段，防止泄露 gamePlayerAccount 的 ObjectId
+ * 禁止返回敏感信息如金币等
+ * @param {string} playerInfoId - GamePlayerInfo 的 _id
+ */
+export async function getGuildInfo(playerInfoId) {
+  const playerInfo = await GamePlayerInfo.findById(playerInfoId)
+    .select(
+      'account guildName hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount createdAt'
+    )
+    .lean()
+  if (!playerInfo) {
+    const err = new Error('玩家不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  const adventurers = await GameAdventurer.find({ account: playerInfo.account })
+    .select(
+      'name elements defaultAvatarId hasCustomAvatar customAvatarUpdatedAt roleTag comprehensiveLevel'
+    )
+    .sort({ comprehensiveLevel: -1 })
+    .limit(25)
+    .lean()
+
+  return {
+    accountId: playerInfo.account.toString(),
+    guildName: playerInfo.guildName,
+    hasCustomGuildIcon: playerInfo.hasCustomGuildIcon,
+    customGuildIconUpdatedAt: playerInfo.customGuildIconUpdatedAt,
+    adventurerCount: playerInfo.adventurerCount ?? adventurers.length,
+    createdAt: playerInfo.createdAt,
+    adventurers
+  }
 }
