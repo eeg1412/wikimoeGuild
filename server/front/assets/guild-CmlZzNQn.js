@@ -1,0 +1,1 @@
+import{g as n}from"./request-gVcnH4KF.js";function e(i){return n.post("/guild/logo",i)}function t(i){return n.post("/guild/name",i)}function u(i){return n.get(`/guild/info/${i}`)}export{t as a,e as c,u as g};

@@ -25,7 +25,6 @@ declare module 'vue' {
     IpInfoDisplay: typeof import('./components/IpInfoDisplay.vue')['default']
     ResponsiveTable: typeof import('./components/ResponsiveTable.vue')['default']
     ResponsiveTableColumn: typeof import('./components/ResponsiveTableColumn.vue')['default']
-    RoleTagBadge: typeof import('./components/RoleTagBadge.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     RuneStoneInfoCard: typeof import('./components/RuneStoneInfoCard.vue')['default']
