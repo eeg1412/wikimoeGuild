@@ -12,7 +12,8 @@ const KEYS_DIR = join(__dirname, '..', 'keys')
  */
 export const jwtKeys = {
   playerSecret: /** @type {string} */ (null),
-  adminSecret: /** @type {string} */ (null)
+  adminSecret: /** @type {string} */ (null),
+  cacheSecret: /** @type {string} */ (null)
 }
 
 /**
@@ -44,4 +45,5 @@ export function initJwtKeys() {
   }
   jwtKeys.playerSecret = loadOrCreate('player.key')
   jwtKeys.adminSecret = loadOrCreate('admin.key')
+  jwtKeys.cacheSecret = loadOrCreate('cache.key')
 }

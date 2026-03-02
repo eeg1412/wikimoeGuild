@@ -472,8 +472,15 @@
           <!-- 主动技能 & 被动增益 -->
           <RuneStoneInfoCard :rune-stone="synthesisPreview" />
 
-          <p class="text-sm text-red-400 text-center">
-            ⚠️ 不论接受或放弃，素材符文石都将被销毁
+          <p class="text-sm text-red-500 font-bold text-center">
+            ⚠️ 你的素材符文石已经被销毁
+          </p>
+          <p class="text-xs text-center text-gray-500 mb-2">
+            倒计时：<span class="text-yellow-500">{{ previewCountdown }}</span>
+            秒
+          </p>
+          <p class="text-xs text-center text-gray-400 mb-2">
+            如果刷新或关闭页面，你将丢失本次预览结果。倒计时结束后本次预览也是失效。
           </p>
 
           <!-- 操作按钮 -->
@@ -748,6 +755,25 @@ const synthesisPreviewLoading = ref(false)
 const synthesisPreview = ref(null)
 const synthesisPreviewToken = ref('')
 const synthesisConfirmLoading = ref(false)
+const previewCountdown = ref(0)
+let previewTimer = null
+
+// base64 decode for JWT payload
+function decodeJwtPayload(token) {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch (e) {
+    return null
+  }
+}
 
 // 选择器
 const { visible: pickRuneVisible } = useDialogRoute('pickRune')
@@ -876,6 +902,21 @@ function confirmPick(rs) {
 
 async function handlePreviewSynthesis() {
   if (!synthesisMain.value || !synthesisMaterial.value) return
+
+  try {
+    await ElMessageBox.confirm(
+      '这操作将立刻销毁素材符文石。你是否确认合成？',
+      '确认操作',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+
   synthesisPreviewLoading.value = true
   try {
     const res = await previewSynthesisApi({
@@ -883,9 +924,33 @@ async function handlePreviewSynthesis() {
       materialRuneStoneId: synthesisMaterial.value._id
     })
     const data = res.data.data
-    synthesisPreview.value = data.preview
     synthesisPreviewToken.value = data.previewToken
+
+    // 解析 JWT 的 payload
+    const decoded = decodeJwtPayload(data.previewToken)
+    synthesisPreview.value = decoded ? decoded.preview : data.preview
+
     synthesisStep.value = 'preview'
+
+    // 倒计时逻辑
+    if (decoded && decoded.exp) {
+      clearInterval(previewTimer)
+      const updateCountdown = () => {
+        const now = Math.floor(Date.now() / 1000)
+        const diff = decoded.exp - now
+        if (diff > 0) {
+          previewCountdown.value = diff
+        } else {
+          previewCountdown.value = 0
+          clearInterval(previewTimer)
+          synthesisVisible.value = false
+          fetchRuneStones()
+          ElMessage.warning('合成预览已超时。素材已经被销毁。')
+        }
+      }
+      updateCountdown()
+      previewTimer = setInterval(updateCountdown, 1000)
+    }
   } catch {
     // 错误已由拦截器处理
   } finally {
@@ -896,8 +961,8 @@ async function handlePreviewSynthesis() {
 async function handleConfirmSynthesis(accept) {
   const actionLabel = accept ? '接受合成' : '放弃合成'
   const confirmMsg = accept
-    ? '确定接受合成结果？主符文石将被替换为合成结果，素材符文石将被销毁。'
-    : '确定放弃合成？素材符文石仍将被销毁，主符文石保持不变。'
+    ? '确定接受上述合成结果并覆盖主符文石的属性吗？'
+    : '确定放弃本次合成的新属性吗？主符文石将保持原样。（此操作不可撤回）'
   try {
     await ElMessageBox.confirm(confirmMsg, actionLabel, {
       confirmButtonText: '确定',
@@ -914,7 +979,8 @@ async function handleConfirmSynthesis(accept) {
       previewToken: synthesisPreviewToken.value,
       accept
     })
-    ElMessage.success(accept ? '合成成功！' : '已放弃合成，素材符文石已销毁')
+    ElMessage.success(accept ? '合成成功！' : '放弃成功。')
+    clearInterval(previewTimer)
     synthesisVisible.value = false
     await fetchRuneStones()
   } catch {
@@ -926,6 +992,9 @@ async function handleConfirmSynthesis(accept) {
 
 // ── 初始化 ──
 onMounted(fetchRuneStones)
+onUnmounted(() => {
+  if (previewTimer) clearInterval(previewTimer)
+})
 </script>
 
 <style scoped>

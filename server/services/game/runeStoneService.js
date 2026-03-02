@@ -4,10 +4,8 @@ import GameAdventurer from '../../models/gameAdventurer.js'
 import { executeInLock } from '../../utils/utils.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
 import crypto from 'crypto'
-
-// 合成预览缓存（token → 预览结果），5分钟过期
-const synthesisPreviewCache = new Map()
-const PREVIEW_EXPIRE_MS = 5 * 60 * 1000
+import jwt from 'jsonwebtoken'
+import { jwtKeys } from '../../config/jwtKeys.js'
 
 /**
  * 生成符文石
@@ -395,112 +393,137 @@ export async function previewSynthesis(
     passiveBuffs: newPassiveBuffs
   }
 
-  // 生成预览 token 并缓存结果
-  const previewToken = crypto.randomBytes(16).toString('hex')
-  synthesisPreviewCache.set(previewToken, {
-    accountId,
-    mainRuneStoneId,
-    materialRuneStoneId,
-    preview,
-    createdAt: Date.now()
-  })
+  return await executeInLock(`synthesis-preview:${accountId}`, async () => {
+    // 再次查询以防并发
+    const finalMaterialRS = await GameRuneStone.findOne({
+      _id: materialRuneStoneId,
+      account: accountId,
+      equippedBy: null,
+      listedOnMarket: false
+    })
 
-  // 清理过期缓存
-  for (const [key, val] of synthesisPreviewCache) {
-    if (Date.now() - val.createdAt > PREVIEW_EXPIRE_MS) {
-      synthesisPreviewCache.delete(key)
+    if (!finalMaterialRS) {
+      const err = new Error('素材符文石不可用或已被消耗')
+      err.statusCode = 400
+      err.expose = true
+      throw err
     }
-  }
 
-  return {
-    mainRuneStone: mainRS,
-    materialRuneStone: materialRS,
-    preview,
-    previewToken
-  }
+    const currentMainRS = await GameRuneStone.findOne({
+      _id: mainRuneStoneId,
+      account: accountId,
+      equippedBy: null,
+      listedOnMarket: false
+    })
+
+    if (!currentMainRS) {
+      const err = new Error('主符文石不可用')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 销毁素材石头
+    await GameRuneStone.deleteOne({ _id: materialRuneStoneId })
+    const synthesisVersion = currentMainRS.synthesisVersion || 0
+
+    // 签发 JWT
+    const payload = {
+      accountId,
+      mainRuneStoneId,
+      synthesisVersion,
+      preview: preview
+    }
+
+    const previewToken = jwt.sign(payload, jwtKeys.cacheSecret, {
+      expiresIn: '1d'
+    })
+
+    return {
+      mainRuneStone: mainRS,
+      materialRuneStone: materialRS,
+      preview,
+      previewToken
+    }
+  })
 }
 
 /**
  * 符文石合成 - 确认执行
  */
 export async function confirmSynthesis(accountId, previewToken, accept) {
+  // 不论是否接受，因为素材已在预览阶段销毁，这里如果放弃，则直接返回
+  if (!accept) {
+    return { accepted: false }
+  }
+
+  let decoded
+  try {
+    decoded = jwt.verify(previewToken, jwtKeys.cacheSecret)
+  } catch (e) {
+    const err = new Error('预览已失效或验签失败')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  const {
+    accountId: tokenAccountId,
+    mainRuneStoneId,
+    synthesisVersion,
+    preview
+  } = decoded
+
+  if (tokenAccountId !== accountId) {
+    const err = new Error('无权确认他人的合成')
+    err.statusCode = 403
+    err.expose = true
+    throw err
+  }
+
   return await executeInLock(`synthesis:${accountId}`, async () => {
-    // 从缓存中获取预览结果
-    const cached = synthesisPreviewCache.get(previewToken)
-    if (!cached) {
-      const err = new Error('预览已过期，请重新预览')
-      err.statusCode = 400
-      err.expose = true
-      throw err
-    }
-    if (cached.accountId !== accountId) {
-      const err = new Error('无权操作此预览')
-      err.statusCode = 403
-      err.expose = true
-      throw err
-    }
-    if (Date.now() - cached.createdAt > PREVIEW_EXPIRE_MS) {
-      synthesisPreviewCache.delete(previewToken)
-      const err = new Error('预览已过期，请重新预览')
-      err.statusCode = 400
-      err.expose = true
-      throw err
-    }
+    const mainRS = await GameRuneStone.findOne({
+      _id: mainRuneStoneId,
+      account: accountId
+    })
 
-    // 使用缓存中的预览结果
-    const { mainRuneStoneId, materialRuneStoneId, preview } = cached
-
-    // 删除缓存（一次性使用）
-    synthesisPreviewCache.delete(previewToken)
-
-    const [mainRS, materialRS] = await Promise.all([
-      GameRuneStone.findOne({ _id: mainRuneStoneId, account: accountId }),
-      GameRuneStone.findOne({ _id: materialRuneStoneId, account: accountId })
-    ])
-
-    if (!mainRS || !materialRS) {
-      const err = new Error('符文石不存在或已被操作')
+    if (!mainRS) {
+      const err = new Error('主符文石不存在')
       err.statusCode = 404
       err.expose = true
       throw err
     }
-    if (mainRS.equippedBy || materialRS.equippedBy) {
+
+    // 乐观锁：比对合成版本
+    if ((mainRS.synthesisVersion || 0) !== synthesisVersion) {
+      const err = new Error('主符文石已被其他操作更改，当前预览结果已失效')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    if (mainRS.equippedBy) {
       const err = new Error('装备中的符文石不可合成，请先卸下')
       err.statusCode = 400
       err.expose = true
       throw err
     }
-    if (mainRS.listedOnMarket || materialRS.listedOnMarket) {
+    if (mainRS.listedOnMarket) {
       const err = new Error('市场上架中的符文石不可合成，请先下架')
       err.statusCode = 400
       err.expose = true
       throw err
     }
-    if (mainRS.rarity !== materialRS.rarity) {
-      const err = new Error('只有相同稀有度的符文石才能合成')
-      err.statusCode = 400
-      err.expose = true
-      throw err
-    }
 
-    // 不管是否接受，素材符文石都会被销毁
-    await GameRuneStone.deleteOne({ _id: materialRuneStoneId })
+    // 接受合成：使用预览时生成的结果并更新版本号
+    mainRS.level = preview.level
+    mainRS.activeSkills = preview.activeSkills
+    mainRS.passiveBuffs = preview.passiveBuffs
+    mainRS.synthesisVersion = (mainRS.synthesisVersion || 0) + 1
+    await mainRS.save()
 
-    if (accept) {
-      // 接受合成：使用预览时生成的结果（保证一致性）
-      mainRS.level = preview.level
-      mainRS.activeSkills = preview.activeSkills
-      mainRS.passiveBuffs = preview.passiveBuffs
-      await mainRS.save()
-
-      const result = mainRS.toJSON()
-      delete result.account
-      return { accepted: true, runeStone: result }
-    } else {
-      // 放弃合成：主符文石不变，素材符文石已销毁
-      const result = mainRS.toJSON()
-      delete result.account
-      return { accepted: false, runeStone: result }
-    }
+    const result = mainRS.toJSON()
+    delete result.account
+    return { accepted: true, runeStone: result }
   })
 }

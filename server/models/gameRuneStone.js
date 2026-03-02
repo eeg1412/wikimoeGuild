@@ -57,6 +57,11 @@ const gameRuneStoneSchema = new mongoose.Schema(
     listedOnMarket: {
       type: Boolean,
       default: false
+    },
+    // 合成版本号，用于防止重放攻击和实现乐观锁
+    synthesisVersion: {
+      type: Number,
+      default: 0
     }
   },
   {
