@@ -649,8 +649,8 @@ export async function challengeOpponent(accountId, registrationId) {
       goldEarned: battleGold,
       battleVersion: BATTLE_VERSION,
       attackerUnits: attackerSnapshot,
-      defenderUnits: defenderSnapshot,
-      battleLog: battleResult.log
+      defenderUnits: defenderSnapshot
+      // battleLog: battleResult.log  // 暂时注释，缓解数据库压力
     })
 
     return {
@@ -914,8 +914,8 @@ export async function getBattleLogDetail(accountId, logId) {
     createdAt: log.createdAt,
     battleVersion: log.battleVersion,
     attackerUnits: (log.attackerUnits || []).map(enrichUnit),
-    defenderUnits: (log.defenderUnits || []).map(enrichUnit),
-    battleLog: log.battleLog
+    defenderUnits: (log.defenderUnits || []).map(enrichUnit)
+    // battleLog: log.battleLog  // 暂时注释，缓解数据库压力
   }
 }
 

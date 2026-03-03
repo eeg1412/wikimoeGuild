@@ -307,7 +307,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { changeGuildLogoApi, changeGuildNameApi } from '@/api/game/guild.js'
@@ -509,13 +509,25 @@ function handleOpenBindEmailDialog() {
   bindEmailDialogVisible.value = true
 }
 
+let bindEmailCountdownTimer = null
 function startBindEmailCountdown() {
   bindEmailCountdown.value = 60
-  const timer = setInterval(() => {
+  if (bindEmailCountdownTimer) clearInterval(bindEmailCountdownTimer)
+  bindEmailCountdownTimer = setInterval(() => {
     bindEmailCountdown.value--
-    if (bindEmailCountdown.value <= 0) clearInterval(timer)
+    if (bindEmailCountdown.value <= 0) {
+      clearInterval(bindEmailCountdownTimer)
+      bindEmailCountdownTimer = null
+    }
   }, 1000)
 }
+
+onUnmounted(() => {
+  if (bindEmailCountdownTimer) {
+    clearInterval(bindEmailCountdownTimer)
+    bindEmailCountdownTimer = null
+  }
+})
 
 async function handleBindEmailSendCode() {
   if (!bindEmailForm.email) {

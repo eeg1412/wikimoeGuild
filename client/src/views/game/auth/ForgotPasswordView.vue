@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { sendCodeApi, resetPasswordApi } from '@/api/game/auth.js'
@@ -160,13 +160,25 @@ const countdownText = computed(() =>
   countdown.value > 0 ? `${countdown.value}s 后重发` : '发送验证码'
 )
 
+let countdownTimer = null
 function startCountdown() {
   countdown.value = 60
-  const timer = setInterval(() => {
+  if (countdownTimer) clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
     countdown.value--
-    if (countdown.value <= 0) clearInterval(timer)
+    if (countdown.value <= 0) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
   }, 1000)
 }
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
 
 async function handleSendCode() {
   if (!form.email) {
