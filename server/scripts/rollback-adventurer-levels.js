@@ -39,14 +39,18 @@ const OLD_GOLD_COST_PER_LEVEL = 500
 
 // ── 模型定义（脚本内联，避免依赖启动流程） ──
 
-const adventurerSchema = new mongoose.Schema({
-  account: { type: mongoose.Schema.Types.ObjectId, index: true },
-  attackLevel: { type: Number, default: 1 },
-  defenseLevel: { type: Number, default: 1 },
-  speedLevel: { type: Number, default: 1 },
-  SANLevel: { type: Number, default: 1 },
-  comprehensiveLevel: { type: Number, default: 1 }
-})
+const adventurerSchema = new mongoose.Schema(
+  {
+    account: { type: mongoose.Schema.Types.ObjectId, index: true },
+    attackLevel: { type: Number, default: 1 },
+    defenseLevel: { type: Number, default: 1 },
+    speedLevel: { type: Number, default: 1 },
+    SANLevel: { type: Number, default: 1 },
+    comprehensiveLevel: { type: Number, default: 1 },
+    runeStone: { type: mongoose.Schema.Types.ObjectId, default: null }
+  },
+  { strict: false }
+)
 const Adventurer = mongoose.model('game_adventurer', adventurerSchema)
 
 const runeStoneSchema = new mongoose.Schema(
