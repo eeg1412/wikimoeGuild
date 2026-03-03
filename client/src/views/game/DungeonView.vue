@@ -467,6 +467,7 @@ import {
 } from '@/api/game/dungeon.js'
 import { getMyFormationsApi } from '@/api/game/formation.js'
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
+import { getGameSettingsApi } from '@/api/game/config.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import {
@@ -477,6 +478,17 @@ import {
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
+
+// 游戏配置
+const gameSettings = ref({})
+async function fetchGameSettings() {
+  try {
+    const res = await getGameSettingsApi()
+    gameSettings.value = res.data?.data || {}
+  } catch {
+    // 配置加载失败使用默认值
+  }
+}
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
@@ -645,11 +657,11 @@ const dungeonLevelBonusValue = computed(() => {
   const dungeonLevel =
     dungeonInfo.value?.dungeonsLevel || playerInfo.value?.dungeonsLevel || 1
   const guildLevel = playerInfo.value?.guildLevel || 1
-  // 从服务端获取的 bonusBase 信息，使用默认值100
-  const bonusBase = 100
+  const bonusBase = gameSettings.value?.dungeonLevelProductionBonusBase ?? 100
   let bonus = getDungeonLevelBonus(dungeonLevel, bonusBase)
   const cap = getDungeonLevelBonusCap(guildLevel, bonusBase)
-  return Math.min(bonus, cap)
+  bonus = Math.min(bonus, cap)
+  return Math.max(bonus - bonusBase, 0)
 })
 
 // 是否迷宫增益被公会等级限制
@@ -657,7 +669,7 @@ const isDungeonBonusCapped = computed(() => {
   const dungeonLevel =
     dungeonInfo.value?.dungeonsLevel || playerInfo.value?.dungeonsLevel || 1
   const guildLevel = playerInfo.value?.guildLevel || 1
-  const bonusBase = 100
+  const bonusBase = gameSettings.value?.dungeonLevelProductionBonusBase ?? 100
   const bonus = getDungeonLevelBonus(dungeonLevel, bonusBase)
   const cap = getDungeonLevelBonusCap(guildLevel, bonusBase)
   return bonus > cap
@@ -1001,6 +1013,7 @@ function startBubbleTimer() {
 // ── 初始化 ──
 onMounted(() => {
   fetchDungeonInfo()
+  fetchGameSettings()
   fetchExplorers()
   calcOutput()
   calcElapsedTime()

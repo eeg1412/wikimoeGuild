@@ -251,7 +251,13 @@ export async function getGameSettings() {
       config.officialNormalRuneStoneBuyPrice ?? 100,
     officialRareRuneStoneBuyPrice: config.officialRareRuneStoneBuyPrice ?? 400,
     officialLegendaryRuneStoneBuyPrice:
-      config.officialLegendaryRuneStoneBuyPrice ?? 2000
+      config.officialLegendaryRuneStoneBuyPrice ?? 2000,
+    officialRuneFragmentBuyPrice: config.officialRuneFragmentBuyPrice ?? 10,
+    guildLevelUpFeeBase: config.guildLevelUpFeeBase ?? 1000,
+    adventurerLevelUpCrystalBase: config.adventurerLevelUpCrystalBase ?? 100,
+    adventurerLevelUpGoldBase: config.adventurerLevelUpGoldBase ?? 500,
+    dungeonLevelProductionBonusBase:
+      config.dungeonLevelProductionBonusBase ?? 100
   }
 }
 
@@ -285,7 +291,12 @@ export async function updateGameSettings(data) {
     'dailyGuestRegisterLimit',
     'officialNormalRuneStoneBuyPrice',
     'officialRareRuneStoneBuyPrice',
-    'officialLegendaryRuneStoneBuyPrice'
+    'officialLegendaryRuneStoneBuyPrice',
+    'officialRuneFragmentBuyPrice',
+    'guildLevelUpFeeBase',
+    'adventurerLevelUpCrystalBase',
+    'adventurerLevelUpGoldBase',
+    'dungeonLevelProductionBonusBase'
   ]
 
   const booleanKeys = ['guestModeEnabled']

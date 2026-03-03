@@ -30,6 +30,8 @@ function calcProductionRate(playerInfo) {
   // 公会等级上限
   const dungeonBonusCap = getDungeonLevelBonusCap(guildLevel, bonusBase)
   dungeonBonus = Math.min(dungeonBonus, dungeonBonusCap)
+  // 减去基础值得到实际增益，确保不为负数
+  dungeonBonus = Math.max(dungeonBonus - bonusBase, 0)
 
   // 两者相加
   return adventurerRate + dungeonBonus

@@ -241,7 +241,42 @@
         <span class="ml-2 text-gray-400 text-sm">最少3天</span>
       </el-form-item>
 
+      <el-divider content-position="left">⚔️ 冒险家升级基础值</el-divider>
+
+      <el-form-item label="升级水晶基础值" prop="adventurerLevelUpCrystalBase">
+        <el-input-number
+          v-model="form.adventurerLevelUpCrystalBase"
+          :min="1"
+          :max="2000000000"
+          :step="10"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认100</span>
+      </el-form-item>
+
+      <el-form-item label="升级金币基础值" prop="adventurerLevelUpGoldBase">
+        <el-input-number
+          v-model="form.adventurerLevelUpGoldBase"
+          :min="1"
+          :max="2000000000"
+          :step="50"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认500</span>
+      </el-form-item>
+
       <el-divider content-position="left">🏰 公会设置</el-divider>
+
+      <el-form-item label="公会升级费用基础值" prop="guildLevelUpFeeBase">
+        <el-input-number
+          v-model="form.guildLevelUpFeeBase"
+          :min="1"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认1000</span>
+      </el-form-item>
 
       <el-form-item label="公会标志价格（金币）" prop="guildCustomLogoPrice">
         <el-input-number
@@ -303,8 +338,22 @@
           controls-position="right"
         />
       </el-form-item>
+      <el-divider content-position="left">🎮 迷宫设置</el-divider>
 
-      <el-divider content-position="left">�🎮 游客模式</el-divider>
+      <el-form-item
+        label="迷宫等级增益基础值"
+        prop="dungeonLevelProductionBonusBase"
+      >
+        <el-input-number
+          v-model="form.dungeonLevelProductionBonusBase"
+          :min="1"
+          :max="2000000000"
+          :step="10"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认100</span>
+      </el-form-item>
+      <el-divider content-position="left">🎮 游客模式</el-divider>
 
       <el-form-item label="启用游客模式" prop="guestModeEnabled">
         <el-switch v-model="form.guestModeEnabled" />
@@ -464,6 +513,10 @@ const form = reactive({
   adventurerRerollElementPrice: 1000,
   adventurerRerollPassiveBuffPrice: 1000,
   adventurerRerollAttackPreferencePrice: 1000,
+  guildLevelUpFeeBase: 1000,
+  adventurerLevelUpCrystalBase: 100,
+  adventurerLevelUpGoldBase: 500,
+  dungeonLevelProductionBonusBase: 100,
   guestModeEnabled: true,
   guestMaxPerIpPerDay: 3,
   dailyEmailLimit: 500,
