@@ -42,6 +42,22 @@ export const adventurerLevelUpSchema = Joi.object({
 })
 
 /**
+ * 冒险家属性降级
+ */
+export const adventurerLevelDownSchema = Joi.object({
+  statType: Joi.string()
+    .valid(...statTypes)
+    .required()
+    .messages({
+      'any.only': '无效的属性类型',
+      'any.required': '请选择属性类型'
+    }),
+  times: Joi.number().integer().valid(1, 5, 10).default(1).messages({
+    'any.only': '降级次数只能为 1、5 或 10'
+  })
+})
+
+/**
  * 冒险家装备符文石
  */
 export const adventurerEquipRuneStoneSchema = Joi.object({

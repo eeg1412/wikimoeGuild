@@ -256,6 +256,7 @@ export async function getGameSettings() {
     guildLevelUpFeeBase: config.guildLevelUpFeeBase ?? 1000,
     adventurerLevelUpCrystalBase: config.adventurerLevelUpCrystalBase ?? 100,
     adventurerLevelUpGoldBase: config.adventurerLevelUpGoldBase ?? 500,
+    adventurerLevelDownGoldPrice: config.adventurerLevelDownGoldPrice ?? 1000,
     dungeonLevelProductionBonusBase:
       config.dungeonLevelProductionBonusBase ?? 100
   }
@@ -296,6 +297,7 @@ export async function updateGameSettings(data) {
     'guildLevelUpFeeBase',
     'adventurerLevelUpCrystalBase',
     'adventurerLevelUpGoldBase',
+    'adventurerLevelDownGoldPrice',
     'dungeonLevelProductionBonusBase'
   ]
 

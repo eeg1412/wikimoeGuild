@@ -217,29 +217,15 @@ function applyPassiveBuffTypes(units) {
 
 /**
  * 计算延迟值
- * 初始化时棋盘上所有冒险家的速度相加，减去自身速度得到a
- * 找到a最低的设为b，b减去速度基础值得到c
- * 所有a减去c得到d（初始延迟值和每次行动增加的延迟值）
+ * 优化算法：速度 -> 延迟值的映射，采用 `delay = 10000 / (Math.sqrt(speed) * 10 + 10)`
+ * 避免速度差异过大会导致低速冒险家永远无法出手
  */
 function calculateDelays(allUnits) {
-  const totalSpeed = allUnits.reduce((sum, u) => sum + u.speed, 0)
-
-  // 每个单位的a值 = 总速度 - 自身速度
   for (const unit of allUnits) {
-    unit._rawDelay = totalSpeed - unit.speed
-  }
-
-  // 找最低a值
-  const minA = Math.min(...allUnits.map(u => u._rawDelay))
-
-  // c = minA - 速度基础值
-  const c = minA - BASE_STATS.speed
-
-  // d = a - c
-  for (const unit of allUnits) {
-    unit.baseDelay = unit._rawDelay - c
+    const effectiveSpeed =
+      Math.floor(Math.sqrt(Math.max(1, unit.speed)) * 10) + 10
+    unit.baseDelay = Math.floor(10000 / effectiveSpeed)
     unit.delay = unit.baseDelay
-    delete unit._rawDelay
   }
 }
 
@@ -302,10 +288,16 @@ function selectTarget(attacker, targets, preferenceType, preferenceOrder) {
  * 执行普通攻击
  */
 function performAttack(attacker, defender, log) {
-  let damage =
-    attacker.attack +
-    attacker.tempBuffs.attack -
-    (defender.defense + defender.tempBuffs.defense)
+  const finalAttack = Math.max(1, attacker.attack + attacker.tempBuffs.attack)
+  const finalDefense = Math.max(
+    0,
+    defender.defense + defender.tempBuffs.defense
+  )
+
+  // (攻击 * 攻击) / (攻击 + 防御)
+  let damage = Math.floor(
+    (finalAttack * finalAttack) / (finalAttack + finalDefense)
+  )
 
   // 元素克制
   if (isElementCounter(attacker.element, defender.element)) {
@@ -734,9 +726,10 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
         }
       }
 
-      // 增加延迟值（速度增益/减益影响延迟值）
-      const speedMod = unit.tempBuffs.speed || 0
-      const adjustedDelay = Math.max(1, unit.baseDelay - speedMod)
+      // 增加延迟值（重新计算包含临时速度增减益后的有效延迟）
+      const currentSpeed = Math.max(1, unit.speed + (unit.tempBuffs.speed || 0))
+      const effectiveSpeed = Math.floor(Math.sqrt(currentSpeed) * 10) + 10
+      const adjustedDelay = Math.floor(10000 / effectiveSpeed)
       unit.delay += adjustedDelay
     }
   }

@@ -45,6 +45,7 @@ export {
   adventurerCustomAvatarSchema,
   adventurerCustomNameSchema,
   adventurerLevelUpSchema,
+  adventurerLevelDownSchema,
   adventurerEquipRuneStoneSchema,
   adventurerRerollSchema,
   adventurerSetRoleTagSchema

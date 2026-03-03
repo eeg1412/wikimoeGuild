@@ -265,6 +265,17 @@
         <span class="ml-2 text-gray-400 text-sm">默认500</span>
       </el-form-item>
 
+      <el-form-item label="降级金币价格" prop="adventurerLevelDownGoldPrice">
+        <el-input-number
+          v-model="form.adventurerLevelDownGoldPrice"
+          :min="0"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认1000（每降1级）</span>
+      </el-form-item>
+
       <el-divider content-position="left">🏰 公会设置</el-divider>
 
       <el-form-item label="公会升级费用基础值" prop="guildLevelUpFeeBase">
@@ -448,6 +459,7 @@ const form = reactive({
   guildLevelUpFeeBase: 1000,
   adventurerLevelUpCrystalBase: 100,
   adventurerLevelUpGoldBase: 500,
+  adventurerLevelDownGoldPrice: 1000,
   dungeonLevelProductionBonusBase: 100,
   guestModeEnabled: true,
   guestMaxPerIpPerDay: 3,

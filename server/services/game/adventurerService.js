@@ -465,8 +465,97 @@ export async function levelUpStat(
   })
 }
 
-/**
- * 装备符文石
+/** * 冒险家属性降级
+ * @param {string} statType - attack, defense, speed, san
+ * @param {number} times - 降级次数（1/5/10）
+ */
+export async function levelDownStat(
+  accountId,
+  adventurerId,
+  statType,
+  times = 1
+) {
+  const statMap = {
+    attack: { level: 'attackLevel' },
+    defense: { level: 'defenseLevel' },
+    speed: { level: 'speedLevel' },
+    san: { level: 'SANLevel' }
+  }
+
+  const stat = statMap[statType]
+  if (!stat) {
+    const err = new Error('无效的属性类型')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  const actualTimes = Math.min(Math.max(1, parseInt(times) || 1), 10)
+
+  return await executeInLock(`leveldown:${accountId}`, async () => {
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const adventurer = await GameAdventurer.findOne({
+      _id: adventurerId,
+      account: accountId
+    })
+    if (!adventurer) {
+      const err = new Error('冒险家不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const currentStatLevel = adventurer[stat.level]
+    if (currentStatLevel <= 1) {
+      const err = new Error('属性等级已经是最低了')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 实际最多能降多少级
+    const dropLevels = Math.min(currentStatLevel - 1, actualTimes)
+
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const pricePerLevel = gameSettings.adventurerLevelDownGoldPrice ?? 1000
+    const totalGoldCost = dropLevels * pricePerLevel
+
+    if (playerInfo.gold < totalGoldCost) {
+      const err = new Error(`金币不足，需要 ${totalGoldCost} 金币`)
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 扣除金币，降低等级
+    playerInfo.gold -= totalGoldCost
+    adventurer[stat.level] -= dropLevels
+    adventurer.comprehensiveLevel -= dropLevels
+
+    await playerInfo.save()
+    await adventurer.save()
+
+    const updatedAdventurer = await GameAdventurer.findById(adventurer._id)
+      .select('-account')
+      .populate('runeStone')
+      .lean()
+
+    return {
+      adventurer: updatedAdventurer,
+      levelsDropped: dropLevels,
+      goldCost: totalGoldCost
+    }
+  })
+}
+
+/** * 装备符文石
  */
 export async function equipRuneStone(accountId, adventurerId, runeStoneId) {
   return await executeInLock(`equip:${accountId}`, async () => {

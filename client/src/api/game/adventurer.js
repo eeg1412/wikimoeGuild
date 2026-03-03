@@ -43,6 +43,13 @@ export function levelUpStatApi(id, data) {
 }
 
 /**
+ * 属性降级
+ */
+export function levelDownStatApi(id, data) {
+  return gameRequest.post(`/adventurers/${id}/level-down`, data)
+}
+
+/**
  * 装备符文石
  */
 export function equipRuneStoneApi(id, data) {

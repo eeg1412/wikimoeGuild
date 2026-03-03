@@ -6,6 +6,7 @@ import {
   adventurerCustomAvatarSchema,
   adventurerCustomNameSchema,
   adventurerLevelUpSchema,
+  adventurerLevelDownSchema,
   adventurerEquipRuneStoneSchema,
   adventurerRerollSchema,
   adventurerSetRoleTagSchema
@@ -39,6 +40,13 @@ router.post(
   authPlayer,
   validate(adventurerLevelUpSchema),
   adventurerController.levelUpStat
+)
+// 属性降级
+router.post(
+  '/:id/level-down',
+  authPlayer,
+  validate(adventurerLevelDownSchema),
+  adventurerController.levelDownStat
 )
 // 装备符文石
 router.post(

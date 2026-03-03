@@ -119,6 +119,8 @@ const initGlobalConfig = async () => {
     adventurerLevelUpCrystalBase: 100,
     // 冒险家升级金币基数
     adventurerLevelUpGoldBase: 500,
+    // 冒险家降级金币价格
+    adventurerLevelDownGoldPrice: 1000,
     // 迷宫等级产出增益计数（百分比）
     dungeonLevelProductionBonusBase: 100
   }

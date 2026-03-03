@@ -109,6 +109,32 @@ export async function levelUpStat(req, res, next) {
 }
 
 /**
+ * 属性降级
+ */
+export async function levelDownStat(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { id } = req.params
+    const { statType, times = 1 } = req.body
+    if (!['attack', 'defense', 'speed', 'san'].includes(statType)) {
+      return res.paramError('无效的属性类型')
+    }
+    const result = await adventurerService.levelDownStat(
+      accountId,
+      id,
+      statType,
+      times
+    )
+    res.success(
+      result,
+      `成功降级 ${result.levelsDropped} 级，消耗 ${result.goldCost} 金币`
+    )
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
  * 装备符文石
  */
 export async function equipRuneStone(req, res, next) {

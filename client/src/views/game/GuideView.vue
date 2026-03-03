@@ -213,6 +213,19 @@
           </p>
         </div>
 
+        <div class="guide-card mb-4">
+          <h4 class="guide-subtitle">⬇️ 属性降级</h4>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            可以使用金币降低某个属性的等级：<br />
+            降级费用 = 降级层数 × 每级固定消耗（默认
+            {{
+              gameSettings.adventurerLevelDownGoldPrice ?? 1000
+            }}
+            金币）。<br />
+            属性最低降至 1 级。属性降级不退还升级时消耗的水晶与金币。
+          </p>
+        </div>
+
         <div class="guide-card">
           <h4 class="guide-subtitle">✨ 个性化</h4>
           <ul class="guide-list">
@@ -252,8 +265,13 @@
             <li>
               冒险家只能攻击<strong>敌方最前排</strong>，消灭第一排后才能攻击第二排
             </li>
-            <li>攻击顺序按<strong>速度</strong>排序，速度相同的同时行动</li>
-            <li>伤害计算：攻击 - 防御 = 实际伤害，伤害减少目标 SAN 值</li>
+            <li>
+              基于冒险家的速度进行根号衰减后计算<strong>延迟值</strong>，延迟值达到触发点的冒险家会行动。避免极大速度差时低速者无法出手的现象
+            </li>
+            <li>
+              伤害计算：(攻击 × 攻击) / (攻击 + 防御) =
+              实际伤害（最少1点），伤害会减少目标 SAN 值
+            </li>
             <li>冒险家 SAN 归 0 则无法继续战斗</li>
           </ul>
         </div>

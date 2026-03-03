@@ -233,53 +233,110 @@
           <div
             v-for="stat in STAT_LIST"
             :key="stat.key"
-            class="info-row flex-wrap gap-y-1"
+            class="info-row flex-wrap gap-y-1 adventurer-stat-row"
           >
             <span class="info-label">
               {{ stat.icon }} {{ stat.name }} Lv.{{ adventurer[stat.levelKey] }}
             </span>
-            <div class="flex flex-col items-end gap-1">
-              <span class="text-xs text-gray-400 whitespace-nowrap">
-                {{ getStatLevelUpCrystalCost(stat.levelKey) }}💎 +
-                {{ getStatLevelUpGoldCost(stat.levelKey) }}🪙 / 级
-              </span>
-              <div class="flex items-center">
-                <el-button
-                  type="warning"
-                  size="small"
-                  :loading="levelUpLoading"
-                  :disabled="
-                    levelUpLoading ||
-                    adventurer.comprehensiveLevel >= maxCompLevel
-                  "
-                  @click="handleLevelUp(stat.key, 1)"
-                >
-                  +1级
-                </el-button>
-                <el-button
-                  type="warning"
-                  size="small"
-                  :loading="levelUpLoading"
-                  :disabled="
-                    levelUpLoading ||
-                    adventurer.comprehensiveLevel >= maxCompLevel
-                  "
-                  @click="handleLevelUp(stat.key, 5)"
-                >
-                  +5级
-                </el-button>
-                <el-button
-                  type="warning"
-                  size="small"
-                  :loading="levelUpLoading"
-                  :disabled="
-                    levelUpLoading ||
-                    adventurer.comprehensiveLevel >= maxCompLevel
-                  "
-                  @click="handleLevelUp(stat.key, 10)"
-                >
-                  +10级
-                </el-button>
+            <div class="flex flex-col items-center gap-1 w-full">
+              <div
+                class="text-xs text-gray-400 whitespace-nowrap flex justify-between w-full"
+              >
+                <div>
+                  降级:
+                  {{ gameSettings?.adventurerLevelDownGoldPrice ?? 1000 }}🪙 /
+                  级
+                </div>
+
+                <div>
+                  升级: {{ getStatLevelUpCrystalCost(stat.levelKey) }}💎+{{
+                    getStatLevelUpGoldCost(stat.levelKey)
+                  }}🪙 / 级
+                </div>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="flex items-center gap-0.5">
+                  <el-button
+                    type="danger"
+                    size="small"
+                    :loading="levelDownLoading"
+                    :disabled="
+                      levelDownLoading ||
+                      levelUpLoading ||
+                      adventurer[stat.levelKey] <= 1
+                    "
+                    @click="handleLevelDown(stat.key, 1)"
+                  >
+                    -1级
+                  </el-button>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    :loading="levelDownLoading"
+                    :disabled="
+                      levelDownLoading ||
+                      levelUpLoading ||
+                      adventurer[stat.levelKey] <= 1
+                    "
+                    @click="handleLevelDown(stat.key, 5)"
+                  >
+                    -5级
+                  </el-button>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    :loading="levelDownLoading"
+                    :disabled="
+                      levelDownLoading ||
+                      levelUpLoading ||
+                      adventurer[stat.levelKey] <= 1
+                    "
+                    @click="handleLevelDown(stat.key, 10)"
+                  >
+                    -10级
+                  </el-button>
+                </div>
+                <div class="flex items-center gap-0.5">
+                  <el-button
+                    type="warning"
+                    size="small"
+                    :loading="levelUpLoading"
+                    :disabled="
+                      levelUpLoading ||
+                      levelDownLoading ||
+                      adventurer.comprehensiveLevel >= maxCompLevel
+                    "
+                    @click="handleLevelUp(stat.key, 1)"
+                  >
+                    +1级
+                  </el-button>
+                  <el-button
+                    type="warning"
+                    size="small"
+                    :loading="levelUpLoading"
+                    :disabled="
+                      levelUpLoading ||
+                      levelDownLoading ||
+                      adventurer.comprehensiveLevel >= maxCompLevel
+                    "
+                    @click="handleLevelUp(stat.key, 5)"
+                  >
+                    +5级
+                  </el-button>
+                  <el-button
+                    type="warning"
+                    size="small"
+                    :loading="levelUpLoading"
+                    :disabled="
+                      levelUpLoading ||
+                      levelDownLoading ||
+                      adventurer.comprehensiveLevel >= maxCompLevel
+                    "
+                    @click="handleLevelUp(stat.key, 10)"
+                  >
+                    +10级
+                  </el-button>
+                </div>
               </div>
             </div>
           </div>
@@ -554,6 +611,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getAdventurerDetailApi,
   levelUpStatApi,
+  levelDownStatApi,
   setRoleTagApi,
   customizeAvatarApi,
   customizeNameApi,
@@ -784,8 +842,56 @@ async function handleSetRoleTag(tagValue) {
   }
 }
 
-// ── 属性升级 ──
+// ── 属性升级/降级 ──
 const levelUpLoading = ref(false)
+const levelDownLoading = ref(false)
+
+async function handleLevelDown(statType, times = 1) {
+  if (!adventurer.value) return
+  const label = STAT_LIST.find(s => s.key === statType)?.name || statType
+  const price =
+    (gameSettings.value?.adventurerLevelDownGoldPrice ?? 1000) * times
+  try {
+    await ElMessageBox.confirm(
+      `确定花费不超过 ${price} 金币降低 ${label}属性 ${times} 级吗？（不到 ${times} 级则降为 1 级并扣除对应金币）`,
+      '属性降级',
+      {
+        confirmButtonText: '确定降级',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+  levelDownLoading.value = true
+  try {
+    const res = await levelDownStatApi(adventurer.value._id, {
+      statType,
+      times
+    })
+    const {
+      adventurer: updatedAdventurer,
+      levelsDropped,
+      goldCost
+    } = res.data.data
+    ElMessage.success(`成功降级 ${levelsDropped} 级，消耗 ${goldCost} 金币！`)
+    adventurer.value = updatedAdventurer
+    emit('updated', adventurer.value)
+    await Promise.all([
+      fetchPlayerInfo(),
+      props.showManage
+        ? getMyInventoryApi().then(r => {
+            inventory.value = r.data.data
+          })
+        : Promise.resolve()
+    ])
+  } catch {
+    // handled by interceptor
+  } finally {
+    levelDownLoading.value = false
+  }
+}
 
 async function handleLevelUp(statType, times = 1) {
   if (!adventurer.value) return
@@ -1094,5 +1200,8 @@ async function handleQuickSell(amount) {
   font-family: monospace;
   font-weight: bold;
   color: #fbbf24;
+}
+.adventurer-stat-row :deep(.el-button) {
+  margin-left: 0px !important;
 }
 </style>
