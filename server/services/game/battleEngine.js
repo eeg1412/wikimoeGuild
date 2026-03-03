@@ -342,6 +342,46 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
 
   const enemyFrontRow = getFrontRow(enemyUnits)
 
+  // 推送符文石激活提示，供前端展示 cut-in 特效
+  // 将同一批 skillData 的所有技能合并为一个条目，前端负责逐一展示
+  const STAT_LABELS = { attack: '攻击', defense: '防御', speed: '速度' }
+  const skillsInfo = skillData.map(skill => {
+    const effectValue = skill.baseValue * (unit.runeStone.level || 1)
+    let skillEffectText = ''
+    switch (skill.type) {
+      case 'attack':
+        skillEffectText = `造成 ${effectValue} 伤害`
+        break
+      case 'buff':
+        skillEffectText = `${STAT_LABELS[skill.buffType] || skill.buffType} +${effectValue}`
+        break
+      case 'debuff':
+        skillEffectText = `${STAT_LABELS[skill.debuffType] || skill.debuffType} -${effectValue}`
+        break
+      case 'sanRecover':
+        skillEffectText = `恢复 ${effectValue} SAN`
+        break
+      case 'changeOrder':
+        skillEffectText = '改变排序'
+        break
+      default:
+        skillEffectText = String(effectValue)
+    }
+    return { skillLabel: skill.label, skillEffectText }
+  })
+  log.push({
+    type: 'runeActivate',
+    caster: unit.id,
+    casterName: unit.name,
+    runeStoneRarity: unit.runeStone.rarity,
+    runeStoneLevel: unit.runeStone.level || 1,
+    skills: skillsInfo,
+    defaultAvatarId: unit.defaultAvatarId,
+    hasCustomAvatar: !!unit.hasCustomAvatar,
+    customAvatarUpdatedAt: unit.customAvatarUpdatedAt || null,
+    isDemon: !!unit.isDemon
+  })
+
   for (const skill of skillData) {
     const effectValue = skill.baseValue * (unit.runeStone.level || 1)
 

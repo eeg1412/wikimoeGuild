@@ -232,6 +232,82 @@
           </p>
         </div>
       </div>
+
+      <!-- 符文石激活 Cut-in 特效 -->
+      <Transition name="cutin">
+        <div v-if="showRuneCutIn && runeCutInData" class="rune-cutin-overlay">
+          <!-- 背景斜纹 -->
+          <div class="cutin-bg-stripes"></div>
+          <!-- 光晕 -->
+          <div
+            class="cutin-glow"
+            :class="`cutin-glow--${runeCutInData.runeStoneRarity}`"
+          ></div>
+
+          <!-- 主卡片 -->
+          <div
+            class="cutin-card"
+            :class="`cutin-card--${runeCutInData.runeStoneRarity}`"
+          >
+            <!-- 闪光扫过效果 -->
+            <div class="cutin-card-shine"></div>
+
+            <div class="cutin-card-inner">
+              <!-- 冒险者头像 -->
+              <div
+                class="cutin-avatar-wrap"
+                :class="`cutin-avatar-wrap--${runeCutInData.runeStoneRarity}`"
+              >
+                <GameAdventurerAvatar
+                  :adventurer="{
+                    adventurerId: runeCutInData.casterId,
+                    defaultAvatarId: runeCutInData.defaultAvatarId,
+                    hasCustomAvatar: runeCutInData.hasCustomAvatar,
+                    customAvatarUpdatedAt: runeCutInData.customAvatarUpdatedAt,
+                    isDemon: runeCutInData.isDemon
+                  }"
+                  class="cutin-avatar"
+                />
+              </div>
+
+              <!-- 信息区 -->
+              <div class="cutin-info">
+                <p class="cutin-caster-name">{{ runeCutInData.casterName }}</p>
+                <div class="cutin-meta-row">
+                  <span
+                    class="cutin-rarity-badge"
+                    :class="`cutin-rarity-badge--${runeCutInData.runeStoneRarity}`"
+                  >
+                    {{
+                      RARITY_LABELS[runeCutInData.runeStoneRarity] ||
+                      runeCutInData.runeStoneRarity
+                    }}
+                  </span>
+                  <span
+                    class="cutin-level-text"
+                    :class="`cutin-level-text--${runeCutInData.runeStoneRarity}`"
+                  >
+                    Lv.{{ runeCutInData.runeStoneLevel }}
+                  </span>
+                </div>
+                <p class="cutin-skill-effect">
+                  ⚡ {{ runeCutInData.skillEffectText }}
+                </p>
+                <!-- 持续进度条 -->
+                <div class="cutin-timer-bar">
+                  <div
+                    class="cutin-timer-fill"
+                    :class="`cutin-timer-fill--${runeCutInData.runeStoneRarity}`"
+                    :style="{
+                      animationDuration: runeCutInData.duration + 'ms'
+                    }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </div>
   </Teleport>
 </template>
@@ -452,6 +528,92 @@ let animationTimer = null
 let hitClearTimer = null
 const logContainer = ref(null)
 
+// ── 符文石激活 Cut-in 特效 ──
+const showRuneCutIn = ref(false)
+const runeCutInData = ref(null)
+let cutInTimer = null
+// 待播放的技能队列（单次 runeActivate 中可能含多个技能）
+const runeCutInQueue = []
+// 当前正在展示的 cut-in 所属的 runeActivate 基础信息（头像/名字/稀有度/等级）
+let cutInBaseInfo = null
+
+const RARITY_LABELS = { normal: '普通', rare: '稀有', legendary: '传说' }
+
+function getCutInDuration(rarity) {
+  const base = rarity === 'legendary' ? 1400 : 1200
+  return Math.max(400, Math.round(base / playbackSpeed.value))
+}
+
+/**
+ * 从队列中取下一个技能展示 cut-in，若队列为空则恢复主动画
+ */
+function processNextCutIn() {
+  if (runeCutInQueue.length === 0) {
+    cutInBaseInfo = null
+    hideCutInEffect()
+    startAnimation()
+    return
+  }
+  const skillInfo = runeCutInQueue.shift()
+  const duration = getCutInDuration(cutInBaseInfo.runeStoneRarity)
+  runeCutInData.value = {
+    ...cutInBaseInfo,
+    skillLabel: skillInfo.skillLabel,
+    skillEffectText: skillInfo.skillEffectText,
+    duration
+  }
+  showRuneCutIn.value = true
+  cutInTimer = setTimeout(() => {
+    showRuneCutIn.value = false
+    // 等待 leave 过渡动画完成后再处理下一个
+    cutInTimer = setTimeout(processNextCutIn, 200)
+  }, duration)
+}
+
+/**
+ * 接收 runeActivate 条目，将所有技能入队并启动队列播放
+ */
+function enqueueCutIn(entry) {
+  cutInBaseInfo = {
+    casterId: entry.caster,
+    casterName: entry.casterName,
+    runeStoneRarity: entry.runeStoneRarity,
+    runeStoneLevel: entry.runeStoneLevel,
+    defaultAvatarId: entry.defaultAvatarId,
+    hasCustomAvatar: entry.hasCustomAvatar,
+    customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
+    isDemon: entry.isDemon
+  }
+  // 兼容旧格式（单技能）和新格式（skills 数组）
+  const skills = entry.skills ?? [
+    { skillLabel: entry.skillLabel, skillEffectText: entry.skillEffectText }
+  ]
+  runeCutInQueue.push(...skills)
+  processNextCutIn()
+}
+
+function showCutInEffect(entry, duration) {
+  runeCutInData.value = {
+    casterId: entry.caster,
+    casterName: entry.casterName,
+    runeStoneRarity: entry.runeStoneRarity,
+    runeStoneLevel: entry.runeStoneLevel,
+    skillLabel: entry.skillLabel,
+    skillEffectText: entry.skillEffectText,
+    defaultAvatarId: entry.defaultAvatarId,
+    hasCustomAvatar: entry.hasCustomAvatar,
+    customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
+    isDemon: entry.isDemon,
+    duration
+  }
+  showRuneCutIn.value = true
+}
+
+function hideCutInEffect() {
+  showRuneCutIn.value = false
+  runeCutInData.value = null
+}
+
 // 倍速控制：基础间隔450ms（降低3倍，原来150ms）
 const BASE_INTERVAL = 450
 const speedOptions = [1, 2, 3]
@@ -521,6 +683,7 @@ function logEntryClass(entry) {
 
 function formatLogEntry(entry) {
   if (!entry) return ''
+  if (entry.type === 'runeActivate') return ''
   if (entry.type === 'roundStart') {
     return `── 第 ${entry.round} 回合 ──`
   }
@@ -571,6 +734,9 @@ const BUFF_TYPE_LABEL = {
 }
 
 function processLogEntry(entry) {
+  // runeActivate 仅用于触发前端 cut-in，不产生状态变更
+  if (entry.type === 'runeActivate') return
+
   const map = unitState.value
   // 清除上一轮的特效状态
   if (hitClearTimer) {
@@ -690,6 +856,15 @@ function playNextLog() {
     return
   }
   const entry = props.battleLog[currentLogIndex.value]
+
+  // 符文石激活：停止主动画，将所有技能入队逐一展示 cut-in，播完后自动恢复
+  if (entry.type === 'runeActivate') {
+    currentLogIndex.value++
+    stopAnimation()
+    enqueueCutIn(entry)
+    return
+  }
+
   processLogEntry(entry)
   displayedLogs.value.push(entry)
   currentLogIndex.value++
@@ -712,11 +887,21 @@ function stopAnimation() {
 }
 
 function handleSkip() {
+  // 清除 cut-in 队列和定时器
+  if (cutInTimer) {
+    clearTimeout(cutInTimer)
+    cutInTimer = null
+  }
+  runeCutInQueue.length = 0
+  cutInBaseInfo = null
+  hideCutInEffect()
   stopAnimation()
   while (currentLogIndex.value < props.battleLog.length) {
     const entry = props.battleLog[currentLogIndex.value]
-    processLogEntry(entry)
-    displayedLogs.value.push(entry)
+    if (entry.type !== 'runeActivate') {
+      processLogEntry(entry)
+      displayedLogs.value.push(entry)
+    }
     currentLogIndex.value++
   }
   // 跳过后直接关闭弹窗
@@ -769,6 +954,12 @@ onUnmounted(() => {
     clearTimeout(hitClearTimer)
     hitClearTimer = null
   }
+  if (cutInTimer) {
+    clearTimeout(cutInTimer)
+    cutInTimer = null
+  }
+  runeCutInQueue.length = 0
+  cutInBaseInfo = null
 })
 </script>
 
@@ -1172,6 +1363,331 @@ onUnmounted(() => {
   100% {
     transform: translateX(-50%) translateY(-30px) scale(0.8);
     opacity: 0;
+  }
+}
+
+/* ══════════════════════════════════════
+   符文石激活 Cut-in 特效
+   ══════════════════════════════════════ */
+
+/* Transition 动画 */
+.cutin-enter-active {
+  animation: cutinOverlayIn 0.18s ease-out;
+}
+.cutin-leave-active {
+  animation: cutinOverlayOut 0.18s ease-in forwards;
+}
+@keyframes cutinOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes cutinOverlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 覆盖整个 battle-animation-overlay */
+.rune-cutin-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(4, 0, 18, 0.6);
+}
+
+/* 背景斜纹 */
+.cutin-bg-stripes {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -55deg,
+    transparent,
+    transparent 10px,
+    rgba(120, 80, 220, 0.04) 10px,
+    rgba(120, 80, 220, 0.04) 11px
+  );
+  pointer-events: none;
+}
+
+/* 中心光晕 */
+.cutin-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cutin-glow--normal {
+  background: radial-gradient(
+    ellipse 60% 50% at 50% 50%,
+    rgba(156, 163, 175, 0.12) 0%,
+    transparent 70%
+  );
+}
+.cutin-glow--rare {
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 50%,
+    rgba(96, 165, 250, 0.18) 0%,
+    transparent 70%
+  );
+}
+.cutin-glow--legendary {
+  background: radial-gradient(
+    ellipse 75% 60% at 50% 50%,
+    rgba(245, 200, 66, 0.2) 0%,
+    transparent 70%
+  );
+  animation: legendaryGlow 1.2s ease-in-out infinite alternate;
+}
+@keyframes legendaryGlow {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 主卡片 */
+.cutin-card {
+  position: relative;
+  background: rgba(12, 4, 30, 0.96);
+  border-radius: 14px;
+  padding: 18px 22px;
+  width: min(88vw, 460px);
+  overflow: hidden;
+  animation: cutinCardEnter 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.cutin-card--normal {
+  border: 1px solid rgba(156, 163, 175, 0.35);
+  box-shadow:
+    0 0 20px rgba(156, 163, 175, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.cutin-card--rare {
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  box-shadow:
+    0 0 28px rgba(96, 165, 250, 0.25),
+    inset 0 1px 0 rgba(96, 165, 250, 0.08);
+}
+.cutin-card--legendary {
+  border: 1px solid rgba(245, 200, 66, 0.6);
+  box-shadow:
+    0 0 36px rgba(245, 200, 66, 0.3),
+    0 0 60px rgba(245, 200, 66, 0.1),
+    inset 0 1px 0 rgba(245, 200, 66, 0.1);
+}
+
+/* 闪光扫过效果（左右来回交替） */
+.cutin-card-shine {
+  position: absolute;
+  top: 0;
+  left: -110%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  animation: cutinShine 0.55s ease-in-out 0.1s infinite alternate;
+  pointer-events: none;
+  z-index: 1;
+}
+@keyframes cutinShine {
+  from {
+    left: -110%;
+  }
+  to {
+    left: 160%;
+  }
+}
+
+@keyframes cutinCardEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(16px);
+  }
+  65% {
+    transform: scale(1.04) translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 卡片内部布局 */
+.cutin-card-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 头像容器 */
+.cutin-avatar-wrap {
+  flex-shrink: 0;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 3px solid;
+  overflow: hidden;
+}
+.cutin-avatar-wrap--normal {
+  border-color: #9ca3af;
+  box-shadow: 0 0 16px rgba(156, 163, 175, 0.5);
+}
+.cutin-avatar-wrap--rare {
+  border-color: #60a5fa;
+  box-shadow: 0 0 20px rgba(96, 165, 250, 0.65);
+}
+.cutin-avatar-wrap--legendary {
+  border-color: #f5c842;
+  box-shadow:
+    0 0 24px rgba(245, 200, 66, 0.8),
+    0 0 8px rgba(245, 200, 66, 0.5);
+  animation: legendaryAvatarPulse 1s ease-in-out infinite alternate;
+}
+@keyframes legendaryAvatarPulse {
+  from {
+    box-shadow:
+      0 0 20px rgba(245, 200, 66, 0.6),
+      0 0 6px rgba(245, 200, 66, 0.4);
+  }
+  to {
+    box-shadow:
+      0 0 32px rgba(245, 200, 66, 0.95),
+      0 0 12px rgba(245, 200, 66, 0.6);
+  }
+}
+
+.cutin-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 信息区 */
+.cutin-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cutin-caster-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f0e6ff;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  text-shadow: 0 0 12px rgba(167, 139, 250, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cutin-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+/* 稀有度徽章 */
+.cutin-rarity-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.cutin-rarity-badge--normal {
+  background: rgba(156, 163, 175, 0.18);
+  border: 1px solid rgba(156, 163, 175, 0.4);
+  color: #d1d5db;
+}
+.cutin-rarity-badge--rare {
+  background: rgba(96, 165, 250, 0.18);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  color: #93c5fd;
+}
+.cutin-rarity-badge--legendary {
+  background: rgba(245, 200, 66, 0.2);
+  border: 1px solid rgba(245, 200, 66, 0.55);
+  color: #fde68a;
+}
+
+/* 等级文字 */
+.cutin-level-text {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+.cutin-level-text--normal {
+  color: #9ca3af;
+}
+.cutin-level-text--rare {
+  color: #60a5fa;
+}
+.cutin-level-text--legendary {
+  color: #f5c842;
+  text-shadow: 0 0 8px rgba(245, 200, 66, 0.6);
+}
+
+/* 技能效果文字 */
+.cutin-skill-effect {
+  font-size: 13px;
+  color: #c4b5fd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+/* 倒计时进度条 */
+.cutin-timer-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cutin-timer-fill {
+  height: 100%;
+  border-radius: 2px;
+  width: 100%;
+  transform-origin: left;
+  animation: cutinTimerShrink linear forwards;
+}
+.cutin-timer-fill--normal {
+  background: #9ca3af;
+}
+.cutin-timer-fill--rare {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+.cutin-timer-fill--legendary {
+  background: linear-gradient(90deg, #d97706, #f5c842, #a78bfa);
+}
+@keyframes cutinTimerShrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
   }
 }
 </style>
