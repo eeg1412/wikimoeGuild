@@ -217,13 +217,12 @@ function applyPassiveBuffTypes(units) {
 
 /**
  * 计算延迟值
- * 优化算法：速度 -> 延迟值的映射，采用 `delay = 10000 / (Math.sqrt(speed) * 10 + 10)`
- * 避免速度差异过大会导致低速冒险家永远无法出手
+ * 优化算法：速度 -> 延迟值的映射，采用 `delay = 10000 / ( (speed + 100)^0.8 )`
+ * 避免速度差异过大会导致低速冒险家永远无法出手，同时保证高速刺客收益
  */
 function calculateDelays(allUnits) {
   for (const unit of allUnits) {
-    const effectiveSpeed =
-      Math.floor(Math.sqrt(Math.max(1, unit.speed)) * 10) + 10
+    const effectiveSpeed = Math.pow(Math.max(1, unit.speed) + 100, 0.8)
     unit.baseDelay = Math.floor(10000 / effectiveSpeed)
     unit.delay = unit.baseDelay
   }
@@ -728,7 +727,7 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
 
       // 增加延迟值（重新计算包含临时速度增减益后的有效延迟）
       const currentSpeed = Math.max(1, unit.speed + (unit.tempBuffs.speed || 0))
-      const effectiveSpeed = Math.floor(Math.sqrt(currentSpeed) * 10) + 10
+      const effectiveSpeed = Math.pow(currentSpeed + 100, 0.8)
       const adjustedDelay = Math.floor(10000 / effectiveSpeed)
       unit.delay += adjustedDelay
     }

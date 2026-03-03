@@ -259,7 +259,6 @@
                   <el-button
                     type="danger"
                     size="small"
-                    :loading="levelDownLoading"
                     :disabled="
                       levelDownLoading ||
                       levelUpLoading ||
@@ -272,7 +271,6 @@
                   <el-button
                     type="danger"
                     size="small"
-                    :loading="levelDownLoading"
                     :disabled="
                       levelDownLoading ||
                       levelUpLoading ||
@@ -285,7 +283,6 @@
                   <el-button
                     type="danger"
                     size="small"
-                    :loading="levelDownLoading"
                     :disabled="
                       levelDownLoading ||
                       levelUpLoading ||
@@ -300,7 +297,6 @@
                   <el-button
                     type="warning"
                     size="small"
-                    :loading="levelUpLoading"
                     :disabled="
                       levelUpLoading ||
                       levelDownLoading ||
@@ -313,7 +309,6 @@
                   <el-button
                     type="warning"
                     size="small"
-                    :loading="levelUpLoading"
                     :disabled="
                       levelUpLoading ||
                       levelDownLoading ||
@@ -326,7 +321,6 @@
                   <el-button
                     type="warning"
                     size="small"
-                    :loading="levelUpLoading"
                     :disabled="
                       levelUpLoading ||
                       levelDownLoading ||

@@ -218,9 +218,7 @@
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
             可以使用金币降低某个属性的等级：<br />
             降级费用 = 降级层数 × 每级固定消耗（默认
-            {{
-              gameSettings.adventurerLevelDownGoldPrice ?? 1000
-            }}
+            {{ gameSettings.adventurerLevelDownGoldPrice ?? 1000 }}
             金币）。<br />
             属性最低降至 1 级。属性降级不退还升级时消耗的水晶与金币。
           </p>
@@ -266,7 +264,8 @@
               冒险家只能攻击<strong>敌方最前排</strong>，消灭第一排后才能攻击第二排
             </li>
             <li>
-              基于冒险家的速度进行根号衰减后计算<strong>延迟值</strong>，延迟值达到触发点的冒险家会行动。避免极大速度差时低速者无法出手的现象
+              基于冒险家的速度进行 10000 / ((速度 + 100) ^ 0.8)
+              换算计算<strong>延迟值</strong>，延迟值达到触发点的冒险家会行动。避免极大速度差时低速者无法出手的现象，同时保证高速冒险家的属性收益
             </li>
             <li>
               伤害计算：(攻击 × 攻击) / (攻击 + 防御) =
