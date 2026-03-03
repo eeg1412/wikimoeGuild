@@ -10,20 +10,50 @@
         <span class="text-yellow-500 font-semibold">{{
           adventurers.length
         }}</span>
-        / 50 名冒险家
+        / {{ maxAdventurerCap }} 名冒险家
       </p>
     </div>
 
     <!-- 招募按钮 -->
     <div class="text-center mb-4">
+      <p class="text-sm text-yellow-500 font-semibold mb-1">
+        🪙 {{ (playerInfo?.gold ?? 0).toLocaleString() }} 金币
+      </p>
       <el-button
         type="warning"
         round
         :loading="recruiting"
-        :disabled="recruiting || adventurers.length >= 50"
+        :disabled="recruiting || adventurers.length >= maxAdventurerCap"
         @click="handleRecruit"
       >
         🪙 招募冒险家（{{ gameSettings.adventurerRecruitPrice ?? 10000 }} 金币）
+      </el-button>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="flex flex-wrap justify-center gap-1.5 mb-4">
+      <el-button
+        :type="filterTag === '' ? 'primary' : 'default'"
+        size="small"
+        @click="handleFilterTag('')"
+      >
+        全部
+      </el-button>
+      <el-button
+        v-for="tag in ROLE_TAGS"
+        :key="tag.value"
+        :type="filterTag === tag.value ? 'primary' : 'default'"
+        size="small"
+        @click="handleFilterTag(tag.value)"
+      >
+        {{ tag.emoji }} {{ tag.label }}
+      </el-button>
+      <el-button
+        :type="filterTag === 'none' ? 'primary' : 'default'"
+        size="small"
+        @click="handleFilterTag('none')"
+      >
+        🏷️ 未设定
       </el-button>
     </div>
 
@@ -34,11 +64,11 @@
 
     <!-- 冒险家网格 -->
     <div
-      v-else-if="adventurers.length > 0"
+      v-else-if="filteredAdventurers.length > 0"
       class="grid grid-cols-3 sm:grid-cols-4 gap-4"
     >
       <div
-        v-for="adv in adventurers"
+        v-for="adv in filteredAdventurers"
         :key="adv._id"
         class="rpg-card relative flex flex-col items-center p-3 rounded-xl cursor-pointer group"
         @click="openDetail(adv)"
@@ -179,6 +209,7 @@ import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
+import { getMaxAdventurerCount } from 'shared/utils/guildLevelUtils.js'
 
 const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(
   ([value, { emoji, label }]) => ({
@@ -190,11 +221,16 @@ const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(
 import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
 
 const router = useRouter()
-const { isLoggedIn, fetchPlayerInfo } = useGameUser()
+const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
 }
+
+// 公会等级限制的冒险家上限
+const maxAdventurerCap = computed(() => {
+  return getMaxAdventurerCount(playerInfo.value?.guildLevel || 1)
+})
 
 function goToFormation() {
   router.push({ name: 'GameFormations' })
@@ -204,6 +240,21 @@ function goToFormation() {
 const loading = ref(false)
 const adventurers = ref([])
 const gameSettings = ref({})
+
+// ── 标签筛选 ──
+const filterTag = ref('')
+
+function handleFilterTag(tag) {
+  filterTag.value = tag
+}
+
+const filteredAdventurers = computed(() => {
+  if (!filterTag.value) return adventurers.value
+  if (filterTag.value === 'none') {
+    return adventurers.value.filter(a => !a.roleTag)
+  }
+  return adventurers.value.filter(a => a.roleTag === filterTag.value)
+})
 
 // ── 元素映射 ──
 const ELEMENT_MAP = {

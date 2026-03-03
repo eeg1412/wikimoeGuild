@@ -47,6 +47,7 @@
         </p>
         <div class="flex justify-center">
           <FormationGrid
+            ref="formationGridRef"
             v-model="grid"
             show-role-tag
             :role-tag-list="ROLE_TAGS"
@@ -59,7 +60,7 @@
       </div>
 
       <!-- 操作按钮 -->
-      <div class="flex justify-center gap-3 mb-6">
+      <div class="flex justify-center gap-3 mb-6 flex-wrap">
         <el-button
           type="primary"
           :loading="saving"
@@ -75,6 +76,9 @@
           @click="handleDelete"
         >
           🗑️ 删除阵容
+        </el-button>
+        <el-button :disabled="!hasUnsavedChanges" @click="handleRestore">
+          ↩️ 还原
         </el-button>
         <el-button @click="handleClear"> 清空棋盘 </el-button>
       </div>
@@ -123,6 +127,26 @@
           <el-tab-pane label="未放置" name="unplaced" />
           <el-tab-pane label="已放置" name="placed" />
         </el-tabs>
+
+        <!-- 标签筛选 -->
+        <div class="flex flex-wrap gap-1 mb-2">
+          <el-button
+            :type="pickFilterTag === '' ? 'primary' : 'default'"
+            size="small"
+            @click="handlePickFilterTag('')"
+          >
+            全部
+          </el-button>
+          <el-button
+            v-for="tag in ROLE_TAGS"
+            :key="tag.value"
+            :type="pickFilterTag === tag.value ? 'primary' : 'default'"
+            size="small"
+            @click="handlePickFilterTag(tag.value)"
+          >
+            {{ tag.emoji }}
+          </el-button>
+        </div>
 
         <!-- 可选列表 -->
         <div class="space-y-1 max-h-60 overflow-y-auto">
@@ -234,8 +258,34 @@ const formationName = ref('')
 // 5x5 grid: grid[row][col] = adventurer object or null
 const grid = ref(createEmptyGrid())
 
+// 棋盘组件 ref
+const formationGridRef = ref(null)
+
+// 保存时的快照（用于还原）
+const savedGridSnapshot = ref(null)
+const savedFormationNameSnapshot = ref('')
+
 const existingFormation = computed(() => {
   return allFormations.value.find(f => f.slot === currentSlot.value)
+})
+
+// 是否有未保存的变更
+const hasUnsavedChanges = computed(() => {
+  if (!savedGridSnapshot.value) {
+    // 没有快照说明是新阵容，检查是否放置了冒险家
+    return placedCount.value > 0 || formationName.value !== ''
+  }
+  // 对比名字
+  if (formationName.value !== savedFormationNameSnapshot.value) return true
+  // 对比棋盘
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const cur = grid.value[r][c]
+      const snap = savedGridSnapshot.value[r][c]
+      if ((cur?._id || null) !== (snap?._id || null)) return true
+    }
+  }
+  return false
 })
 
 const placedCount = computed(() => {
@@ -313,10 +363,36 @@ function loadSlot(slot) {
       }
     }
     grid.value = newGrid
+    takeSnapshot()
   } else {
     formationName.value = ''
     grid.value = createEmptyGrid()
+    savedGridSnapshot.value = null
+    savedFormationNameSnapshot.value = ''
   }
+}
+
+/** 拍快照（保存当前棋盘状态用于还原） */
+function takeSnapshot() {
+  savedGridSnapshot.value = grid.value.map(row =>
+    row.map(cell => (cell ? { ...cell } : null))
+  )
+  savedFormationNameSnapshot.value = formationName.value
+}
+
+/** 还原到上次保存状态 */
+function handleRestore() {
+  if (!savedGridSnapshot.value && placedCount.value === 0) return
+  if (savedGridSnapshot.value) {
+    grid.value = savedGridSnapshot.value.map(row =>
+      row.map(cell => (cell ? { ...cell } : null))
+    )
+    formationName.value = savedFormationNameSnapshot.value
+  } else {
+    grid.value = createEmptyGrid()
+    formationName.value = ''
+  }
+  ElMessage.info('已还原到上次保存状态')
 }
 
 // ── 棋盘交互 ──
@@ -338,11 +414,24 @@ const availableAdventurers = computed(() => {
 
 const pickTab = ref('unplaced')
 
+// ── 选择弹窗标签筛选 ──
+const pickFilterTag = ref('')
+
+function handlePickFilterTag(tag) {
+  pickFilterTag.value = tag
+}
+
 const filteredPickAdventurers = computed(() => {
+  let list
   if (pickTab.value === 'placed') {
-    return allAdventurers.value.filter(adv => isPlaced(adv._id))
+    list = allAdventurers.value.filter(adv => isPlaced(adv._id))
+  } else {
+    list = allAdventurers.value.filter(adv => !isPlaced(adv._id))
   }
-  return allAdventurers.value.filter(adv => !isPlaced(adv._id))
+  if (pickFilterTag.value) {
+    list = list.filter(adv => adv.roleTag === pickFilterTag.value)
+  }
+  return list
 })
 
 function isPlaced(advId) {
@@ -490,6 +579,9 @@ async function handleSave() {
     } else {
       allFormations.value.push(savedFormation)
     }
+    // 保存后关闭拖拽模式并拍快照
+    formationGridRef.value?.disableDragMode()
+    takeSnapshot()
   } catch (e) {
     // 错误已由拦截器处理
   } finally {

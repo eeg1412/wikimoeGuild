@@ -87,12 +87,22 @@ export async function levelUpStat(req, res, next) {
   try {
     const accountId = req.player.id
     const { id } = req.params
-    const { statType } = req.body
+    const { statType, times = 1 } = req.body
     if (!['attack', 'defense', 'speed', 'san'].includes(statType)) {
       return res.paramError('无效的属性类型')
     }
-    const result = await adventurerService.levelUpStat(accountId, id, statType)
-    res.success(result, '升级成功')
+    const result = await adventurerService.levelUpStat(
+      accountId,
+      id,
+      statType,
+      times
+    )
+    res.success(
+      result,
+      result.levelsUpgraded > 1
+        ? `成功升级 ${result.levelsUpgraded} 级`
+        : '升级成功'
+    )
   } catch (error) {
     next(error)
   }

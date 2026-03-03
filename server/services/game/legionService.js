@@ -231,13 +231,32 @@ function generateDemonRuneStone(level, allSkills, rng) {
 
 /**
  * 将恶魔列表排布到5x5棋盘
+ * 按角色定位排序：前排优先防御/SAN型，后排优先攻击/速度型
  */
 function placeDemonsOnGrid(demons) {
   const grid = Array.from({ length: 5 }, () => Array(5).fill(null))
+
+  // 为每个恶魔计算前排/后排倾向分数
+  // 前排分 = (defenseLevel + SANLevel) / 综合等级
+  // 后排分 = (attackLevel + speedLevel) / 综合等级
+  const scored = demons.map(d => {
+    const total =
+      (d.attackLevel || 1) +
+      (d.defenseLevel || 1) +
+      (d.speedLevel || 1) +
+      (d.SANLevel || 1)
+    const frontScore = ((d.defenseLevel || 1) + (d.SANLevel || 1)) / total
+    const backScore = ((d.attackLevel || 1) + (d.speedLevel || 1)) / total
+    return { demon: d, frontScore, backScore }
+  })
+
+  // 按前排倾向排序（高→低），前排倾向高的放前排
+  scored.sort((a, b) => b.frontScore - a.frontScore)
+
   let idx = 0
-  for (let row = 0; row < 5 && idx < demons.length; row++) {
-    for (let col = 0; col < 5 && idx < demons.length; col++) {
-      grid[row][col] = demons[idx]
+  for (let row = 0; row < 5 && idx < scored.length; row++) {
+    for (let col = 0; col < 5 && idx < scored.length; col++) {
+      grid[row][col] = scored[idx].demon
       idx++
     }
   }

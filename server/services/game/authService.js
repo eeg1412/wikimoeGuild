@@ -503,7 +503,7 @@ export async function getPlayerInfo(playerId) {
     .lean()
   const playerInfo = await GamePlayerInfo.findOne({ account: playerId })
     .select(
-      'account guildName gold hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount dungeonsLevel selectedDungeonsLevel dungeonsBackgroundId dungeonsCryRates lastDungeonSettleAt mapCanChangeUses lastMapRecoverAt miningCanUses lastMiningRecoverAt createdAt'
+      'account guildName gold guildLevel hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount dungeonsLevel selectedDungeonsLevel dungeonsBackgroundId dungeonsCryRates lastDungeonSettleAt mapCanChangeUses lastMapRecoverAt miningCanUses lastMiningRecoverAt createdAt'
     )
     .lean()
   if (playerInfo && account) {

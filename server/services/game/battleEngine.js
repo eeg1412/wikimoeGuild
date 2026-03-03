@@ -753,7 +753,8 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
       isDemon: u.isDemon,
       currentSan: u.currentSan,
       maxSan: u.maxSan,
-      alive: u.alive
+      alive: u.alive,
+      hasRuneStone: !!u.runeStone
     })),
     defenderUnits: defenderUnits.map(u => ({
       id: u.id,
@@ -767,7 +768,8 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
       isDemon: u.isDemon,
       currentSan: u.currentSan,
       maxSan: u.maxSan,
-      alive: u.alive
+      alive: u.alive,
+      hasRuneStone: !!u.runeStone
     }))
   }
 }

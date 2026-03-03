@@ -350,12 +350,8 @@ export async function previewSynthesis(
     err.expose = true
     throw err
   }
-  if (mainRS.equippedBy || materialRS.equippedBy) {
-    const err = new Error('装备中的符文石不可合成，请先卸下')
-    err.statusCode = 400
-    err.expose = true
-    throw err
-  }
+  // 主符文石如果已装备，合成后等级不能超过装备者综合等级（仅预警，在确认阶段检查）
+  // 素材符文石可以是装备中的（将自动卸下）
   if (mainRS.listedOnMarket || materialRS.listedOnMarket) {
     const err = new Error('市场上架中的符文石不可合成，请先下架')
     err.statusCode = 400
@@ -409,7 +405,6 @@ export async function previewSynthesis(
     const finalMaterialRS = await GameRuneStone.findOne({
       _id: materialRuneStoneId,
       account: accountId,
-      equippedBy: null,
       listedOnMarket: false
     })
 
@@ -423,7 +418,6 @@ export async function previewSynthesis(
     const currentMainRS = await GameRuneStone.findOne({
       _id: mainRuneStoneId,
       account: accountId,
-      equippedBy: null,
       listedOnMarket: false
     })
 
@@ -432,6 +426,16 @@ export async function previewSynthesis(
       err.statusCode = 400
       err.expose = true
       throw err
+    }
+
+    // 如果素材符文石已装备，先自动卸下
+    if (finalMaterialRS.equippedBy) {
+      await GameAdventurer.updateOne(
+        { _id: finalMaterialRS.equippedBy },
+        { $unset: { runeStone: 1 } }
+      )
+      finalMaterialRS.equippedBy = null
+      await finalMaterialRS.save()
     }
 
     // 销毁素材石头
@@ -513,17 +517,24 @@ export async function confirmSynthesis(accountId, previewToken, accept) {
       throw err
     }
 
-    if (mainRS.equippedBy) {
-      const err = new Error('装备中的符文石不可合成，请先卸下')
-      err.statusCode = 400
-      err.expose = true
-      throw err
-    }
     if (mainRS.listedOnMarket) {
       const err = new Error('市场上架中的符文石不可合成，请先下架')
       err.statusCode = 400
       err.expose = true
       throw err
+    }
+
+    // 如果主符文石已装备，检查合成后等级不超过装备者综合等级
+    if (mainRS.equippedBy) {
+      const adventurer = await GameAdventurer.findById(mainRS.equippedBy)
+      if (adventurer && preview.level > adventurer.comprehensiveLevel) {
+        const err = new Error(
+          `合成后等级(${preview.level})不能超过装备者综合等级(${adventurer.comprehensiveLevel})`
+        )
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
     }
 
     // 接受合成：使用预览时生成的结果并更新版本号

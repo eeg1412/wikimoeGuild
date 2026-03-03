@@ -3,6 +3,37 @@ import GamePlayerInventory from '../../models/gamePlayerInventory.js'
 import { executeInLock } from '../../utils/utils.js'
 import * as runeStoneService from './runeStoneService.js'
 import * as mineService from './mineService.js'
+import {
+  getCrystalProductionRateCap,
+  getDungeonLevelBonus,
+  getDungeonLevelBonusCap
+} from 'shared/utils/guildLevelUtils.js'
+
+/**
+ * 计算实际产出率（冒险家产出率 + 迷宫等级增益，受公会等级限制）
+ */
+function calcProductionRate(playerInfo) {
+  const cnt = playerInfo.adventurerCount || 0
+  if (cnt <= 0) return 0
+
+  const guildLevel = playerInfo.guildLevel || 1
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  const bonusBase = gameSettings.dungeonLevelProductionBonusBase ?? 100
+
+  // 冒险家数量产出率，受公会等级容纳上限限制
+  const rateCap = getCrystalProductionRateCap(guildLevel)
+  const adventurerRate = Math.min(cnt * 100 + (cnt - 1) * 10, rateCap)
+
+  // 迷宫等级增益（百分比）
+  const dungeonLevel = playerInfo.dungeonsLevel || 1
+  let dungeonBonus = getDungeonLevelBonus(dungeonLevel, bonusBase)
+  // 公会等级上限
+  const dungeonBonusCap = getDungeonLevelBonusCap(guildLevel, bonusBase)
+  dungeonBonus = Math.min(dungeonBonus, dungeonBonusCap)
+
+  // 两者相加
+  return adventurerRate + dungeonBonus
+}
 
 /**
  * 获取地牢信息
@@ -22,14 +53,12 @@ export async function getDungeonInfo(accountId) {
   const hoursPassed = Math.floor((now - lastRecover) / (60 * 60 * 1000))
   const recoveredUses = Math.min(playerInfo.mapCanChangeUses + hoursPassed, 24)
 
-  // 计算当前产出（乘以产出倍率后的实际数量，上限99999）
+  // 计算当前产出（基础每分钟1个水晶，乘以产出倍率百分比，上限99999）
   const lastSettle = new Date(playerInfo.lastDungeonSettleAt || now)
-  const minutesPassed = Math.floor((now - lastSettle) / 60000)
-  const cnt = playerInfo.adventurerCount || 0
-  const productionRate =
-    cnt > 0 ? Math.min(cnt * 100 + (cnt - 1) * 10, 2750) : 0
+  const secondsPassed = Math.floor((now - lastSettle) / 1000)
+  const productionRate = calcProductionRate(playerInfo)
   const currentOutput = Math.min(
-    Math.floor((minutesPassed * productionRate) / 100),
+    Math.floor((secondsPassed * productionRate) / 6000),
     99999
   )
 
@@ -45,7 +74,8 @@ export async function getDungeonInfo(accountId) {
     lastBattleAt: playerInfo.lastBattleAt,
     adventurerCount: playerInfo.adventurerCount,
     currentOutput: currentOutput,
-    gold: playerInfo.gold
+    gold: playerInfo.gold,
+    guildLevel: playerInfo.guildLevel || 1
   }
 }
 
@@ -157,18 +187,18 @@ function randomCryRates() {
 async function settleCrystalsInternal(playerInfo, accountId) {
   const now = new Date()
   const lastSettle = new Date(playerInfo.lastDungeonSettleAt || now)
-  const minutesPassed = Math.floor((now - lastSettle) / 60000)
+  const secondsPassed = Math.floor((now - lastSettle) / 1000)
 
-  if (minutesPassed < 1) return { crystals: {}, runeStone: null }
+  if (secondsPassed < 1) return { crystals: {}, runeStone: null }
 
-  // 产出率：adventurerCount * 100% + (adventurerCount-1) * 10%，最大2750%
   const cnt = playerInfo.adventurerCount || 0
   if (cnt <= 0) return { crystals: {}, runeStone: null }
 
-  const productionRate = Math.min(cnt * 100 + (cnt - 1) * 10, 2750)
-  // 最大产物数量限制为99999
+  // 使用新的产出率计算（包含迷宫等级增益，受公会等级限制）
+  const productionRate = calcProductionRate(playerInfo)
+  // 基础每分钟产出1个水晶，乘以产出率百分比，向下取整
   const totalOutput = Math.min(
-    Math.floor((minutesPassed * productionRate) / 100),
+    Math.floor((secondsPassed * productionRate) / 6000),
     99999
   )
 
@@ -262,10 +292,10 @@ export async function settleCrystals(accountId) {
 
     const now = new Date()
     const lastSettle = new Date(playerInfo.lastDungeonSettleAt || now)
-    const minutesPassed = Math.floor((now - lastSettle) / 60000)
+    const secondsPassed = Math.floor((now - lastSettle) / 1000)
 
-    if (minutesPassed < 1) {
-      const err = new Error('距离上次结算不足1分钟')
+    if (secondsPassed < 3) {
+      const err = new Error('距离上次结算不足3秒')
       err.statusCode = 400
       err.expose = true
       throw err

@@ -35,7 +35,10 @@ export const adventurerLevelUpSchema = Joi.object({
     .messages({
       'any.only': '无效的属性类型',
       'any.required': '请选择属性类型'
-    })
+    }),
+  times: Joi.number().integer().valid(1, 5, 10).default(1).messages({
+    'any.only': '升级次数只能为 1、5 或 10'
+  })
 })
 
 /**

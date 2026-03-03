@@ -16,18 +16,207 @@
 
       <!-- 右侧操作区 -->
       <div class="flex items-center gap-2">
-        <!-- 金币显示（已登录时） -->
-        <div
+        <!-- 公会等级（已登录时） -->
+        <el-popover
           v-if="isLoggedIn && playerInfo"
-          class="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/40"
+          :width="300"
+          trigger="click"
+          placement="bottom-end"
+          @show="handleGuildLevelPopoverShow"
         >
-          <span class="text-yellow-500 text-sm">🪙</span>
-          <span
-            class="text-sm font-semibold text-yellow-600 dark:text-yellow-400 tabular-nums"
-          >
-            {{ playerInfo.gold?.toLocaleString() ?? 0 }}
-          </span>
-        </div>
+          <template #reference>
+            <div
+              class="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/40 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+            >
+              <span class="text-purple-500 text-sm">🏰</span>
+              <span
+                class="text-sm font-semibold text-purple-600 dark:text-purple-400 tabular-nums"
+              >
+                Lv.{{ playerInfo.guildLevel ?? 1 }}
+              </span>
+            </div>
+          </template>
+          <!-- 公会等级升级面板 -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span
+                class="text-sm font-semibold text-gray-700 dark:text-gray-200"
+                >🏰 公会等级</span
+              >
+              <span class="text-lg font-bold text-purple-500"
+                >Lv.{{ playerInfo.guildLevel ?? 1 }}</span
+              >
+            </div>
+            <div v-if="guildLevelLoading" class="text-center py-3">
+              <span class="animate-spin inline-block text-xl">⏳</span>
+            </div>
+            <template v-else-if="guildLevelInfo">
+              <div class="space-y-1.5 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-500 dark:text-gray-400"
+                    >冒险家容量</span
+                  >
+                  <span class="font-semibold text-gray-700 dark:text-gray-200"
+                    >{{ playerInfo.adventurerCount ?? 0 }} /
+                    {{ guildLevelInfo.maxAdventurerCount }}</span
+                  >
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500 dark:text-gray-400"
+                    >综合等级上限</span
+                  >
+                  <span
+                    class="font-semibold text-gray-700 dark:text-gray-200"
+                    >{{ guildLevelInfo.maxComprehensiveLevel }}</span
+                  >
+                </div>
+                <template v-if="guildLevelInfo.nextMaxAdventurerCount">
+                  <el-divider class="my-1.5!" />
+                  <p class="text-xs text-gray-400 text-center">升级后</p>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400"
+                      >冒险家容量</span
+                    >
+                    <span class="font-semibold text-green-500">{{
+                      guildLevelInfo.nextMaxAdventurerCount
+                    }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400"
+                      >综合等级上限</span
+                    >
+                    <span class="font-semibold text-green-500">{{
+                      guildLevelInfo.nextMaxComprehensiveLevel
+                    }}</span>
+                  </div>
+                </template>
+                <el-divider class="my-1.5!" />
+                <div class="flex justify-between">
+                  <span class="text-gray-500 dark:text-gray-400">升级费用</span>
+                  <span class="font-semibold text-yellow-500"
+                    >🪙 {{ guildLevelInfo.fee?.toLocaleString() }}</span
+                  >
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500 dark:text-gray-400">当前金币</span>
+                  <span class="font-semibold text-yellow-500"
+                    >🪙 {{ guildLevelInfo.gold?.toLocaleString() }}</span
+                  >
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500 dark:text-gray-400"
+                    >需满级冒险家</span
+                  >
+                  <span
+                    class="font-semibold"
+                    :class="
+                      guildLevelInfo.qualifiedCount >=
+                      guildLevelInfo.requiredCount
+                        ? 'text-green-500'
+                        : 'text-red-500'
+                    "
+                    >{{ guildLevelInfo.qualifiedCount }} /
+                    {{ guildLevelInfo.requiredCount }}</span
+                  >
+                </div>
+              </div>
+              <el-button
+                type="primary"
+                class="w-full"
+                :loading="guildLevelUpLoading"
+                :disabled="guildLevelUpLoading || !canUpgradeGuild"
+                @click="handleGuildLevelUp"
+              >
+                ⬆️ 升级公会 (Lv.{{ (playerInfo.guildLevel ?? 1) + 1 }})
+              </el-button>
+            </template>
+          </div>
+        </el-popover>
+
+        <!-- 背包按钮（已登录时） -->
+        <el-popover
+          v-if="isLoggedIn && playerInfo"
+          :width="260"
+          trigger="click"
+          placement="bottom-end"
+          @show="handleBackpackPopoverShow"
+        >
+          <template #reference>
+            <div
+              class="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/40 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
+            >
+              <span class="text-yellow-500 text-sm">🎒</span>
+            </div>
+          </template>
+          <!-- 背包弹出面板 -->
+          <div class="space-y-2">
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              🎒 背包
+            </p>
+            <div
+              class="flex items-center justify-between bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2"
+            >
+              <span class="text-sm text-gray-600 dark:text-gray-300"
+                >🪙 金币</span
+              >
+              <span class="font-bold text-yellow-500 tabular-nums">{{
+                playerInfo.gold?.toLocaleString() ?? 0
+              }}</span>
+            </div>
+            <div v-if="backpackLoading" class="text-center py-2">
+              <span class="animate-spin inline-block text-sm">⏳</span>
+            </div>
+            <template v-else-if="backpackInventory">
+              <div class="grid grid-cols-1 gap-1.5">
+                <div
+                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
+                >
+                  <span class="text-xs text-gray-500">⚔️ 攻击水晶</span>
+                  <span
+                    class="text-sm font-semibold text-red-400 tabular-nums"
+                    >{{ backpackInventory.attackCrystal ?? 0 }}</span
+                  >
+                </div>
+                <div
+                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
+                >
+                  <span class="text-xs text-gray-500">🛡️ 防御水晶</span>
+                  <span
+                    class="text-sm font-semibold text-blue-400 tabular-nums"
+                    >{{ backpackInventory.defenseCrystal ?? 0 }}</span
+                  >
+                </div>
+                <div
+                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
+                >
+                  <span class="text-xs text-gray-500">💨 速度水晶</span>
+                  <span
+                    class="text-sm font-semibold text-green-400 tabular-nums"
+                    >{{ backpackInventory.speedCrystal ?? 0 }}</span
+                  >
+                </div>
+                <div
+                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
+                >
+                  <span class="text-xs text-gray-500">❤️ SAN水晶</span>
+                  <span
+                    class="text-sm font-semibold text-purple-400 tabular-nums"
+                    >{{ backpackInventory.sanCrystal ?? 0 }}</span
+                  >
+                </div>
+              </div>
+              <div
+                class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
+              >
+                <span class="text-xs text-gray-500">💎 符文碎片</span>
+                <span
+                  class="text-sm font-semibold text-cyan-400 tabular-nums"
+                  >{{ backpackInventory.runeFragment ?? 0 }}</span
+                >
+              </div>
+            </template>
+          </div>
+        </el-popover>
 
         <!-- 暗模式切换 -->
         <el-button text circle @click="toggleTheme">
@@ -223,12 +412,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { useTheme } from '@/composables/useTheme.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
+import { getGuildLevelInfoApi, upgradeGuildLevelApi } from '@/api/game/guild.js'
+import { getMyInventoryApi } from '@/api/game/inventory.js'
 
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
@@ -237,6 +429,74 @@ const { siteSettings, loadSiteSettings } = useGameSiteSettings()
 
 // 悬浮菜单控制
 const fabOpen = ref(false)
+
+// ── 公会等级面板 ──
+const guildLevelLoading = ref(false)
+const guildLevelInfo = ref(null)
+const guildLevelUpLoading = ref(false)
+
+// 是否可升级公会
+const canUpgradeGuild = computed(() => {
+  const info = guildLevelInfo.value
+  if (!info || !info.fee) return false
+  return (
+    info.gold >= info.fee &&
+    info.qualifiedCount >= info.requiredCount &&
+    (playerInfo.value?.guildLevel ?? 1) < info.maxGuildLevel
+  )
+})
+
+async function handleGuildLevelPopoverShow() {
+  guildLevelLoading.value = true
+  guildLevelInfo.value = null
+  try {
+    const res = await getGuildLevelInfoApi()
+    guildLevelInfo.value = res.data.data
+  } catch {
+    // ignore
+  } finally {
+    guildLevelLoading.value = false
+  }
+}
+
+async function handleGuildLevelUp() {
+  try {
+    await ElMessageBox.confirm(
+      `确定花费 ${guildLevelInfo.value?.fee?.toLocaleString()} 金币升级公会？`,
+      '公会升级',
+      { confirmButtonText: '确定升级', cancelButtonText: '取消', type: 'info' }
+    )
+  } catch {
+    return
+  }
+  guildLevelUpLoading.value = true
+  try {
+    await upgradeGuildLevelApi()
+    ElMessage.success('公会升级成功！')
+    await fetchPlayerInfo()
+    await handleGuildLevelPopoverShow()
+  } catch {
+    // handled by interceptor
+  } finally {
+    guildLevelUpLoading.value = false
+  }
+}
+
+// ── 背包面板 ──
+const backpackLoading = ref(false)
+const backpackInventory = ref(null)
+
+async function handleBackpackPopoverShow() {
+  backpackLoading.value = true
+  try {
+    const res = await getMyInventoryApi()
+    backpackInventory.value = res.data.data
+  } catch {
+    // ignore
+  } finally {
+    backpackLoading.value = false
+  }
+}
 
 function handleNavTo(routeObj) {
   fabOpen.value = false

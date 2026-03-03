@@ -159,6 +159,9 @@
           <span class="info-label">综合等级</span>
           <span class="info-value rpg-number">
             {{ adventurer.comprehensiveLevel }}
+            <span class="text-xs text-gray-400 font-normal">
+              / {{ maxCompLevel }}</span
+            >
           </span>
         </div>
 
@@ -227,22 +230,64 @@
 
         <!-- 属性升级区 -->
         <template v-if="showLevelUp">
-          <div v-for="stat in STAT_LIST" :key="stat.key" class="info-row">
+          <div
+            v-for="stat in STAT_LIST"
+            :key="stat.key"
+            class="info-row flex-wrap gap-y-1"
+          >
             <span class="info-label">
               {{ stat.icon }} {{ stat.name }} Lv.{{ adventurer[stat.levelKey] }}
             </span>
-            <el-button
-              type="warning"
-              size="small"
-              :loading="levelUpLoading"
-              :disabled="levelUpLoading"
-              @click="handleLevelUp(stat.key)"
-            >
-              升级
-            </el-button>
+            <div class="flex flex-col items-end gap-1">
+              <span class="text-xs text-gray-400 whitespace-nowrap">
+                {{ getStatLevelUpCrystalCost(stat.levelKey) }}💎 +
+                {{ getStatLevelUpGoldCost(stat.levelKey) }}🪙 / 级
+              </span>
+              <div class="flex items-center">
+                <el-button
+                  type="warning"
+                  size="small"
+                  :loading="levelUpLoading"
+                  :disabled="
+                    levelUpLoading ||
+                    adventurer.comprehensiveLevel >= maxCompLevel
+                  "
+                  @click="handleLevelUp(stat.key, 1)"
+                >
+                  +1级
+                </el-button>
+                <el-button
+                  type="warning"
+                  size="small"
+                  :loading="levelUpLoading"
+                  :disabled="
+                    levelUpLoading ||
+                    adventurer.comprehensiveLevel >= maxCompLevel
+                  "
+                  @click="handleLevelUp(stat.key, 5)"
+                >
+                  +5级
+                </el-button>
+                <el-button
+                  type="warning"
+                  size="small"
+                  :loading="levelUpLoading"
+                  :disabled="
+                    levelUpLoading ||
+                    adventurer.comprehensiveLevel >= maxCompLevel
+                  "
+                  @click="handleLevelUp(stat.key, 10)"
+                >
+                  +10级
+                </el-button>
+              </div>
+            </div>
           </div>
-          <p class="text-xs text-gray-400 text-center">
-            升级消耗：50水晶 + 500金币
+          <p
+            v-if="adventurer.comprehensiveLevel >= maxCompLevel"
+            class="text-xs text-red-400 text-center"
+          >
+            已达公会等级上限 (Lv.{{ maxCompLevel }})，请先升级公会
           </p>
           <el-divider class="my-1.5!" />
         </template>
@@ -274,6 +319,15 @@
                 @click="handleUnequip"
               >
                 卸下
+              </el-button>
+              <el-button
+                v-if="showManage"
+                type="primary"
+                text
+                size="small"
+                @click="handleOpenSynthesis"
+              >
+                🔮 合成
               </el-button>
             </template>
             <template v-else>
@@ -422,6 +476,14 @@
     </RuneStoneSelectPanel>
   </el-dialog>
 
+  <!-- ==================== 符文石合成组件 ==================== -->
+  <RuneStoneSynthesisDialog
+    v-if="showManage && adventurer"
+    ref="synthesisDialogRef"
+    :adventurer-id="adventurer._id"
+    @updated="onSynthesisUpdated"
+  />
+
   <!-- ===== 快速出售水晶弹窗 ===== -->
   <el-dialog
     v-if="showManage"
@@ -514,8 +576,14 @@ import {
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
+import RuneStoneSynthesisDialog from '@/components/RuneStoneSynthesisDialog.vue'
 import AdventurerFinalStats from '@/components/AdventurerFinalStats.vue'
 import Cropper from '@/components/Cropper.vue'
+import {
+  getAdventurerLevelUpCrystalCost,
+  getAdventurerLevelUpGoldCost,
+  getMaxComprehensiveLevel
+} from 'shared/utils/guildLevelUtils.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -542,6 +610,39 @@ const visible = computed({
 })
 
 const { fetchPlayerInfo, playerInfo } = useGameUser()
+
+// ── 公会等级限制计算 ──
+const maxCompLevel = computed(() => {
+  return getMaxComprehensiveLevel(playerInfo.value?.guildLevel || 1)
+})
+
+const levelUpCrystalCost = computed(() => {
+  if (!adventurer.value) return 0
+  const base = gameSettings.value?.adventurerLevelUpCrystalBase ?? 100
+  return getAdventurerLevelUpCrystalCost(
+    adventurer.value.comprehensiveLevel,
+    base
+  )
+})
+
+const levelUpGoldCost = computed(() => {
+  if (!adventurer.value) return 0
+  const base = gameSettings.value?.adventurerLevelUpGoldBase ?? 500
+  return getAdventurerLevelUpGoldCost(adventurer.value.comprehensiveLevel, base)
+})
+
+// ── 按属性各自等级计算升级消耗 ──
+function getStatLevelUpCrystalCost(levelKey) {
+  if (!adventurer.value) return 0
+  const base = gameSettings.value?.adventurerLevelUpCrystalBase ?? 100
+  return getAdventurerLevelUpCrystalCost(adventurer.value[levelKey], base)
+}
+
+function getStatLevelUpGoldCost(levelKey) {
+  if (!adventurer.value) return 0
+  const base = gameSettings.value?.adventurerLevelUpGoldBase ?? 500
+  return getAdventurerLevelUpGoldCost(adventurer.value[levelKey], base)
+}
 
 // ── 管理模式数据 ──
 const gameSettings = ref({})
@@ -686,13 +787,16 @@ async function handleSetRoleTag(tagValue) {
 // ── 属性升级 ──
 const levelUpLoading = ref(false)
 
-async function handleLevelUp(statType) {
+async function handleLevelUp(statType, times = 1) {
   if (!adventurer.value) return
   levelUpLoading.value = true
   try {
-    const res = await levelUpStatApi(adventurer.value._id, { statType })
-    ElMessage.success('升级成功！')
-    adventurer.value = res.data.data
+    const res = await levelUpStatApi(adventurer.value._id, { statType, times })
+    const { adventurer: updatedAdventurer, levelsUpgraded } = res.data.data
+    ElMessage.success(
+      levelsUpgraded > 1 ? `成功升级 ${levelsUpgraded} 级！` : '升级成功！'
+    )
+    adventurer.value = updatedAdventurer
     emit('updated', adventurer.value)
     await Promise.all([
       fetchPlayerInfo(),
@@ -714,6 +818,22 @@ const runeStoneDetailExpanded = ref(false)
 
 function handleToggleRuneStoneDetail() {
   runeStoneDetailExpanded.value = !runeStoneDetailExpanded.value
+}
+
+// ── 符文石合成（委托给 RuneStoneSynthesisDialog 组件） ──
+const synthesisDialogRef = ref(null)
+
+function handleOpenSynthesis() {
+  if (!adventurer.value?.runeStone) return
+  synthesisDialogRef.value?.open(
+    adventurer.value.runeStone,
+    adventurer.value.comprehensiveLevel
+  )
+}
+
+function onSynthesisUpdated(updatedAdventurer) {
+  adventurer.value = updatedAdventurer
+  emit('updated', updatedAdventurer)
 }
 
 // ── 符文石升级 ──

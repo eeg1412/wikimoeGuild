@@ -44,7 +44,14 @@ export async function getGameSettings(req, res, next) {
         arenaPoolAmount: gameSettings.arenaPoolAmount ?? 100000,
         arenaParticipationReward: gameSettings.arenaParticipationReward ?? 500,
         arenaBattleGold: gameSettings.arenaBattleGold ?? 50,
-        seasonDays: gameSettings.seasonDays ?? 3
+        seasonDays: gameSettings.seasonDays ?? 3,
+        guildLevelUpFeeBase: gameSettings.guildLevelUpFeeBase ?? 1000,
+        adventurerLevelUpCrystalBase:
+          gameSettings.adventurerLevelUpCrystalBase ?? 100,
+        adventurerLevelUpGoldBase:
+          gameSettings.adventurerLevelUpGoldBase ?? 500,
+        dungeonLevelProductionBonusBase:
+          gameSettings.dungeonLevelProductionBonusBase ?? 100
       },
       '获取成功'
     )

@@ -70,6 +70,16 @@
                       }"
                     />
                   </div>
+                  <!-- 符文技能蓄力进度条 -->
+                  <div
+                    v-if="runeProgress(unit) >= 0 && unit.alive"
+                    class="rune-bar-bg"
+                  >
+                    <div
+                      class="rune-bar-fill"
+                      :style="{ width: (runeProgress(unit) / 5) * 100 + '%' }"
+                    />
+                  </div>
                   <!-- 浮动效果指示器 -->
                   <div
                     v-for="effect in getEffects(unit.id)"
@@ -137,6 +147,16 @@
                         width: hpPercent(unit) + '%',
                         backgroundColor: hpColor(unit)
                       }"
+                    />
+                  </div>
+                  <!-- 符文技能蓄力进度条 -->
+                  <div
+                    v-if="runeProgress(unit) >= 0 && unit.alive"
+                    class="rune-bar-bg"
+                  >
+                    <div
+                      class="rune-bar-fill"
+                      :style="{ width: (runeProgress(unit) / 5) * 100 + '%' }"
                     />
                   </div>
                   <!-- 浮动效果指示器 -->
@@ -372,12 +392,18 @@ const unitState = ref(new Map())
 function initUnitState() {
   const map = new Map()
   for (const u of props.attackerUnits) {
-    map.set(u.id, { ...u, alive: true, currentSan: u.maxSan })
+    map.set(u.id, { ...u, alive: true, currentSan: u.maxSan, attackCount: 0 })
   }
   for (const u of props.defenderUnits) {
-    map.set(u.id, { ...u, alive: true, currentSan: u.maxSan })
+    map.set(u.id, { ...u, alive: true, currentSan: u.maxSan, attackCount: 0 })
   }
   unitState.value = map
+}
+
+// 符文技能进度：返回 0-4，表示距离下次触发还需多少次攻击
+function runeProgress(unit) {
+  if (!unit || !unit.hasRuneStone) return -1
+  return unit.attackCount % 5
 }
 
 // 5x5 网格显示（攻击方翻转，使前排面向防御方）
@@ -565,6 +591,12 @@ function processLogEntry(entry) {
   }
   if (entry.type === 'attack') {
     actingUnitIds.value = new Set([entry.attacker])
+    // 递增攻击计数（与后端 battleEngine 同步）
+    const attacker = map.get(entry.attacker)
+    if (attacker) {
+      attacker.attackCount = (attacker.attackCount || 0) + 1
+      needRefreshState = true
+    }
     const defender = map.get(entry.defender)
     if (defender) {
       defender.currentSan = entry.defenderRemainSan
@@ -916,6 +948,24 @@ onUnmounted(() => {
   height: 100%;
   border-radius: 2px;
   transition: width 0.3s ease;
+}
+
+/* 符文技能蓄力进度条 */
+.rune-bar-bg {
+  width: 90%;
+  height: 2px;
+  background: rgba(167, 139, 250, 0.2);
+  border-radius: 2px;
+  margin-top: 1px;
+  overflow: hidden;
+}
+
+.rune-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #a78bfa, #f5c842);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 4px rgba(167, 139, 250, 0.6);
 }
 
 .battle-log-area {

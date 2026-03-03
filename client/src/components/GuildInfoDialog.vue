@@ -27,6 +27,12 @@
       <!-- 信息栏 -->
       <div class="w-full space-y-1.5 text-sm">
         <div class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5">
+          <span class="info-label">🏰 公会等级</span>
+          <span class="info-value rpg-number"
+            >Lv.{{ guildInfo.guildLevel ?? 1 }}</span
+          >
+        </div>
+        <div class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5">
           <span class="info-label">⚔️ 冒险家数</span>
           <span class="info-value rpg-number">{{
             guildInfo.adventurerCount ?? 0

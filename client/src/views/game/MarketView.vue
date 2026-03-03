@@ -8,6 +8,9 @@
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         官方市场 & 自由市场
       </p>
+      <p class="text-sm text-yellow-500 font-semibold mt-1">
+        🪙 {{ (playerInfo?.gold ?? 0).toLocaleString() }} 金币
+      </p>
     </div>
 
     <!-- 顶部标签页 -->
@@ -928,7 +931,7 @@ import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
-const { isLoggedIn, fetchPlayerInfo } = useGameUser()
+const { isLoggedIn, fetchPlayerInfo, playerInfo } = useGameUser()
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
 }

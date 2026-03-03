@@ -262,7 +262,7 @@
               </p>
             </div>
             <div class="bg-purple-50 dark:bg-purple-900/20 rounded p-2">
-              <p class="text-xs text-gray-400">💚 SAN水晶</p>
+              <p class="text-xs text-gray-400">❤️ SAN水晶</p>
               <p class="font-bold text-purple-500">
                 {{ revenueSummary.sanCrystal || 0 }}
               </p>
@@ -366,7 +366,7 @@
               💨 {{ digResult.crystals.speedCrystal }}
             </p>
             <p v-if="digResult.crystals.sanCrystal > 0">
-              💚 {{ digResult.crystals.sanCrystal }}
+              ❤️ {{ digResult.crystals.sanCrystal }}
             </p>
           </div>
         </div>
@@ -719,7 +719,7 @@ function crystalLabel(type) {
     attackCrystal: '⚔️ 攻击水晶',
     defenseCrystal: '🛡️ 防御水晶',
     speedCrystal: '💨 速度水晶',
-    sanCrystal: '💚 SAN水晶'
+    sanCrystal: '❤️ SAN水晶'
   }
   return map[type] || type
 }

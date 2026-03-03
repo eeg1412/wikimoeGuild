@@ -41,6 +41,9 @@
                 ✏️
               </el-button>
             </div>
+            <p class="text-sm text-purple-500 font-semibold">
+              🏰 公会等级 Lv.{{ playerInfo?.guildLevel ?? 1 }}
+            </p>
             <p class="text-sm text-gray-400">
               🪙 {{ (playerInfo?.gold ?? 0).toLocaleString() }} 金币
             </p>

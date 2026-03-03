@@ -28,20 +28,14 @@
             <span>🎯</span> 符文石产出等级
           </span>
           <div class="flex items-center gap-2">
-            <el-select
+            <el-select-v2
               v-model="selectedLevel"
+              :options="dungeonLevelOptions"
               size="small"
               style="width: 120px"
               :disabled="selectLevelLoading"
               @change="handleSelectLevel"
-            >
-              <el-option
-                v-for="lv in maxDungeonLevel"
-                :key="lv"
-                :label="`Lv.${lv}`"
-                :value="lv"
-              />
-            </el-select>
+            />
             <span
               v-if="selectLevelLoading"
               class="animate-spin inline-block text-sm"
@@ -131,9 +125,31 @@
             }}</span>
           </div>
           <div class="dungeon-info-row">
-            <span class="text-gray-300 text-sm">水晶产出率</span>
+            <span class="text-gray-300 text-sm">冒险家产出率</span>
             <span class="text-yellow-300 font-bold rpg-num">{{
-              productionRate
+              adventurerProductionRate
+            }}</span>
+          </div>
+          <div class="dungeon-info-row">
+            <span class="text-gray-300 text-sm">迷宫等级增益</span>
+            <span
+              class="font-bold rpg-num"
+              :class="
+                isDungeonBonusCapped ? 'text-orange-400' : 'text-cyan-300'
+              "
+            >
+              {{ dungeonBonusDisplay }}
+              <span
+                v-if="isDungeonBonusCapped"
+                class="text-xs text-orange-400 ml-1"
+                >(已达公会上限)</span
+              >
+            </span>
+          </div>
+          <div class="dungeon-info-row">
+            <span class="text-gray-300 text-sm">总产出率</span>
+            <span class="text-green-300 font-bold rpg-num">{{
+              totalProductionRate
             }}</span>
           </div>
           <div class="dungeon-info-row">
@@ -453,6 +469,11 @@ import { getMyFormationsApi } from '@/api/game/formation.js'
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import {
+  getCrystalProductionRateCap,
+  getDungeonLevelBonus,
+  getDungeonLevelBonusCap
+} from 'shared/utils/guildLevelUtils.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
@@ -486,6 +507,15 @@ const selectLevelLoading = ref(false)
 const maxDungeonLevel = computed(
   () => dungeonInfo.value?.dungeonsLevel || playerInfo.value?.dungeonsLevel || 1
 )
+
+// el-select-v2 options，从高到低排列
+const dungeonLevelOptions = computed(() => {
+  const max = maxDungeonLevel.value
+  return Array.from({ length: max }, (_, i) => max - i).map(lv => ({
+    value: lv,
+    label: `Lv.${lv}`
+  }))
+})
 
 async function handleSelectLevel(level) {
   selectLevelLoading.value = true
@@ -595,17 +625,56 @@ const crystalRates = computed(() => {
   ]
 })
 
-// 产出倍率数值
-const productionRateValue = computed(() => {
+// 产出倍率数值（冒险家部分，受公会等级限制）
+const adventurerProductionRateValue = computed(() => {
   const cnt = adventurerCount.value
   if (cnt <= 0) return 0
-  return Math.min(cnt * 100 + (cnt - 1) * 10, 2750)
+  const guildLevel = playerInfo.value?.guildLevel || 1
+  const rateCap = getCrystalProductionRateCap(guildLevel)
+  return Math.min(cnt * 100 + (cnt - 1) * 10, rateCap)
 })
 
-// 产出率（显示用）
-const productionRate = computed(() => {
-  if (productionRateValue.value <= 0) return '0%'
-  return `${productionRateValue.value}%`
+// 冒险家产出率（显示用）
+const adventurerProductionRate = computed(() => {
+  if (adventurerProductionRateValue.value <= 0) return '0%'
+  return `${adventurerProductionRateValue.value}%`
+})
+
+// 迷宫等级增益（百分比）
+const dungeonLevelBonusValue = computed(() => {
+  const dungeonLevel =
+    dungeonInfo.value?.dungeonsLevel || playerInfo.value?.dungeonsLevel || 1
+  const guildLevel = playerInfo.value?.guildLevel || 1
+  // 从服务端获取的 bonusBase 信息，使用默认值100
+  const bonusBase = 100
+  let bonus = getDungeonLevelBonus(dungeonLevel, bonusBase)
+  const cap = getDungeonLevelBonusCap(guildLevel, bonusBase)
+  return Math.min(bonus, cap)
+})
+
+// 是否迷宫增益被公会等级限制
+const isDungeonBonusCapped = computed(() => {
+  const dungeonLevel =
+    dungeonInfo.value?.dungeonsLevel || playerInfo.value?.dungeonsLevel || 1
+  const guildLevel = playerInfo.value?.guildLevel || 1
+  const bonusBase = 100
+  const bonus = getDungeonLevelBonus(dungeonLevel, bonusBase)
+  const cap = getDungeonLevelBonusCap(guildLevel, bonusBase)
+  return bonus > cap
+})
+
+// 迷宫增益显示
+const dungeonBonusDisplay = computed(() => {
+  return `${dungeonLevelBonusValue.value}%`
+})
+
+// 总产出率
+const totalProductionRateValue = computed(() => {
+  return adventurerProductionRateValue.value + dungeonLevelBonusValue.value
+})
+
+const totalProductionRate = computed(() => {
+  return `${totalProductionRateValue.value}%`
 })
 
 // 结算时间
@@ -630,11 +699,11 @@ function calcOutput() {
     return
   }
   const ms = Date.now() - new Date(settleAt).getTime()
-  const minutesPassed = Math.max(Math.floor(ms / 60000), 0)
-  // 产物数量 = 分钟数 × 产出倍率 / 100，上限99999
-  const rate = productionRateValue.value
+  const secondsPassed = Math.max(Math.floor(ms / 1000), 0)
+  // 产物数量 = 秒数 × 总产出倍率 / 6000（基础每分钟1个），上限99999
+  const rate = totalProductionRateValue.value
   currentOutput.value = Math.min(
-    Math.floor((minutesPassed * rate) / 100),
+    Math.floor((secondsPassed * rate) / 6000),
     99999
   )
 }

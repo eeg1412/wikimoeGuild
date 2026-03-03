@@ -51,3 +51,27 @@ export async function getGuildInfo(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 获取公会等级升级进度信息
+ */
+export async function getGuildLevelInfo(req, res, next) {
+  try {
+    const result = await guildService.getGuildLevelInfo(req.player.id)
+    res.success(result, '获取公会等级信息成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 公会等级升级
+ */
+export async function upgradeGuildLevel(req, res, next) {
+  try {
+    const result = await guildService.upgradeGuildLevel(req.player.id)
+    res.success(result, '公会升级成功')
+  } catch (error) {
+    next(error)
+  }
+}

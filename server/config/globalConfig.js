@@ -110,7 +110,15 @@ const initGlobalConfig = async () => {
     // 每24小时全局邮件发送上限
     dailyEmailLimit: 500,
     // 每24小时全局游客注册上限
-    dailyGuestRegisterLimit: 200
+    dailyGuestRegisterLimit: 200,
+    // 公会等级升级手续费基数
+    guildLevelUpFeeBase: 1000,
+    // 冒险家升级素材基数（水晶）
+    adventurerLevelUpCrystalBase: 100,
+    // 冒险家升级金币基数
+    adventurerLevelUpGoldBase: 500,
+    // 迷宫等级产出增益计数（百分比）
+    dungeonLevelProductionBonusBase: 100
   }
 
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型

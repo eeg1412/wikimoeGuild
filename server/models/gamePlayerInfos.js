@@ -111,6 +111,13 @@ const gamePlayerInfoSchema = new mongoose.Schema(
     lastBattleAt: {
       type: Date,
       default: null
+    },
+    // 公会等级（起始为1，最大200000）
+    guildLevel: {
+      type: Number,
+      min: 1,
+      max: 200000,
+      default: 1
     }
   },
   {

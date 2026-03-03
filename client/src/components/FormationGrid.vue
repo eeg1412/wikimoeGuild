@@ -29,7 +29,13 @@
               'fg-cell--occupied': element.adventurer,
               'fg-cell--draggable': dragMode && element.adventurer
             }"
-            :style="{ width: `${cellSize}px`, height: `${cellSize}px` }"
+            :style="{
+              width: `${cellSize}px`,
+              height: `${cellSize}px`,
+              ...(element.adventurer
+                ? { borderColor: getElementColor(element.adventurer.elements) }
+                : {})
+            }"
             @click="emit('cell-click', Math.floor(index / 5), index % 5)"
             @contextmenu.prevent
           >
@@ -155,7 +161,10 @@
 <script setup>
 import { ref, watch } from 'vue'
 import draggable from 'vuedraggable'
-import { getPassiveIndicators } from '@/composables/useFormationGrid.js'
+import {
+  getPassiveIndicators,
+  getElementColor
+} from '@/composables/useFormationGrid.js'
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
 
 // ── Props ──
@@ -200,6 +209,14 @@ const emit = defineEmits([
   'clear-cell', // (row, col)
   'set-role-tag' // (row, col, tagValue)
 ])
+
+// 暴露方法供父组件调用
+defineExpose({
+  /** 关闭拖拽排序模式 */
+  disableDragMode() {
+    dragMode.value = false
+  }
+})
 
 // ── 将 2D grid 转为扁平数组供 draggable 使用 ──
 function buildFlatGrid(grid) {

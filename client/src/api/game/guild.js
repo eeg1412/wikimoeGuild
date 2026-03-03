@@ -20,3 +20,17 @@ export function changeGuildNameApi(data) {
 export function getGuildInfoApi(playerInfoId) {
   return gameRequest.get(`/guild/info/${playerInfoId}`)
 }
+
+/**
+ * 获取公会等级升级进度信息
+ */
+export function getGuildLevelInfoApi() {
+  return gameRequest.get('/guild/level-info')
+}
+
+/**
+ * 公会等级升级
+ */
+export function upgradeGuildLevelApi() {
+  return gameRequest.post('/guild/level-up')
+}

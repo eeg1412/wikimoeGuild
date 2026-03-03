@@ -164,39 +164,53 @@
 
         <div class="guide-card mb-4">
           <h4 class="guide-subtitle">⬆️ 属性升级</h4>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            升级消耗根据当前属性等级动态变化：<br />
+            水晶消耗 = ⌊基础值 × (1 + 当前等级 × 0.1)⌋<br />
+            金币消耗 = ⌊基础值 × (1 + 当前等级 × 0.1)⌋
+          </p>
           <div class="overflow-x-auto">
             <table class="guide-table">
               <thead>
                 <tr>
                   <th>升级项</th>
-                  <th>所需水晶</th>
-                  <th>所需金币</th>
+                  <th>
+                    所需水晶（基础
+                    {{ gameSettings.adventurerLevelUpCrystalBase ?? 100 }}）
+                  </th>
+                  <th>
+                    所需金币（基础
+                    {{ gameSettings.adventurerLevelUpGoldBase ?? 500 }}）
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td>⚔️ 攻击等级</td>
-                  <td>50 攻击水晶</td>
-                  <td>500 🪙</td>
+                  <td>攻击水晶 × 公式</td>
+                  <td>金币 × 公式</td>
                 </tr>
                 <tr>
                   <td>🛡️ 防御等级</td>
-                  <td>50 防御水晶</td>
-                  <td>500 🪙</td>
+                  <td>防御水晶 × 公式</td>
+                  <td>金币 × 公式</td>
                 </tr>
                 <tr>
                   <td>💨 速度等级</td>
-                  <td>50 速度水晶</td>
-                  <td>500 🪙</td>
+                  <td>速度水晶 × 公式</td>
+                  <td>金币 × 公式</td>
                 </tr>
                 <tr>
                   <td>🧠 SAN等级</td>
-                  <td>50 SAN水晶</td>
-                  <td>500 🪙</td>
+                  <td>SAN水晶 × 公式</td>
+                  <td>金币 × 公式</td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <p class="text-xs text-gray-400 mt-1">
+            冒险家综合等级上限由公会等级决定（公会等级 × 10）
+          </p>
         </div>
 
         <div class="guide-card">

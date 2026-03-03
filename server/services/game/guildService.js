@@ -2,6 +2,12 @@ import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GameAdventurer from '../../models/gameAdventurer.js'
 import { executeInLock } from '../../utils/utils.js'
 import { saveBase64Image } from '../../utils/imageUpload.js'
+import {
+  getMaxAdventurerCount,
+  getMaxComprehensiveLevel,
+  getGuildLevelUpFee,
+  getRequiredMaxLevelAdventurerCount
+} from 'shared/utils/guildLevelUtils.js'
 
 /**
  * 修改公会标志（消耗金币）
@@ -101,7 +107,7 @@ export async function changeGuildName(accountId, newName) {
 export async function getGuildInfo(playerInfoId) {
   const playerInfo = await GamePlayerInfo.findById(playerInfoId)
     .select(
-      'account guildName hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount createdAt'
+      'account guildName guildLevel hasCustomGuildIcon customGuildIconUpdatedAt adventurerCount createdAt'
     )
     .lean()
   if (!playerInfo) {
@@ -125,7 +131,120 @@ export async function getGuildInfo(playerInfoId) {
     hasCustomGuildIcon: playerInfo.hasCustomGuildIcon,
     customGuildIconUpdatedAt: playerInfo.customGuildIconUpdatedAt,
     adventurerCount: playerInfo.adventurerCount ?? adventurers.length,
+    guildLevel: playerInfo.guildLevel || 1,
     createdAt: playerInfo.createdAt,
     adventurers
   }
+}
+
+/**
+ * 获取公会等级升级进度信息
+ */
+export async function getGuildLevelInfo(accountId) {
+  const playerInfo = await GamePlayerInfo.findOne({ account: accountId }).lean()
+  if (!playerInfo) {
+    const err = new Error('玩家信息不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  const guildLevel = playerInfo.guildLevel || 1
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  const feeBase = gameSettings.guildLevelUpFeeBase ?? 1000
+
+  // 升级费用
+  const fee = getGuildLevelUpFee(guildLevel, feeBase)
+  // 所需综合等级
+  const requiredCompLevel = getMaxComprehensiveLevel(guildLevel)
+  // 所需满级冒险家数量
+  const requiredCount = getRequiredMaxLevelAdventurerCount(guildLevel)
+  // 当前满级冒险家数量
+  const qualifiedCount = await GameAdventurer.countDocuments({
+    account: accountId,
+    comprehensiveLevel: { $gte: requiredCompLevel }
+  })
+
+  return {
+    guildLevel,
+    maxGuildLevel: 200000,
+    fee,
+    gold: playerInfo.gold,
+    requiredCompLevel,
+    requiredCount,
+    qualifiedCount,
+    maxAdventurerCount: getMaxAdventurerCount(guildLevel),
+    maxComprehensiveLevel: getMaxComprehensiveLevel(guildLevel),
+    nextMaxAdventurerCount: getMaxAdventurerCount(guildLevel + 1),
+    nextMaxComprehensiveLevel: getMaxComprehensiveLevel(guildLevel + 1)
+  }
+}
+
+/**
+ * 公会等级升级
+ */
+export async function upgradeGuildLevel(accountId) {
+  return await executeInLock(`guild-level:${accountId}`, async () => {
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const guildLevel = playerInfo.guildLevel || 1
+
+    // 检查是否达到最大等级
+    if (guildLevel >= 200000) {
+      const err = new Error('公会等级已达到最大值')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const feeBase = gameSettings.guildLevelUpFeeBase ?? 1000
+
+    // 计算升级费用
+    const fee = getGuildLevelUpFee(guildLevel, feeBase)
+
+    // 检查金币
+    if (playerInfo.gold < fee) {
+      const err = new Error(`金币不足，需要 ${fee} 金币`)
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 检查满级冒险家数量
+    const requiredCompLevel = getMaxComprehensiveLevel(guildLevel)
+    const requiredCount = getRequiredMaxLevelAdventurerCount(guildLevel)
+    const qualifiedCount = await GameAdventurer.countDocuments({
+      account: accountId,
+      comprehensiveLevel: { $gte: requiredCompLevel }
+    })
+
+    if (qualifiedCount < requiredCount) {
+      const err = new Error(
+        `需要 ${requiredCount} 名综合等级达到 ${requiredCompLevel} 的冒险家，当前只有 ${qualifiedCount} 名`
+      )
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 扣除金币并升级
+    playerInfo.gold -= fee
+    playerInfo.guildLevel = guildLevel + 1
+    await playerInfo.save()
+
+    return {
+      success: true,
+      gold: playerInfo.gold,
+      guildLevel: playerInfo.guildLevel,
+      maxAdventurerCount: getMaxAdventurerCount(playerInfo.guildLevel),
+      maxComprehensiveLevel: getMaxComprehensiveLevel(playerInfo.guildLevel)
+    }
+  })
 }

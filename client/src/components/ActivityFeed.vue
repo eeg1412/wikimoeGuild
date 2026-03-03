@@ -27,7 +27,8 @@
             :account-id="item.account"
             :has-custom-guild-icon="item.hasCustomGuildIcon"
             :custom-guild-icon-updated-at="item.customGuildIconUpdatedAt"
-            class="w-12 h-12 rounded-full shrink-0 mt-0.5 border border-gray-200 dark:border-gray-600 object-cover"
+            class="w-12 h-12 rounded-full shrink-0 mt-0.5 border border-gray-200 dark:border-gray-600 object-cover cursor-pointer"
+            @click="handleGuildIconClick(item)"
           />
           <!-- 类型图标（无账号时回退） -->
           <span v-else class="text-lg shrink-0 mt-0.5">{{
@@ -64,6 +65,12 @@
         @current-change="handlePageChange"
       />
     </div>
+
+    <!-- 公会信息弹窗 -->
+    <GuildInfoDialog
+      v-model="guildInfoDialogVisible"
+      :player-info-id="guildInfoPlayerInfoId"
+    />
   </div>
 </template>
 
@@ -76,6 +83,16 @@ const loading = ref(false)
 const page = ref(1)
 const pageSize = 20
 const total = ref(0)
+
+// ── 公会信息弹窗 ──
+const guildInfoDialogVisible = ref(false)
+const guildInfoPlayerInfoId = ref('')
+
+function handleGuildIconClick(item) {
+  if (!item.playerInfoId) return
+  guildInfoPlayerInfoId.value = item.playerInfoId
+  guildInfoDialogVisible.value = true
+}
 
 function typeIcon(type) {
   const icons = {

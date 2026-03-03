@@ -25,5 +25,9 @@ router.post(
 )
 // 获取指定玩家的公会信息（使用 playerInfoId 而非 accountId，防止泄露 account ObjectId）
 router.get('/info/:playerInfoId', authPlayer, guildController.getGuildInfo)
+// 获取公会等级升级进度信息
+router.get('/level-info', authPlayer, guildController.getGuildLevelInfo)
+// 公会等级升级
+router.post('/level-up', authPlayer, guildController.upgradeGuildLevel)
 
 export default router

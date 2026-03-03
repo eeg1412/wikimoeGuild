@@ -12,6 +12,12 @@ import {
   passiveBuffTypeDataBase,
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
+import {
+  getMaxAdventurerCount,
+  getMaxComprehensiveLevel,
+  getAdventurerLevelUpCrystalCost,
+  getAdventurerLevelUpGoldCost
+} from 'shared/utils/guildLevelUtils.js'
 
 /**
  * 冒险家洗属性（元素/被动增益/攻击偏好）
@@ -143,9 +149,12 @@ export async function recruitAdventurer(accountId) {
       throw err
     }
 
-    // 检查冒险家数量限制
-    if (playerInfo.adventurerCount >= 50) {
-      const err = new Error('每个账号最多可以招募50名冒险家')
+    // 检查冒险家数量限制（与公会等级挂钩）
+    const maxAdventurers = getMaxAdventurerCount(playerInfo.guildLevel || 1)
+    if (playerInfo.adventurerCount >= maxAdventurers) {
+      const err = new Error(
+        `当前公会等级最多可招募 ${maxAdventurers} 名冒险家，请先升级公会`
+      )
       err.statusCode = 400
       err.expose = true
       throw err
@@ -312,8 +321,14 @@ export async function customizeName(accountId, adventurerId, newName) {
 /**
  * 冒险家属性升级
  * @param {string} statType - attack, defense, speed, san
+ * @param {number} times - 升级次数（1/5/10）
  */
-export async function levelUpStat(accountId, adventurerId, statType) {
+export async function levelUpStat(
+  accountId,
+  adventurerId,
+  statType,
+  times = 1
+) {
   const statMap = {
     attack: { crystal: 'attackCrystal', level: 'attackLevel' },
     defense: { crystal: 'defenseCrystal', level: 'defenseLevel' },
@@ -328,6 +343,8 @@ export async function levelUpStat(accountId, adventurerId, statType) {
     err.expose = true
     throw err
   }
+
+  const actualTimes = Math.min(Math.max(1, parseInt(times) || 1), 10)
 
   return await executeInLock(`levelup:${accountId}`, async () => {
     const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
@@ -349,48 +366,102 @@ export async function levelUpStat(accountId, adventurerId, statType) {
       throw err
     }
 
-    // 检查金币（500金币）
-    if (playerInfo.gold < 500) {
-      const err = new Error('金币不足，需要 500 金币')
-      err.statusCode = 400
-      err.expose = true
-      throw err
-    }
-
-    // 检查水晶（50个）
     const inventory = await GamePlayerInventory.findOne({ account: accountId })
-    if (!inventory || inventory[stat.crystal] < 50) {
-      const err = new Error(`水晶不足，需要 50 个`)
-      err.statusCode = 400
+    if (!inventory) {
+      const err = new Error('背包信息不存在')
+      err.statusCode = 404
       err.expose = true
       throw err
     }
 
-    // 扣除金币
-    playerInfo.gold -= 500
-    await playerInfo.save()
+    const maxCompLevel = getMaxComprehensiveLevel(playerInfo.guildLevel || 1)
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const crystalBase = gameSettings.adventurerLevelUpCrystalBase ?? 100
+    const goldBase = gameSettings.adventurerLevelUpGoldBase ?? 500
 
-    // 扣除水晶
-    await GamePlayerInventory.updateOne(
-      { account: accountId },
-      { $inc: { [stat.crystal]: -50 } }
-    )
+    let totalCrystalCost = 0
+    let totalGoldCost = 0
+    let levelsUpgraded = 0
 
-    // 升级
-    adventurer[stat.level] += 1
-    // 重新计算综合等级 = 升级次数 + 1
+    // 模拟升级，累计消耗，遇到资源不足或等级上限则停止
+    for (let i = 0; i < actualTimes; i++) {
+      const currentCompLevel =
+        adventurer.attackLevel +
+        adventurer.defenseLevel +
+        adventurer.speedLevel +
+        adventurer.SANLevel -
+        3
+
+      if (currentCompLevel >= maxCompLevel) {
+        if (i === 0) {
+          const err = new Error(
+            `综合等级已达公会等级上限 ${maxCompLevel}，请先升级公会`
+          )
+          err.statusCode = 400
+          err.expose = true
+          throw err
+        }
+        break
+      }
+
+      const currentStatLevel = adventurer[stat.level]
+      const crystalCost = getAdventurerLevelUpCrystalCost(
+        currentStatLevel,
+        crystalBase
+      )
+      const goldCost = getAdventurerLevelUpGoldCost(currentStatLevel, goldBase)
+
+      if (playerInfo.gold - totalGoldCost < goldCost) {
+        if (i === 0) {
+          const err = new Error(`金币不足，需要 ${goldCost} 金币`)
+          err.statusCode = 400
+          err.expose = true
+          throw err
+        }
+        break
+      }
+
+      if ((inventory[stat.crystal] || 0) - totalCrystalCost < crystalCost) {
+        if (i === 0) {
+          const err = new Error(`水晶不足，需要 ${crystalCost} 个`)
+          err.statusCode = 400
+          err.expose = true
+          throw err
+        }
+        break
+      }
+
+      totalCrystalCost += crystalCost
+      totalGoldCost += goldCost
+      adventurer[stat.level] += 1
+      levelsUpgraded++
+    }
+
+    // 统一重新计算综合等级
     adventurer.comprehensiveLevel =
       adventurer.attackLevel +
       adventurer.defenseLevel +
       adventurer.speedLevel +
       adventurer.SANLevel -
       3
+
+    // 统一扣除
+    playerInfo.gold -= totalGoldCost
+    await playerInfo.save()
+
+    await GamePlayerInventory.updateOne(
+      { account: accountId },
+      { $inc: { [stat.crystal]: -totalCrystalCost } }
+    )
+
     await adventurer.save()
 
-    return await GameAdventurer.findById(adventurer._id)
+    const updatedAdventurer = await GameAdventurer.findById(adventurer._id)
       .select('-account')
       .populate('runeStone')
       .lean()
+
+    return { adventurer: updatedAdventurer, levelsUpgraded }
   })
 }
 
