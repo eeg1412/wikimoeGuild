@@ -70,3 +70,12 @@ export function getGameSettingsApi() {
 export function updateGameSettingsApi(data) {
   return adminRequest.put('/global-config/game', data)
 }
+
+// 官方市场库存
+export function getOfficialMarketStockApi() {
+  return adminRequest.get('/market/stock')
+}
+
+export function updateOfficialMarketStockApi(data) {
+  return adminRequest.put('/market/stock', data)
+}

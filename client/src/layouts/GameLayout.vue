@@ -346,7 +346,12 @@
             <span class="fab-grid-label">背包</span>
           </div>
           <div class="fab-grid-item" @click="handleNavTo({ name: 'GameMail' })">
-            <span class="fab-grid-icon">📬</span>
+            <div class="relative inline-flex">
+              <span class="fab-grid-icon">📬</span>
+              <span v-if="unreadMailBadge" class="fab-badge">{{
+                unreadMailBadge
+              }}</span>
+            </div>
             <span class="fab-grid-label">邮箱</span>
           </div>
           <div
@@ -397,6 +402,8 @@
         >
           ➕
         </span>
+        <!-- 红点角标 -->
+        <span v-if="hasNewContent && !fabOpen" class="fab-dot" />
       </button>
     </div>
 
@@ -413,7 +420,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { useTheme } from '@/composables/useTheme.js'
@@ -421,14 +428,45 @@ import { useGameUser } from '@/composables/useGameUser.js'
 import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
 import { getGuildLevelInfoApi, upgradeGuildLevelApi } from '@/api/game/guild.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
+import { getUnreadCountApi } from '@/api/game/mail.js'
 
 const router = useRouter()
+const route = useRoute()
 const { isDark, toggleTheme } = useTheme()
 const { isLoggedIn, playerInfo, fetchPlayerInfo, logout } = useGameUser()
 const { siteSettings, loadSiteSettings } = useGameSiteSettings()
 
 // 悬浮菜单控制
 const fabOpen = ref(false)
+
+// ── 未读邮件角标 ──
+const unreadMailCount = ref(0)
+
+const hasNewContent = computed(() => unreadMailCount.value > 0)
+
+const unreadMailBadge = computed(() => {
+  if (unreadMailCount.value <= 0) return ''
+  if (unreadMailCount.value > 99) return '99+'
+  return String(unreadMailCount.value)
+})
+
+async function fetchUnreadMailCount() {
+  if (!isLoggedIn.value) return
+  try {
+    const res = await getUnreadCountApi()
+    unreadMailCount.value = res.data.data?.count ?? 0
+  } catch {
+    // ignore
+  }
+}
+
+// 每次路由切换时更新未读数
+watch(
+  () => route.fullPath,
+  () => {
+    fetchUnreadMailCount()
+  }
+)
 
 // ── 公会等级面板 ──
 const guildLevelLoading = ref(false)
@@ -543,12 +581,14 @@ onMounted(async () => {
   updateDocumentMeta()
   if (isLoggedIn.value) {
     await fetchPlayerInfo()
+    fetchUnreadMailCount()
   }
 })
 
 function handleLogout() {
   logout()
   fabOpen.value = false
+  unreadMailCount.value = 0
   router.push('/game/home')
 }
 </script>
@@ -556,6 +596,7 @@ function handleLogout() {
 <style scoped>
 /* ─── 悬浮菜单球 ─── */
 .fab-main {
+  position: relative;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -667,5 +708,38 @@ function handleLogout() {
 .fab-overlay-enter-from,
 .fab-overlay-leave-to {
   opacity: 0;
+}
+
+/* 红点角标（主按钮上） */
+.fab-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.5);
+  pointer-events: none;
+}
+
+/* 数字角标（邮件项上） */
+.fab-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 9px;
+  pointer-events: none;
+  white-space: nowrap;
 }
 </style>

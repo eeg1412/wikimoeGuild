@@ -82,3 +82,18 @@ export function cancelRuneStoneListingApi(id) {
 export function listMyRuneStoneListingsApi(params) {
   return gameRequest.get('/market/rune-stone/my-listings', { params })
 }
+
+// 素材交易 - 收取待领取物品
+export function collectMaterialOrderApi(id) {
+  return gameRequest.post(`/market/material/${id}/collect`)
+}
+
+// 符文石交易 - 收取待领取金币
+export function collectRuneStoneListingApi(id) {
+  return gameRequest.post(`/market/rune-stone/${id}/collect`)
+}
+
+// 官方市场 - 出售符文石碎片
+export function sellRuneFragmentToOfficialApi(data) {
+  return gameRequest.post('/market/official/sell-rune-fragment', data)
+}

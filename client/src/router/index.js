@@ -93,7 +93,83 @@ const routes = [
         path: 'market',
         name: 'GameMarket',
         component: () => import('../views/game/MarketView.vue'),
-        meta: { title: '交易市场', requiresPlayerAuth: true }
+        meta: { title: '交易市场', requiresPlayerAuth: true },
+        redirect: { name: 'GameMarketOfficial' },
+        children: [
+          {
+            path: 'official',
+            name: 'GameMarketOfficial',
+            component: () => import('../views/game/market/OfficialMarket.vue'),
+            meta: { title: '官方市场', requiresPlayerAuth: true }
+          },
+          {
+            path: 'material',
+            name: 'GameMarketMaterial',
+            component: () => import('../views/game/market/MaterialMarket.vue'),
+            meta: { title: '素材交易', requiresPlayerAuth: true },
+            redirect: { name: 'GameMarketMaterialSellListings' },
+            children: [
+              {
+                path: 'sell-listings',
+                name: 'GameMarketMaterialSellListings',
+                component: () =>
+                  import('../views/game/market/MaterialSellListings.vue'),
+                meta: { title: '贩卖中', requiresPlayerAuth: true }
+              },
+              {
+                path: 'buy-listings',
+                name: 'GameMarketMaterialBuyListings',
+                component: () =>
+                  import('../views/game/market/MaterialBuyListings.vue'),
+                meta: { title: '求购中', requiresPlayerAuth: true }
+              },
+              {
+                path: 'my-sell',
+                name: 'GameMarketMaterialMySell',
+                component: () =>
+                  import('../views/game/market/MaterialMySell.vue'),
+                meta: { title: '发布出售', requiresPlayerAuth: true }
+              },
+              {
+                path: 'my-buy',
+                name: 'GameMarketMaterialMyBuy',
+                component: () =>
+                  import('../views/game/market/MaterialMyBuy.vue'),
+                meta: { title: '发布求购', requiresPlayerAuth: true }
+              }
+            ]
+          },
+          {
+            path: 'rune-stone',
+            name: 'GameMarketRuneStone',
+            component: () => import('../views/game/market/RuneStoneMarket.vue'),
+            meta: { title: '符文石交易', requiresPlayerAuth: true },
+            redirect: { name: 'GameMarketRuneStoneListings' },
+            children: [
+              {
+                path: 'listings',
+                name: 'GameMarketRuneStoneListings',
+                component: () =>
+                  import('../views/game/market/RuneStoneListings.vue'),
+                meta: { title: '符文石贩卖中', requiresPlayerAuth: true }
+              },
+              {
+                path: 'my-listed',
+                name: 'GameMarketRuneStoneMyListed',
+                component: () =>
+                  import('../views/game/market/RuneStoneMyListed.vue'),
+                meta: { title: '我的上架中', requiresPlayerAuth: true }
+              },
+              {
+                path: 'my-unlisted',
+                name: 'GameMarketRuneStoneMyUnlisted',
+                component: () =>
+                  import('../views/game/market/RuneStoneMyUnlisted.vue'),
+                meta: { title: '未上架符文石', requiresPlayerAuth: true }
+              }
+            ]
+          }
+        ]
       },
       {
         path: 'arena',

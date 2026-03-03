@@ -36,7 +36,9 @@ export async function getOfficialMarketInfo() {
       normal: gameSettings.officialNormalRuneStoneBuyPrice ?? 100,
       rare: gameSettings.officialRareRuneStoneBuyPrice ?? 400,
       legendary: gameSettings.officialLegendaryRuneStoneBuyPrice ?? 2000
-    }
+    },
+    runeFragmentBuyPrice: gameSettings.officialRuneFragmentBuyPrice ?? 10,
+    runeFragmentStock: stock.runeFragment ?? 0
   }
 }
 
@@ -420,6 +422,7 @@ export async function createMaterialSellOrder(
       orderType: 'sell',
       materialType,
       quantity,
+      originalQuantity: quantity,
       unitPrice
     })
 
@@ -517,6 +520,7 @@ export async function createMaterialBuyOrder(
       orderType: 'buy',
       materialType,
       quantity,
+      originalQuantity: quantity,
       unitPrice
     })
 
@@ -594,21 +598,19 @@ export async function fulfillMaterialSellOrder(
       { $inc: { gold: -totalCost } }
     )
 
-    // 给买家素材
+    // 给买家素材（买家立即获得）
     await GamePlayerInventory.findOneAndUpdate(
       { account: buyerAccountId },
       { $inc: { [order.materialType]: buyQty } },
       { upsert: true }
     )
 
-    // 给卖家金币
-    await GamePlayerInfo.updateOne(
-      { account: order.account },
-      { $inc: { gold: totalCost } }
-    )
+    // 卖家金币暂存到订单 pendingGold，不立即到账
+    order.pendingGold = (order.pendingGold || 0) + totalCost
 
     // 更新订单
     if (buyQty >= order.quantity) {
+      order.quantity = 0
       order.status = 'completed'
     } else {
       order.quantity -= buyQty
@@ -676,26 +678,21 @@ export async function fulfillMaterialBuyOrder(
       { $inc: { [order.materialType]: -sellQty } }
     )
 
-    // 给卖家金币（求购者下单时已扣除金币）
+    // 给卖家金币（求购者下单时已扣除金币，立即结算给卖家）
     await GamePlayerInfo.updateOne(
       { account: sellerAccountId },
       { $inc: { gold: totalGold } }
     )
 
-    // 给求购者素材
-    await GamePlayerInventory.findOneAndUpdate(
-      { account: order.account },
-      { $inc: { [order.materialType]: sellQty } },
-      { upsert: true }
-    )
+    // 求购者素材暂存到订单 pendingQuantity，不立即到账
+    order.pendingQuantity = (order.pendingQuantity || 0) + sellQty
 
     // 更新订单
     if (sellQty >= order.quantity) {
+      order.quantity = 0
       order.status = 'completed'
     } else {
       order.quantity -= sellQty
-      // 退还多冻结的金币给求购者（差额部分）
-      // 不需要，因为金币按买入量立即结算给卖家
     }
     await order.save()
 
@@ -725,21 +722,26 @@ export async function cancelMaterialOrder(accountId, orderId) {
     }
 
     if (order.orderType === 'sell') {
-      // 出售单：退回素材
-      await GamePlayerInventory.findOneAndUpdate(
-        { account: accountId },
-        { $inc: { [order.materialType]: order.quantity } },
-        { upsert: true }
-      )
+      // 出售单：退回剩余未售出素材
+      if (order.quantity > 0) {
+        await GamePlayerInventory.findOneAndUpdate(
+          { account: accountId },
+          { $inc: { [order.materialType]: order.quantity } },
+          { upsert: true }
+        )
+      }
     } else {
-      // 求购单：退回金币
-      const totalGold = order.unitPrice * order.quantity
-      await GamePlayerInfo.updateOne(
-        { account: accountId },
-        { $inc: { gold: totalGold } }
-      )
+      // 求购单：退回剩余冻结金币
+      if (order.quantity > 0) {
+        const remainingGold = order.unitPrice * order.quantity
+        await GamePlayerInfo.updateOne(
+          { account: accountId },
+          { $inc: { gold: remainingGold } }
+        )
+      }
     }
 
+    order.quantity = 0
     order.status = 'cancelled'
     await order.save()
 
@@ -1015,11 +1017,8 @@ export async function buyRuneStoneListing(buyerAccountId, listingId) {
       { $inc: { gold: -listing.price } }
     )
 
-    // 给卖家金币
-    await GamePlayerInfo.updateOne(
-      { account: listing.account },
-      { $inc: { gold: listing.price } }
-    )
+    // 卖家金币暂存到挂单 pendingGold，不立即到账
+    listing.pendingGold = (listing.pendingGold || 0) + listing.price
 
     // 转移符文石归属并解除市场标记
     await GameRuneStone.updateOne(
@@ -1086,4 +1085,214 @@ export async function listMyRuneStoneListings(
     .lean()
 
   return { list, total }
+}
+
+// ==================== 收取机制 ====================
+
+/**
+ * 收取素材订单的待领取物品（金币或素材）
+ */
+export async function collectMaterialOrder(accountId, orderId) {
+  return await executeInLock(`market-collect:${accountId}`, async () => {
+    const order = await GameMarketListing.findOne({
+      _id: orderId,
+      account: accountId
+    })
+    if (!order) {
+      const err = new Error('订单不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const result = {}
+
+    if (order.orderType === 'sell' && order.pendingGold > 0) {
+      // 出售单：收取待领取金币
+      await GamePlayerInfo.updateOne(
+        { account: accountId },
+        { $inc: { gold: order.pendingGold } }
+      )
+      result.goldCollected = order.pendingGold
+      order.pendingGold = 0
+      await order.save()
+    } else if (order.orderType === 'buy' && order.pendingQuantity > 0) {
+      // 求购单：收取待领取素材
+      await GamePlayerInventory.findOneAndUpdate(
+        { account: accountId },
+        { $inc: { [order.materialType]: order.pendingQuantity } },
+        { upsert: true }
+      )
+      result.materialCollected = order.pendingQuantity
+      result.materialType = order.materialType
+      order.pendingQuantity = 0
+      await order.save()
+    } else {
+      const err = new Error('没有可收取的物品')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    return result
+  })
+}
+
+/**
+ * 收取符文石挂单的待领取金币
+ */
+export async function collectRuneStoneListing(accountId, listingId) {
+  return await executeInLock(`rune-collect:${accountId}`, async () => {
+    const listing = await GameRuneStoneListing.findOne({
+      _id: listingId,
+      account: accountId
+    })
+    if (!listing) {
+      const err = new Error('挂单不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    if (!listing.pendingGold || listing.pendingGold <= 0) {
+      const err = new Error('没有可收取的金币')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    await GamePlayerInfo.updateOne(
+      { account: accountId },
+      { $inc: { gold: listing.pendingGold } }
+    )
+
+    const goldCollected = listing.pendingGold
+    listing.pendingGold = 0
+    await listing.save()
+
+    return { goldCollected }
+  })
+}
+
+// ==================== 官方市场 - 符文石碎片收购 ====================
+
+/**
+ * 向官方市场出售符文石碎片
+ */
+export async function sellRuneFragmentToOfficial(accountId, quantity) {
+  if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 99999) {
+    const err = new Error('数量必须为1-99999的正整数')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  return await executeInLock(
+    `official-rune-frag-sell:${accountId}`,
+    async () => {
+      const gameSettings = global.$globalConfig?.gameSettings || {}
+      const buyPrice = gameSettings.officialRuneFragmentBuyPrice ?? 10
+
+      // 检查玩家库存
+      const inventory = await GamePlayerInventory.findOne({
+        account: accountId
+      })
+      if (!inventory || inventory.runeFragment < quantity) {
+        const err = new Error('符文石碎片不足')
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+
+      const totalGold = buyPrice * quantity
+
+      // 扣除符文石碎片
+      await GamePlayerInventory.updateOne(
+        { account: accountId },
+        { $inc: { runeFragment: -quantity } }
+      )
+
+      // 增加金币
+      await GamePlayerInfo.updateOne(
+        { account: accountId },
+        { $inc: { gold: totalGold } }
+      )
+
+      // 增加官方库存（上限 99999999，超过不再增加）
+      const MAX_STOCK = 99999999
+      const stock = await GameOfficialMarketStock.findOneAndUpdate(
+        { key: 'global' },
+        { $inc: { runeFragment: quantity } },
+        { upsert: true, new: true }
+      )
+      if (stock.runeFragment > MAX_STOCK) {
+        await GameOfficialMarketStock.updateOne(
+          { key: 'global' },
+          { $set: { runeFragment: MAX_STOCK } }
+        )
+      }
+
+      return { goldEarned: totalGold, quantity }
+    }
+  )
+}
+
+// ==================== 管理后台 - 官方市场库存管理 ====================
+
+/**
+ * 获取官方市场库存（管理用）
+ */
+export async function getOfficialMarketStock() {
+  let stock = await GameOfficialMarketStock.findOne({ key: 'global' }).lean()
+  if (!stock) {
+    stock = await GameOfficialMarketStock.create({ key: 'global' })
+    stock = stock.toJSON()
+  }
+  return {
+    attackCrystal: stock.attackCrystal,
+    defenseCrystal: stock.defenseCrystal,
+    speedCrystal: stock.speedCrystal,
+    sanCrystal: stock.sanCrystal,
+    runeFragment: stock.runeFragment ?? 0
+  }
+}
+
+/**
+ * 设置官方市场库存（管理用）
+ */
+export async function updateOfficialMarketStock(stockData) {
+  const validFields = [
+    'attackCrystal',
+    'defenseCrystal',
+    'speedCrystal',
+    'sanCrystal'
+  ]
+  const update = {}
+  for (const field of validFields) {
+    if (stockData[field] !== undefined) {
+      const val = parseInt(stockData[field])
+      if (!Number.isInteger(val) || val < 0 || val > 99999999) {
+        const err = new Error(`${field} 必须为0-99999999之间的整数`)
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+      update[field] = val
+    }
+  }
+
+  if (Object.keys(update).length === 0) {
+    const err = new Error('没有有效的库存数据')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  await GameOfficialMarketStock.findOneAndUpdate(
+    { key: 'global' },
+    { $set: update },
+    { upsert: true }
+  )
+
+  return await getOfficialMarketStock()
 }

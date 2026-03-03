@@ -87,6 +87,8 @@ const initGlobalConfig = async () => {
     officialRareRuneStoneBuyPrice: 400,
     // 官方市场传说符文石收购价格
     officialLegendaryRuneStoneBuyPrice: 2000,
+    // 官方市场符文石碎片收购价格
+    officialRuneFragmentBuyPrice: 10,
     // 自由市场素材最低价格
     freeMarketMinPrice: 100,
     // 自由市场符文石最低价格

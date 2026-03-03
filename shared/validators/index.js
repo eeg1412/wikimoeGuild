@@ -25,6 +25,7 @@ export {
   officialSellCrystalSchema,
   officialBuyCrystalSchema,
   officialSellRuneStoneSchema,
+  officialSellRuneFragmentSchema,
   createMaterialSellOrderSchema,
   createMaterialBuyOrderSchema,
   fulfillMaterialOrderSchema,

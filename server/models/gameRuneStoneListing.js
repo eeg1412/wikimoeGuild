@@ -26,6 +26,12 @@ const gameRuneStoneListingSchema = new mongoose.Schema(
       min: 1,
       max: 2000000000
     },
+    // 待收取金币（出售成交后，金币暂存于此）
+    pendingGold: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     // 状态: active(活跃) / completed(已成交) / cancelled(已取消)
     status: {
       type: String,

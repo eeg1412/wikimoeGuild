@@ -56,6 +56,17 @@ export const officialSellRuneStoneSchema = Joi.object({
 })
 
 /**
+ * 官方市场出售符文石碎片
+ */
+export const officialSellRuneFragmentSchema = Joi.object({
+  quantity: Joi.number().integer().min(1).max(99999).required().messages({
+    'number.min': '数量至少为 1',
+    'number.max': '数量最多为 99999',
+    'any.required': '请输入数量'
+  })
+})
+
+/**
  * 发布素材出售订单
  */
 export const createMaterialSellOrderSchema = Joi.object({

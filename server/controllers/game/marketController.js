@@ -55,6 +55,20 @@ export async function sellRuneStoneToOfficial(req, res, next) {
   }
 }
 
+export async function sellRuneFragmentToOfficial(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { quantity } = req.body
+    const result = await marketService.sellRuneFragmentToOfficial(
+      accountId,
+      parseInt(quantity)
+    )
+    res.success(result, '出售成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
 // ========== 素材交易 ==========
 
 export async function listMaterialSellOrders(req, res, next) {
@@ -245,6 +259,30 @@ export async function listMyRuneStoneListings(req, res, next) {
       status
     })
     res.success(result, '获取我的挂单成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ========== 收取 ==========
+
+export async function collectMaterialOrder(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { id } = req.params
+    const result = await marketService.collectMaterialOrder(accountId, id)
+    res.success(result, '收取成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function collectRuneStoneListing(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { id } = req.params
+    const result = await marketService.collectRuneStoneListing(accountId, id)
+    res.success(result, '收取成功')
   } catch (error) {
     next(error)
   }

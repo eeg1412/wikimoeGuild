@@ -16,7 +16,8 @@ const gameOfficialMarketStockSchema = new mongoose.Schema(
     attackCrystal: { type: Number, min: 0, default: 0 },
     defenseCrystal: { type: Number, min: 0, default: 0 },
     speedCrystal: { type: Number, min: 0, default: 0 },
-    sanCrystal: { type: Number, min: 0, default: 0 }
+    sanCrystal: { type: Number, min: 0, default: 0 },
+    runeFragment: { type: Number, min: 0, default: 0 }
   },
   { timestamps: true }
 )

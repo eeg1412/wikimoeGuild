@@ -28,6 +28,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     RuneStoneInfoCard: typeof import('./components/RuneStoneInfoCard.vue')['default']
+    RuneStoneMarketList: typeof import('./components/RuneStoneMarketList.vue')['default']
     RuneStoneSelectPanel: typeof import('./components/RuneStoneSelectPanel.vue')['default']
     RuneStoneSynthesisDialog: typeof import('./components/RuneStoneSynthesisDialog.vue')['default']
   }

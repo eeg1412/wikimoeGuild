@@ -4,11 +4,12 @@
  * 数据回滚脚本
  *
  * 功能：
- * 1. 将所有冒险家的属性等级重置为 1，综合等级重置为 4
- * 2. 按旧版固定费率（50水晶 + 500金币/次）退还升级消耗的资源
- * 3. 将所有玩家的迷宫等级重置为 1
- * 4. 将所有玩家的公会等级重置为 1
- * 5. 清除所有矿场数据和矿主收益日志
+ * 1. 将所有冒险家的属性等级重置为 1，综合等级重置为 1
+ * 2. 卸下所有冒险家装备的符文石
+ * 3. 按旧版固定费率（50水晶 + 500金币/次）退还升级消耗的资源
+ * 4. 将所有玩家的迷宫等级重置为 1
+ * 5. 将所有玩家的公会等级重置为 1
+ * 6. 清除所有矿场数据和矿主收益日志
  *
  * 用法：
  *   node server/scripts/rollback-adventurer-levels.js [--dry-run]
@@ -44,9 +45,18 @@ const adventurerSchema = new mongoose.Schema({
   defenseLevel: { type: Number, default: 1 },
   speedLevel: { type: Number, default: 1 },
   SANLevel: { type: Number, default: 1 },
-  comprehensiveLevel: { type: Number, default: 4 }
+  comprehensiveLevel: { type: Number, default: 1 }
 })
 const Adventurer = mongoose.model('game_adventurer', adventurerSchema)
+
+const runeStoneSchema = new mongoose.Schema(
+  {
+    account: { type: mongoose.Schema.Types.ObjectId, index: true },
+    equippedBy: { type: mongoose.Schema.Types.ObjectId, default: null }
+  },
+  { strict: false }
+)
+const RuneStone = mongoose.model('game_rune_stone', runeStoneSchema)
 
 const inventorySchema = new mongoose.Schema({
   account: { type: mongoose.Schema.Types.ObjectId, unique: true, index: true },
@@ -166,7 +176,8 @@ async function run() {
           defenseLevel: 1,
           speedLevel: 1,
           SANLevel: 1,
-          comprehensiveLevel: 4
+          comprehensiveLevel: 1,
+          runeStone: null
         }
       }
     )
@@ -175,8 +186,24 @@ async function run() {
     console.log(`   将重置 ${adventurers.length} 名冒险家\n`)
   }
 
+  // ── Step 2.5: 卸下所有符文石 ──
+  console.log('📊 Step 2.5: 卸下所有冒险家的符文石...')
+  if (!isDryRun) {
+    const rsResult = await RuneStone.updateMany(
+      { equippedBy: { $ne: null } },
+      { $set: { equippedBy: null } }
+    )
+    console.log(`   ✅ 已卸下 ${rsResult.modifiedCount} 块符文石\n`)
+  } else {
+    const equippedCount = await RuneStone.countDocuments({
+      equippedBy: { $ne: null }
+    })
+    console.log(`   将卸下 ${equippedCount} 块符文石\n`)
+  }
+
   // ── Step 3: 退还资源到玩家背包和金币 ──
   console.log('📊 Step 3: 退还资源...')
+  // eslint-disable-next-line no-unused-vars
   let refundCount = 0
   for (const [accountId, ref] of refundMap) {
     if (
@@ -285,6 +312,7 @@ async function run() {
   } else {
     console.log('✅ 回滚完成！')
     console.log('   所有冒险家等级已重置为 1')
+    console.log('   所有符文石已卸下')
     console.log('   升级消耗的水晶和金币已退还')
     console.log('   迷宫等级和公会等级已重置为 1')
     console.log('   矿场数据已清除')

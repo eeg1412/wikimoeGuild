@@ -6,6 +6,7 @@ import {
   officialSellCrystalSchema,
   officialBuyCrystalSchema,
   officialSellRuneStoneSchema,
+  officialSellRuneFragmentSchema,
   createMaterialSellOrderSchema,
   createMaterialBuyOrderSchema,
   fulfillMaterialOrderSchema,
@@ -33,6 +34,12 @@ router.post(
   authPlayer,
   validate(officialSellRuneStoneSchema),
   marketController.sellRuneStoneToOfficial
+)
+router.post(
+  '/official/sell-rune-fragment',
+  authPlayer,
+  validate(officialSellRuneFragmentSchema),
+  marketController.sellRuneFragmentToOfficial
 )
 
 // 素材交易 - 浏览
@@ -123,6 +130,20 @@ router.get(
   '/rune-stone/my-listings',
   authPlayer,
   marketController.listMyRuneStoneListings
+)
+
+// 素材交易 - 收取待领取物品
+router.post(
+  '/material/:id/collect',
+  authPlayer,
+  marketController.collectMaterialOrder
+)
+
+// 符文石交易 - 收取待领取金币
+router.post(
+  '/rune-stone/:id/collect',
+  authPlayer,
+  marketController.collectRuneStoneListing
 )
 
 export default router
