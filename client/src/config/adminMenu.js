@@ -10,15 +10,15 @@ export const adminMenu = [
     icon: 'List'
   },
   {
-    path: '/admin/global-config',
-    title: '配置管理',
-    icon: 'Document'
-  },
-  {
     path: '/admin/admin-management',
     title: '管理员列表',
     icon: 'UserFilled',
     requiredRole: 999
+  },
+  {
+    path: '/admin/market-stock',
+    title: '市场库存',
+    icon: 'Box'
   },
   {
     title: '玩家管理',
@@ -48,6 +48,11 @@ export const adminMenu = [
         icon: 'UserFilled'
       }
     ]
+  },
+  {
+    path: '/admin/global-config',
+    title: '配置管理',
+    icon: 'Document'
   }
   // ===GENERATOR_MENU===
 ]

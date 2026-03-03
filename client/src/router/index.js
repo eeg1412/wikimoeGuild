@@ -300,6 +300,12 @@ const routes = [
         name: 'AdminGameMail',
         component: () => import('../views/admin/game-mail/Index.vue'),
         meta: { title: '发送邮件' }
+      },
+      {
+        path: 'market-stock',
+        name: 'AdminMarketStock',
+        component: () => import('../views/admin/market-stock/Index.vue'),
+        meta: { title: '市场库存' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]
