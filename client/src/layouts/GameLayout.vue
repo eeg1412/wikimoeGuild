@@ -23,9 +23,11 @@
           trigger="click"
           placement="bottom-end"
           @show="handleGuildLevelPopoverShow"
+          @after-leave="handleGuildLevelPopoverAfterLeave"
         >
           <template #reference>
-            <div
+            <button
+              type="button"
               class="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/40 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
             >
               <span class="text-purple-500 text-sm">🏰</span>
@@ -34,7 +36,7 @@
               >
                 Lv.{{ playerInfo.guildLevel ?? 1 }}
               </span>
-            </div>
+            </button>
           </template>
           <!-- 公会等级升级面板 -->
           <div class="space-y-3">
@@ -140,13 +142,15 @@
           trigger="click"
           placement="bottom-end"
           @show="handleBackpackPopoverShow"
+          @after-leave="handleBackpackPopoverAfterLeave"
         >
           <template #reference>
-            <div
+            <button
+              type="button"
               class="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/40 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
             >
               <span class="text-yellow-500 text-sm">🎒</span>
-            </div>
+            </button>
           </template>
           <!-- 背包弹出面板 -->
           <div class="space-y-2">
@@ -454,7 +458,7 @@ async function fetchUnreadMailCount() {
   if (!isLoggedIn.value) return
   try {
     const res = await getUnreadCountApi()
-    unreadMailCount.value = res.data.data?.count ?? 0
+    unreadMailCount.value = res.data.data?.unreadCount ?? 0
   } catch {
     // ignore
   }
@@ -497,6 +501,10 @@ async function handleGuildLevelPopoverShow() {
   }
 }
 
+function handleGuildLevelPopoverAfterLeave() {
+  guildLevelInfo.value = null
+}
+
 async function handleGuildLevelUp() {
   try {
     await ElMessageBox.confirm(
@@ -526,6 +534,7 @@ const backpackInventory = ref(null)
 
 async function handleBackpackPopoverShow() {
   backpackLoading.value = true
+  backpackInventory.value = null
   try {
     const res = await getMyInventoryApi()
     backpackInventory.value = res.data.data
@@ -534,6 +543,10 @@ async function handleBackpackPopoverShow() {
   } finally {
     backpackLoading.value = false
   }
+}
+
+function handleBackpackPopoverAfterLeave() {
+  backpackInventory.value = null
 }
 
 function handleNavTo(routeObj) {

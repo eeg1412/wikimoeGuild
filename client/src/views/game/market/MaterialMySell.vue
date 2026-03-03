@@ -1,5 +1,28 @@
 <template>
   <div>
+    <!-- 我的素材持有 -->
+    <div class="rpg-card rounded-xl p-4 mb-4">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+        🎒 我的素材
+      </h3>
+      <div v-if="inventoryLoading" class="text-center py-2">
+        <span class="animate-spin inline-block text-sm">⏳</span>
+      </div>
+      <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        <div
+          v-for="m in materialTypes"
+          :key="m.key"
+          class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
+        >
+          <span class="text-xs text-gray-500">{{ m.icon }} {{ m.name }}</span>
+          <span
+            class="text-sm font-semibold tabular-nums text-gray-700 dark:text-gray-200"
+            >{{ myInventory[m.key] ?? 0 }}</span
+          >
+        </div>
+      </div>
+    </div>
+
     <!-- 发布出售表单 -->
     <div class="rpg-card rounded-xl p-4 mb-4">
       <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
@@ -188,6 +211,7 @@ import {
   cancelMaterialOrderApi,
   collectMaterialOrderApi
 } from '@/api/game/market.js'
+import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import {
   materialTypes,
@@ -196,6 +220,22 @@ import {
 } from '@/composables/useMarketUtils.js'
 
 const { fetchPlayerInfo } = useGameUser()
+
+// ── 素材持有信息 ──
+const inventoryLoading = ref(false)
+const myInventory = ref({})
+
+async function fetchInventory() {
+  inventoryLoading.value = true
+  try {
+    const res = await getMyInventoryApi()
+    myInventory.value = res.data.data || {}
+  } catch {
+    // ignore
+  } finally {
+    inventoryLoading.value = false
+  }
+}
 
 const sellForm = reactive({
   materialType: 'attackCrystal',
@@ -254,6 +294,7 @@ async function handleCreateSellOrder() {
     ElMessage.success('出售订单发布成功！')
     await fetchOrders()
     await fetchPlayerInfo()
+    await fetchInventory()
   } catch {
   } finally {
     createLoading.value = false
@@ -302,5 +343,6 @@ async function handleCancel(order) {
 
 onMounted(() => {
   fetchOrders()
+  fetchInventory()
 })
 </script>

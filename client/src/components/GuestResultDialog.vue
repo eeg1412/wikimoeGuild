@@ -40,6 +40,15 @@
           </div>
         </div>
       </div>
+      <!-- 下载按钮 -->
+      <el-button
+        type="warning"
+        class="w-full"
+        size="large"
+        @click="handleDownload"
+      >
+        📥 下载账号信息
+      </el-button>
       <p class="text-xs text-gray-400">
         建议进入游戏后在公会设置中绑定正式邮箱，以保护您的账号。
       </p>
@@ -55,6 +64,9 @@
 <script setup>
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
+
+const { siteSettings } = useGameSiteSettings()
 
 const props = defineProps({
   modelValue: {
@@ -85,6 +97,36 @@ async function handleCopy(text) {
   } catch {
     ElMessage.warning('复制失败，请手动选择复制')
   }
+}
+
+function handleDownload() {
+  const siteName = siteSettings.value.siteTitle || 'WikimoeGuild'
+  const siteUrl = siteSettings.value.siteUrl || window.location.origin
+  const content = [
+    `${siteName} - 账号信息`,
+    '========================',
+    '',
+    `游戏地址：${siteUrl}`,
+    '',
+    `邮箱账号：${props.email}`,
+    `密码：${props.password}`,
+    '',
+    '========================',
+    '请妥善保管此信息，建议进入游戏后绑定正式邮箱。'
+  ].join('\n')
+
+  // 加 UTF-8 BOM，避免 Windows 记事本等工具显示乱码
+  const bom = '\uFEFF'
+  const blob = new Blob([bom + content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${siteName}_账号信息.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  ElMessage.success('账号信息已下载')
 }
 
 function handleConfirm() {
