@@ -397,7 +397,7 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
         )
         if (!target) break
 
-        let damage = effectValue
+        let damage = effectValue - (target.defense + target.tempBuffs.defense)
         // 元素克制
         if (skill.element && isElementCounter(skill.element, target.element)) {
           damage = Math.floor((damage * COUNTER_DAMAGE_RATE) / 10000)
