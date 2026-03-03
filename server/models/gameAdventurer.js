@@ -84,7 +84,7 @@ const gameAdventurerSchema = new mongoose.Schema(
     comprehensiveLevel: {
       type: Number,
       min: 1,
-      max: 9999999,
+      max: 99999999,
       default: 1
     },
     // 装备的符文石
