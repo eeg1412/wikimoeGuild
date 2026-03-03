@@ -36,7 +36,7 @@ const gameMarketListingSchema = new mongoose.Schema(
     quantity: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0,
       max: 2000000000
     },
     // 单价（金币）

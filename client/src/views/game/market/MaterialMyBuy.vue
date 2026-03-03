@@ -307,6 +307,7 @@ async function handleCollect(order) {
     ElMessage.success('收取成功！')
     await fetchOrders()
     await fetchPlayerInfo()
+    await fetchInventory()
   } catch {
   } finally {
     collectLoading.value = null
@@ -334,6 +335,7 @@ async function handleCancel(order) {
     ElMessage.success('已下架，剩余金币已退还')
     await fetchOrders()
     await fetchPlayerInfo()
+    await fetchInventory()
   } catch {
   } finally {
     cancelLoading.value = null
