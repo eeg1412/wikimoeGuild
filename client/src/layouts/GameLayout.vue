@@ -9,13 +9,13 @@
       <!-- 左侧标题 -->
       <router-link
         to="/game/home"
-        class="text-lg font-bold text-gray-800 dark:text-gray-100 hover:opacity-80 transition-opacity"
+        class="flex-1 min-w-0 text-lg font-bold text-gray-800 dark:text-gray-100 hover:opacity-80 transition-opacity truncate"
       >
         {{ siteSettings.siteTitle || 'WikimoeGuild' }}
       </router-link>
 
       <!-- 右侧操作区 -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 shrink-0">
         <!-- 公会等级（已登录时） -->
         <el-popover
           v-if="isLoggedIn && playerInfo"
