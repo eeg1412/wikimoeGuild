@@ -7,6 +7,10 @@
  * - 防御基础值: 100
  * - 速度基础值: 100
  * - SAN基础值: 100
+ * - 符文石触发SP阈值: 1000
+ * - 主动攻击SP: +180
+ * - 每回合SP: +40
+ * - 受伤SP: 40 + floor((1 - 剩余SAN比例) * 120)
  * - 被克制伤害倍率: 15000 (150%)
  *
  * 被动增益计算公式: 对应属性 × (增益等级 × 品质系数)
@@ -31,6 +35,12 @@ const BASE_STATS = {
   speed: 100,
   san: 100
 }
+
+const SP_TRIGGER_THRESHOLD = 1000
+const SP_GAIN_ON_ATTACK = 180
+const SP_GAIN_PER_ROUND = 40
+const SP_GAIN_ON_HIT_BASE = 40
+const SP_GAIN_ON_HIT_MISSING_SAN_SCALE = 120
 
 const COUNTER_DAMAGE_RATE = 15000 // 150%, 以10000为基数
 
@@ -121,7 +131,8 @@ function initBattleUnits(grid, side) {
         speed,
         maxSan,
         currentSan: maxSan,
-        attackCount: 0, // 攻击计数（每5次触发符文石主动技能）
+        maxSp: SP_TRIGGER_THRESHOLD,
+        currentSp: 0,
         delay: 0, // 延迟值
         baseDelay: 0, // 基础延迟值（每次行动增加的值）
         alive: true,
@@ -283,6 +294,22 @@ function selectTarget(attacker, targets, preferenceType, preferenceOrder) {
   return sorted[0]
 }
 
+function gainSp(unit, amount) {
+  if (!unit || amount <= 0) return 0
+  const gain = Math.floor(amount)
+  unit.currentSp = (unit.currentSp || 0) + gain
+  return gain
+}
+
+function gainSpFromDamage(unit) {
+  if (!unit || unit.maxSan <= 0) return 0
+  const remainRatio = Math.max(0, unit.currentSan / unit.maxSan)
+  const gain =
+    SP_GAIN_ON_HIT_BASE +
+    Math.floor((1 - remainRatio) * SP_GAIN_ON_HIT_MISSING_SAN_SCALE)
+  return gainSp(unit, gain)
+}
+
 /**
  * 执行普通攻击
  */
@@ -312,7 +339,9 @@ function performAttack(attacker, defender, log) {
     defender.alive = false
   }
 
-  log.push({
+  const defenderSpGain = gainSpFromDamage(defender)
+
+  const entry = {
     type: 'attack',
     attacker: attacker.id,
     attackerName: attacker.name,
@@ -320,8 +349,30 @@ function performAttack(attacker, defender, log) {
     defenderName: defender.name,
     damage,
     defenderRemainSan: defender.currentSan,
+    defenderSpGain,
+    defenderCurrentSp: defender.currentSp,
     elementCounter: isElementCounter(attacker.element, defender.element)
-  })
+  }
+  log.push(entry)
+  return entry
+}
+
+function getSkillEffectText(skill, effectValue) {
+  const STAT_LABELS = { attack: '攻击', defense: '防御', speed: '速度' }
+  switch (skill.type) {
+    case 'attack':
+      return `造成 ${effectValue} 伤害`
+    case 'buff':
+      return `${STAT_LABELS[skill.buffType] || skill.buffType} +${effectValue}`
+    case 'debuff':
+      return `${STAT_LABELS[skill.debuffType] || skill.debuffType} -${effectValue}`
+    case 'sanRecover':
+      return `恢复 ${effectValue} SAN`
+    case 'changeOrder':
+      return '改变排序'
+    default:
+      return String(effectValue)
+  }
 }
 
 /**
@@ -333,48 +384,12 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
 
   const enemyFrontRow = getFrontRow(enemyUnits)
 
-  // 推送符文石激活提示，供前端展示 cut-in 特效
-  // 将同一批 skillData 的所有技能合并为一个条目，前端负责逐一展示
-  const STAT_LABELS = { attack: '攻击', defense: '防御', speed: '速度' }
-  const skillsInfo = skillData.map(skill => {
-    const effectValue = skill.baseValue * (unit.runeStone.level || 1)
-    let skillEffectText = ''
-    switch (skill.type) {
-      case 'attack':
-        skillEffectText = `造成 ${effectValue} 伤害`
-        break
-      case 'buff':
-        skillEffectText = `${STAT_LABELS[skill.buffType] || skill.buffType} +${effectValue}`
-        break
-      case 'debuff':
-        skillEffectText = `${STAT_LABELS[skill.debuffType] || skill.debuffType} -${effectValue}`
-        break
-      case 'sanRecover':
-        skillEffectText = `恢复 ${effectValue} SAN`
-        break
-      case 'changeOrder':
-        skillEffectText = '改变排序'
-        break
-      default:
-        skillEffectText = String(effectValue)
-    }
-    return { skillLabel: skill.label, skillEffectText }
-  })
-  log.push({
-    type: 'runeActivate',
-    caster: unit.id,
-    casterName: unit.name,
-    runeStoneRarity: unit.runeStone.rarity,
-    runeStoneLevel: unit.runeStone.level || 1,
-    skills: skillsInfo,
-    defaultAvatarId: unit.defaultAvatarId,
-    hasCustomAvatar: !!unit.hasCustomAvatar,
-    customAvatarUpdatedAt: unit.customAvatarUpdatedAt || null,
-    isDemon: !!unit.isDemon
-  })
+  const skillsInfo = []
+  const runeSkillLogs = []
 
   for (const skill of skillData) {
     const effectValue = skill.baseValue * (unit.runeStone.level || 1)
+    const skillEffectText = getSkillEffectText(skill, effectValue)
 
     switch (skill.type) {
       case 'attack': {
@@ -401,7 +416,22 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
           target.alive = false
         }
 
-        log.push({
+        const targetSpGain = gainSpFromDamage(target)
+
+        skillsInfo.push({
+          skillLabel: skill.label,
+          skillType: skill.type,
+          isAllyTarget: false,
+          skillEffectText,
+          target: target.id,
+          targetName: target.name,
+          targetDefaultAvatarId: target.defaultAvatarId,
+          targetHasCustomAvatar: !!target.hasCustomAvatar,
+          targetCustomAvatarUpdatedAt: target.customAvatarUpdatedAt || null,
+          targetIsDemon: !!target.isDemon
+        })
+
+        runeSkillLogs.push({
           type: 'runeSkill',
           skillType: 'attack',
           skillLabel: skill.label,
@@ -410,7 +440,9 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
           target: target.id,
           targetName: target.name,
           damage,
-          targetRemainSan: target.currentSan
+          targetRemainSan: target.currentSan,
+          targetSpGain,
+          targetCurrentSp: target.currentSp
         })
         break
       }
@@ -426,7 +458,20 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
         target.tempBuffs[skill.buffType] =
           (target.tempBuffs[skill.buffType] || 0) + effectValue
 
-        log.push({
+        skillsInfo.push({
+          skillLabel: skill.label,
+          skillType: skill.type,
+          isAllyTarget: true,
+          skillEffectText,
+          target: target.id,
+          targetName: target.name,
+          targetDefaultAvatarId: target.defaultAvatarId,
+          targetHasCustomAvatar: !!target.hasCustomAvatar,
+          targetCustomAvatarUpdatedAt: target.customAvatarUpdatedAt || null,
+          targetIsDemon: !!target.isDemon
+        })
+
+        runeSkillLogs.push({
           type: 'runeSkill',
           skillType: 'buff',
           skillLabel: skill.label,
@@ -451,7 +496,20 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
         target.tempBuffs[skill.debuffType] =
           (target.tempBuffs[skill.debuffType] || 0) - effectValue
 
-        log.push({
+        skillsInfo.push({
+          skillLabel: skill.label,
+          skillType: skill.type,
+          isAllyTarget: false,
+          skillEffectText,
+          target: target.id,
+          targetName: target.name,
+          targetDefaultAvatarId: target.defaultAvatarId,
+          targetHasCustomAvatar: !!target.hasCustomAvatar,
+          targetCustomAvatarUpdatedAt: target.customAvatarUpdatedAt || null,
+          targetIsDemon: !!target.isDemon
+        })
+
+        runeSkillLogs.push({
           type: 'runeSkill',
           skillType: 'debuff',
           skillLabel: skill.label,
@@ -486,6 +544,20 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
         const roll = Math.floor(Math.random() * 100)
         const oldRow = target.row
         const oldCol = target.col
+
+        skillsInfo.push({
+          skillLabel: skill.label,
+          skillType: skill.type,
+          isAllyTarget: false,
+          skillEffectText,
+          target: target.id,
+          targetName: target.name,
+          targetDefaultAvatarId: target.defaultAvatarId,
+          targetHasCustomAvatar: !!target.hasCustomAvatar,
+          targetCustomAvatarUpdatedAt: target.customAvatarUpdatedAt || null,
+          targetIsDemon: !!target.isDemon
+        })
+
         if (roll < probability) {
           // 随机选择一个不同的位置（5×5棋盘范围内）
           const allPositions = []
@@ -501,7 +573,8 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
 
           // 检查新位置是否有冒险家
           const occupant = enemyUnits.find(
-            u => u.alive && u.row === newPos.row && u.col === newPos.col
+            u =>
+              u.id !== target.id && u.row === newPos.row && u.col === newPos.col
           )
           if (occupant) {
             // 互换位置
@@ -509,7 +582,7 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
             occupant.col = oldCol
             target.row = newPos.row
             target.col = newPos.col
-            log.push({
+            runeSkillLogs.push({
               type: 'runeSkill',
               skillType: 'changeOrder',
               skillLabel: skill.label,
@@ -531,7 +604,7 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
             // 直接移动到空位
             target.row = newPos.row
             target.col = newPos.col
-            log.push({
+            runeSkillLogs.push({
               type: 'runeSkill',
               skillType: 'changeOrder',
               skillLabel: skill.label,
@@ -549,7 +622,7 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
             })
           }
         } else {
-          log.push({
+          runeSkillLogs.push({
             type: 'runeSkill',
             skillType: 'changeOrder',
             skillLabel: skill.label,
@@ -577,7 +650,18 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
         )
         target.currentSan += healAmount
 
-        log.push({
+        skillsInfo.push({
+          skillLabel: skill.label,
+          skillEffectText,
+          target: target.id,
+          targetName: target.name,
+          targetDefaultAvatarId: target.defaultAvatarId,
+          targetHasCustomAvatar: !!target.hasCustomAvatar,
+          targetCustomAvatarUpdatedAt: target.customAvatarUpdatedAt || null,
+          targetIsDemon: !!target.isDemon
+        })
+
+        runeSkillLogs.push({
           type: 'runeSkill',
           skillType: 'sanRecover',
           skillLabel: skill.label,
@@ -592,6 +676,47 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
       }
     }
   }
+
+  if (skillsInfo.length > 0) {
+    log.push({
+      type: 'runeActivate',
+      caster: unit.id,
+      casterName: unit.name,
+      runeStoneRarity: unit.runeStone.rarity,
+      runeStoneLevel: unit.runeStone.level || 1,
+      casterCurrentSp: unit.currentSp,
+      skills: skillsInfo,
+      defaultAvatarId: unit.defaultAvatarId,
+      hasCustomAvatar: !!unit.hasCustomAvatar,
+      customAvatarUpdatedAt: unit.customAvatarUpdatedAt || null,
+      isDemon: !!unit.isDemon
+    })
+  }
+
+  if (runeSkillLogs.length > 0) {
+    log.push(...runeSkillLogs)
+  }
+}
+
+function tryTriggerRuneStoneSkill(
+  unit,
+  allUnits,
+  skillMap,
+  triggerTiming,
+  log
+) {
+  if (!unit.runeStone || !unit.runeStone.activeSkills) return
+
+  const timingSkills = unit.runeStone.activeSkills
+    .map(s => skillMap.get(s.skillId))
+    .filter(s => s && s.triggerTiming === triggerTiming)
+
+  if (timingSkills.length === 0) return
+
+  while (unit.currentSp >= SP_TRIGGER_THRESHOLD) {
+    unit.currentSp -= SP_TRIGGER_THRESHOLD
+    performRuneStoneSkill(unit, allUnits, timingSkills, log)
+  }
 }
 
 /**
@@ -604,6 +729,15 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
 export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
   const attackerUnits = initBattleUnits(attackerGrid, 'attacker')
   const defenderUnits = initBattleUnits(defenderGrid, 'defender')
+
+  // 保留初始站位，供战斗演出初始化回放
+  const initialPositionMap = new Map()
+  for (const unit of attackerUnits) {
+    initialPositionMap.set(unit.id, { row: unit.row, col: unit.col })
+  }
+  for (const unit of defenderUnits) {
+    initialPositionMap.set(unit.id, { row: unit.row, col: unit.col })
+  }
 
   // 应用被动增益类型（基于棋盘位置）
   applyPassiveBuffTypes(attackerUnits)
@@ -655,15 +789,27 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
     if (!attackerAlive && !defenderAlive) break
     if (!attackerAlive || !defenderAlive) break
 
-    // 找延迟值最低的单位
+    // 每回合SP回复（存活单位）
     const aliveUnits = allUnits.filter(u => u.alive)
+    const spChanges = aliveUnits.map(u => {
+      const spGain = gainSp(u, SP_GAIN_PER_ROUND)
+      return {
+        id: u.id,
+        spGain,
+        currentSp: u.currentSp
+      }
+    })
+
+    // 找延迟值最低的单位
     const minDelay = Math.min(...aliveUnits.map(u => u.delay))
     const actingUnits = aliveUnits.filter(u => u.delay === minDelay)
 
     battleLog.push({
       type: 'roundStart',
       round,
-      actingCount: actingUnits.length
+      actingCount: actingUnits.length,
+      spGainPerRound: SP_GAIN_PER_ROUND,
+      spChanges
     })
 
     // 所有同时行动的单位执行攻击
@@ -680,21 +826,8 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
       const frontRow = getFrontRow(aliveEnemies)
       if (frontRow.length === 0) continue
 
-      unit.attackCount++
-
-      // 每第5次攻击时结算符文石主动效果（攻击前触发的）
-      if (
-        unit.attackCount % 5 === 0 &&
-        unit.runeStone &&
-        unit.runeStone.activeSkills
-      ) {
-        const beforeSkills = unit.runeStone.activeSkills
-          .map(s => skillMap.get(s.skillId))
-          .filter(s => s && s.triggerTiming === 'before')
-        if (beforeSkills.length > 0) {
-          performRuneStoneSkill(unit, allUnits, beforeSkills, battleLog)
-        }
-      }
+      // SP达到阈值时结算符文石主动效果（攻击前触发）
+      tryTriggerRuneStoneSkill(unit, allUnits, skillMap, 'before', battleLog)
 
       // 选择攻击目标（根据冒险家攻击偏好）
       let prefType = 'remainSan'
@@ -708,22 +841,14 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
       }
       const target = selectTarget(unit, frontRow, prefType, prefOrder)
       if (target && target.alive) {
-        performAttack(unit, target, battleLog)
+        const attackEntry = performAttack(unit, target, battleLog)
+        const attackerSpGain = gainSp(unit, SP_GAIN_ON_ATTACK)
+        attackEntry.attackerSpGain = attackerSpGain
+        attackEntry.attackerCurrentSp = unit.currentSp
       }
 
-      // 每第5次攻击时结算符文石主动效果（攻击后触发的）
-      if (
-        unit.attackCount % 5 === 0 &&
-        unit.runeStone &&
-        unit.runeStone.activeSkills
-      ) {
-        const afterSkills = unit.runeStone.activeSkills
-          .map(s => skillMap.get(s.skillId))
-          .filter(s => s && s.triggerTiming === 'after')
-        if (afterSkills.length > 0) {
-          performRuneStoneSkill(unit, allUnits, afterSkills, battleLog)
-        }
-      }
+      // SP达到阈值时结算符文石主动效果（攻击后触发）
+      tryTriggerRuneStoneSkill(unit, allUnits, skillMap, 'after', battleLog)
 
       // 增加延迟值（重新计算包含临时速度增减益后的有效延迟）
       const currentSpeed = Math.max(1, unit.speed + (unit.tempBuffs.speed || 0))
@@ -769,39 +894,32 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
     }
   }
 
+  const buildResultUnit = u => {
+    const initialPos = initialPositionMap.get(u.id)
+    return {
+      id: u.id,
+      name: u.name,
+      row: initialPos?.row ?? u.row,
+      col: initialPos?.col ?? u.col,
+      element: u.element,
+      defaultAvatarId: u.defaultAvatarId,
+      hasCustomAvatar: u.hasCustomAvatar,
+      customAvatarUpdatedAt: u.customAvatarUpdatedAt || null,
+      isDemon: u.isDemon,
+      currentSan: u.currentSan,
+      maxSan: u.maxSan,
+      currentSp: u.currentSp,
+      maxSp: u.maxSp,
+      alive: u.alive,
+      hasRuneStone: !!u.runeStone
+    }
+  }
+
   return {
     winner,
     rounds: round,
     log: battleLog,
-    attackerUnits: attackerUnits.map(u => ({
-      id: u.id,
-      name: u.name,
-      row: u.row,
-      col: u.col,
-      element: u.element,
-      defaultAvatarId: u.defaultAvatarId,
-      hasCustomAvatar: u.hasCustomAvatar,
-      customAvatarUpdatedAt: u.customAvatarUpdatedAt || null,
-      isDemon: u.isDemon,
-      currentSan: u.currentSan,
-      maxSan: u.maxSan,
-      alive: u.alive,
-      hasRuneStone: !!u.runeStone
-    })),
-    defenderUnits: defenderUnits.map(u => ({
-      id: u.id,
-      name: u.name,
-      row: u.row,
-      col: u.col,
-      element: u.element,
-      defaultAvatarId: u.defaultAvatarId,
-      hasCustomAvatar: u.hasCustomAvatar,
-      customAvatarUpdatedAt: u.customAvatarUpdatedAt || null,
-      isDemon: u.isDemon,
-      currentSan: u.currentSan,
-      maxSan: u.maxSan,
-      alive: u.alive,
-      hasRuneStone: !!u.runeStone
-    }))
+    attackerUnits: attackerUnits.map(buildResultUnit),
+    defenderUnits: defenderUnits.map(buildResultUnit)
   }
 }

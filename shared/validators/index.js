@@ -64,4 +64,5 @@ export {
   changeGuildNameSchema
 } from './gameGuildValidator.js'
 export { mineDigSchema } from './gameMineValidator.js'
+export { updateAdminArenaSeasonTimeSchema } from './adminArenaSeasonValidator.js'
 // ===GENERATOR_VALIDATOR===

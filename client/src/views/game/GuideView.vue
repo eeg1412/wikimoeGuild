@@ -278,7 +278,14 @@
         <div class="guide-card mb-4">
           <h4 class="guide-subtitle">💎 符文石触发</h4>
           <ul class="guide-list">
-            <li>冒险家每 <strong>第 5 次攻击</strong>时触发符文石主动效果</li>
+            <li>冒险家 <strong>SP 达到 1000</strong> 时触发符文石主动效果</li>
+            <li>每回合开始时，存活冒险家会获得 <strong>40 SP</strong></li>
+            <li>每次主动攻击后，冒险家会获得 <strong>180 SP</strong></li>
+            <li>
+              受到伤害后会根据剩余 SAN 获得 SP：<strong
+                >40 + floor((1 - 剩余SAN/最大SAN) × 120)</strong
+              >
+            </li>
             <li>主动效果 = 基础值 × 符文石等级</li>
             <li>符文石有攻击前和攻击后两种触发时机</li>
           </ul>

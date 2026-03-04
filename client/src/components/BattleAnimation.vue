@@ -77,8 +77,11 @@
                   >
                     <div
                       class="rune-bar-fill"
-                      :style="{ width: (runeProgress(unit) / 5) * 100 + '%' }"
+                      :style="{ width: runeProgress(unit) + '%' }"
                     />
+                  </div>
+                  <div v-else class="rune-bar-bg">
+                    <div class="rune-bar-fill" style="width: 0%"></div>
                   </div>
                   <!-- 浮动效果指示器 -->
                   <div
@@ -156,8 +159,11 @@
                   >
                     <div
                       class="rune-bar-fill"
-                      :style="{ width: (runeProgress(unit) / 5) * 100 + '%' }"
+                      :style="{ width: runeProgress(unit) + '%' }"
                     />
+                  </div>
+                  <div v-else class="rune-bar-bg">
+                    <div class="rune-bar-fill" style="width: 0%"></div>
                   </div>
                   <!-- 浮动效果指示器 -->
                   <div
@@ -235,7 +241,14 @@
 
       <!-- 符文石激活 Cut-in 特效 -->
       <Transition name="cutin">
-        <div v-if="showRuneCutIn && runeCutInData" class="rune-cutin-overlay">
+        <div
+          v-if="showRuneCutIn && runeCutInData"
+          class="rune-cutin-overlay"
+          :class="{
+            'rune-cutin-overlay--ally': runeCutInData.isCasterAlly,
+            'rune-cutin-overlay--enemy': !runeCutInData.isCasterAlly
+          }"
+        >
           <!-- 背景斜纹 -->
           <div class="cutin-bg-stripes"></div>
           <!-- 光晕 -->
@@ -290,9 +303,42 @@
                     Lv.{{ runeCutInData.runeStoneLevel }}
                   </span>
                 </div>
-                <p class="cutin-skill-effect">
+                <p
+                  class="cutin-skill-effect"
+                  :class="`cutin-skill--${runeCutInData.skillType}`"
+                >
                   ⚡ {{ runeCutInData.skillEffectText }}
                 </p>
+                <div v-if="runeCutInData.targetName" class="cutin-target-row">
+                  <span class="cutin-target-label">目标</span>
+                  <div
+                    class="cutin-target-avatar-wrap"
+                    :class="{
+                      'cutin-target--ally': runeCutInData.isTargetAlly
+                    }"
+                  >
+                    <GameAdventurerAvatar
+                      :adventurer="{
+                        adventurerId: runeCutInData.target,
+                        defaultAvatarId: runeCutInData.targetDefaultAvatarId,
+                        hasCustomAvatar: runeCutInData.targetHasCustomAvatar,
+                        customAvatarUpdatedAt:
+                          runeCutInData.targetCustomAvatarUpdatedAt,
+                        isDemon: runeCutInData.targetIsDemon
+                      }"
+                      class="cutin-target-avatar"
+                    />
+                  </div>
+                  <span
+                    class="cutin-target-name"
+                    :class="{
+                      'cutin-target--ally': runeCutInData.isTargetAlly
+                    }"
+                    :title="runeCutInData.targetName"
+                  >
+                    {{ runeCutInData.targetName }}
+                  </span>
+                </div>
                 <!-- 持续进度条 -->
                 <div class="cutin-timer-bar">
                   <div
@@ -345,6 +391,15 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['done'])
+
+const attackerIdSet = computed(
+  () => new Set(props.attackerUnits.map(u => u.id))
+)
+
+function isAllyId(id) {
+  if (!id) return false
+  return attackerIdSet.value.has(id)
+}
 
 // ── 视口与布局（使用 visualViewport 获取手机真实可视区域）──
 const containerRef = ref(null)
@@ -468,18 +523,34 @@ const unitState = ref(new Map())
 function initUnitState() {
   const map = new Map()
   for (const u of props.attackerUnits) {
-    map.set(u.id, { ...u, alive: true, currentSan: u.maxSan, attackCount: 0 })
+    map.set(u.id, {
+      ...u,
+      side: 'attacker',
+      alive: true,
+      currentSan: u.maxSan,
+      currentSp: 0,
+      maxSp: 1000
+    })
   }
   for (const u of props.defenderUnits) {
-    map.set(u.id, { ...u, alive: true, currentSan: u.maxSan, attackCount: 0 })
+    map.set(u.id, {
+      ...u,
+      side: 'defender',
+      alive: true,
+      currentSan: u.maxSan,
+      currentSp: 0,
+      maxSp: 1000
+    })
   }
   unitState.value = map
 }
 
-// 符文技能进度：返回 0-4，表示距离下次触发还需多少次攻击
+// 符文技能进度：返回 0-100（SP百分比）
 function runeProgress(unit) {
   if (!unit || !unit.hasRuneStone) return -1
-  return unit.attackCount % 5
+  const maxSp = unit.maxSp || 1000
+  if (maxSp <= 0) return 0
+  return Math.min(100, Math.max(0, Math.round((unit.currentSp / maxSp) * 100)))
 }
 
 // 5x5 网格显示（攻击方翻转，使前排面向防御方）
@@ -559,7 +630,15 @@ function processNextCutIn() {
   runeCutInData.value = {
     ...cutInBaseInfo,
     skillLabel: skillInfo.skillLabel,
+    skillType: skillInfo.skillType,
+    isTargetAlly: skillInfo.isTargetAlly,
     skillEffectText: skillInfo.skillEffectText,
+    target: skillInfo.target,
+    targetName: skillInfo.targetName,
+    targetDefaultAvatarId: skillInfo.targetDefaultAvatarId,
+    targetHasCustomAvatar: skillInfo.targetHasCustomAvatar,
+    targetCustomAvatarUpdatedAt: skillInfo.targetCustomAvatarUpdatedAt,
+    targetIsDemon: skillInfo.targetIsDemon,
     duration
   }
   showRuneCutIn.value = true
@@ -574,9 +653,11 @@ function processNextCutIn() {
  * 接收 runeActivate 条目，将所有技能入队并启动队列播放
  */
 function enqueueCutIn(entry) {
+  const casterIsAlly = isAllyId(entry.caster)
   cutInBaseInfo = {
     casterId: entry.caster,
     casterName: entry.casterName,
+    isCasterAlly: casterIsAlly,
     runeStoneRarity: entry.runeStoneRarity,
     runeStoneLevel: entry.runeStoneLevel,
     defaultAvatarId: entry.defaultAvatarId,
@@ -586,9 +667,24 @@ function enqueueCutIn(entry) {
   }
   // 兼容旧格式（单技能）和新格式（skills 数组）
   const skills = entry.skills ?? [
-    { skillLabel: entry.skillLabel, skillEffectText: entry.skillEffectText }
+    {
+      skillLabel: entry.skillLabel,
+      skillType: entry.skillType,
+      isAllyTarget: entry.isAllyTarget,
+      skillEffectText: entry.skillEffectText,
+      target: entry.target,
+      targetName: entry.targetName,
+      targetDefaultAvatarId: entry.targetDefaultAvatarId,
+      targetHasCustomAvatar: entry.targetHasCustomAvatar,
+      targetCustomAvatarUpdatedAt: entry.targetCustomAvatarUpdatedAt,
+      targetIsDemon: entry.targetIsDemon
+    }
   ]
-  runeCutInQueue.push(...skills)
+  const normalizedSkills = skills.map(skill => ({
+    ...skill,
+    isTargetAlly: isAllyId(skill.target)
+  }))
+  runeCutInQueue.push(...normalizedSkills)
   processNextCutIn()
 }
 
@@ -734,8 +830,14 @@ const BUFF_TYPE_LABEL = {
 }
 
 function processLogEntry(entry) {
-  // runeActivate 仅用于触发前端 cut-in，不产生状态变更
-  if (entry.type === 'runeActivate') return
+  if (entry.type === 'runeActivate') {
+    const caster = unitState.value.get(entry.caster)
+    if (caster && typeof entry.casterCurrentSp === 'number') {
+      caster.currentSp = entry.casterCurrentSp
+      unitState.value = new Map(unitState.value)
+    }
+    return
+  }
 
   const map = unitState.value
   // 清除上一轮的特效状态
@@ -753,19 +855,33 @@ function processLogEntry(entry) {
 
   if (entry.type === 'roundStart') {
     currentRound.value = entry.round
+    if (Array.isArray(entry.spChanges)) {
+      for (const spEntry of entry.spChanges) {
+        const unit = map.get(spEntry.id)
+        if (unit && typeof spEntry.currentSp === 'number') {
+          unit.currentSp = spEntry.currentSp
+          needRefreshState = true
+        }
+      }
+    }
+    if (needRefreshState) {
+      unitState.value = new Map(unitState.value)
+    }
     return
   }
   if (entry.type === 'attack') {
     actingUnitIds.value = new Set([entry.attacker])
-    // 递增攻击计数（与后端 battleEngine 同步）
     const attacker = map.get(entry.attacker)
-    if (attacker) {
-      attacker.attackCount = (attacker.attackCount || 0) + 1
+    if (attacker && typeof entry.attackerCurrentSp === 'number') {
+      attacker.currentSp = entry.attackerCurrentSp
       needRefreshState = true
     }
     const defender = map.get(entry.defender)
     if (defender) {
       defender.currentSan = entry.defenderRemainSan
+      if (typeof entry.defenderCurrentSp === 'number') {
+        defender.currentSp = entry.defenderCurrentSp
+      }
       if (defender.currentSan <= 0) defender.alive = false
       hitUnitIds.value = new Set([entry.defender])
       // 浮动伤害数字
@@ -780,6 +896,9 @@ function processLogEntry(entry) {
       const target = map.get(entry.target)
       if (target) {
         target.currentSan = entry.targetRemainSan
+        if (typeof entry.targetCurrentSp === 'number') {
+          target.currentSp = entry.targetCurrentSp
+        }
         if (target.currentSan <= 0) target.alive = false
         hitUnitIds.value = new Set([entry.target])
         const koText = target.currentSan <= 0 ? ' 💀' : ''
@@ -808,23 +927,40 @@ function processLogEntry(entry) {
     }
     if (entry.skillType === 'changeOrder' && entry.success) {
       // 更新单位的棋盘位置
+      // 兜底：若日志未提供可用 swapTarget，则按当前位置查找占位者并互换，避免重叠导致“少人”
       const moved = new Set()
       const target = map.get(entry.target)
+      let swapTarget = null
+
+      if (entry.swapped && entry.swapTarget) {
+        swapTarget = map.get(entry.swapTarget) || null
+      }
+
+      if (!swapTarget && target) {
+        for (const unit of map.values()) {
+          if (unit.id === target.id) continue
+          if (unit.side !== target.side) continue
+          if (unit.row === entry.newRow && unit.col === entry.newCol) {
+            swapTarget = unit
+            break
+          }
+        }
+      }
+
       if (target) {
         target.row = entry.newRow
         target.col = entry.newCol
         moved.add(entry.target)
         addEffect(entry.target, '🔀 移动', 'move')
       }
-      if (entry.swapped && entry.swapTarget) {
-        const swapTarget = map.get(entry.swapTarget)
-        if (swapTarget) {
-          swapTarget.row = entry.oldRow
-          swapTarget.col = entry.oldCol
-          moved.add(entry.swapTarget)
-          addEffect(entry.swapTarget, '🔀 互换', 'move')
-        }
+
+      if (swapTarget) {
+        swapTarget.row = entry.oldRow
+        swapTarget.col = entry.oldCol
+        moved.add(swapTarget.id)
+        addEffect(swapTarget.id, '🔀 互换', 'move')
       }
+
       movedUnitIds.value = moved
       needRefreshState = true
     }
@@ -1153,6 +1289,7 @@ onUnmounted(() => {
 
 .rune-bar-fill {
   height: 100%;
+  width: 0%;
   border-radius: 2px;
   background: linear-gradient(90deg, #a78bfa, #f5c842);
   transition: width 0.3s ease;
@@ -1406,6 +1543,22 @@ onUnmounted(() => {
   background: rgba(4, 0, 18, 0.6);
 }
 
+/* .rune-cutin-overlay--ally {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(16, 70, 54, 0.22), transparent 65%),
+    rgba(4, 0, 18, 0.6);
+}
+
+.rune-cutin-overlay--enemy {
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(104, 22, 32, 0.24),
+      transparent 65%
+    ),
+    rgba(4, 0, 18, 0.6);
+} */
+
 /* 背景斜纹 */
 .cutin-bg-stripes {
   position: absolute;
@@ -1466,21 +1619,29 @@ onUnmounted(() => {
   width: min(88vw, 460px);
   overflow: hidden;
   animation: cutinCardEnter 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  border-width: 2px;
+  border-style: solid;
+}
+.rune-cutin-overlay--ally .cutin-card {
+  border-color: rgba(52, 211, 153, 0.4);
+}
+.rune-cutin-overlay--enemy .cutin-card {
+  border-color: rgba(248, 113, 113, 0.4);
 }
 .cutin-card--normal {
-  border: 1px solid rgba(156, 163, 175, 0.35);
+  /* border: 1px solid rgba(156, 163, 175, 0.35); */
   box-shadow:
     0 0 20px rgba(156, 163, 175, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .cutin-card--rare {
-  border: 1px solid rgba(96, 165, 250, 0.45);
+  /* border: 1px solid rgba(96, 165, 250, 0.45); */
   box-shadow:
     0 0 28px rgba(96, 165, 250, 0.25),
     inset 0 1px 0 rgba(96, 165, 250, 0.08);
 }
 .cutin-card--legendary {
-  border: 1px solid rgba(245, 200, 66, 0.6);
+  /* border: 1px solid rgba(245, 200, 66, 0.6); */
   box-shadow:
     0 0 36px rgba(245, 200, 66, 0.3),
     0 0 60px rgba(245, 200, 66, 0.1),
@@ -1654,8 +1815,67 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   line-height: 1.4;
+}
+.cutin-skill--attack {
+  color: #f87171; /* 浅红色 */
+}
+.cutin-skill--buff {
+  color: #60a5fa; /* 浅蓝色 */
+}
+.cutin-skill--debuff {
+  color: #fb923c; /* 橙色 */
+}
+.cutin-skill--changeOrder {
+  color: #a78bfa; /* 紫色 */
+}
+.cutin-skill--sanRecover {
+  color: #4ade80; /* 绿色 */
+}
+
+.cutin-target-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.cutin-target-label {
+  font-size: 11px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.cutin-target-avatar-wrap {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid #ef4444; /* 默认敌方红色 */
+  flex-shrink: 0;
+}
+.cutin-target-avatar-wrap.cutin-target--ally {
+  border-color: #4ade80; /* 我方绿色 */
+}
+
+.cutin-target-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cutin-target-name {
+  font-size: 12px;
+  color: #fca5a5; /* 默认敌方红肉色 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cutin-target-name.cutin-target--ally {
+  color: #86efac; /* 我方浅绿色 */
 }
 
 /* 倒计时进度条 */

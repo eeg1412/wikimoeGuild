@@ -306,6 +306,12 @@ const routes = [
         name: 'AdminMarketStock',
         component: () => import('../views/admin/market-stock/Index.vue'),
         meta: { title: '市场库存' }
+      },
+      {
+        path: 'arena-season',
+        name: 'AdminArenaSeason',
+        component: () => import('../views/admin/arena-season/Index.vue'),
+        meta: { title: '竞技场赛季' }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]

@@ -12,6 +12,7 @@ import gamePlayerRegisterLogRoutes from './gamePlayerRegisterLogRoutes.js'
 import gameAdventurerRoutes from './gameAdventurerRoutes.js'
 import gameMailRoutes from './gameMailRoutes.js'
 import marketRoutes from './marketRoutes.js'
+import arenaSeasonRoutes from './arenaSeasonRoutes.js'
 // ===GENERATOR_IMPORT===
 
 const router = Router()
@@ -27,6 +28,7 @@ router.use('/game-player-register-logs', authAdmin, gamePlayerRegisterLogRoutes)
 router.use('/game-adventurers', authAdmin, gameAdventurerRoutes)
 router.use('/game-mails', authAdmin, gameMailRoutes)
 router.use('/market', authAdmin, marketRoutes)
+router.use('/arena-season', authAdmin, arenaSeasonRoutes)
 router.use('/', installRoutes)
 // ===GENERATOR_ROUTE===
 

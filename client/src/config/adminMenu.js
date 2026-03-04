@@ -21,6 +21,11 @@ export const adminMenu = [
     icon: 'Box'
   },
   {
+    path: '/admin/arena-season',
+    title: '竞技场赛季',
+    icon: 'Timer'
+  },
+  {
     title: '玩家管理',
     icon: 'Medal',
     children: [
