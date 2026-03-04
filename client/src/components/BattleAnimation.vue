@@ -195,7 +195,7 @@
 
         <!-- 按钮区域 -->
         <div
-          class="flex items-center justify-center gap-2 mt-1 shrink-0 flex-wrap"
+          class="flex items-center justify-center gap-2 py-1 mt-1 shrink-0 flex-wrap sticky bottom-[-8px] bg-gray-800/80 rounded-4xl z-10 ring-1 ring-white/20"
         >
           <!-- 倍速控制 -->
           <div v-if="!animationFinished" class="flex items-center gap-1">
@@ -251,19 +251,31 @@
         >
           <!-- 背景斜纹 -->
           <div class="cutin-bg-stripes"></div>
-          <!-- 光晕 -->
-          <div
-            class="cutin-glow"
-            :class="`cutin-glow--${runeCutInData.runeStoneRarity}`"
-          ></div>
+
+          <!-- 中心光晕 -->
 
           <!-- 主卡片 -->
           <div
             class="cutin-card"
             :class="`cutin-card--${runeCutInData.runeStoneRarity}`"
           >
-            <!-- 闪光扫过效果 -->
-            <div class="cutin-card-shine"></div>
+            <!-- 粒子特效层（现在在卡片内显示） -->
+            <div class="cutin-particles">
+              <div
+                v-for="i in 12"
+                :key="i"
+                class="cutin-particle"
+                :style="{
+                  top: Math.random() * 100 + '%',
+                  left: runeCutInData.isCasterAlly ? '-20%' : '120%',
+                  animationDelay: Math.random() * 0.6 + 's',
+                  animationDuration: 0.4 + Math.random() * 0.4 + 's',
+                  width: 20 + Math.random() * 60 + 'px',
+                  height: '2px',
+                  opacity: 0.2 + Math.random() * 0.5
+                }"
+              ></div>
+            </div>
 
             <div class="cutin-card-inner">
               <!-- 冒险者头像 -->
@@ -318,37 +330,42 @@
                   </p>
                 </div>
                 <div
-                  v-if="runeCutInData.targetName && !runeCutInData.isCombined"
+                  v-if="
+                    runeCutInData.targets && runeCutInData.targets.length > 0
+                  "
                   class="cutin-target-row"
                 >
                   <span class="cutin-target-label">目标</span>
-                  <div
-                    class="cutin-target-avatar-wrap"
-                    :class="{
-                      'cutin-target--ally': runeCutInData.isTargetAlly
-                    }"
-                  >
-                    <GameAdventurerAvatar
-                      :adventurer="{
-                        adventurerId: runeCutInData.target,
-                        defaultAvatarId: runeCutInData.targetDefaultAvatarId,
-                        hasCustomAvatar: runeCutInData.targetHasCustomAvatar,
-                        customAvatarUpdatedAt:
-                          runeCutInData.targetCustomAvatarUpdatedAt,
-                        isDemon: runeCutInData.targetIsDemon
-                      }"
-                      class="cutin-target-avatar"
-                    />
+                  <div class="cutin-target-tags">
+                    <div
+                      v-for="(tgt, tgtIdx) in runeCutInData.targets"
+                      :key="tgt.target || tgtIdx"
+                      class="cutin-target-tag"
+                    >
+                      <div
+                        class="cutin-target-avatar-wrap"
+                        :class="{ 'cutin-target--ally': tgt.isTargetAlly }"
+                      >
+                        <GameAdventurerAvatar
+                          :adventurer="{
+                            adventurerId: tgt.target,
+                            defaultAvatarId: tgt.targetDefaultAvatarId,
+                            hasCustomAvatar: tgt.targetHasCustomAvatar,
+                            customAvatarUpdatedAt:
+                              tgt.targetCustomAvatarUpdatedAt,
+                            isDemon: tgt.targetIsDemon
+                          }"
+                          class="cutin-target-avatar"
+                        />
+                      </div>
+                      <span
+                        class="cutin-target-name"
+                        :class="{ 'cutin-target--ally': tgt.isTargetAlly }"
+                        :title="tgt.targetName"
+                        >{{ tgt.targetName }}</span
+                      >
+                    </div>
                   </div>
-                  <span
-                    class="cutin-target-name"
-                    :class="{
-                      'cutin-target--ally': runeCutInData.isTargetAlly
-                    }"
-                    :title="runeCutInData.targetName"
-                  >
-                    {{ runeCutInData.targetName }}
-                  </span>
                 </div>
                 <!-- 持续进度条 -->
                 <div class="cutin-timer-bar">
@@ -506,6 +523,32 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['done'])
+
+// ── 防止息屏 (Wake Lock) ──
+const wakeLock = ref(null)
+
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock.value = await navigator.wakeLock.request('screen')
+      console.log('Wake Lock is active')
+    } catch (err) {
+      console.error(`${err.name}, ${err.message}`)
+    }
+  }
+}
+
+async function releaseWakeLock() {
+  if (wakeLock.value) {
+    try {
+      await wakeLock.value.release()
+      wakeLock.value = null
+      console.log('Wake Lock released')
+    } catch (err) {
+      console.error(`${err.name}, ${err.message}`)
+    }
+  }
+}
 
 const attackerIdSet = computed(
   () => new Set(props.attackerUnits.map(u => u.id))
@@ -758,10 +801,31 @@ function processNextCutIn() {
   }))
   const firstSkill = skillEffects[0] || null
 
+  // 从skillEffects去重构建目标列表（按target id去重）
+  const seenTargetKeys = new Set()
+  const targets = []
+  for (const skill of skillEffects) {
+    if (!skill.targetName) continue
+    const key = skill.target || skill.targetName
+    if (!seenTargetKeys.has(key)) {
+      seenTargetKeys.add(key)
+      targets.push({
+        target: skill.target,
+        targetName: skill.targetName,
+        isTargetAlly: skill.isTargetAlly,
+        targetDefaultAvatarId: skill.targetDefaultAvatarId,
+        targetHasCustomAvatar: skill.targetHasCustomAvatar,
+        targetCustomAvatarUpdatedAt: skill.targetCustomAvatarUpdatedAt,
+        targetIsDemon: skill.targetIsDemon
+      })
+    }
+  }
+
   runeCutInData.value = {
     ...cutInItem,
     isCombined: skillEffects.length > 1,
     skillEffects,
+    targets,
     skillType: firstSkill?.skillType,
     isTargetAlly: firstSkill?.isTargetAlly,
     target: firstSkill?.target,
@@ -1142,6 +1206,7 @@ function playNextLog() {
   if (currentLogIndex.value >= props.battleLog.length) {
     stopAnimation()
     animationFinished.value = true
+    releaseWakeLock() // 演出自然结束时释放
     return
   }
   const entry = props.battleLog[currentLogIndex.value]
@@ -1184,6 +1249,8 @@ function handleSkip() {
   runeCutInQueue.length = 0
   hideCutInEffect()
   stopAnimation()
+  // 跳过时立即释放锁
+  releaseWakeLock()
   while (currentLogIndex.value < props.battleLog.length) {
     const entry = props.battleLog[currentLogIndex.value]
     if (entry.type !== 'runeActivate') {
@@ -1226,6 +1293,8 @@ onMounted(() => {
   initUnitState()
   startAnimation()
   startSkipCountdown()
+  // 演出开始时请求防止息屏
+  requestWakeLock()
 })
 
 onUnmounted(() => {
@@ -1234,6 +1303,8 @@ onUnmounted(() => {
     window.visualViewport.removeEventListener('resize', onResize)
   }
   stopAnimation()
+  // 保底销毁时释放
+  releaseWakeLock()
   if (skipTimer) {
     clearInterval(skipTimer)
     skipTimer = null
@@ -1449,13 +1520,14 @@ onUnmounted(() => {
 
 .battle-log-area {
   flex: 1;
-  min-height: 50px;
+  min-height: 100px;
   overflow-y: auto;
   background: rgba(0, 0, 0, 0.4);
   border-radius: 8px;
   padding: 6px 8px;
   scrollbar-width: thin;
   scrollbar-color: rgba(200, 160, 80, 0.3) transparent;
+  margin-top: 5px;
 }
 
 .log-entry {
@@ -1724,6 +1796,73 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
+/* 粒子特效层 */
+.cutin-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rune-cutin-overlay--ally .cutin-particle {
+  animation-name: particleLTR;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.rune-cutin-overlay--enemy .cutin-particle {
+  animation-name: particleRTL;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.cutin-particle {
+  position: absolute;
+  /* 基础设为透明 */
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  border-radius: 2px;
+  filter: blur(1px);
+}
+
+@keyframes particleLTR {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(500px);
+    opacity: 0;
+  }
+}
+
+@keyframes particleRTL {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(-500px);
+    opacity: 0;
+  }
+}
+
 /* 中心光晕 */
 .cutin-glow {
   position: absolute;
@@ -1752,14 +1891,6 @@ onUnmounted(() => {
   );
   animation: legendaryGlow 1.2s ease-in-out infinite alternate;
 }
-@keyframes legendaryGlow {
-  from {
-    opacity: 0.7;
-  }
-  to {
-    opacity: 1;
-  }
-}
 
 /* 主卡片 */
 .cutin-card {
@@ -1772,6 +1903,7 @@ onUnmounted(() => {
   animation: cutinCardEnter 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   border-width: 2px;
   border-style: solid;
+  z-index: 10; /* 确保卡片在最上层 */
 }
 .rune-cutin-overlay--ally .cutin-card {
   border-color: rgba(52, 211, 153, 0.4);
@@ -1797,32 +1929,6 @@ onUnmounted(() => {
     0 0 36px rgba(245, 200, 66, 0.3),
     0 0 60px rgba(245, 200, 66, 0.1),
     inset 0 1px 0 rgba(245, 200, 66, 0.1);
-}
-
-/* 闪光扫过效果（左右来回交替） */
-.cutin-card-shine {
-  position: absolute;
-  top: 0;
-  left: -110%;
-  width: 60%;
-  height: 100%;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.08) 50%,
-    transparent 100%
-  );
-  animation: cutinShine 0.55s ease-in-out 0.1s infinite alternate;
-  pointer-events: none;
-  z-index: 1;
-}
-@keyframes cutinShine {
-  from {
-    left: -110%;
-  }
-  to {
-    left: 160%;
-  }
 }
 
 @keyframes cutinCardEnter {
@@ -1996,6 +2102,22 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   margin-bottom: 10px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.cutin-target-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cutin-target-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
 }
 

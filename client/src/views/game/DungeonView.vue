@@ -298,7 +298,7 @@
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
               敌方军团（{{ legionPreview.demons?.length || 0 }} 只恶魔）
             </p>
-            <div class="grid grid-cols-5 gap-1 max-h-40 overflow-y-auto">
+            <div class="grid grid-cols-5 gap-1 overflow-y-auto">
               <div
                 v-for="(demon, idx) in legionPreview.demons"
                 :key="idx"
