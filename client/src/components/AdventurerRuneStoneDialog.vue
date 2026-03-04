@@ -302,7 +302,7 @@ function handleOpenReplace() {
 async function loadAvailableRuneStones() {
   runeStoneListLoading.value = true
   try {
-    const res = await getMyRuneStonesApi({ equipped: 'false' })
+    const res = await getMyRuneStonesApi({ equipped: 'false', pageSize: 1000 })
     const compLevel = props.adventurer?.comprehensiveLevel || 4
     availableRuneStones.value = (res.data.data?.list || []).filter(
       rs => rs.level <= compLevel

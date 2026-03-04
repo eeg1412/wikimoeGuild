@@ -8,6 +8,11 @@
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         管理你的符文石，分解、升级或合成
       </p>
+      <div
+        class="mt-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+      >
+        持有数：{{ totalCount }} / 500
+      </div>
     </div>
 
     <!-- 排序 & 筛选 -->
@@ -169,7 +174,7 @@
             <RuneStoneInfoCard :rune-stone="rs" />
           </div>
           <!-- 内联操作按钮 -->
-          <div class="flex gap-2 mt-2">
+          <div v-if="!rs.listedOnMarket" class="flex gap-2 mt-2">
             <el-button
               v-if="!rs.equippedBy"
               type="danger"
@@ -193,10 +198,16 @@
             </el-button>
           </div>
           <p
-            v-if="rs.equippedBy"
+            v-if="rs.equippedBy && !rs.listedOnMarket"
             class="text-center text-xs text-gray-400 mt-1"
           >
             已装备中，分解需先卸下
+          </p>
+          <p
+            v-if="rs.listedOnMarket"
+            class="text-center text-xs text-orange-400 mt-1"
+          >
+            出售中，不可分解或升级
           </p>
         </div>
       </div>
@@ -608,6 +619,7 @@ const listedFilter = ref('')
 const runeStonePageNum = ref(1)
 const runeStonePageSize = 20
 const runeStoneTotal = ref(0)
+const totalCount = ref(0)
 
 function handleSortChange() {
   runeStonePageNum.value = 1
@@ -649,6 +661,10 @@ async function fetchRuneStones() {
     const res = await getMyRuneStonesApi(params)
     runeStones.value = res.data.data?.list || []
     runeStoneTotal.value = res.data.data?.total || 0
+
+    // 获取总持有数用于显示上限
+    const totalRes = await getMyRuneStonesApi({ pageSize: 1 })
+    totalCount.value = totalRes.data.data?.total || 0
   } catch {
     runeStones.value = []
   } finally {
