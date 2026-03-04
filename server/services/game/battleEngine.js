@@ -44,6 +44,25 @@ const SP_GAIN_ON_HIT_MISSING_SAN_SCALE = 120
 
 const COUNTER_DAMAGE_RATE = 15000 // 150%, 以10000为基数
 
+const LEVEL_SUPPRESSION = {
+  startDiff: 9,
+  attackLinear: 0.006,
+  attackQuadratic: 0.00032,
+  defenseLinear: 0.0025,
+  defenseQuadratic: 0.00014,
+  minAttackMultiplier: 0.65,
+  maxDefenseMultiplier: 1.35
+}
+
+const ELEMENT_NAME_MAP = {
+  1: '地',
+  2: '水',
+  3: '火',
+  4: '风',
+  5: '光明',
+  6: '黑暗'
+}
+
 // 元素克制关系：水→火→风→地→水，光明↔黑暗
 const ELEMENT_COUNTER = {
   2: '3', // 水克火
@@ -62,6 +81,41 @@ const ELEMENT_COUNTER = {
  */
 function isElementCounter(attackerElement, defenderElement) {
   return ELEMENT_COUNTER[attackerElement] === defenderElement
+}
+
+function getLevelSuppressionMultipliers(attackerLevel, defenderLevel) {
+  const levelDiff = Math.max(0, (defenderLevel || 0) - (attackerLevel || 0))
+  const suppressionGap = Math.max(0, levelDiff - LEVEL_SUPPRESSION.startDiff)
+
+  if (suppressionGap <= 0) {
+    return {
+      levelDiff,
+      attackMultiplier: 1,
+      defenseMultiplier: 1
+    }
+  }
+
+  const attackPenalty =
+    LEVEL_SUPPRESSION.attackLinear * suppressionGap +
+    LEVEL_SUPPRESSION.attackQuadratic * suppressionGap * suppressionGap
+  const attackMultiplier = Math.max(
+    LEVEL_SUPPRESSION.minAttackMultiplier,
+    1 / (1 + attackPenalty)
+  )
+
+  const defenseBonus =
+    LEVEL_SUPPRESSION.defenseLinear * suppressionGap +
+    LEVEL_SUPPRESSION.defenseQuadratic * suppressionGap * suppressionGap
+  const defenseMultiplier = Math.min(
+    LEVEL_SUPPRESSION.maxDefenseMultiplier,
+    1 + defenseBonus
+  )
+
+  return {
+    levelDiff,
+    attackMultiplier,
+    defenseMultiplier
+  }
 }
 
 /**
@@ -314,10 +368,19 @@ function gainSpFromDamage(unit) {
  * 执行普通攻击
  */
 function performAttack(attacker, defender, log) {
-  const finalAttack = Math.max(1, attacker.attack + attacker.tempBuffs.attack)
+  const suppression = getLevelSuppressionMultipliers(
+    attacker.comprehensiveLevel,
+    defender.comprehensiveLevel
+  )
+  const rawAttack = Math.max(1, attacker.attack + attacker.tempBuffs.attack)
+  const finalAttack = Math.max(
+    1,
+    Math.floor(rawAttack * suppression.attackMultiplier)
+  )
+  const rawDefense = Math.max(0, defender.defense + defender.tempBuffs.defense)
   const finalDefense = Math.max(
     0,
-    defender.defense + defender.tempBuffs.defense
+    Math.floor(rawDefense * suppression.defenseMultiplier)
   )
 
   // (攻击 * 攻击) / (攻击 + 防御)
@@ -360,8 +423,13 @@ function performAttack(attacker, defender, log) {
 function getSkillEffectText(skill, effectValue) {
   const STAT_LABELS = { attack: '攻击', defense: '防御', speed: '速度' }
   switch (skill.type) {
-    case 'attack':
+    case 'attack': {
+      const elementName = ELEMENT_NAME_MAP[skill.element]
+      if (elementName) {
+        return `${elementName}属性攻击 造成 ${effectValue} 伤害`
+      }
       return `造成 ${effectValue} 伤害`
+    }
     case 'buff':
       return `${STAT_LABELS[skill.buffType] || skill.buffType} +${effectValue}`
     case 'debuff':
@@ -403,7 +471,23 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
         )
         if (!target) break
 
-        let damage = effectValue - (target.defense + target.tempBuffs.defense)
+        const suppression = getLevelSuppressionMultipliers(
+          unit.runeStone?.level || 1,
+          target.comprehensiveLevel
+        )
+        const runeAttackValue = Math.max(
+          1,
+          Math.floor(effectValue * suppression.attackMultiplier)
+        )
+        const targetDefenseValue = Math.max(
+          0,
+          Math.floor(
+            (target.defense + target.tempBuffs.defense) *
+              suppression.defenseMultiplier
+          )
+        )
+
+        let damage = runeAttackValue - targetDefenseValue
         // 元素克制
         if (skill.element && isElementCounter(skill.element, target.element)) {
           damage = Math.floor((damage * COUNTER_DAMAGE_RATE) / 10000)
@@ -423,6 +507,8 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
           skillType: skill.type,
           isAllyTarget: false,
           skillEffectText,
+          skillElement: skill.element,
+          skillValue: effectValue,
           target: target.id,
           targetName: target.name,
           targetDefaultAvatarId: target.defaultAvatarId,
@@ -439,6 +525,7 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
           casterName: unit.name,
           target: target.id,
           targetName: target.name,
+          skillElement: skill.element,
           damage,
           targetRemainSan: target.currentSan,
           targetSpGain,
@@ -652,6 +739,8 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
 
         skillsInfo.push({
           skillLabel: skill.label,
+          skillType: skill.type,
+          isAllyTarget: true,
           skillEffectText,
           target: target.id,
           targetName: target.name,

@@ -303,13 +303,24 @@
                     Lv.{{ runeCutInData.runeStoneLevel }}
                   </span>
                 </div>
-                <p
-                  class="cutin-skill-effect"
-                  :class="`cutin-skill--${runeCutInData.skillType}`"
+                <div class="cutin-skill-list">
+                  <p
+                    v-for="(
+                      skillEffect, skillIdx
+                    ) in runeCutInData.skillEffects"
+                    :key="`${skillEffect.skillType}-${skillIdx}`"
+                    class="cutin-skill-effect"
+                    :class="`cutin-skill--${skillEffect.skillType}`"
+                    :style="getCutInSkillStyle(skillEffect)"
+                  >
+                    {{ getCutInSkillIcon(skillEffect) }}
+                    {{ formatCutInSkillText(skillEffect) }}
+                  </p>
+                </div>
+                <div
+                  v-if="runeCutInData.targetName && !runeCutInData.isCombined"
+                  class="cutin-target-row"
                 >
-                  ⚡ {{ runeCutInData.skillEffectText }}
-                </p>
-                <div v-if="runeCutInData.targetName" class="cutin-target-row">
                   <span class="cutin-target-label">目标</span>
                   <div
                     class="cutin-target-avatar-wrap"
@@ -377,8 +388,112 @@ const ELEMENT_COLORS = {
   6: '#7c5cbf'
 }
 
+const ELEMENT_EMOJIS = {
+  1: '🪨',
+  2: '🌊',
+  3: '🔥',
+  4: '🌪️',
+  5: '☀️',
+  6: '🌑'
+}
+
+const ELEMENT_NAME_TO_KEY = {
+  地: '1',
+  水: '2',
+  火: '3',
+  风: '4',
+  光明: '5',
+  黑暗: '6'
+}
+
+const SKILL_TYPE_ICONS = {
+  buff: '⬆️',
+  debuff: '⬇️',
+  sanRecover: '💚',
+  changeOrder: '🔀',
+  attack: '⚔️'
+}
+
+const ELEMENT_SKILL_COLORS = {
+  1: '#a0855b',
+  2: '#4fa3e0',
+  3: '#e05c4f',
+  4: '#6abf69',
+  5: '#f5c842',
+  6: '#7c5cbf'
+}
+
 function getElementColor(el) {
   return ELEMENT_COLORS[el] || '#999'
+}
+
+function resolveSkillElementKey(skillEffect) {
+  const rawElement = skillEffect?.skillElement
+  if (rawElement && ELEMENT_EMOJIS[String(rawElement)]) {
+    return String(rawElement)
+  }
+
+  const sourceText = `${skillEffect?.skillEffectText || ''} ${skillEffect?.skillLabel || ''}`
+  if (sourceText.includes('光明')) return ELEMENT_NAME_TO_KEY.光明
+  if (sourceText.includes('黑暗')) return ELEMENT_NAME_TO_KEY.黑暗
+  if (sourceText.includes('地')) return ELEMENT_NAME_TO_KEY.地
+  if (sourceText.includes('水')) return ELEMENT_NAME_TO_KEY.水
+  if (sourceText.includes('火')) return ELEMENT_NAME_TO_KEY.火
+  if (sourceText.includes('风')) return ELEMENT_NAME_TO_KEY.风
+
+  return null
+}
+
+function inferSkillType(skill) {
+  if (skill?.skillType) return skill.skillType
+  const sourceText = `${skill?.skillEffectText || ''} ${skill?.skillLabel || ''}`
+  if (sourceText.includes('恢复') && sourceText.includes('SAN')) {
+    return 'sanRecover'
+  }
+  if (sourceText.includes('改变排序') || sourceText.includes('互换')) {
+    return 'changeOrder'
+  }
+  if (sourceText.includes('属性攻击') || resolveSkillElementKey(skill)) {
+    return 'attack'
+  }
+  if (sourceText.includes('-')) {
+    return 'debuff'
+  }
+  if (sourceText.includes('+')) {
+    return 'buff'
+  }
+  return 'unknown'
+}
+
+function getCutInSkillIcon(skillEffect) {
+  if (skillEffect?.skillType === 'attack') {
+    const elementKey = resolveSkillElementKey(skillEffect)
+    return ELEMENT_EMOJIS[elementKey] || '❓'
+  }
+  return SKILL_TYPE_ICONS[skillEffect?.skillType] || '✨'
+}
+
+function formatCutInSkillText(skillEffect) {
+  if (skillEffect?.skillType !== 'attack') {
+    return skillEffect?.skillEffectText || ''
+  }
+
+  if (typeof skillEffect?.skillValue === 'number') {
+    return `伤害 ${skillEffect.skillValue}`
+  }
+
+  const num = String(skillEffect?.skillEffectText || '').match(/\d+/)?.[0]
+  return num ? `伤害 ${num}` : '伤害'
+}
+
+function getCutInSkillStyle(skillEffect) {
+  if (skillEffect?.skillType !== 'attack') {
+    return null
+  }
+  const elementKey = resolveSkillElementKey(skillEffect)
+  return {
+    color: ELEMENT_SKILL_COLORS[elementKey] || '#f87171'
+  }
 }
 
 const props = defineProps({
@@ -603,10 +718,8 @@ const logContainer = ref(null)
 const showRuneCutIn = ref(false)
 const runeCutInData = ref(null)
 let cutInTimer = null
-// 待播放的技能队列（单次 runeActivate 中可能含多个技能）
+// 待播放的符文激活队列（同一次激活合并为一个cut in）
 const runeCutInQueue = []
-// 当前正在展示的 cut-in 所属的 runeActivate 基础信息（头像/名字/稀有度/等级）
-let cutInBaseInfo = null
 
 const RARITY_LABELS = { normal: '普通', rare: '稀有', legendary: '传说' }
 
@@ -619,33 +732,60 @@ function getCutInDuration(rarity) {
  * 从队列中取下一个技能展示 cut-in，若队列为空则恢复主动画
  */
 function processNextCutIn() {
+  // 当前回调触发时，上一段定时器已经完成，先清空句柄，避免后续入队被误判为“仍在播放”
+  cutInTimer = null
+
   if (runeCutInQueue.length === 0) {
-    cutInBaseInfo = null
     hideCutInEffect()
     startAnimation()
     return
   }
-  const skillInfo = runeCutInQueue.shift()
-  const duration = getCutInDuration(cutInBaseInfo.runeStoneRarity)
+  const cutInItem = runeCutInQueue.shift()
+  const duration = getCutInDuration(cutInItem.runeStoneRarity)
+  const skillEffects = (cutInItem.skills || []).map(skill => ({
+    skillLabel: skill.skillLabel,
+    skillType: skill.skillType,
+    skillEffectText: skill.skillEffectText,
+    skillElement: skill.skillElement,
+    skillValue: skill.skillValue,
+    isTargetAlly: skill.isTargetAlly,
+    target: skill.target,
+    targetName: skill.targetName,
+    targetDefaultAvatarId: skill.targetDefaultAvatarId,
+    targetHasCustomAvatar: skill.targetHasCustomAvatar,
+    targetCustomAvatarUpdatedAt: skill.targetCustomAvatarUpdatedAt,
+    targetIsDemon: skill.targetIsDemon
+  }))
+  const firstSkill = skillEffects[0] || null
+
   runeCutInData.value = {
-    ...cutInBaseInfo,
-    skillLabel: skillInfo.skillLabel,
-    skillType: skillInfo.skillType,
-    isTargetAlly: skillInfo.isTargetAlly,
-    skillEffectText: skillInfo.skillEffectText,
-    target: skillInfo.target,
-    targetName: skillInfo.targetName,
-    targetDefaultAvatarId: skillInfo.targetDefaultAvatarId,
-    targetHasCustomAvatar: skillInfo.targetHasCustomAvatar,
-    targetCustomAvatarUpdatedAt: skillInfo.targetCustomAvatarUpdatedAt,
-    targetIsDemon: skillInfo.targetIsDemon,
+    ...cutInItem,
+    isCombined: skillEffects.length > 1,
+    skillEffects,
+    skillType: firstSkill?.skillType,
+    isTargetAlly: firstSkill?.isTargetAlly,
+    target: firstSkill?.target,
+    targetName: firstSkill?.targetName,
+    targetDefaultAvatarId: firstSkill?.targetDefaultAvatarId,
+    targetHasCustomAvatar: firstSkill?.targetHasCustomAvatar,
+    targetCustomAvatarUpdatedAt: firstSkill?.targetCustomAvatarUpdatedAt,
+    targetIsDemon: firstSkill?.targetIsDemon,
     duration
   }
   showRuneCutIn.value = true
   cutInTimer = setTimeout(() => {
+    // 队列中还有内容时直接切下一条，避免中间空窗导致闪动
+    if (runeCutInQueue.length > 0) {
+      processNextCutIn()
+      return
+    }
+    // 最后一条播放结束后再执行离场
     showRuneCutIn.value = false
-    // 等待 leave 过渡动画完成后再处理下一个
-    cutInTimer = setTimeout(processNextCutIn, 200)
+    cutInTimer = setTimeout(() => {
+      cutInTimer = null
+      hideCutInEffect()
+      startAnimation()
+    }, 180)
   }, duration)
 }
 
@@ -653,18 +793,6 @@ function processNextCutIn() {
  * 接收 runeActivate 条目，将所有技能入队并启动队列播放
  */
 function enqueueCutIn(entry) {
-  const casterIsAlly = isAllyId(entry.caster)
-  cutInBaseInfo = {
-    casterId: entry.caster,
-    casterName: entry.casterName,
-    isCasterAlly: casterIsAlly,
-    runeStoneRarity: entry.runeStoneRarity,
-    runeStoneLevel: entry.runeStoneLevel,
-    defaultAvatarId: entry.defaultAvatarId,
-    hasCustomAvatar: entry.hasCustomAvatar,
-    customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
-    isDemon: entry.isDemon
-  }
   // 兼容旧格式（单技能）和新格式（skills 数组）
   const skills = entry.skills ?? [
     {
@@ -672,6 +800,8 @@ function enqueueCutIn(entry) {
       skillType: entry.skillType,
       isAllyTarget: entry.isAllyTarget,
       skillEffectText: entry.skillEffectText,
+      skillElement: entry.skillElement,
+      skillValue: entry.skillValue,
       target: entry.target,
       targetName: entry.targetName,
       targetDefaultAvatarId: entry.targetDefaultAvatarId,
@@ -680,29 +810,34 @@ function enqueueCutIn(entry) {
       targetIsDemon: entry.targetIsDemon
     }
   ]
-  const normalizedSkills = skills.map(skill => ({
-    ...skill,
-    isTargetAlly: isAllyId(skill.target)
-  }))
-  runeCutInQueue.push(...normalizedSkills)
-  processNextCutIn()
-}
+  const normalizedSkills = skills.map(skill => {
+    const skillType = inferSkillType(skill)
+    const skillLabel = skill.skillLabel || ''
+    return {
+      ...skill,
+      skillType,
+      skillLabel,
+      isTargetAlly: isAllyId(skill.target),
+      skillEffectText: skill.skillEffectText
+    }
+  })
 
-function showCutInEffect(entry, duration) {
-  runeCutInData.value = {
+  runeCutInQueue.push({
     casterId: entry.caster,
     casterName: entry.casterName,
+    isCasterAlly: isAllyId(entry.caster),
     runeStoneRarity: entry.runeStoneRarity,
     runeStoneLevel: entry.runeStoneLevel,
-    skillLabel: entry.skillLabel,
-    skillEffectText: entry.skillEffectText,
     defaultAvatarId: entry.defaultAvatarId,
     hasCustomAvatar: entry.hasCustomAvatar,
     customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
     isDemon: entry.isDemon,
-    duration
+    skills: normalizedSkills
+  })
+
+  if (!showRuneCutIn.value && !cutInTimer) {
+    processNextCutIn()
   }
-  showRuneCutIn.value = true
 }
 
 function hideCutInEffect() {
@@ -902,19 +1037,33 @@ function processLogEntry(entry) {
         if (target.currentSan <= 0) target.alive = false
         hitUnitIds.value = new Set([entry.target])
         const koText = target.currentSan <= 0 ? ' 💀' : ''
-        addEffect(entry.target, `✨-${entry.damage}${koText}`, 'damage')
+        const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
+        const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
+        addEffect(
+          entry.target,
+          `${attackIcon}-${entry.damage}${koText}`,
+          'damage'
+        )
         needRefreshState = true
       }
     }
     if (entry.skillType === 'buff') {
       buffedUnitIds.value = new Set([entry.target])
       const label = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
-      addEffect(entry.target, `⬆️${label}+${entry.value}`, 'buff')
+      addEffect(
+        entry.target,
+        `${SKILL_TYPE_ICONS.buff}${label}+${entry.value}`,
+        'buff'
+      )
     }
     if (entry.skillType === 'debuff') {
       debuffedUnitIds.value = new Set([entry.target])
       const label = BUFF_TYPE_LABEL[entry.debuffType] || entry.debuffType
-      addEffect(entry.target, `⬇️${label}-${entry.value}`, 'debuff')
+      addEffect(
+        entry.target,
+        `${SKILL_TYPE_ICONS.debuff}${label}-${entry.value}`,
+        'debuff'
+      )
     }
     if (entry.skillType === 'sanRecover') {
       const target = map.get(entry.target)
@@ -923,7 +1072,11 @@ function processLogEntry(entry) {
         needRefreshState = true
       }
       healedUnitIds.value = new Set([entry.target])
-      addEffect(entry.target, `+${entry.healAmount} SAN`, 'heal')
+      addEffect(
+        entry.target,
+        `${SKILL_TYPE_ICONS.sanRecover}+${entry.healAmount}`,
+        'heal'
+      )
     }
     if (entry.skillType === 'changeOrder' && entry.success) {
       // 更新单位的棋盘位置
@@ -1029,7 +1182,6 @@ function handleSkip() {
     cutInTimer = null
   }
   runeCutInQueue.length = 0
-  cutInBaseInfo = null
   hideCutInEffect()
   stopAnimation()
   while (currentLogIndex.value < props.battleLog.length) {
@@ -1095,7 +1247,6 @@ onUnmounted(() => {
     cutInTimer = null
   }
   runeCutInQueue.length = 0
-  cutInBaseInfo = null
 })
 </script>
 
@@ -1815,8 +1966,14 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
   line-height: 1.4;
+}
+.cutin-skill-list {
+  margin-bottom: 6px;
+}
+.cutin-skill-list .cutin-skill-effect:last-child {
+  margin-bottom: 0;
 }
 .cutin-skill--attack {
   color: #f87171; /* 浅红色 */
