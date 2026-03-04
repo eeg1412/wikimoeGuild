@@ -1,0 +1,1 @@
+import{g as o}from"./request-C0J4O3Mc.js";function n(){return o.get("/formations/my")}function r(t){return o.get(`/formations/${t}`)}function a(t){return o.post("/formations/save",t)}function i(t){return o.delete(`/formations/${t}`)}export{r as a,i as d,n as g,a as s};
