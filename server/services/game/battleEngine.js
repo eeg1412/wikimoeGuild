@@ -45,7 +45,7 @@ const SP_GAIN_ON_HIT_MISSING_SAN_SCALE = 120
 const COUNTER_DAMAGE_RATE = 15000 // 150%, 以10000为基数
 
 const LEVEL_SUPPRESSION = {
-  startDiff: 1,
+  startDiff: 4,
   attackLinear: 0.006,
   attackQuadratic: 0.00032,
   defenseLinear: 0.0025,
