@@ -203,3 +203,76 @@ export async function setRoleTag(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 批量装备最高级符文石
+ */
+export async function batchEquipBestRuneStones(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { adventurerIds } = req.body
+    const results = await adventurerService.batchEquipBestRuneStones(
+      accountId,
+      adventurerIds
+    )
+    res.success({ results }, '批量装备完成')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 保存属性自动分配比例
+ */
+export async function saveDistributeRatio(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { id } = req.params
+    const { attack, defense, speed, san } = req.body
+    const result = await adventurerService.saveDistributeRatio(accountId, id, {
+      attack,
+      defense,
+      speed,
+      san
+    })
+    res.success(result, '保存分配比例成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 自动分配升级
+ */
+export async function autoDistributeLevelUp(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { id } = req.params
+    const { totalLevels } = req.body
+    const result = await adventurerService.autoDistributeLevelUp(
+      accountId,
+      id,
+      totalLevels
+    )
+    res.success(result, '自动分配升级成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 批量按比例升降级
+ */
+export async function batchRatioDistribute(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { operations } = req.body
+    const result = await adventurerService.batchRatioDistribute(
+      accountId,
+      operations
+    )
+    res.success(result, '批量升降级完成')
+  } catch (error) {
+    next(error)
+  }
+}

@@ -21,20 +21,31 @@ import {
 import { BATTLE_VERSION } from 'shared/constants/index.js'
 
 /**
- * 获取或创建活跃赛季
+ * 获取或创建活跃赛季（仅在赛季进行中时返回，用于战斗等操作）
+ * 返回 null 表示当前不在可战斗的赛季期间（结算中/休赛期/赛季已过期）
  */
 export async function getOrCreateActiveSeason() {
   let season = await GameArenaSeason.findOne({ status: 'active' }).lean()
-  if (season) return season
 
-  // 没有活跃赛季，检查是否有结算中的
-  const settingSeason = await GameArenaSeason.findOne({
-    status: 'settling'
-  }).lean()
-  if (settingSeason) return null // 正在结算中
+  if (!season) {
+    // 没有活跃赛季，检查是否有结算中的
+    const settingSeason = await GameArenaSeason.findOne({
+      status: 'settling'
+    }).lean()
+    if (settingSeason) return null // 正在结算中
 
-  // 创建新赛季
-  return await createNewSeason()
+    // 创建新赛季
+    season = await createNewSeason()
+  }
+
+  // 检查时间边界
+  const now = new Date()
+  // 赛季还没开始（休赛期）
+  if (now < new Date(season.startTime)) return null
+  // 赛季已过期（等待结算）
+  if (now >= new Date(season.endTime)) return null
+
+  return season
 }
 
 /**
@@ -83,18 +94,74 @@ async function createNewSeason() {
 }
 
 /**
- * 获取竞技场信息
+ * 获取竞技场信息（包含休赛期和结算中状态展示）
  */
 export async function getArenaInfo(accountId) {
-  const season = await getOrCreateActiveSeason()
-  if (!season) {
+  // 1. 检查是否有结算中的赛季
+  const settingSeason = await GameArenaSeason.findOne({
+    status: 'settling'
+  }).lean()
+  if (settingSeason) {
     return {
-      season: null,
+      season: formatSeasonInfo(settingSeason),
       registration: null,
+      nextRecoverIn: 0,
+      status: 'settling',
       message: '赛季结算中，请稍后再来'
     }
   }
 
+  // 2. 获取或创建活跃赛季记录
+  let season = await GameArenaSeason.findOne({ status: 'active' }).lean()
+  if (!season) {
+    // 没有活跃赛季，创建新赛季
+    season = await createNewSeason()
+  }
+
+  const now = new Date()
+
+  // 3. 赛季还没开始（休赛期）
+  if (now < new Date(season.startTime)) {
+    return {
+      season: formatSeasonInfo(season),
+      registration: null,
+      nextRecoverIn: 0,
+      status: 'offseason',
+      // season.startTime 就是下一赛季开始时间（createNewSeason 创建时设置）
+      nextSeasonStartTime: season.startTime,
+      message: '休赛期，下一赛季即将开始'
+    }
+  }
+
+  // 4. 赛季已过期（等待结算）
+  if (now >= new Date(season.endTime)) {
+    const registration = await GameArenaRegistration.findOne({
+      account: accountId,
+      season: season._id
+    }).lean()
+    // 结算后 createNewSeason 会把下一赛季 startTime 设为结算当天的次日 0 点
+    // 这里估算：endTime（0点）当天 3 点结算，新赛季从次日 0 点开始
+    const endTime = new Date(season.endTime)
+    const estimatedNextStart = new Date(
+      endTime.getFullYear(),
+      endTime.getMonth(),
+      endTime.getDate() + 1,
+      0,
+      0,
+      0,
+      0
+    )
+    return {
+      season: formatSeasonInfo(season),
+      registration: registration ? formatRegistrationInfo(registration) : null,
+      nextRecoverIn: 0,
+      status: 'offseason',
+      nextSeasonStartTime: estimatedNextStart,
+      message: '赛季已结束，等待结算'
+    }
+  }
+
+  // 5. 赛季进行中
   const registration = await GameArenaRegistration.findOne({
     account: accountId,
     season: season._id
@@ -118,17 +185,9 @@ export async function getArenaInfo(accountId) {
   }
 
   return {
-    season: {
-      _id: season._id,
-      seasonNumber: season.seasonNumber,
-      startTime: season.startTime,
-      endTime: season.endTime,
-      status: season.status,
-      poolAmount: season.poolAmount,
-      battleGold: season.battleGold,
-      participationReward: season.participationReward
-    },
+    season: formatSeasonInfo(season),
     nextRecoverIn,
+    status: 'active',
     registration: registration
       ? {
           _id: registration._id,
@@ -144,12 +203,43 @@ export async function getArenaInfo(accountId) {
 }
 
 /**
+ * 格式化赛季信息（安全输出）
+ */
+function formatSeasonInfo(season) {
+  return {
+    _id: season._id,
+    seasonNumber: season.seasonNumber,
+    startTime: season.startTime,
+    endTime: season.endTime,
+    status: season.status,
+    poolAmount: season.poolAmount,
+    battleGold: season.battleGold,
+    participationReward: season.participationReward
+  }
+}
+
+/**
+ * 格式化报名信息（安全输出）
+ */
+function formatRegistrationInfo(registration) {
+  return {
+    _id: registration._id,
+    points: registration.points,
+    challengeUses: registration.challengeUses ?? 0,
+    totalBattleCount: registration.totalBattleCount,
+    guildName: registration.guildName,
+    lockedAdventurerCount: registration.lockedAdventurers?.length || 0,
+    lockedAdventurers: registration.lockedAdventurers || []
+  }
+}
+
+/**
  * 获取竞技场阵容详情（含冒险家详细信息）
  */
 export async function getArenaFormation(accountId) {
   const season = await getOrCreateActiveSeason()
   if (!season) {
-    const err = new Error('赛季结算中')
+    const err = new Error('当前不在赛季进行期间')
     err.statusCode = 400
     err.expose = true
     throw err
@@ -206,7 +296,7 @@ export async function registerArena(accountId, formationSlot) {
   return await executeInLock(`arena-register:${accountId}`, async () => {
     const season = await getOrCreateActiveSeason()
     if (!season) {
-      const err = new Error('赛季结算中，无法报名')
+      const err = new Error('当前不在赛季进行期间，无法报名')
       err.statusCode = 400
       err.expose = true
       throw err
@@ -291,7 +381,7 @@ export async function updateFormationPosition(accountId, newGrid) {
   return await executeInLock(`arena-formation:${accountId}`, async () => {
     const season = await getOrCreateActiveSeason()
     if (!season) {
-      const err = new Error('赛季结算中')
+      const err = new Error('当前不在赛季进行期间')
       err.statusCode = 400
       err.expose = true
       throw err
@@ -358,7 +448,7 @@ export async function updateFormationPosition(accountId, newGrid) {
 export async function getMatchList(accountId) {
   const season = await getOrCreateActiveSeason()
   if (!season) {
-    const err = new Error('赛季结算中')
+    const err = new Error('当前不在赛季进行期间')
     err.statusCode = 400
     err.expose = true
     throw err
@@ -444,7 +534,7 @@ export async function challengeOpponent(accountId, registrationId) {
   return await executeInLock(`arena-battle:${accountId}`, async () => {
     const season = await getOrCreateActiveSeason()
     if (!season) {
-      const err = new Error('赛季结算中')
+      const err = new Error('当前不在赛季进行期间，无法对战')
       err.statusCode = 400
       err.expose = true
       throw err
@@ -771,7 +861,12 @@ export async function getMyBattleLogs(
   { page = 1, pageSize = 20 } = {}
 ) {
   pageSize = Math.min(Math.max(pageSize, 1), 50)
-  const season = await getOrCreateActiveSeason()
+  // 查询最近的赛季（包含活跃或刚结束等待结算的），以便休赛期也能查看记录
+  const season = await GameArenaSeason.findOne({
+    status: { $in: ['active', 'settling'] }
+  })
+    .sort({ seasonNumber: -1 })
+    .lean()
   if (!season) return { list: [], total: 0 }
 
   const filter = {
@@ -924,7 +1019,12 @@ export async function getBattleLogDetail(accountId, logId) {
  */
 export async function getLeaderboard({ page = 1, pageSize = 20 } = {}) {
   pageSize = Math.min(Math.max(pageSize, 1), 50)
-  const season = await getOrCreateActiveSeason()
+  // 查询最近的赛季（包含活跃或刚结束等待结算的），以便休赛期也能查看排行榜
+  const season = await GameArenaSeason.findOne({
+    status: { $in: ['active', 'settling'] }
+  })
+    .sort({ seasonNumber: -1 })
+    .lean()
   if (!season) return { list: [], total: 0, season: null }
 
   const filter = { season: season._id }

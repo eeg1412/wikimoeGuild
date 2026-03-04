@@ -683,3 +683,565 @@ export async function setRoleTag(accountId, adventurerId, roleTag) {
     .populate('runeStone')
     .lean()
 }
+
+/**
+ * 批量装备最高级符文石
+ * 为勾选的冒险家自动匹配并装备等级最高的未装备符文石
+ */
+export async function batchEquipBestRuneStones(accountId, adventurerIds) {
+  return await executeInLock(`batchEquip:${accountId}`, async () => {
+    // 获取所有目标冒险家
+    const adventurers = await GameAdventurer.find({
+      _id: { $in: adventurerIds },
+      account: accountId
+    }).sort({ comprehensiveLevel: -1 })
+
+    if (adventurers.length === 0) {
+      const err = new Error('未找到指定冒险家')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    // 获取所有未装备、未上架的符文石，按等级降序
+    const availableRuneStones = await GameRuneStone.find({
+      account: accountId,
+      equippedBy: null,
+      listedOnMarket: { $ne: true }
+    }).sort({ level: -1 })
+
+    const results = []
+    const usedRuneStoneIds = new Set()
+
+    for (const adv of adventurers) {
+      // 找到可以装备且等级最高的符文石
+      const best = availableRuneStones.find(
+        rs =>
+          !usedRuneStoneIds.has(rs._id.toString()) &&
+          rs.level <= adv.comprehensiveLevel
+      )
+
+      if (!best) {
+        results.push({
+          adventurerId: adv._id,
+          adventurerName: adv.name,
+          success: false,
+          reason: '无可用符文石'
+        })
+        continue
+      }
+
+      // 如果冒险家已装备符文石，先卸下
+      if (adv.runeStone) {
+        await GameRuneStone.updateOne(
+          { _id: adv.runeStone },
+          { equippedBy: null }
+        )
+      }
+
+      // 装备新符文石
+      adv.runeStone = best._id
+      await adv.save()
+
+      best.equippedBy = adv._id
+      await best.save()
+
+      usedRuneStoneIds.add(best._id.toString())
+
+      results.push({
+        adventurerId: adv._id,
+        adventurerName: adv.name,
+        success: true,
+        runeStoneLevel: best.level,
+        runeStoneRarity: best.rarity
+      })
+    }
+
+    return results
+  })
+}
+
+/**
+ * 保存属性自动分配比例
+ */
+export async function saveDistributeRatio(accountId, adventurerId, ratio) {
+  const adventurer = await GameAdventurer.findOne({
+    _id: adventurerId,
+    account: accountId
+  })
+  if (!adventurer) {
+    const err = new Error('冒险家不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  const total = ratio.attack + ratio.defense + ratio.speed + ratio.san
+  if (total !== 100) {
+    const err = new Error('四项比例之和必须为 100')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  adventurer.statDistributeRatio = ratio
+  await adventurer.save()
+
+  return await GameAdventurer.findById(adventurer._id)
+    .select('-account')
+    .populate('runeStone')
+    .lean()
+}
+
+/**
+ * 自动分配升级（按比例分配等级点）
+ * @param {number} totalLevels - 总共要分配的等级数
+ */
+export async function autoDistributeLevelUp(
+  accountId,
+  adventurerId,
+  totalLevels
+) {
+  return await executeInLock(`levelup:${accountId}`, async () => {
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const adventurer = await GameAdventurer.findOne({
+      _id: adventurerId,
+      account: accountId
+    })
+    if (!adventurer) {
+      const err = new Error('冒险家不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const inventory = await GamePlayerInventory.findOne({ account: accountId })
+    if (!inventory) {
+      const err = new Error('背包信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const ratio = adventurer.statDistributeRatio || {
+      attack: 25,
+      defense: 25,
+      speed: 25,
+      san: 25
+    }
+
+    const maxCompLevel = getMaxComprehensiveLevel(playerInfo.guildLevel || 1)
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const crystalBase = gameSettings.adventurerLevelUpCrystalBase ?? 100
+    const goldBase = gameSettings.adventurerLevelUpGoldBase ?? 500
+
+    // 按比例计算每种属性分配多少级
+    const statAlloc = {
+      attack: Math.round((totalLevels * ratio.attack) / 100),
+      defense: Math.round((totalLevels * ratio.defense) / 100),
+      speed: Math.round((totalLevels * ratio.speed) / 100),
+      san: 0
+    }
+    // san 用剩余填充，保证总数精确
+    statAlloc.san =
+      totalLevels - statAlloc.attack - statAlloc.defense - statAlloc.speed
+
+    const statMap = {
+      attack: { crystal: 'attackCrystal', level: 'attackLevel' },
+      defense: { crystal: 'defenseCrystal', level: 'defenseLevel' },
+      speed: { crystal: 'speedCrystal', level: 'speedLevel' },
+      san: { crystal: 'sanCrystal', level: 'SANLevel' }
+    }
+
+    // 事前检查综合等级空间
+    const currentCompLevel =
+      adventurer.attackLevel +
+      adventurer.defenseLevel +
+      adventurer.speedLevel +
+      adventurer.SANLevel -
+      3
+    const remainingCapacity = maxCompLevel - currentCompLevel
+    if (remainingCapacity <= 0) {
+      const err = new Error(
+        `综合等级已达公会等级上限 ${maxCompLevel}，请先升级公会`
+      )
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 限制总升级数不超过剩余容量
+    const effectiveTotalLevels = Math.min(totalLevels, remainingCapacity)
+    if (effectiveTotalLevels < totalLevels) {
+      // 重新分配
+      statAlloc.attack = Math.round((effectiveTotalLevels * ratio.attack) / 100)
+      statAlloc.defense = Math.round(
+        (effectiveTotalLevels * ratio.defense) / 100
+      )
+      statAlloc.speed = Math.round((effectiveTotalLevels * ratio.speed) / 100)
+      statAlloc.san =
+        effectiveTotalLevels -
+        statAlloc.attack -
+        statAlloc.defense -
+        statAlloc.speed
+    }
+
+    // 事前检查所有消耗
+    let totalGoldNeeded = 0
+    const crystalNeeded = {
+      attackCrystal: 0,
+      defenseCrystal: 0,
+      speedCrystal: 0,
+      sanCrystal: 0
+    }
+    const reasons = []
+
+    for (const [statType, allocCount] of Object.entries(statAlloc)) {
+      if (allocCount <= 0) continue
+      const stat = statMap[statType]
+      let currentLevel = adventurer[stat.level]
+      for (let i = 0; i < allocCount; i++) {
+        const crystalCost = getAdventurerLevelUpCrystalCost(
+          currentLevel,
+          crystalBase
+        )
+        const goldCost = getAdventurerLevelUpGoldCost(currentLevel, goldBase)
+        crystalNeeded[stat.crystal] += crystalCost
+        totalGoldNeeded += goldCost
+        currentLevel++
+      }
+    }
+
+    // 检查金币
+    if (playerInfo.gold < totalGoldNeeded) {
+      reasons.push(
+        `金币不足：需要 ${totalGoldNeeded} 金币，当前 ${playerInfo.gold} 金币`
+      )
+    }
+
+    // 检查水晶
+    for (const [crystalType, needed] of Object.entries(crystalNeeded)) {
+      if (needed > 0 && (inventory[crystalType] || 0) < needed) {
+        const crystalName = {
+          attackCrystal: '攻击',
+          defenseCrystal: '防御',
+          speedCrystal: '速度',
+          sanCrystal: 'SAN'
+        }[crystalType]
+        reasons.push(
+          `${crystalName}水晶不足：需要 ${needed}，当前 ${inventory[crystalType] || 0}`
+        )
+      }
+    }
+
+    if (reasons.length > 0) {
+      const err = new Error(reasons.join('；'))
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 执行升级
+    let actualLevelsUpgraded = 0
+    for (const [statType, allocCount] of Object.entries(statAlloc)) {
+      if (allocCount <= 0) continue
+      const stat = statMap[statType]
+      for (let i = 0; i < allocCount; i++) {
+        const crystalCost = getAdventurerLevelUpCrystalCost(
+          adventurer[stat.level],
+          crystalBase
+        )
+        const goldCost = getAdventurerLevelUpGoldCost(
+          adventurer[stat.level],
+          goldBase
+        )
+        playerInfo.gold -= goldCost
+        inventory[stat.crystal] -= crystalCost
+        adventurer[stat.level] += 1
+        actualLevelsUpgraded++
+      }
+    }
+
+    // 重算综合等级
+    adventurer.comprehensiveLevel =
+      adventurer.attackLevel +
+      adventurer.defenseLevel +
+      adventurer.speedLevel +
+      adventurer.SANLevel -
+      3
+
+    await playerInfo.save()
+    await inventory.save()
+    await adventurer.save()
+
+    const updatedAdventurer = await GameAdventurer.findById(adventurer._id)
+      .select('-account')
+      .populate('runeStone')
+      .lean()
+
+    return {
+      adventurer: updatedAdventurer,
+      levelsUpgraded: actualLevelsUpgraded,
+      allocation: statAlloc
+    }
+  })
+}
+
+/**
+ * 批量按比例升降级
+ * @param {string} accountId
+ * @param {Array<{adventurerId: string, direction: 'up'|'down', totalLevels: number}>} operations
+ */
+export async function batchRatioDistribute(accountId, operations) {
+  return await executeInLock(`batchRatio:${accountId}`, async () => {
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const inventory = await GamePlayerInventory.findOne({ account: accountId })
+    if (!inventory) {
+      const err = new Error('背包信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const crystalBase = gameSettings.adventurerLevelUpCrystalBase ?? 100
+    const goldBase = gameSettings.adventurerLevelUpGoldBase ?? 500
+    const downPricePerLevel = gameSettings.adventurerLevelDownGoldPrice ?? 1000
+    const maxCompLevel = getMaxComprehensiveLevel(playerInfo.guildLevel || 1)
+
+    const statMap = {
+      attack: { crystal: 'attackCrystal', level: 'attackLevel' },
+      defense: { crystal: 'defenseCrystal', level: 'defenseLevel' },
+      speed: { crystal: 'speedCrystal', level: 'speedLevel' },
+      san: { crystal: 'sanCrystal', level: 'SANLevel' }
+    }
+
+    // 收集所有冒险家 ID
+    const advIds = operations.map(op => op.adventurerId)
+    const adventurers = await GameAdventurer.find({
+      _id: { $in: advIds },
+      account: accountId
+    })
+    const advMap = new Map()
+    for (const adv of adventurers) {
+      advMap.set(adv._id.toString(), adv)
+    }
+
+    // 第 1 阶段：预计算并检查所有消耗
+    let totalGoldNeeded = 0
+    const totalCrystalNeeded = {
+      attackCrystal: 0,
+      defenseCrystal: 0,
+      speedCrystal: 0,
+      sanCrystal: 0
+    }
+    const opPlans = [] // 每个操作的计划
+
+    for (const op of operations) {
+      const adv = advMap.get(op.adventurerId)
+      if (!adv) {
+        const err = new Error(`冒险家 ${op.adventurerId} 不存在`)
+        err.statusCode = 404
+        err.expose = true
+        throw err
+      }
+
+      const ratio = adv.statDistributeRatio || {
+        attack: 25,
+        defense: 25,
+        speed: 25,
+        san: 25
+      }
+      const ratioTotal = ratio.attack + ratio.defense + ratio.speed + ratio.san
+      if (ratioTotal !== 100) {
+        const err = new Error(
+          `冒险家 ${adv.name} 的分配比例未设置（需合计100%）`
+        )
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+
+      // 按比例计算分配
+      const alloc = {
+        attack: Math.round((op.totalLevels * ratio.attack) / 100),
+        defense: Math.round((op.totalLevels * ratio.defense) / 100),
+        speed: Math.round((op.totalLevels * ratio.speed) / 100),
+        san: 0
+      }
+      alloc.san = op.totalLevels - alloc.attack - alloc.defense - alloc.speed
+
+      if (op.direction === 'up') {
+        // 检查综合等级上限
+        const currentComp =
+          adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
+        const remaining = maxCompLevel - currentComp
+        if (remaining <= 0) {
+          const err = new Error(`冒险家 ${adv.name} 综合等级已达上限`)
+          err.statusCode = 400
+          err.expose = true
+          throw err
+        }
+        const effectiveLevels = Math.min(op.totalLevels, remaining)
+        if (effectiveLevels < op.totalLevels) {
+          // 重新分配
+          alloc.attack = Math.round((effectiveLevels * ratio.attack) / 100)
+          alloc.defense = Math.round((effectiveLevels * ratio.defense) / 100)
+          alloc.speed = Math.round((effectiveLevels * ratio.speed) / 100)
+          alloc.san =
+            effectiveLevels - alloc.attack - alloc.defense - alloc.speed
+        }
+
+        // 计算消耗
+        for (const [statType, allocCount] of Object.entries(alloc)) {
+          if (allocCount <= 0) continue
+          const stat = statMap[statType]
+          let currentLevel = adv[stat.level]
+          for (let i = 0; i < allocCount; i++) {
+            totalCrystalNeeded[stat.crystal] += getAdventurerLevelUpCrystalCost(
+              currentLevel,
+              crystalBase
+            )
+            totalGoldNeeded += getAdventurerLevelUpGoldCost(
+              currentLevel,
+              goldBase
+            )
+            currentLevel++
+          }
+        }
+      } else {
+        // direction === 'down'
+        // 检查属性等级是否足够降级
+        for (const [statType, allocCount] of Object.entries(alloc)) {
+          if (allocCount <= 0) continue
+          const stat = statMap[statType]
+          if (adv[stat.level] - allocCount < 1) {
+            const statName = {
+              attack: '攻击',
+              defense: '防御',
+              speed: '速度',
+              san: 'SAN'
+            }[statType]
+            const err = new Error(
+              `冒险家 ${adv.name} 的${statName}等级不足以降级 ${allocCount} 级（当前 Lv.${adv[stat.level]}）`
+            )
+            err.statusCode = 400
+            err.expose = true
+            throw err
+          }
+        }
+        totalGoldNeeded += op.totalLevels * downPricePerLevel
+      }
+
+      opPlans.push({
+        adv,
+        alloc,
+        direction: op.direction,
+        totalLevels: op.totalLevels
+      })
+    }
+
+    // 检查资源
+    if (playerInfo.gold < totalGoldNeeded) {
+      const err = new Error(
+        `金币不足：需要 ${totalGoldNeeded}，当前 ${playerInfo.gold}`
+      )
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+    for (const [crystalType, needed] of Object.entries(totalCrystalNeeded)) {
+      if (needed > 0 && (inventory[crystalType] || 0) < needed) {
+        const crystalName = {
+          attackCrystal: '攻击',
+          defenseCrystal: '防御',
+          speedCrystal: '速度',
+          sanCrystal: 'SAN'
+        }[crystalType]
+        const err = new Error(
+          `${crystalName}水晶不足：需要 ${needed}，当前 ${inventory[crystalType] || 0}`
+        )
+        err.statusCode = 400
+        err.expose = true
+        throw err
+      }
+    }
+
+    // 第 2 阶段：执行操作
+    const results = []
+    for (const plan of opPlans) {
+      const { adv, alloc, direction } = plan
+
+      if (direction === 'up') {
+        for (const [statType, allocCount] of Object.entries(alloc)) {
+          if (allocCount <= 0) continue
+          const stat = statMap[statType]
+          for (let i = 0; i < allocCount; i++) {
+            const crystalCost = getAdventurerLevelUpCrystalCost(
+              adv[stat.level],
+              crystalBase
+            )
+            const goldCost = getAdventurerLevelUpGoldCost(
+              adv[stat.level],
+              goldBase
+            )
+            playerInfo.gold -= goldCost
+            inventory[stat.crystal] -= crystalCost
+            adv[stat.level] += 1
+          }
+        }
+      } else {
+        // down
+        const totalDown = Object.values(alloc).reduce(
+          (s, v) => s + Math.max(0, v),
+          0
+        )
+        const goldCost = totalDown * downPricePerLevel
+        playerInfo.gold -= goldCost
+        for (const [statType, allocCount] of Object.entries(alloc)) {
+          if (allocCount <= 0) continue
+          const stat = statMap[statType]
+          adv[stat.level] -= allocCount
+        }
+      }
+
+      // 重算综合等级
+      adv.comprehensiveLevel =
+        adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
+      await adv.save()
+
+      results.push({
+        adventurerId: adv._id,
+        adventurerName: adv.name,
+        direction,
+        allocation: { ...alloc },
+        newLevels: {
+          attackLevel: adv.attackLevel,
+          defenseLevel: adv.defenseLevel,
+          speedLevel: adv.speedLevel,
+          SANLevel: adv.SANLevel,
+          comprehensiveLevel: adv.comprehensiveLevel
+        }
+      })
+    }
+
+    await playerInfo.save()
+    await inventory.save()
+
+    return { results }
+  })
+}

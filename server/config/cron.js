@@ -18,5 +18,16 @@ export function initCronJobs() {
     }
   })
 
+  // // 服务启动时也检查一次，防止因服务重启导致定时任务未执行
+  // setTimeout(async () => {
+  //   logger.info('[Cron] 服务启动，检查是否有未结算的赛季...')
+  //   try {
+  //     const result = await settleCurrentSeason()
+  //     logger.info(`[Cron] 启动结算检查结果: ${result.message}`)
+  //   } catch (error) {
+  //     logger.error('[Cron] 启动结算检查失败:', error)
+  //   }
+  // }, 5000) // 延迟5秒等待数据库连接就绪
+
   logger.info('[Cron] 定时任务已初始化')
 }

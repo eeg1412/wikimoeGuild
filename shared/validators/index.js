@@ -48,7 +48,11 @@ export {
   adventurerLevelDownSchema,
   adventurerEquipRuneStoneSchema,
   adventurerRerollSchema,
-  adventurerSetRoleTagSchema
+  adventurerSetRoleTagSchema,
+  adventurerBatchEquipBestSchema,
+  adventurerSaveDistributeRatioSchema,
+  adventurerAutoDistributeLevelUpSchema,
+  adventurerBatchRatioDistributeSchema
 } from './gameAdventurerValidator.js'
 export {
   dungeonLegionChallengeSchema,

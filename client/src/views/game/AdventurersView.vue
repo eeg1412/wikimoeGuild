@@ -31,7 +31,7 @@
     </div>
 
     <!-- 筛选栏 -->
-    <div class="flex flex-wrap justify-center gap-1.5 mb-4">
+    <div class="flex flex-wrap justify-center gap-1.5 mb-2">
       <el-button
         :type="filterTag === '' ? 'primary' : 'default'"
         size="small"
@@ -57,6 +57,80 @@
       </el-button>
     </div>
 
+    <!-- 排序栏 + 批量操作 -->
+    <div class="flex justify-center items-center gap-2 mb-4 flex-wrap">
+      <el-select
+        v-model="sortMode"
+        size="small"
+        style="width: 160px"
+        @change="handleSortChange"
+      >
+        <el-option label="默认排序" value="default" />
+        <el-option label="等级（高→低）" value="level_desc" />
+        <el-option label="等级（低→高）" value="level_asc" />
+      </el-select>
+      <el-checkbox v-model="batchMode" size="small">批量选择</el-checkbox>
+      <template v-if="batchMode && selectedIds.size > 0">
+        <el-button
+          type="warning"
+          size="small"
+          :loading="batchEquipLoading"
+          :disabled="batchEquipLoading"
+          @click="handleBatchEquipBest"
+        >
+          💎 批量装备符文石 ({{ selectedIds.size }})
+        </el-button>
+        <el-button
+          type="primary"
+          size="small"
+          :disabled="batchRatioLoading"
+          @click="handleOpenBatchRatioReport('up', 1)"
+        >
+          📈 批量升级+1
+        </el-button>
+        <el-button
+          type="primary"
+          size="small"
+          :disabled="batchRatioLoading"
+          @click="handleOpenBatchRatioReport('up', 5)"
+        >
+          +5
+        </el-button>
+        <el-button
+          type="primary"
+          size="small"
+          :disabled="batchRatioLoading"
+          @click="handleOpenBatchRatioReport('up', 10)"
+        >
+          +10
+        </el-button>
+        <el-button
+          type="danger"
+          size="small"
+          :disabled="batchRatioLoading"
+          @click="handleOpenBatchRatioReport('down', 1)"
+        >
+          📉 批量降级-1
+        </el-button>
+        <el-button
+          type="danger"
+          size="small"
+          :disabled="batchRatioLoading"
+          @click="handleOpenBatchRatioReport('down', 5)"
+        >
+          -5
+        </el-button>
+        <el-button
+          type="danger"
+          size="small"
+          :disabled="batchRatioLoading"
+          @click="handleOpenBatchRatioReport('down', 10)"
+        >
+          -10
+        </el-button>
+      </template>
+    </div>
+
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-12">
       <span class="animate-spin inline-block text-4xl">⏳</span>
@@ -71,10 +145,20 @@
         v-for="adv in filteredAdventurers"
         :key="adv._id"
         class="rpg-card relative flex flex-col items-center p-3 rounded-xl cursor-pointer group"
-        @click="openDetail(adv)"
+        :class="{ 'ring-2 ring-yellow-400': selectedIds.has(adv._id) }"
+        @click="handleCardClick(adv)"
       >
+        <!-- 批量选择复选框 -->
+        <div v-if="batchMode" class="absolute top-1 right-1 z-20" @click.stop>
+          <el-checkbox
+            :model-value="selectedIds.has(adv._id)"
+            size="small"
+            @change="handleToggleSelect(adv._id)"
+          />
+        </div>
         <!-- 元素菱形徽章 -->
         <div
+          v-if="!batchMode"
           class="absolute top-2 right-2 w-4 h-4 rotate-45 border-2 border-white dark:border-gray-700 shadow-sm z-10"
           :style="{ backgroundColor: getElementColor(adv.elements) }"
         />
@@ -166,10 +250,21 @@
           v-if="adv.runeStone"
           class="mt-1 text-xs px-1.5 py-0.5 rounded-full border cursor-pointer hover:opacity-80 text-center w-full"
           :class="runeStoneCardClass(adv.runeStone.rarity)"
-          @click.stop="handleShowRuneStonePreview(adv)"
+          @click.stop="handleShowRuneStoneManage(adv)"
         >
           💎 {{ rarityName(adv.runeStone.rarity) }} Lv.{{ adv.runeStone.level }}
         </div>
+
+        <!-- 属性升降级按钮 -->
+        <el-button
+          type="warning"
+          size="small"
+          class="mt-1 w-full"
+          style="font-size: 12px"
+          @click.stop="handleOpenStatUpgrade(adv)"
+        >
+          📈 升降级
+        </el-button>
       </div>
 
       <!-- 快捷入口 -->
@@ -193,6 +288,131 @@
       show-manage
       @updated="handleAdvUpdated"
     />
+
+    <!-- ==================== 符文石管理弹窗 ==================== -->
+    <AdventurerRuneStoneDialog
+      v-model="runeStoneDialogVisible"
+      :adventurer="runeStoneDialogAdv"
+      @updated="handleRuneStoneDialogUpdated"
+    />
+
+    <!-- ==================== 属性升降级弹窗 ==================== -->
+    <el-dialog
+      v-model="statUpgradeVisible"
+      :title="
+        statUpgradeAdv ? `${statUpgradeAdv.name} - 属性升降级` : '属性升降级'
+      "
+      width="380px"
+      align-center
+      destroy-on-close
+      class="game-dialog"
+    >
+      <StatLevelUpPanel
+        v-if="statUpgradeAdv"
+        :adventurer="statUpgradeAdv"
+        @updated="handleStatUpgradeUpdated"
+      />
+    </el-dialog>
+
+    <!-- ==================== 批量升降级报表预览弹窗 ==================== -->
+    <el-dialog
+      v-model="batchReportVisible"
+      :title="`批量${batchReportDirection === 'up' ? '升级' : '降级'}报表预览`"
+      width="90%"
+      style="max-width: 700px"
+      align-center
+      destroy-on-close
+      class="game-dialog"
+    >
+      <div v-if="batchReportData.length" class="text-sm">
+        <!-- 总览 -->
+        <div
+          class="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-center"
+        >
+          <p>
+            共 <b>{{ batchReportData.length }}</b> 名冒险家，每人
+            {{ batchReportDirection === 'up' ? '+' : '-'
+            }}{{ batchReportTotalPerAdv }} 级
+          </p>
+          <p class="mt-1">
+            💰 总金币:
+            <span class="text-yellow-500 font-bold">{{
+              batchReportTotalGold.toLocaleString()
+            }}</span>
+          </p>
+          <p v-if="batchReportDirection === 'up'" class="mt-1 space-x-2">
+            <span
+              >⚔️ 攻击水晶: {{ batchReportTotalCrystals.attackCrystal }}</span
+            >
+            <span
+              >🛡️ 防御水晶: {{ batchReportTotalCrystals.defenseCrystal }}</span
+            >
+            <span
+              >💨 速度水晶: {{ batchReportTotalCrystals.speedCrystal }}</span
+            >
+            <span>🧠 SAN水晶: {{ batchReportTotalCrystals.sanCrystal }}</span>
+          </p>
+        </div>
+
+        <!-- 每个冒险家详情 -->
+        <div class="max-h-60 overflow-y-auto space-y-2">
+          <div
+            v-for="item in batchReportData"
+            :key="item.adventurerId"
+            class="p-2 border rounded dark:border-gray-600"
+          >
+            <p class="font-medium">{{ item.name }}</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 text-xs mt-1">
+              <span
+                >⚔️ Lv.{{ item.currentLevels.attack }} → Lv.{{
+                  item.newLevels.attack
+                }}</span
+              >
+              <span
+                >🛡️ Lv.{{ item.currentLevels.defense }} → Lv.{{
+                  item.newLevels.defense
+                }}</span
+              >
+              <span
+                >💨 Lv.{{ item.currentLevels.speed }} → Lv.{{
+                  item.newLevels.speed
+                }}</span
+              >
+              <span
+                >🧠 Lv.{{ item.currentLevels.san }} → Lv.{{
+                  item.newLevels.san
+                }}</span
+              >
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              综合 {{ item.currentLevels.comprehensive }} →
+              {{ item.newLevels.comprehensive }} | 金币:
+              {{ item.goldCost.toLocaleString() }}
+              <template v-if="batchReportDirection === 'up'">
+                | 水晶: 攻{{ item.crystalCost.attack }} 防{{
+                  item.crystalCost.defense
+                }}
+                速{{ item.crystalCost.speed }} SAN{{ item.crystalCost.san }}
+              </template>
+            </p>
+            <p v-if="item.error" class="text-xs text-red-500 mt-1">
+              ⚠️ {{ item.error }}
+            </p>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="batchReportVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="batchRatioLoading"
+          :disabled="batchRatioLoading || batchReportHasError"
+          @click="handleConfirmBatchRatio"
+        >
+          确认{{ batchReportDirection === 'up' ? '升级' : '降级' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -203,13 +423,20 @@ import { ElMessage } from 'element-plus'
 import {
   getMyAdventurersApi,
   recruitAdventurerApi,
-  setRoleTagApi
+  setRoleTagApi,
+  batchEquipBestRuneStonesApi,
+  batchRatioDistributeApi
 } from '@/api/game/adventurer.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
-import { getMaxAdventurerCount } from 'shared/utils/guildLevelUtils.js'
+import {
+  getMaxAdventurerCount,
+  getMaxComprehensiveLevel,
+  getAdventurerLevelUpCrystalCost,
+  getAdventurerLevelUpGoldCost
+} from 'shared/utils/guildLevelUtils.js'
 
 const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(
   ([value, { emoji, label }]) => ({
@@ -219,6 +446,8 @@ const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(
   })
 )
 import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
+import AdventurerRuneStoneDialog from '@/components/AdventurerRuneStoneDialog.vue'
+import StatLevelUpPanel from '@/components/StatLevelUpPanel.vue'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
@@ -248,12 +477,32 @@ function handleFilterTag(tag) {
   filterTag.value = tag
 }
 
+// ── 排序 ──
+const sortMode = ref('default')
+
+function handleSortChange() {
+  // v-model 已更新
+}
+
 const filteredAdventurers = computed(() => {
-  if (!filterTag.value) return adventurers.value
-  if (filterTag.value === 'none') {
-    return adventurers.value.filter(a => !a.roleTag)
+  let list = adventurers.value
+  if (filterTag.value) {
+    if (filterTag.value === 'none') {
+      list = list.filter(a => !a.roleTag)
+    } else {
+      list = list.filter(a => a.roleTag === filterTag.value)
+    }
   }
-  return adventurers.value.filter(a => a.roleTag === filterTag.value)
+  if (sortMode.value === 'level_desc') {
+    list = [...list].sort(
+      (a, b) => (b.comprehensiveLevel || 1) - (a.comprehensiveLevel || 1)
+    )
+  } else if (sortMode.value === 'level_asc') {
+    list = [...list].sort(
+      (a, b) => (a.comprehensiveLevel || 1) - (b.comprehensiveLevel || 1)
+    )
+  }
+  return list
 })
 
 // ── 元素映射 ──
@@ -287,9 +536,18 @@ function runeStoneCardClass(r) {
   )
 }
 
-function handleShowRuneStonePreview(adv) {
+function handleShowRuneStoneManage(adv) {
   if (!adv.runeStone) return
-  openDetail(adv)
+  runeStoneDialogAdv.value = { ...adv }
+  runeStoneDialogVisible.value = true
+}
+
+function handleCardClick(adv) {
+  if (batchMode.value) {
+    handleToggleSelect(adv._id)
+  } else {
+    openDetail(adv)
+  }
 }
 
 // ── 冒险家列表 ──
@@ -363,6 +621,275 @@ function openDetail(adv) {
 function handleAdvUpdated(updatedAdv) {
   const idx = adventurers.value.findIndex(a => a._id === updatedAdv._id)
   if (idx >= 0) adventurers.value[idx] = { ...updatedAdv }
+}
+
+// ── 批量选择 & 批量装备 ──
+const batchMode = ref(false)
+const selectedIds = ref(new Set())
+const batchEquipLoading = ref(false)
+
+function handleToggleSelect(id) {
+  const newSet = new Set(selectedIds.value)
+  if (newSet.has(id)) {
+    newSet.delete(id)
+  } else {
+    newSet.add(id)
+  }
+  selectedIds.value = newSet
+}
+
+async function handleBatchEquipBest() {
+  if (selectedIds.value.size === 0) return
+  batchEquipLoading.value = true
+  try {
+    const res = await batchEquipBestRuneStonesApi({
+      adventurerIds: [...selectedIds.value]
+    })
+    const { results } = res.data.data
+    const equipped = results.filter(r => r.success).length
+    ElMessage.success(`批量装备完成，${equipped} 名冒险家已装备符文石`)
+    selectedIds.value = new Set()
+    batchMode.value = false
+    await fetchAdventurers()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchEquipLoading.value = false
+  }
+}
+
+// ── 符文石管理弹窗 ──
+const { visible: runeStoneDialogVisible } = useDialogRoute('rsManage')
+const runeStoneDialogAdv = ref(null)
+
+function handleRuneStoneDialogUpdated(updatedAdv) {
+  const idx = adventurers.value.findIndex(a => a._id === updatedAdv._id)
+  if (idx >= 0) adventurers.value[idx] = { ...updatedAdv }
+  runeStoneDialogAdv.value = { ...updatedAdv }
+}
+
+// ── 属性升级弹窗 ──
+const { visible: statUpgradeVisible } = useDialogRoute('statUpgrade')
+const statUpgradeAdv = ref(null)
+
+function handleOpenStatUpgrade(adv) {
+  statUpgradeAdv.value = { ...adv }
+  statUpgradeVisible.value = true
+}
+
+function handleStatUpgradeUpdated(updatedAdv) {
+  const idx = adventurers.value.findIndex(a => a._id === updatedAdv._id)
+  if (idx >= 0) adventurers.value[idx] = { ...updatedAdv }
+  statUpgradeAdv.value = { ...updatedAdv }
+}
+
+// ── 批量按比例升降级 ──
+const batchRatioLoading = ref(false)
+const { visible: batchReportVisible } = useDialogRoute('batchReport')
+const batchReportData = ref([])
+const batchReportDirection = ref('up')
+const batchReportTotalPerAdv = ref(0)
+const batchReportTotalGold = ref(0)
+const batchReportTotalCrystals = ref({
+  attackCrystal: 0,
+  defenseCrystal: 0,
+  speedCrystal: 0,
+  sanCrystal: 0
+})
+const batchReportHasError = ref(false)
+
+function handleOpenBatchRatioReport(direction, totalLevels) {
+  if (selectedIds.value.size === 0) return
+
+  batchReportDirection.value = direction
+  batchReportTotalPerAdv.value = totalLevels
+
+  const crystalBase = gameSettings.value.adventurerLevelUpCrystalBase ?? 100
+  const goldBase = gameSettings.value.adventurerLevelUpGoldBase ?? 500
+  const downPricePerLevel =
+    gameSettings.value.adventurerLevelDownGoldPrice ?? 1000
+  const guildLevel = playerInfo.value?.guildLevel || 1
+  const maxCompLevel = getMaxComprehensiveLevel(guildLevel)
+
+  let totalGold = 0
+  const totalCrystalsAcc = {
+    attackCrystal: 0,
+    defenseCrystal: 0,
+    speedCrystal: 0,
+    sanCrystal: 0
+  }
+  let hasError = false
+  const reportItems = []
+  const selectedAdvs = adventurers.value.filter(a =>
+    selectedIds.value.has(a._id)
+  )
+  const statLevelKeys = {
+    attack: 'attackLevel',
+    defense: 'defenseLevel',
+    speed: 'speedLevel',
+    san: 'SANLevel'
+  }
+  const crystalKeys = {
+    attack: 'attackCrystal',
+    defense: 'defenseCrystal',
+    speed: 'speedCrystal',
+    san: 'sanCrystal'
+  }
+  const statNames = {
+    attack: '攻击',
+    defense: '防御',
+    speed: '速度',
+    san: 'SAN'
+  }
+
+  for (const adv of selectedAdvs) {
+    const ratio = adv.statDistributeRatio || {
+      attack: 25,
+      defense: 25,
+      speed: 25,
+      san: 25
+    }
+    const ratioTotal = ratio.attack + ratio.defense + ratio.speed + ratio.san
+    let error = ''
+    if (ratioTotal !== 100) {
+      error = '分配比例未设置（需合计100%）'
+      hasError = true
+    }
+
+    let effectiveLevels = totalLevels
+    if (direction === 'up' && !error) {
+      const currentComp =
+        (adv.attackLevel || 1) +
+        (adv.defenseLevel || 1) +
+        (adv.speedLevel || 1) +
+        (adv.SANLevel || 1) -
+        3
+      const remaining = maxCompLevel - currentComp
+      if (remaining <= 0) {
+        error = '综合等级已达上限'
+        hasError = true
+      } else {
+        effectiveLevels = Math.min(totalLevels, remaining)
+      }
+    }
+
+    const alloc = {
+      attack: Math.round((effectiveLevels * ratio.attack) / 100),
+      defense: Math.round((effectiveLevels * ratio.defense) / 100),
+      speed: Math.round((effectiveLevels * ratio.speed) / 100),
+      san: 0
+    }
+    alloc.san = effectiveLevels - alloc.attack - alloc.defense - alloc.speed
+
+    let itemGold = 0
+    const itemCrystals = { attack: 0, defense: 0, speed: 0, san: 0 }
+
+    if (!error) {
+      if (direction === 'up') {
+        for (const [statType, allocCount] of Object.entries(alloc)) {
+          if (allocCount <= 0) continue
+          let currentLevel = adv[statLevelKeys[statType]] || 1
+          for (let i = 0; i < allocCount; i++) {
+            const cc = getAdventurerLevelUpCrystalCost(
+              currentLevel,
+              crystalBase
+            )
+            const gc = getAdventurerLevelUpGoldCost(currentLevel, goldBase)
+            itemCrystals[statType] += cc
+            itemGold += gc
+            totalCrystalsAcc[crystalKeys[statType]] += cc
+            currentLevel++
+          }
+        }
+      } else {
+        for (const [statType, allocCount] of Object.entries(alloc)) {
+          if (allocCount <= 0) continue
+          const currentLevel = adv[statLevelKeys[statType]] || 1
+          if (currentLevel - allocCount < 1) {
+            error = `${statNames[statType]}等级不足以降级 ${allocCount} 级（当前 Lv.${currentLevel}）`
+            hasError = true
+            break
+          }
+        }
+        itemGold = effectiveLevels * downPricePerLevel
+      }
+    }
+
+    totalGold += itemGold
+
+    const currentLevels = {
+      attack: adv.attackLevel || 1,
+      defense: adv.defenseLevel || 1,
+      speed: adv.speedLevel || 1,
+      san: adv.SANLevel || 1,
+      comprehensive: adv.comprehensiveLevel || 1
+    }
+    const newLevels = { ...currentLevels }
+    if (!error) {
+      if (direction === 'up') {
+        newLevels.attack += alloc.attack
+        newLevels.defense += alloc.defense
+        newLevels.speed += alloc.speed
+        newLevels.san += alloc.san
+      } else {
+        newLevels.attack -= alloc.attack
+        newLevels.defense -= alloc.defense
+        newLevels.speed -= alloc.speed
+        newLevels.san -= alloc.san
+      }
+      newLevels.comprehensive =
+        newLevels.attack +
+        newLevels.defense +
+        newLevels.speed +
+        newLevels.san -
+        3
+    }
+
+    reportItems.push({
+      adventurerId: adv._id,
+      name: adv.name,
+      alloc,
+      currentLevels,
+      newLevels,
+      goldCost: itemGold,
+      crystalCost: itemCrystals,
+      error
+    })
+  }
+
+  batchReportData.value = reportItems
+  batchReportTotalGold.value = totalGold
+  batchReportTotalCrystals.value = totalCrystalsAcc
+  batchReportHasError.value = hasError
+  batchReportVisible.value = true
+}
+
+async function handleConfirmBatchRatio() {
+  batchRatioLoading.value = true
+  try {
+    const ops = batchReportData.value
+      .filter(item => !item.error)
+      .map(item => ({
+        adventurerId: item.adventurerId,
+        direction: batchReportDirection.value,
+        totalLevels: batchReportTotalPerAdv.value
+      }))
+    if (ops.length === 0) return
+
+    await batchRatioDistributeApi({ operations: ops })
+    ElMessage.success(
+      `批量${batchReportDirection.value === 'up' ? '升级' : '降级'}完成`
+    )
+    batchReportVisible.value = false
+    selectedIds.value = new Set()
+    batchMode.value = false
+    await fetchAdventurers()
+    await fetchPlayerInfo()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchRatioLoading.value = false
+  }
 }
 
 // ── 初始化 ──

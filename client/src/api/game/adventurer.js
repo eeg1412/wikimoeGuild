@@ -76,3 +76,31 @@ export function rerollAttributeApi(id, data) {
 export function setRoleTagApi(id, data) {
   return gameRequest.post(`/adventurers/${id}/role-tag`, data)
 }
+
+/**
+ * 批量装备最高级符文石
+ */
+export function batchEquipBestRuneStonesApi(data) {
+  return gameRequest.post('/adventurers/batch-equip-best', data)
+}
+
+/**
+ * 保存属性自动分配比例
+ */
+export function saveDistributeRatioApi(id, data) {
+  return gameRequest.post(`/adventurers/${id}/distribute-ratio`, data)
+}
+
+/**
+ * 自动分配升级
+ */
+export function autoDistributeLevelUpApi(id, data) {
+  return gameRequest.post(`/adventurers/${id}/auto-distribute-level-up`, data)
+}
+
+/**
+ * 批量按比例升降级
+ */
+export function batchRatioDistributeApi(data) {
+  return gameRequest.post('/adventurers/batch-ratio-distribute', data)
+}

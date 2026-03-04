@@ -64,427 +64,483 @@
         </div>
       </div>
 
-      <!-- ===== 未报名状态 ===== -->
-      <template v-if="!arenaInfo.registration">
-        <div class="rpg-card rounded-xl p-4 mb-4 text-center">
-          <p class="text-gray-500 dark:text-gray-400 mb-3">你还未报名本赛季</p>
-          <p class="text-sm text-red-400 mb-3">
-            ⚠️
-            报名后，阵容中的冒险家将被锁定至赛季结束，期间不可替换，只能调整位置。
+      <!-- ===== 休赛期/结算中提示 ===== -->
+      <div
+        v-if="
+          arenaInfo.status === 'offseason' || arenaInfo.status === 'settling'
+        "
+        class="rpg-card rounded-xl p-4 mb-4 text-center"
+      >
+        <p class="text-lg font-bold text-yellow-500 mb-2">
+          {{ arenaInfo.status === 'settling' ? '⏳ 赛季结算中' : '🏖️ 休赛期' }}
+        </p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          {{ arenaInfo.message }}
+        </p>
+        <template
+          v-if="
+            arenaInfo.status === 'offseason' && arenaInfo.nextSeasonStartTime
+          "
+        >
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            预计下一赛季开始时间：<span class="font-mono text-blue-500">{{
+              formatTime(arenaInfo.nextSeasonStartTime)
+            }}</span>
           </p>
-
-          <!-- 选择阵容 -->
-          <div class="mb-3">
-            <el-select
-              v-model="registerSlot"
-              placeholder="选择阵容"
-              size="small"
-              class="w-48!"
-              @change="handleSlotChange"
-            >
-              <el-option
-                v-for="f in formations"
-                :key="f.slot"
-                :label="f.name || `阵容 ${f.slot}`"
-                :value="f.slot"
-              />
-            </el-select>
-          </div>
-
-          <!-- 阵容预览 -->
-          <div v-if="formationPreview" class="mb-3">
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-              📋 阵容预览（{{ formationPreviewCount }} 名冒险家）
-            </p>
-            <div class="arena-grid-board mx-auto">
-              <div
-                v-for="(row, rIdx) in formationPreview.grid"
-                :key="rIdx"
-                class="arena-grid-row"
-              >
-                <div
-                  v-for="(cell, cIdx) in row"
-                  :key="`${rIdx}-${cIdx}`"
-                  class="arena-grid-cell"
-                  :class="{
-                    'arena-grid-cell--occupied': cell
-                  }"
-                >
-                  <span class="arena-grid-cell-seq">{{
-                    rIdx * 5 + cIdx + 1
-                  }}</span>
-                  <template v-if="cell">
-                    <GameAdventurerAvatar
-                      :adventurer="cell"
-                      class="w-full h-full rounded object-cover pointer-events-none select-none"
-                    />
-                    <div
-                      v-for="indicator in getPassiveIndicators(cell)"
-                      :key="indicator.position"
-                      class="passive-indicator"
-                      :class="'passive-indicator--' + indicator.position"
-                      :style="{ backgroundColor: indicator.color }"
-                      :title="indicator.label"
-                    />
-                    <div
-                      class="absolute bottom-0 left-0 right-0 text-center bg-black/50 text-[10px] text-white leading-tight py-px truncate"
-                    >
-                      {{ cell.name }}
-                    </div>
-                    <!-- 标记图标 -->
-                    <span
-                      v-if="cell.roleTag && ROLE_TAG_MAP[cell.roleTag]"
-                      class="absolute top-0 right-0 z-10 bg-black/65 rounded-bl text-xs leading-none p-0.5"
-                    >
-                      {{ ROLE_TAG_MAP[cell.roleTag].emoji }}
-                    </span>
-                  </template>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="formationPreviewLoading" class="mb-3 text-center">
-            <span class="animate-spin inline-block text-xl">⏳</span>
-          </div>
-
-          <el-button
-            type="primary"
-            :loading="registerLoading"
-            :disabled="registerLoading || !registerSlot"
-            @click="handleRegister"
-          >
-            ⚔️ 报名参赛
-          </el-button>
-        </div>
-      </template>
-
-      <!-- ===== 已报名状态 ===== -->
-      <template v-else>
-        <!-- 我的状态卡片 -->
-        <div class="rpg-card rounded-xl p-4 mb-4">
-          <div class="grid grid-cols-3 gap-2 text-center">
+        </template>
+        <template v-if="arenaInfo.registration">
+          <div class="mt-3 grid grid-cols-3 gap-2 text-center">
             <div>
-              <p class="text-xs text-gray-400">竞技点</p>
+              <p class="text-xs text-gray-400">最终竞技点</p>
               <p class="text-lg font-bold text-yellow-500">
-                {{ arenaInfo.registration?.points ?? 500 }}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-400">剩余挑战</p>
-              <p class="text-lg font-bold text-blue-500">
-                {{ arenaInfo.registration?.challengeUses ?? 0 }}
+                {{ arenaInfo.registration.points ?? 0 }}
               </p>
             </div>
             <div>
               <p class="text-xs text-gray-400">对战次数</p>
               <p class="text-lg font-bold text-green-500">
-                {{ arenaInfo.registration?.totalBattleCount ?? 0 }}
+                {{ arenaInfo.registration.totalBattleCount ?? 0 }}
               </p>
             </div>
-          </div>
-          <p
-            v-if="arenaInfo.nextRecoverIn"
-            class="text-center text-xs text-gray-400 mt-2"
-          >
-            ⏰ 下次恢复: {{ Math.ceil(arenaInfo.nextRecoverIn / 60) }} 分钟后
-          </p>
-        </div>
-
-        <!-- 标签切换 -->
-        <div class="flex flex-wrap justify-center gap-2 mb-4">
-          <el-button
-            :type="arenaTab === 'match' ? 'primary' : 'default'"
-            size="small"
-            @click="handleSwitchArenaTab('match')"
-          >
-            🎯 匹配对手
-          </el-button>
-          <el-button
-            :type="arenaTab === 'formation' ? 'primary' : 'default'"
-            size="small"
-            @click="handleSwitchArenaTab('formation')"
-          >
-            🏗️ 阵容管理
-          </el-button>
-          <el-button
-            :type="arenaTab === 'leaderboard' ? 'primary' : 'default'"
-            size="small"
-            @click="handleSwitchArenaTab('leaderboard')"
-          >
-            🏅 排行榜
-          </el-button>
-          <el-button
-            :type="arenaTab === 'logs' ? 'primary' : 'default'"
-            size="small"
-            @click="handleSwitchArenaTab('logs')"
-          >
-            📜 战斗记录
-          </el-button>
-        </div>
-
-        <!-- ===== 匹配对手 ===== -->
-        <div v-if="arenaTab === 'match'">
-          <div v-if="matchLoading" class="flex justify-center py-8">
-            <span class="animate-spin inline-block text-2xl">⏳</span>
-          </div>
-          <template v-else>
-            <div
-              v-if="matchList.length === 0"
-              class="text-center py-8 text-gray-400 text-sm"
-            >
-              暂无可匹配对手
+            <div>
+              <p class="text-xs text-gray-400">状态</p>
+              <p class="text-sm font-bold text-orange-500">等待结算</p>
             </div>
-            <div v-else class="space-y-2">
-              <div
-                v-for="opponent in matchList"
-                :key="opponent._id"
-                class="rpg-card rounded-xl p-3"
-              >
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3 min-w-0">
-                    <div
-                      class="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-gray-200 dark:bg-gray-700 cursor-pointer"
-                      @click.stop="handleGuildIconClick(opponent)"
-                    >
-                      <img
-                        v-if="opponent.isNpc"
-                        :src="`/publicgame/guildicon/${opponent.npcGuildIconId || 1}.webp`"
-                        class="w-full h-full object-cover"
-                        alt="NPC公会"
-                      />
-                      <GameGuildIcon
-                        v-else
-                        :account-id="opponent.accountId"
-                        :has-custom-guild-icon="opponent.hasCustomGuildIcon"
-                        :custom-guild-icon-updated-at="
-                          opponent.customGuildIconUpdatedAt
-                        "
-                        class="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div class="min-w-0">
-                      <p
-                        class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate"
-                      >
-                        {{ opponent.guildName }}
-                      </p>
-                      <p class="text-sm text-gray-400">
-                        竞技点: {{ opponent.points }}
-                      </p>
-                    </div>
-                  </div>
-                  <el-button
-                    type="danger"
-                    size="small"
-                    :loading="challengeLoading === opponent._id"
-                    :disabled="
-                      !!challengeLoading ||
-                      challengedOpponents.has(opponent._id) ||
-                      (arenaInfo.registration?.challengeUses ?? 0) <= 0
-                    "
-                    @click="handleChallenge(opponent)"
-                  >
-                    {{
-                      challengedOpponents.has(opponent._id)
-                        ? '✅ 已挑战'
-                        : '⚔️ 挑战'
-                    }}
-                  </el-button>
-                </div>
-              </div>
-            </div>
-            <div class="flex justify-center mt-4">
-              <el-button
-                text
+          </div>
+        </template>
+      </div>
+
+      <!-- ===== 以下内容仅在赛季进行中时显示 ===== -->
+      <template v-if="arenaInfo.status === 'active'">
+        <!-- ===== 未报名状态 ===== -->
+        <template v-if="!arenaInfo.registration">
+          <div class="rpg-card rounded-xl p-4 mb-4 text-center">
+            <p class="text-gray-500 dark:text-gray-400 mb-3">
+              你还未报名本赛季
+            </p>
+            <p class="text-sm text-red-400 mb-3">
+              ⚠️
+              报名后，阵容中的冒险家将被锁定至赛季结束，期间不可替换，只能调整位置。
+            </p>
+
+            <!-- 选择阵容 -->
+            <div class="mb-3">
+              <el-select
+                v-model="registerSlot"
+                placeholder="选择阵容"
                 size="small"
-                :loading="matchLoading"
-                @click="fetchMatchList"
-                >🔄 刷新对手</el-button
+                class="w-48!"
+                @change="handleSlotChange"
               >
+                <el-option
+                  v-for="f in formations"
+                  :key="f.slot"
+                  :label="f.name || `阵容 ${f.slot}`"
+                  :value="f.slot"
+                />
+              </el-select>
             </div>
-          </template>
-        </div>
 
-        <!-- ===== 阵容管理 ===== -->
-        <div v-if="arenaTab === 'formation'">
-          <div v-if="arenaFormationLoading" class="flex justify-center py-8">
-            <span class="animate-spin inline-block text-2xl">⏳</span>
-          </div>
-          <template v-else>
-            <p class="text-sm text-gray-400 text-center mb-2">
-              ↑ 前排（面向敌人）· ↓ 后排
-            </p>
-            <p class="text-sm text-red-400 text-center mb-2">
-              ⚠️ 已锁定的冒险家不能移除，只能调整位置或添加新冒险家
-            </p>
-            <FormationGrid
-              v-model="arenaGrid"
-              :locked-ids="arenaLockedAdventurers"
-              class="mb-4"
-              @cell-click="handleArenaCellClick"
-              @clear-cell="handleClearArenaCell"
-            />
-
-            <p class="text-center text-sm text-gray-400 mb-4">
-              已放置 {{ arenaPlacedCount }} 名冒险家
-            </p>
-
-            <div class="flex justify-center gap-3 mb-4">
-              <el-button
-                type="primary"
-                :loading="arenaFormationSaving"
-                :disabled="arenaFormationSaving"
-                @click="handleSaveArenaFormation"
-              >
-                💾 保存阵容
-              </el-button>
-            </div>
-          </template>
-        </div>
-
-        <!-- ===== 排行榜 ===== -->
-        <div v-if="arenaTab === 'leaderboard'">
-          <div v-if="leaderboardLoading" class="flex justify-center py-8">
-            <span class="animate-spin inline-block text-2xl">⏳</span>
-          </div>
-          <template v-else>
-            <div
-              v-if="leaderboard.length === 0"
-              class="text-center py-8 text-gray-400 text-sm"
-            >
-              暂无数据
-            </div>
-            <div v-else class="space-y-2">
-              <div
-                v-for="(player, idx) in leaderboard"
-                :key="player._id"
-                class="rpg-card rounded-xl p-3"
-              >
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                      :class="rankClass(idx)"
-                    >
-                      {{ idx + 1 }}
-                    </div>
-                    <GameGuildIcon
-                      v-if="player.accountId"
-                      :account-id="player.accountId"
-                      :has-custom-guild-icon="player.hasCustomGuildIcon"
-                      :custom-guild-icon-updated-at="
-                        player.customGuildIconUpdatedAt
-                      "
-                      class="w-8 h-8 rounded-lg object-cover cursor-pointer"
-                      @click="handleLeaderboardGuildClick(player)"
-                    />
-                    <div>
-                      <p
-                        class="text-sm font-semibold text-gray-700 dark:text-gray-200"
-                      >
-                        {{ player.guildName }}
-                      </p>
-                      <p class="text-sm text-gray-400">
-                        对战 {{ player.totalBattleCount }} 次
-                      </p>
-                    </div>
-                  </div>
-                  <span class="text-sm font-bold text-yellow-500"
-                    >{{ player.points }} pt</span
+            <!-- 阵容预览 -->
+            <div v-if="formationPreview" class="mb-3">
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                📋 阵容预览（{{ formationPreviewCount }} 名冒险家）
+              </p>
+              <div class="arena-grid-board mx-auto">
+                <div
+                  v-for="(row, rIdx) in formationPreview.grid"
+                  :key="rIdx"
+                  class="arena-grid-row"
+                >
+                  <div
+                    v-for="(cell, cIdx) in row"
+                    :key="`${rIdx}-${cIdx}`"
+                    class="arena-grid-cell"
+                    :class="{
+                      'arena-grid-cell--occupied': cell
+                    }"
                   >
+                    <span class="arena-grid-cell-seq">{{
+                      rIdx * 5 + cIdx + 1
+                    }}</span>
+                    <template v-if="cell">
+                      <GameAdventurerAvatar
+                        :adventurer="cell"
+                        class="w-full h-full rounded object-cover pointer-events-none select-none"
+                      />
+                      <div
+                        v-for="indicator in getPassiveIndicators(cell)"
+                        :key="indicator.position"
+                        class="passive-indicator"
+                        :class="'passive-indicator--' + indicator.position"
+                        :style="{ backgroundColor: indicator.color }"
+                        :title="indicator.label"
+                      />
+                      <div
+                        class="absolute bottom-0 left-0 right-0 text-center bg-black/50 text-[10px] text-white leading-tight py-px truncate"
+                      >
+                        {{ cell.name }}
+                      </div>
+                      <!-- 标记图标 -->
+                      <span
+                        v-if="cell.roleTag && ROLE_TAG_MAP[cell.roleTag]"
+                        class="absolute top-0 right-0 z-10 bg-black/65 rounded-bl text-xs leading-none p-0.5"
+                      >
+                        {{ ROLE_TAG_MAP[cell.roleTag].emoji }}
+                      </span>
+                    </template>
+                  </div>
                 </div>
               </div>
             </div>
-          </template>
-        </div>
-
-        <!-- ===== 战斗记录 ===== -->
-        <div v-if="arenaTab === 'logs'">
-          <div v-if="logsLoading" class="flex justify-center py-8">
-            <span class="animate-spin inline-block text-2xl">⏳</span>
-          </div>
-          <template v-else>
-            <div
-              v-if="battleLogs.length === 0"
-              class="text-center py-8 text-gray-400 text-sm"
-            >
-              暂无记录
+            <div v-if="formationPreviewLoading" class="mb-3 text-center">
+              <span class="animate-spin inline-block text-xl">⏳</span>
             </div>
-            <div v-else class="space-y-2">
+
+            <el-button
+              type="primary"
+              :loading="registerLoading"
+              :disabled="registerLoading || !registerSlot"
+              @click="handleRegister"
+            >
+              ⚔️ 报名参赛
+            </el-button>
+          </div>
+        </template>
+
+        <!-- ===== 已报名状态 ===== -->
+        <template v-else>
+          <!-- 我的状态卡片 -->
+          <div class="rpg-card rounded-xl p-4 mb-4">
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p class="text-xs text-gray-400">竞技点</p>
+                <p class="text-lg font-bold text-yellow-500">
+                  {{ arenaInfo.registration?.points ?? 500 }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400">剩余挑战</p>
+                <p class="text-lg font-bold text-blue-500">
+                  {{ arenaInfo.registration?.challengeUses ?? 0 }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400">对战次数</p>
+                <p class="text-lg font-bold text-green-500">
+                  {{ arenaInfo.registration?.totalBattleCount ?? 0 }}
+                </p>
+              </div>
+            </div>
+            <p
+              v-if="arenaInfo.nextRecoverIn"
+              class="text-center text-xs text-gray-400 mt-2"
+            >
+              ⏰ 下次恢复: {{ Math.ceil(arenaInfo.nextRecoverIn / 60) }} 分钟后
+            </p>
+          </div>
+
+          <!-- 标签切换 -->
+          <div class="flex flex-wrap justify-center gap-2 mb-4">
+            <el-button
+              :type="arenaTab === 'match' ? 'primary' : 'default'"
+              size="small"
+              @click="handleSwitchArenaTab('match')"
+            >
+              🎯 匹配对手
+            </el-button>
+            <el-button
+              :type="arenaTab === 'formation' ? 'primary' : 'default'"
+              size="small"
+              @click="handleSwitchArenaTab('formation')"
+            >
+              🏗️ 阵容管理
+            </el-button>
+            <el-button
+              :type="arenaTab === 'leaderboard' ? 'primary' : 'default'"
+              size="small"
+              @click="handleSwitchArenaTab('leaderboard')"
+            >
+              🏅 排行榜
+            </el-button>
+            <el-button
+              :type="arenaTab === 'logs' ? 'primary' : 'default'"
+              size="small"
+              @click="handleSwitchArenaTab('logs')"
+            >
+              📜 战斗记录
+            </el-button>
+          </div>
+
+          <!-- ===== 匹配对手 ===== -->
+          <div v-if="arenaTab === 'match'">
+            <div v-if="matchLoading" class="flex justify-center py-8">
+              <span class="animate-spin inline-block text-2xl">⏳</span>
+            </div>
+            <template v-else>
               <div
-                v-for="log in battleLogs"
-                :key="log._id"
-                class="rpg-card rounded-xl p-3 cursor-pointer"
-                @click="handleViewLogDetail(log)"
+                v-if="matchList.length === 0"
+                class="text-center py-8 text-gray-400 text-sm"
               >
-                <div class="flex items-center justify-between">
-                  <div class="min-w-0">
-                    <p class="text-sm text-gray-700 dark:text-gray-200">
-                      <span v-if="log.isAttacker" class="text-blue-400"
-                        >主动挑战</span
+                暂无可匹配对手
+              </div>
+              <div v-else class="space-y-2">
+                <div
+                  v-for="opponent in matchList"
+                  :key="opponent._id"
+                  class="rpg-card rounded-xl p-3"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div
+                        class="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-gray-200 dark:bg-gray-700 cursor-pointer"
+                        @click.stop="handleGuildIconClick(opponent)"
                       >
-                      <span v-else class="text-orange-400">被挑战</span>
-                      <span class="ml-1">{{ log.opponentName || '未知' }}</span>
-                    </p>
-                    <p class="text-sm text-gray-400 mt-0.5">
-                      {{ formatTime(log.createdAt) }}
-                      · {{ log.rounds }} 回合
-                      <span
-                        v-if="log.goldEarned > 0"
-                        class="text-yellow-500 ml-1"
-                        >+🪙{{ log.goldEarned }}</span
-                      >
-                    </p>
+                        <img
+                          v-if="opponent.isNpc"
+                          :src="`/publicgame/guildicon/${opponent.npcGuildIconId || 1}.webp`"
+                          class="w-full h-full object-cover"
+                          alt="NPC公会"
+                        />
+                        <GameGuildIcon
+                          v-else
+                          :account-id="opponent.accountId"
+                          :has-custom-guild-icon="opponent.hasCustomGuildIcon"
+                          :custom-guild-icon-updated-at="
+                            opponent.customGuildIconUpdatedAt
+                          "
+                          class="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div class="min-w-0">
+                        <p
+                          class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate"
+                        >
+                          {{ opponent.guildName }}
+                        </p>
+                        <p class="text-sm text-gray-400">
+                          竞技点: {{ opponent.points }}
+                        </p>
+                      </div>
+                    </div>
+                    <el-button
+                      type="danger"
+                      size="small"
+                      :loading="challengeLoading === opponent._id"
+                      :disabled="
+                        !!challengeLoading ||
+                        challengedOpponents.has(opponent._id) ||
+                        (arenaInfo.registration?.challengeUses ?? 0) <= 0
+                      "
+                      @click="handleChallenge(opponent)"
+                    >
+                      {{
+                        challengedOpponents.has(opponent._id)
+                          ? '✅ 已挑战'
+                          : '⚔️ 挑战'
+                      }}
+                    </el-button>
                   </div>
-                  <div class="text-right flex items-center gap-2">
-                    <div>
-                      <span
-                        class="text-sm font-bold"
-                        :class="
-                          log.isWin
-                            ? 'text-green-500'
-                            : log.isDraw
-                              ? 'text-gray-400'
-                              : 'text-red-500'
-                        "
+                </div>
+              </div>
+              <div class="flex justify-center mt-4">
+                <el-button
+                  text
+                  size="small"
+                  :loading="matchLoading"
+                  @click="fetchMatchList"
+                  >🔄 刷新对手</el-button
+                >
+              </div>
+            </template>
+          </div>
+
+          <!-- ===== 阵容管理 ===== -->
+          <div v-if="arenaTab === 'formation'">
+            <div v-if="arenaFormationLoading" class="flex justify-center py-8">
+              <span class="animate-spin inline-block text-2xl">⏳</span>
+            </div>
+            <template v-else>
+              <p class="text-sm text-gray-400 text-center mb-2">
+                ↑ 前排（面向敌人）· ↓ 后排
+              </p>
+              <p class="text-sm text-red-400 text-center mb-2">
+                ⚠️ 已锁定的冒险家不能移除，只能调整位置或添加新冒险家
+              </p>
+              <FormationGrid
+                v-model="arenaGrid"
+                :locked-ids="arenaLockedAdventurers"
+                class="mb-4"
+                @cell-click="handleArenaCellClick"
+                @clear-cell="handleClearArenaCell"
+              />
+
+              <p class="text-center text-sm text-gray-400 mb-4">
+                已放置 {{ arenaPlacedCount }} 名冒险家
+              </p>
+
+              <div class="flex justify-center gap-3 mb-4">
+                <el-button
+                  type="primary"
+                  :loading="arenaFormationSaving"
+                  :disabled="arenaFormationSaving"
+                  @click="handleSaveArenaFormation"
+                >
+                  💾 保存阵容
+                </el-button>
+              </div>
+            </template>
+          </div>
+
+          <!-- ===== 排行榜 ===== -->
+          <div v-if="arenaTab === 'leaderboard'">
+            <div v-if="leaderboardLoading" class="flex justify-center py-8">
+              <span class="animate-spin inline-block text-2xl">⏳</span>
+            </div>
+            <template v-else>
+              <div
+                v-if="leaderboard.length === 0"
+                class="text-center py-8 text-gray-400 text-sm"
+              >
+                暂无数据
+              </div>
+              <div v-else class="space-y-2">
+                <div
+                  v-for="(player, idx) in leaderboard"
+                  :key="player._id"
+                  class="rpg-card rounded-xl p-3"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                        :class="rankClass(idx)"
                       >
-                        {{ log.isWin ? '胜利' : log.isDraw ? '平局' : '失败' }}
-                      </span>
-                      <p
-                        class="text-sm"
-                        :class="
-                          log.pointsChange >= 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                        {{ idx + 1 }}
+                      </div>
+                      <GameGuildIcon
+                        v-if="player.accountId"
+                        :account-id="player.accountId"
+                        :has-custom-guild-icon="player.hasCustomGuildIcon"
+                        :custom-guild-icon-updated-at="
+                          player.customGuildIconUpdatedAt
                         "
-                      >
-                        {{ log.pointsChange >= 0 ? '+' : ''
-                        }}{{ log.pointsChange }} pt
+                        class="w-8 h-8 rounded-lg object-cover cursor-pointer"
+                        @click="handleLeaderboardGuildClick(player)"
+                      />
+                      <div>
+                        <p
+                          class="text-sm font-semibold text-gray-700 dark:text-gray-200"
+                        >
+                          {{ player.guildName }}
+                        </p>
+                        <p class="text-sm text-gray-400">
+                          对战 {{ player.totalBattleCount }} 次
+                        </p>
+                      </div>
+                    </div>
+                    <span class="text-sm font-bold text-yellow-500"
+                      >{{ player.points }} pt</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- ===== 战斗记录 ===== -->
+          <div v-if="arenaTab === 'logs'">
+            <div v-if="logsLoading" class="flex justify-center py-8">
+              <span class="animate-spin inline-block text-2xl">⏳</span>
+            </div>
+            <template v-else>
+              <div
+                v-if="battleLogs.length === 0"
+                class="text-center py-8 text-gray-400 text-sm"
+              >
+                暂无记录
+              </div>
+              <div v-else class="space-y-2">
+                <div
+                  v-for="log in battleLogs"
+                  :key="log._id"
+                  class="rpg-card rounded-xl p-3 cursor-pointer"
+                  @click="handleViewLogDetail(log)"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="min-w-0">
+                      <p class="text-sm text-gray-700 dark:text-gray-200">
+                        <span v-if="log.isAttacker" class="text-blue-400"
+                          >主动挑战</span
+                        >
+                        <span v-else class="text-orange-400">被挑战</span>
+                        <span class="ml-1">{{
+                          log.opponentName || '未知'
+                        }}</span>
+                      </p>
+                      <p class="text-sm text-gray-400 mt-0.5">
+                        {{ formatTime(log.createdAt) }}
+                        · {{ log.rounds }} 回合
+                        <span
+                          v-if="log.goldEarned > 0"
+                          class="text-yellow-500 ml-1"
+                          >+🪙{{ log.goldEarned }}</span
+                        >
                       </p>
                     </div>
-                    <span class="text-gray-400 text-sm">▶</span>
+                    <div class="text-right flex items-center gap-2">
+                      <div>
+                        <span
+                          class="text-sm font-bold"
+                          :class="
+                            log.isWin
+                              ? 'text-green-500'
+                              : log.isDraw
+                                ? 'text-gray-400'
+                                : 'text-red-500'
+                          "
+                        >
+                          {{
+                            log.isWin ? '胜利' : log.isDraw ? '平局' : '失败'
+                          }}
+                        </span>
+                        <p
+                          class="text-sm"
+                          :class="
+                            log.pointsChange >= 0
+                              ? 'text-green-400'
+                              : 'text-red-400'
+                          "
+                        >
+                          {{ log.pointsChange >= 0 ? '+' : ''
+                          }}{{ log.pointsChange }} pt
+                        </p>
+                      </div>
+                      <span class="text-gray-400 text-sm">▶</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- 分页 -->
-            <div
-              v-if="logsTotal > logsPageSize"
-              class="flex justify-center mt-4"
-            >
-              <el-pagination
-                v-model:current-page="logsPage"
-                :page-size="logsPageSize"
-                :total="logsTotal"
-                layout="prev, pager, next"
-                small
-                @current-change="fetchBattleLogs"
-              />
-            </div>
-          </template>
-        </div>
+              <!-- 分页 -->
+              <div
+                v-if="logsTotal > logsPageSize"
+                class="flex justify-center mt-4"
+              >
+                <el-pagination
+                  v-model:current-page="logsPage"
+                  :page-size="logsPageSize"
+                  :total="logsTotal"
+                  layout="prev, pager, next"
+                  small
+                  @current-change="fetchBattleLogs"
+                />
+              </div>
+            </template>
+          </div>
+        </template>
       </template>
+      <!-- ===== 赛季进行中内容结束 ===== -->
     </template>
 
     <!-- ===== 竞技场阵容选择冒险家弹窗 ===== -->

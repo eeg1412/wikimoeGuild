@@ -680,11 +680,9 @@ function generateMineLegion(level) {
       )
     }
   } else {
-    // 后25级：25名恶魔，综合等级 = 25 + (迷宫等级 × 10)
-    const totalLevel = 25 + level * 10
-    const levels = distributeMineLevels(totalLevel, 25)
+    // 后25级：25名恶魔，综合等级 = 迷宫等级
     for (let i = 0; i < 25; i++) {
-      const compLevel = levels[i]
+      const compLevel = level
       const runeStone = generateMineDemonRuneStone(compLevel, allSkills)
       demons.push(
         createMineDemon(

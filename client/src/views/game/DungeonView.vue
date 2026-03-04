@@ -910,8 +910,8 @@ function onBattleAnimationDone() {
 }
 
 function handleGoToMine() {
-  showMineDiscovery.value = false
-  router.push({ name: 'GameMine' })
+  // 直接 replace 导航，避免 useDialogRoute 的 router.back() 与 push 冲突
+  router.replace({ name: 'GameMine' })
 }
 
 // ── 冒险家探索动画 ──

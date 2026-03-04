@@ -230,116 +230,10 @@
 
         <!-- 属性升级区 -->
         <template v-if="showLevelUp">
-          <div
-            v-for="stat in STAT_LIST"
-            :key="stat.key"
-            class="info-row flex-wrap gap-y-1 adventurer-stat-row"
-          >
-            <span class="info-label">
-              {{ stat.icon }} {{ stat.name }} Lv.{{ adventurer[stat.levelKey] }}
-            </span>
-            <div class="flex flex-col items-center gap-1 w-full">
-              <div
-                class="text-xs text-gray-400 whitespace-nowrap flex justify-between w-full"
-              >
-                <div>
-                  降级:
-                  {{ gameSettings?.adventurerLevelDownGoldPrice ?? 1000 }}🪙 /
-                  级
-                </div>
-
-                <div>
-                  升级: {{ getStatLevelUpCrystalCost(stat.levelKey) }}💎+{{
-                    getStatLevelUpGoldCost(stat.levelKey)
-                  }}🪙 / 级
-                </div>
-              </div>
-              <div class="flex items-center gap-1">
-                <div class="flex items-center gap-0.5">
-                  <el-button
-                    type="danger"
-                    size="small"
-                    :disabled="
-                      levelDownLoading ||
-                      levelUpLoading ||
-                      adventurer[stat.levelKey] <= 1
-                    "
-                    @click="handleLevelDown(stat.key, 1)"
-                  >
-                    -1级
-                  </el-button>
-                  <el-button
-                    type="danger"
-                    size="small"
-                    :disabled="
-                      levelDownLoading ||
-                      levelUpLoading ||
-                      adventurer[stat.levelKey] <= 1
-                    "
-                    @click="handleLevelDown(stat.key, 5)"
-                  >
-                    -5级
-                  </el-button>
-                  <el-button
-                    type="danger"
-                    size="small"
-                    :disabled="
-                      levelDownLoading ||
-                      levelUpLoading ||
-                      adventurer[stat.levelKey] <= 1
-                    "
-                    @click="handleLevelDown(stat.key, 10)"
-                  >
-                    -10级
-                  </el-button>
-                </div>
-                <div class="flex items-center gap-0.5">
-                  <el-button
-                    type="warning"
-                    size="small"
-                    :disabled="
-                      levelUpLoading ||
-                      levelDownLoading ||
-                      adventurer.comprehensiveLevel >= maxCompLevel
-                    "
-                    @click="handleLevelUp(stat.key, 1)"
-                  >
-                    +1级
-                  </el-button>
-                  <el-button
-                    type="warning"
-                    size="small"
-                    :disabled="
-                      levelUpLoading ||
-                      levelDownLoading ||
-                      adventurer.comprehensiveLevel >= maxCompLevel
-                    "
-                    @click="handleLevelUp(stat.key, 5)"
-                  >
-                    +5级
-                  </el-button>
-                  <el-button
-                    type="warning"
-                    size="small"
-                    :disabled="
-                      levelUpLoading ||
-                      levelDownLoading ||
-                      adventurer.comprehensiveLevel >= maxCompLevel
-                    "
-                    @click="handleLevelUp(stat.key, 10)"
-                  >
-                    +10级
-                  </el-button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <p
-            v-if="adventurer.comprehensiveLevel >= maxCompLevel"
-            class="text-xs text-red-400 text-center"
-          >
-            已达公会等级上限 (Lv.{{ maxCompLevel }})，请先升级公会
-          </p>
+          <StatLevelUpPanel
+            :adventurer="adventurer"
+            @updated="handleStatUpdated"
+          />
           <el-divider class="my-1.5!" />
         </template>
 
@@ -356,37 +250,42 @@
                 {{ rarityName(adventurer.runeStone.rarity) }} Lv.{{
                   adventurer.runeStone.level
                 }}
-                <!-- 通过 runeStoneDetailExpanded 显示三角 -->
                 <span v-if="runeStoneDetailExpanded">▲</span>
                 <span v-else>▼</span>
               </span>
-              <el-button
-                v-if="showManage"
-                type="danger"
-                text
-                size="small"
-                :loading="unequipLoading"
-                :disabled="unequipLoading"
-                @click="handleUnequip"
-              >
-                卸下
-              </el-button>
-              <el-button
-                v-if="showManage"
-                type="primary"
-                text
-                size="small"
-                @click="handleOpenSynthesis"
-              >
-                🔮 合成
-              </el-button>
+              <template v-if="showManage">
+                <el-dropdown trigger="click" @command="handleRuneStoneCommand">
+                  <el-button type="primary" size="small">
+                    操作
+                    <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item
+                        command="unequip"
+                        :disabled="unequipLoading"
+                      >
+                        卸下
+                      </el-dropdown-item>
+                      <el-dropdown-item
+                        command="replace"
+                        :disabled="runeStoneListLoading"
+                      >
+                        替换
+                      </el-dropdown-item>
+                      <el-dropdown-item command="synthesis">
+                        合成
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </template>
             </template>
             <template v-else>
               <span class="text-sm text-gray-400">无</span>
               <el-button
                 v-if="showManage"
                 type="primary"
-                text
                 size="small"
                 :disabled="runeStoneListLoading"
                 @click="handleOpenEquipDialog"
@@ -602,10 +501,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown } from '@element-plus/icons-vue'
 import {
   getAdventurerDetailApi,
-  levelUpStatApi,
-  levelDownStatApi,
   setRoleTagApi,
   customizeAvatarApi,
   customizeNameApi,
@@ -630,12 +528,9 @@ import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
 import RuneStoneSynthesisDialog from '@/components/RuneStoneSynthesisDialog.vue'
 import AdventurerFinalStats from '@/components/AdventurerFinalStats.vue'
+import StatLevelUpPanel from '@/components/StatLevelUpPanel.vue'
 import Cropper from '@/components/Cropper.vue'
-import {
-  getAdventurerLevelUpCrystalCost,
-  getAdventurerLevelUpGoldCost,
-  getMaxComprehensiveLevel
-} from 'shared/utils/guildLevelUtils.js'
+import { getMaxComprehensiveLevel } from 'shared/utils/guildLevelUtils.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -668,45 +563,11 @@ const maxCompLevel = computed(() => {
   return getMaxComprehensiveLevel(playerInfo.value?.guildLevel || 1)
 })
 
-const levelUpCrystalCost = computed(() => {
-  if (!adventurer.value) return 0
-  const base = gameSettings.value?.adventurerLevelUpCrystalBase ?? 100
-  return getAdventurerLevelUpCrystalCost(
-    adventurer.value.comprehensiveLevel,
-    base
-  )
-})
-
-const levelUpGoldCost = computed(() => {
-  if (!adventurer.value) return 0
-  const base = gameSettings.value?.adventurerLevelUpGoldBase ?? 500
-  return getAdventurerLevelUpGoldCost(adventurer.value.comprehensiveLevel, base)
-})
-
-// ── 按属性各自等级计算升级消耗 ──
-function getStatLevelUpCrystalCost(levelKey) {
-  if (!adventurer.value) return 0
-  const base = gameSettings.value?.adventurerLevelUpCrystalBase ?? 100
-  return getAdventurerLevelUpCrystalCost(adventurer.value[levelKey], base)
-}
-
-function getStatLevelUpGoldCost(levelKey) {
-  if (!adventurer.value) return 0
-  const base = gameSettings.value?.adventurerLevelUpGoldBase ?? 500
-  return getAdventurerLevelUpGoldCost(adventurer.value[levelKey], base)
-}
-
 // ── 管理模式数据 ──
 const gameSettings = ref({})
 const inventory = ref(null)
 
 // ── 常量 ──
-const STAT_LIST = [
-  { key: 'attack', levelKey: 'attackLevel', name: '攻击', icon: '⚔️' },
-  { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: '🛡️' },
-  { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: '💨' },
-  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '❤️' }
-]
 
 const CRYSTAL_TYPES = [
   { key: 'attackCrystal', icon: '⚔️', label: '攻击水晶' },
@@ -786,7 +647,7 @@ watch(
     if (val && props.adventurerId) {
       adventurer.value = null
       dataLoading.value = true
-      runeStoneDetailExpanded.value = false
+      runeStoneDetailExpanded.value = true
       try {
         const res = await getAdventurerDetailApi(props.adventurerId)
         adventurer.value = res.data.data
@@ -836,88 +697,24 @@ async function handleSetRoleTag(tagValue) {
   }
 }
 
-// ── 属性升级/降级 ──
-const levelUpLoading = ref(false)
-const levelDownLoading = ref(false)
-
-async function handleLevelDown(statType, times = 1) {
-  if (!adventurer.value) return
-  const label = STAT_LIST.find(s => s.key === statType)?.name || statType
-  const price =
-    (gameSettings.value?.adventurerLevelDownGoldPrice ?? 1000) * times
-  try {
-    await ElMessageBox.confirm(
-      `确定花费不超过 ${price} 金币降低 ${label}属性 ${times} 级吗？（不到 ${times} 级则降为 1 级并扣除对应金币）`,
-      '属性降级',
-      {
-        confirmButtonText: '确定降级',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-  } catch {
-    return
-  }
-  levelDownLoading.value = true
-  try {
-    const res = await levelDownStatApi(adventurer.value._id, {
-      statType,
-      times
-    })
-    const {
-      adventurer: updatedAdventurer,
-      levelsDropped,
-      goldCost
-    } = res.data.data
-    ElMessage.success(`成功降级 ${levelsDropped} 级，消耗 ${goldCost} 金币！`)
-    adventurer.value = updatedAdventurer
-    emit('updated', adventurer.value)
-    await Promise.all([
-      fetchPlayerInfo(),
-      props.showManage
-        ? getMyInventoryApi().then(r => {
-            inventory.value = r.data.data
-          })
-        : Promise.resolve()
-    ])
-  } catch {
-    // handled by interceptor
-  } finally {
-    levelDownLoading.value = false
-  }
-}
-
-async function handleLevelUp(statType, times = 1) {
-  if (!adventurer.value) return
-  levelUpLoading.value = true
-  try {
-    const res = await levelUpStatApi(adventurer.value._id, { statType, times })
-    const { adventurer: updatedAdventurer, levelsUpgraded } = res.data.data
-    ElMessage.success(
-      levelsUpgraded > 1 ? `成功升级 ${levelsUpgraded} 级！` : '升级成功！'
-    )
-    adventurer.value = updatedAdventurer
-    emit('updated', adventurer.value)
-    await Promise.all([
-      fetchPlayerInfo(),
-      props.showManage
-        ? getMyInventoryApi().then(r => {
-            inventory.value = r.data.data
-          })
-        : Promise.resolve()
-    ])
-  } catch {
-    // handled by interceptor
-  } finally {
-    levelUpLoading.value = false
-  }
+// ── 属性升级/降级（委托给 StatLevelUpPanel） ──
+function handleStatUpdated(updatedAdv) {
+  adventurer.value = updatedAdv
+  emit('updated', adventurer.value)
 }
 
 // ── 符文石详情 ──
-const runeStoneDetailExpanded = ref(false)
+const runeStoneDetailExpanded = ref(true)
 
 function handleToggleRuneStoneDetail() {
   runeStoneDetailExpanded.value = !runeStoneDetailExpanded.value
+}
+
+// ── 符文石操作下拉 ──
+function handleRuneStoneCommand(command) {
+  if (command === 'unequip') handleUnequip()
+  else if (command === 'replace') handleOpenEquipDialog()
+  else if (command === 'synthesis') handleOpenSynthesis()
 }
 
 // ── 符文石合成（委托给 RuneStoneSynthesisDialog 组件） ──

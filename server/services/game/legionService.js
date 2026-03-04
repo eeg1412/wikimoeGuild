@@ -98,12 +98,9 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
       )
     }
   } else {
-    // 后25级：25名恶魔，综合等级 = 25 + (迷宫等级 × 10)
-    const totalLevel = 25 + dungeonLevel * 10
-    const levels = distributeLevels(totalLevel, 25, seededRandom)
-
+    // 后25级：25名恶魔，综合等级 = 迷宫等级
     for (let i = 0; i < 25; i++) {
-      const compLevel = levels[i]
+      const compLevel = dungeonLevel
       // 随机传说级符文石
       const runeStone = generateDemonRuneStone(
         compLevel,

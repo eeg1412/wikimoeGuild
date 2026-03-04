@@ -62,8 +62,7 @@
         <div
           v-for="rs in runeStones"
           :key="rs._id"
-          class="rpg-card rounded-xl p-4 cursor-pointer"
-          @click="openDetail(rs)"
+          class="rpg-card rounded-xl p-4"
         >
           <!-- 顶部：稀有度 + 等级 + 状态 -->
           <div class="flex items-center justify-between mb-2">
@@ -97,11 +96,48 @@
               >
                 出售中
               </span>
-              <span class="text-gray-400">▶</span>
+              <span
+                class="text-gray-400 cursor-pointer select-none"
+                @click="toggleExpand(rs._id)"
+              >
+                {{ expandedIds.has(rs._id) ? '▲' : '▼' }}
+              </span>
             </div>
           </div>
-          <!-- 完整的技能/增益信息 -->
-          <RuneStoneInfoCard :rune-stone="rs" />
+          <!-- 可收缩的详细信息 -->
+          <div v-if="expandedIds.has(rs._id)" class="mt-2">
+            <RuneStoneInfoCard :rune-stone="rs" />
+          </div>
+          <!-- 内联操作按钮 -->
+          <div class="flex gap-2 mt-2">
+            <el-button
+              v-if="!rs.equippedBy"
+              type="danger"
+              size="small"
+              class="flex-1"
+              :loading="decomposeLoadingId === rs._id"
+              :disabled="!!decomposeLoadingId || !!upgradeLoadingId"
+              @click="handleInlineDecompose(rs)"
+            >
+              分解 (+{{ getDecomposeFragments(rs) }}碎片)
+            </el-button>
+            <el-button
+              type="primary"
+              size="small"
+              class="flex-1"
+              :loading="upgradeLoadingId === rs._id"
+              :disabled="!!upgradeLoadingId || !!decomposeLoadingId"
+              @click="handleInlineUpgrade(rs)"
+            >
+              升级 ({{ getUpgradeCost(rs) }}碎片)
+            </el-button>
+          </div>
+          <p
+            v-if="rs.equippedBy"
+            class="text-center text-xs text-gray-400 mt-1"
+          >
+            已装备中，分解需先卸下
+          </p>
         </div>
       </div>
 
@@ -120,63 +156,6 @@
         />
       </div>
     </template>
-
-    <!-- ==================== 符文石详情弹窗 ==================== -->
-    <el-dialog
-      v-model="detailVisible"
-      :title="detailTitle"
-      width="360px"
-      align-center
-      destroy-on-close
-    >
-      <div v-if="detailRS" class="space-y-4">
-        <!-- 基本信息 -->
-        <div class="text-center">
-          <div
-            class="inline-flex w-16 h-16 rounded-2xl items-center justify-center text-3xl mb-2"
-            :class="rarityBgClass(detailRS.rarity)"
-          >
-            💎
-          </div>
-          <p
-            class="text-lg font-bold"
-            :class="rarityTextClass(detailRS.rarity)"
-          >
-            {{ rarityName(detailRS.rarity) }}符文石
-          </p>
-          <p class="text-sm text-gray-400">等级 {{ detailRS.level }}</p>
-        </div>
-
-        <!-- 主动技能 & 被动增益 -->
-        <RuneStoneInfoCard :rune-stone="detailRS" />
-
-        <!-- 操作按钮 -->
-        <div class="flex gap-3 pt-2">
-          <el-button
-            v-if="!detailRS.equippedBy"
-            type="danger"
-            class="flex-1"
-            :loading="decomposeLoading"
-            :disabled="decomposeLoading"
-            @click="handleDecompose"
-          >
-            分解 (+{{ decomposeFragments }}碎片)
-          </el-button>
-          <el-button
-            type="primary"
-            class="flex-1"
-            :loading="upgradeLoading"
-            :disabled="upgradeLoading"
-            @click="handleUpgrade"
-          >
-            升级 ({{ upgradeCost }}碎片)
-          </el-button>
-        </div>
-        <p v-if="detailRS.equippedBy" class="text-center text-xs text-gray-400">
-          已装备中，分解需先卸下
-        </p>
-      </div>
-    </el-dialog>
 
     <!-- ==================== 符文石合成弹窗 ==================== -->
     <el-dialog
@@ -535,12 +514,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getMyRuneStonesApi,
-  getRuneStoneDetailApi,
   decomposeRuneStoneApi,
   upgradeRuneStoneApi,
   previewSynthesisApi,
@@ -599,29 +577,17 @@ async function fetchRuneStones() {
   }
 }
 
-// ── 详情 ──
-const { visible: detailVisible } = useDialogRoute('detail')
-const detailRS = ref(null)
-const detailOpening = ref(false)
+// ── 展开/收起 ──
+const expandedIds = ref(new Set())
 
-const detailTitle = computed(() => {
-  if (!detailRS.value) return '符文石详情'
-  return `${rarityName(detailRS.value.rarity)}符文石 Lv.${detailRS.value.level}`
-})
-
-async function openDetail(rs) {
-  if (detailOpening.value) return
-  detailOpening.value = true
-  detailRS.value = { ...rs }
-  // 加载完整详情后再弹出
-  try {
-    const res = await getRuneStoneDetailApi(rs._id)
-    detailRS.value = res.data.data
-  } catch {
-    // fallback
+function toggleExpand(id) {
+  const newSet = new Set(expandedIds.value)
+  if (newSet.has(id)) {
+    newSet.delete(id)
+  } else {
+    newSet.add(id)
   }
-  detailVisible.value = true
-  detailOpening.value = false
+  expandedIds.value = newSet
 }
 
 // ── 工具函数 ──
@@ -652,29 +618,6 @@ function buffTypeName(t) {
   )
 }
 
-function skillTypeName(t) {
-  return (
-    {
-      attack: '攻击',
-      buff: '增益',
-      debuff: '减益',
-      changeOrder: '改变排序',
-      sanRecover: 'SAN恢复'
-    }[t] || t
-  )
-}
-
-function elementName(el) {
-  return { 1: '地', 2: '水', 3: '火', 4: '风', 5: '光明', 6: '黑暗' }[el] || ''
-}
-
-function triggerTimingName(t) {
-  return { before: '攻击前', after: '攻击后' }[t] || t
-}
-
-function targetName(t) {
-  return { self: '己方', enemy: '敌方' }[t] || t
-}
 const allSkillsMap = computed(() => {
   const map = new Map()
   const skills = runeStoneActiveSkillDataBase()
@@ -690,60 +633,59 @@ function getSkillInfo(skillId) {
 
 // ── 分解计算 ──
 const RARITY_DECOMPOSE = { normal: 10, rare: 100, legendary: 500 }
-const decomposeFragments = computed(() => {
-  if (!detailRS.value) return 0
-  return (RARITY_DECOMPOSE[detailRS.value.rarity] || 10) * detailRS.value.level
-})
+
+function getDecomposeFragments(rs) {
+  return (RARITY_DECOMPOSE[rs.rarity] || 10) * rs.level
+}
 
 // ── 升级费用 ──
 const RARITY_UPGRADE = { normal: 100, rare: 1000, legendary: 5000 }
-const upgradeCost = computed(() => {
-  if (!detailRS.value) return 0
-  return (RARITY_UPGRADE[detailRS.value.rarity] || 100) * detailRS.value.level
-})
 
-// ── 分解操作 ──
-const decomposeLoading = ref(false)
-async function handleDecompose() {
-  if (!detailRS.value) return
+function getUpgradeCost(rs) {
+  return (RARITY_UPGRADE[rs.rarity] || 100) * rs.level
+}
+
+// ── 内联分解操作 ──
+const decomposeLoadingId = ref('')
+
+async function handleInlineDecompose(rs) {
+  const fragments = getDecomposeFragments(rs)
   try {
     await ElMessageBox.confirm(
-      `确定分解这个${rarityName(detailRS.value.rarity)}符文石？将获得 ${decomposeFragments.value} 碎片`,
+      `确定分解这个${rarityName(rs.rarity)}符文石？将获得 ${fragments} 碎片`,
       '确认分解',
       { confirmButtonText: '分解', cancelButtonText: '取消', type: 'warning' }
     )
   } catch {
     return
   }
-  decomposeLoading.value = true
+  decomposeLoadingId.value = rs._id
   try {
-    await decomposeRuneStoneApi(detailRS.value._id)
-    ElMessage.success(`分解成功！获得 ${decomposeFragments.value} 碎片`)
-    detailVisible.value = false
+    await decomposeRuneStoneApi(rs._id)
+    ElMessage.success(`分解成功！获得 ${fragments} 碎片`)
     await fetchRuneStones()
-  } catch (e) {
+  } catch {
     // 错误已由拦截器处理
   } finally {
-    decomposeLoading.value = false
+    decomposeLoadingId.value = ''
   }
 }
 
-// ── 升级操作 ──
-const upgradeLoading = ref(false)
-async function handleUpgrade() {
-  if (!detailRS.value) return
-  upgradeLoading.value = true
+// ── 内联升级操作 ──
+const upgradeLoadingId = ref('')
+
+async function handleInlineUpgrade(rs) {
+  upgradeLoadingId.value = rs._id
   try {
-    const res = await upgradeRuneStoneApi(detailRS.value._id)
+    const res = await upgradeRuneStoneApi(rs._id)
     ElMessage.success('升级成功！')
-    detailRS.value = res.data.data
-    // 同步列表
-    const idx = runeStones.value.findIndex(r => r._id === detailRS.value._id)
-    if (idx >= 0) runeStones.value[idx] = { ...detailRS.value }
-  } catch (e) {
+    // 同步列表中的数据
+    const idx = runeStones.value.findIndex(r => r._id === rs._id)
+    if (idx >= 0) runeStones.value[idx] = { ...res.data.data }
+  } catch {
     // 错误已由拦截器处理
   } finally {
-    upgradeLoading.value = false
+    upgradeLoadingId.value = ''
   }
 }
 

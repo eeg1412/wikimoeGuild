@@ -14,6 +14,7 @@ declare module 'vue' {
     ActivityFeed: typeof import('./components/ActivityFeed.vue')['default']
     AdventurerDetailDialog: typeof import('./components/AdventurerDetailDialog.vue')['default']
     AdventurerFinalStats: typeof import('./components/AdventurerFinalStats.vue')['default']
+    AdventurerRuneStoneDialog: typeof import('./components/AdventurerRuneStoneDialog.vue')['default']
     BattleAnimation: typeof import('./components/BattleAnimation.vue')['default']
     Cropper: typeof import('./components/Cropper.vue')['default']
     DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
@@ -31,5 +32,6 @@ declare module 'vue' {
     RuneStoneMarketList: typeof import('./components/RuneStoneMarketList.vue')['default']
     RuneStoneSelectPanel: typeof import('./components/RuneStoneSelectPanel.vue')['default']
     RuneStoneSynthesisDialog: typeof import('./components/RuneStoneSynthesisDialog.vue')['default']
+    StatLevelUpPanel: typeof import('./components/StatLevelUpPanel.vue')['default']
   }
 }
