@@ -193,6 +193,7 @@
     <AdventurerDetailDialog
       v-model="advDetailVisible"
       :adventurer-id="advDetailId"
+      show-manage
       @updated="handleAdvDetailUpdated"
     >
       <template #footer>

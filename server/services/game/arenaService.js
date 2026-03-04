@@ -4,12 +4,12 @@ import GameArenaBattleLog from '../../models/gameArenaBattleLog.js'
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GameAdventurer from '../../models/gameAdventurer.js'
 import GameFormation from '../../models/gameFormation.js'
-import { executeInLock } from '../../utils/utils.js'
-import { recordActivity } from './activityService.js'
 import {
+  executeInLock,
   generateRandomAdventurerName,
   generateRandomAdventurerAvatarId
 } from '../../utils/utils.js'
+import { recordActivity } from './activityService.js'
 import { getRandomNpcGuildIconId } from 'shared/utils/utils.js'
 import { executeBattle } from './battleEngine.js'
 import * as mailService from './mailService.js'
@@ -597,10 +597,22 @@ export async function challengeOpponent(accountId, registrationId) {
 
     if (isNPC) {
       // 生成NPC阵容（基于玩家阵容）
-      const npcResult = generateNPCFormation(myGrid)
+      const npcResult = generateNPCFormation(myGrid, myReg.points)
       opponentGrid = npcResult.grid
       opponentGuildName = generateRandomAdventurerName() + '公会'
       opponentPoints = myReg.points + Math.floor(Math.random() * 200) - 100
+
+      // 当玩家竞技点>=2000且排名前三时，禁止生成比玩家分高的NPC
+      if (myReg.points >= 2000) {
+        const higherCount = await GameArenaRegistration.countDocuments({
+          season: season._id,
+          points: { $gt: myReg.points }
+        })
+        if (higherCount < 3) {
+          // 玩家在前三名，NPC绝不超过玩家分数
+          opponentPoints = Math.min(opponentPoints, myReg.points)
+        }
+      }
     } else {
       // 加载对手阵容
       opponentReg = await GameArenaRegistration.findOne({
@@ -743,6 +755,22 @@ export async function challengeOpponent(accountId, registrationId) {
       // battleLog: battleResult.log  // 暂时注释，缓解数据库压力
     })
 
+    // 记录竞技场胜利动态
+    if (battleResult.winner === 'attacker') {
+      const topKillers = findArenaTopKillers(battleResult, myGrid)
+      recordActivity({
+        type: 'arena_victory',
+        account: accountId,
+        guildName: myReg.guildName,
+        title: `⚔️ ${myReg.guildName} 在竞技场击败了 ${opponentGuildName}！`,
+        extra: {
+          opponentGuildName,
+          pointsChange,
+          topKillers
+        }
+      })
+    }
+
     return {
       battleResult,
       pointsChange,
@@ -756,11 +784,13 @@ export async function challengeOpponent(accountId, registrationId) {
 /**
  * 生成NPC阵容（基于玩家的阵容生成相似规模和等级的对手）
  * @param {Array<Array<object|null>>} playerGrid - 玩家的5x5阵容
+ * @param {number} playerPoints - 玩家的竞技点，用于决定NPC是否携带符文石
  */
-function generateNPCFormation(playerGrid) {
+function generateNPCFormation(playerGrid, playerPoints = 500) {
   const ELEMENTS = ['1', '2', '3', '4', '5', '6']
   const allBuffTypes = passiveBuffTypeDataBase()
   const allPreferences = attackPreferenceDataBase()
+  const shouldHaveRuneStone = playerPoints >= 1500
 
   // 分析玩家阵容：统计冒险家数量和等级
   const playerUnits = []
@@ -825,7 +855,7 @@ function generateNPCFormation(playerGrid) {
       speedLevel: level,
       SANLevel: level,
       comprehensiveLevel: level * 4 - 3,
-      runeStone: null,
+      runeStone: shouldHaveRuneStone ? generateNPCRuneStone(level) : null,
       isDemon: false
     })
   }
@@ -851,6 +881,100 @@ function generateNPCFormation(playerGrid) {
   }
 
   return { grid, demons }
+}
+
+/**
+ * 生成NPC符文石（用于1500+竞技点的NPC冒险家）
+ * @param {number} adventurerLevel - 冒险家等级
+ */
+function generateNPCRuneStone(adventurerLevel) {
+  const allSkills = runeStoneActiveSkillDataBase()
+  const BUFF_TYPES = ['attack', 'defense', 'speed', 'san']
+  // 等级 = 冒险家等级±浮动
+  const runeLevel = Math.max(
+    1,
+    adventurerLevel + Math.floor(Math.random() * 3) - 1
+  )
+  // 随机稀有度
+  const rarityRoll = Math.random()
+  const rarity =
+    rarityRoll < 0.05 ? 'legendary' : rarityRoll < 0.25 ? 'rare' : 'normal'
+  // 随机1-2个主动技能
+  const skillCount = Math.random() < 0.5 ? 1 : 2
+  const shuffled = [...allSkills].sort(() => Math.random() - 0.5)
+  const activeSkills = shuffled
+    .slice(0, skillCount)
+    .map(s => ({ skillId: s.value }))
+  // 随机1-3个被动增益
+  const passiveCount = Math.floor(Math.random() * 3) + 1
+  const passiveBuffs = []
+  for (let i = 0; i < passiveCount; i++) {
+    passiveBuffs.push({
+      buffType: BUFF_TYPES[Math.floor(Math.random() * BUFF_TYPES.length)],
+      buffLevel: Math.floor(Math.random() * Math.min(runeLevel, 30)) + 1
+    })
+  }
+  return { rarity, level: runeLevel, activeSkills, passiveBuffs }
+}
+
+/**
+ * 从竞技场战斗记录中找出击杀数最高的玩家冒险家
+ */
+function findArenaTopKillers(battleResult, playerGrid) {
+  const killCount = new Map()
+  const nameMap = new Map()
+  const avatarMap = new Map()
+
+  // 收集玩家冒险家信息
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const adv = playerGrid[r]?.[c]
+      if (adv) {
+        const id = adv._id?.toString() || adv._id
+        nameMap.set(id, adv.name)
+        avatarMap.set(id, {
+          defaultAvatarId: adv.defaultAvatarId,
+          hasCustomAvatar: adv.hasCustomAvatar,
+          elements: adv.elements
+        })
+      }
+    }
+  }
+
+  // 统计击杀数
+  if (battleResult.log) {
+    for (const entry of battleResult.log) {
+      if (entry.type === 'attack' && entry.defenderRemainSan === 0) {
+        const attackerId = entry.attacker
+        if (nameMap.has(attackerId)) {
+          killCount.set(attackerId, (killCount.get(attackerId) || 0) + 1)
+        }
+      }
+      if (entry.type === 'runeStoneSkill' && entry.effects) {
+        for (const effect of entry.effects) {
+          if (effect.targetRemainSan === 0 && nameMap.has(entry.caster)) {
+            killCount.set(entry.caster, (killCount.get(entry.caster) || 0) + 1)
+          }
+        }
+      }
+    }
+  }
+
+  const sorted = [...killCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+
+  if (sorted.length === 0) return []
+  const maxKills = sorted[0][1]
+
+  return sorted
+    .filter(([, kills]) => kills === maxKills)
+    .map(([id, kills]) => ({
+      adventurerId: id,
+      name: nameMap.get(id) || '未知',
+      kills,
+      ...avatarMap.get(id)
+    }))
 }
 
 /**

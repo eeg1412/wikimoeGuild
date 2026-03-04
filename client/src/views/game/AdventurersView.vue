@@ -80,54 +80,40 @@
         >
           💎 批量装备符文石 ({{ selectedIds.size }})
         </el-button>
-        <el-button
+        <el-dropdown
+          split-button
           type="primary"
           size="small"
+          trigger="click"
           :disabled="batchRatioLoading"
-          @click="handleOpenBatchRatioReport('up', 1)"
+          @click="handleBatchUpDefault"
+          @command="handleBatchUpCommand"
         >
-          📈 批量升级+1
-        </el-button>
-        <el-button
-          type="primary"
-          size="small"
-          :disabled="batchRatioLoading"
-          @click="handleOpenBatchRatioReport('up', 5)"
-        >
-          +5
-        </el-button>
-        <el-button
-          type="primary"
-          size="small"
-          :disabled="batchRatioLoading"
-          @click="handleOpenBatchRatioReport('up', 10)"
-        >
-          +10
-        </el-button>
-        <el-button
+          📈 批量升级+10
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item :command="1">+1</el-dropdown-item>
+              <el-dropdown-item :command="5">+5</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-dropdown
+          split-button
           type="danger"
           size="small"
+          trigger="click"
           :disabled="batchRatioLoading"
-          @click="handleOpenBatchRatioReport('down', 1)"
+          @click="handleBatchDownDefault"
+          @command="handleBatchDownCommand"
         >
-          📉 批量降级-1
-        </el-button>
-        <el-button
-          type="danger"
-          size="small"
-          :disabled="batchRatioLoading"
-          @click="handleOpenBatchRatioReport('down', 5)"
-        >
-          -5
-        </el-button>
-        <el-button
-          type="danger"
-          size="small"
-          :disabled="batchRatioLoading"
-          @click="handleOpenBatchRatioReport('down', 10)"
-        >
-          -10
-        </el-button>
+          📉 批量降级-10
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item :command="1">-1</el-dropdown-item>
+              <el-dropdown-item :command="5">-5</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </template>
     </div>
 
@@ -147,6 +133,12 @@
         class="rpg-card relative flex flex-col items-center p-3 rounded-xl cursor-pointer group"
         :class="{ 'ring-2 ring-yellow-400': selectedIds.has(adv._id) }"
         @click="handleCardClick(adv)"
+        @mousedown="handleAdvLongPressStart(adv)"
+        @mouseup="handleAdvLongPressEnd"
+        @mouseleave="handleAdvLongPressEnd"
+        @touchstart.passive="handleAdvLongPressStart(adv)"
+        @touchend="handleAdvLongPressEnd"
+        @touchcancel="handleAdvLongPressEnd"
       >
         <!-- 批量选择复选框 -->
         <div v-if="batchMode" class="absolute top-1 right-1 z-20" @click.stop>
@@ -628,6 +620,25 @@ const batchMode = ref(false)
 const selectedIds = ref(new Set())
 const batchEquipLoading = ref(false)
 
+// ── 长按3秒进入批量选择 ──
+let advLongPressTimer = null
+
+function handleAdvLongPressStart(adv) {
+  if (batchMode.value) return
+  advLongPressTimer = setTimeout(() => {
+    batchMode.value = true
+    selectedIds.value = new Set([adv._id])
+    advLongPressTimer = null
+  }, 3000)
+}
+
+function handleAdvLongPressEnd() {
+  if (advLongPressTimer) {
+    clearTimeout(advLongPressTimer)
+    advLongPressTimer = null
+  }
+}
+
 function handleToggleSelect(id) {
   const newSet = new Set(selectedIds.value)
   if (newSet.has(id)) {
@@ -862,6 +873,20 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
   batchReportTotalCrystals.value = totalCrystalsAcc
   batchReportHasError.value = hasError
   batchReportVisible.value = true
+}
+
+// ── Dropdown 升降级快捷方法 ──
+function handleBatchUpDefault() {
+  handleOpenBatchRatioReport('up', 10)
+}
+function handleBatchDownDefault() {
+  handleOpenBatchRatioReport('down', 10)
+}
+function handleBatchUpCommand(levels) {
+  handleOpenBatchRatioReport('up', levels)
+}
+function handleBatchDownCommand(levels) {
+  handleOpenBatchRatioReport('down', levels)
 }
 
 async function handleConfirmBatchRatio() {

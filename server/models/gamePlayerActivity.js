@@ -9,6 +9,9 @@ import mongoose from 'mongoose'
  *   - arena_top3:       竞技场赛季前三名
  *   - mine_discovered:  发现矿场
  *   - market_listing:   发布素材/符文石出售或求购
+ *   - guild_upgrade:    公会升级
+ *   - dungeon_victory:  地牢通关胜利
+ *   - arena_victory:    竞技场匹配胜利
  */
 const gamePlayerActivitySchema = new mongoose.Schema(
   {
@@ -21,7 +24,10 @@ const gamePlayerActivitySchema = new mongoose.Schema(
         'rune_stone_found',
         'arena_top3',
         'mine_discovered',
-        'market_listing'
+        'market_listing',
+        'guild_upgrade',
+        'dungeon_victory',
+        'arena_victory'
       ],
       index: true
     },

@@ -39,7 +39,8 @@ export {
 export { saveFormationSchema } from './gameFormationValidator.js'
 export {
   runeStonePreviewSynthesisSchema,
-  runeStoneConfirmSynthesisSchema
+  runeStoneConfirmSynthesisSchema,
+  runeStonesBatchDecomposeSchema
 } from './gameRuneStoneValidator.js'
 export {
   adventurerCustomAvatarSchema,

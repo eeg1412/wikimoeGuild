@@ -4,7 +4,8 @@ import { authPlayer } from '../../middlewares/auth.js'
 import { validate } from '../../middlewares/validate.js'
 import {
   runeStonePreviewSynthesisSchema,
-  runeStoneConfirmSynthesisSchema
+  runeStoneConfirmSynthesisSchema,
+  runeStonesBatchDecomposeSchema
 } from '../../../shared/validators/index.js'
 
 const router = Router()
@@ -15,6 +16,12 @@ router.post(
   '/:id/decompose',
   authPlayer,
   runeStoneController.decomposeRuneStone
+)
+router.post(
+  '/batch-decompose',
+  authPlayer,
+  validate(runeStonesBatchDecomposeSchema),
+  runeStoneController.batchDecomposeRuneStones
 )
 router.post('/:id/upgrade', authPlayer, runeStoneController.upgradeRuneStone)
 

@@ -6,12 +6,13 @@ import * as runeStoneService from '../../services/game/runeStoneService.js'
 export async function listMyRuneStones(req, res, next) {
   try {
     const accountId = req.player.id
-    const { page, pageSize, rarity, equipped, sort } = req.query
+    const { page, pageSize, rarity, equipped, listed, sort } = req.query
     const result = await runeStoneService.listMyRuneStones(accountId, {
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
       rarity,
       equipped,
+      listed,
       sort
     })
     res.success(result, '获取符文石列表成功')
@@ -43,6 +44,23 @@ export async function decomposeRuneStone(req, res, next) {
     const { id } = req.params
     const result = await runeStoneService.decomposeRuneStone(accountId, id)
     res.success(result, '分解成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 批量分解符文石
+ */
+export async function batchDecomposeRuneStones(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { runeStoneIds } = req.body
+    const result = await runeStoneService.batchDecomposeRuneStones(
+      accountId,
+      runeStoneIds
+    )
+    res.success(result, '批量分解完成')
   } catch (error) {
     next(error)
   }

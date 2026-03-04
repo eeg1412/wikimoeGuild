@@ -40,12 +40,42 @@
             >
               {{ item.title }}
             </p>
-            <p
-              v-if="item.content"
-              class="text-sm text-gray-500 dark:text-gray-400 mt-0.5"
+            <!-- 击杀最高冒险家头像展示 -->
+            <div
+              v-if="item.extra?.topKillers && item.extra.topKillers.length > 0"
+              class="mt-1.5"
             >
-              {{ item.content }}
-            </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                全场最佳：
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <div
+                  v-for="killer in item.extra.topKillers"
+                  :key="killer.adventurerId"
+                  class="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700/60 rounded-lg px-2 py-1"
+                >
+                  <GameAdventurerAvatar
+                    :adventurer="{
+                      _id: killer.adventurerId,
+                      defaultAvatarId: killer.defaultAvatarId,
+                      hasCustomAvatar: killer.hasCustomAvatar,
+                      elements: killer.elements
+                    }"
+                    class="w-6 h-6 rounded-full object-cover shrink-0 border border-gray-300 dark:border-gray-500"
+                  />
+                  <span
+                    class="text-xs text-gray-700 dark:text-gray-200 font-medium truncate max-w-20"
+                  >
+                    {{ killer.name }}
+                  </span>
+                  <span
+                    class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                  >
+                    (击杀 {{ killer.kills }})
+                  </span>
+                </div>
+              </div>
+            </div>
             <p class="text-xs text-gray-400 mt-1">
               {{ formatTime(item.createdAt) }}
             </p>
@@ -77,6 +107,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getActivitiesApi } from '@/api/game/activity.js'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const activities = ref([])
 const loading = ref(false)
@@ -85,7 +116,7 @@ const pageSize = 20
 const total = ref(0)
 
 // ── 公会信息弹窗 ──
-const guildInfoDialogVisible = ref(false)
+const { visible: guildInfoDialogVisible } = useDialogRoute('actGuildInfo')
 const guildInfoPlayerInfoId = ref('')
 
 function handleGuildIconClick(item) {
@@ -100,7 +131,10 @@ function typeIcon(type) {
     rune_stone_found: '💎',
     arena_top3: '🏆',
     mine_discovered: '⛏️',
-    market_listing: '🏪'
+    market_listing: '🏪',
+    guild_upgrade: '⬆️',
+    dungeon_victory: '🐉',
+    arena_victory: '⚔️'
   }
   return icons[type] || '📌'
 }

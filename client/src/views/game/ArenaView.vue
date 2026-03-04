@@ -146,51 +146,21 @@
               <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                 📋 阵容预览（{{ formationPreviewCount }} 名冒险家）
               </p>
-              <div class="arena-grid-board mx-auto">
-                <div
-                  v-for="(row, rIdx) in formationPreview.grid"
-                  :key="rIdx"
-                  class="arena-grid-row"
-                >
-                  <div
-                    v-for="(cell, cIdx) in row"
-                    :key="`${rIdx}-${cIdx}`"
-                    class="arena-grid-cell"
-                    :class="{
-                      'arena-grid-cell--occupied': cell
-                    }"
-                  >
-                    <span class="arena-grid-cell-seq">{{
-                      rIdx * 5 + cIdx + 1
-                    }}</span>
-                    <template v-if="cell">
-                      <GameAdventurerAvatar
-                        :adventurer="cell"
-                        class="w-full h-full rounded object-cover pointer-events-none select-none"
-                      />
-                      <div
-                        v-for="indicator in getPassiveIndicators(cell)"
-                        :key="indicator.position"
-                        class="passive-indicator"
-                        :class="'passive-indicator--' + indicator.position"
-                        :style="{ backgroundColor: indicator.color }"
-                        :title="indicator.label"
-                      />
-                      <div
-                        class="absolute bottom-0 left-0 right-0 text-center bg-black/50 text-[10px] text-white leading-tight py-px truncate"
-                      >
-                        {{ cell.name }}
-                      </div>
-                      <!-- 标记图标 -->
-                      <span
-                        v-if="cell.roleTag && ROLE_TAG_MAP[cell.roleTag]"
-                        class="absolute top-0 right-0 z-10 bg-black/65 rounded-bl text-xs leading-none p-0.5"
-                      >
-                        {{ ROLE_TAG_MAP[cell.roleTag].emoji }}
-                      </span>
-                    </template>
-                  </div>
-                </div>
+              <div class="flex justify-center">
+                <FormationGrid
+                  :cellSize="60"
+                  :model-value="formationPreview.grid"
+                  show-role-tag
+                  :role-tag-list="ROLE_TAGS"
+                  :role-tag-loading="previewRoleTagLoading"
+                  @set-role-tag="handlePreviewRoleTag"
+                  :canDragMode="false"
+                  :locked-ids="
+                    formationPreview.grid.flatMap(row =>
+                      row.map(cell => cell?._id).filter(Boolean)
+                    )
+                  "
+                />
               </div>
             </div>
             <div v-if="formationPreviewLoading" class="mb-3 text-center">
@@ -370,9 +340,13 @@
               <FormationGrid
                 v-model="arenaGrid"
                 :locked-ids="arenaLockedAdventurers"
+                show-role-tag
+                :role-tag-list="ROLE_TAGS"
+                :role-tag-loading="arenaRoleTagLoading"
                 class="mb-4"
                 @cell-click="handleArenaCellClick"
                 @clear-cell="handleClearArenaCell"
+                @set-role-tag="handleArenaGridRoleTag"
               />
 
               <p class="text-center text-sm text-gray-400 mb-4">
@@ -821,7 +795,7 @@
                         />
                         <span
                           class="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] leading-none px-0.5 rounded-tl"
-                          >{{ (5 - c) * 5 + (r - 1) + 1 }}</span
+                          >{{ `${6 - c}-${r}` }}</span
                         >
                       </template>
                     </div>
@@ -859,7 +833,7 @@
                         />
                         <span
                           class="absolute bottom-0 left-0 bg-black/60 text-white text-[10px] leading-none px-0.5 rounded-tr"
-                          >{{ (c - 1) * 5 + (r - 1) + 1 }}</span
+                          >{{ `${c}-${r}` }}</span
                         >
                       </template>
                     </div>
@@ -945,6 +919,29 @@
       </template>
     </el-dialog>
 
+    <!-- 冒险家详情弹窗 -->
+    <AdventurerDetailDialog
+      v-model="arenaAdvDetailVisible"
+      :adventurer-id="arenaAdvDetailId"
+      show-manage
+      @updated="handleArenaAdvDetailUpdated"
+    >
+      <template #footer>
+        <div class="flex justify-center gap-2 mt-2">
+          <el-button size="small" @click="handleArenaDetailReplace"
+            >🔄 替换</el-button
+          >
+          <el-button
+            v-if="!isAdventurerLocked(arenaAdvDetailId)"
+            type="danger"
+            size="small"
+            @click="handleArenaDetailRemove"
+            >🗑️ 移除</el-button
+          >
+        </div>
+      </template>
+    </AdventurerDetailDialog>
+
     <!-- 公会信息弹窗 -->
     <GuildInfoDialog
       v-model="guildInfoDialogVisible"
@@ -973,7 +970,7 @@ import {
   getMyFormationsApi,
   getFormationDetailApi
 } from '@/api/game/formation.js'
-import { getMyAdventurersApi } from '@/api/game/adventurer.js'
+import { getMyAdventurersApi, setRoleTagApi } from '@/api/game/adventurer.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
 import {
@@ -987,6 +984,13 @@ import {
 } from '@/composables/useFormationGrid.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
+
+// ── 角色标记 ──
+const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(([value, info]) => ({
+  value,
+  ...info
+}))
+import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
@@ -1007,6 +1011,46 @@ const registerLoading = ref(false)
 const formationPreview = ref(null)
 const formationPreviewLoading = ref(false)
 const formationPreviewCount = ref(0)
+const previewRoleTagLoading = ref(false)
+
+async function handlePreviewRoleTag(row, col, tagValue) {
+  const cell = formationPreview.value?.grid?.[row]?.[col]
+  if (!cell || previewRoleTagLoading.value) return
+  const newTag = cell.roleTag === tagValue ? '' : tagValue
+  previewRoleTagLoading.value = true
+  try {
+    const res = await setRoleTagApi(cell._id, { roleTag: newTag })
+    formationPreview.value.grid[row][col] = { ...cell, ...res.data.data }
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    previewRoleTagLoading.value = false
+  }
+}
+
+const arenaRoleTagLoading = ref(false)
+async function handleArenaGridRoleTag(row, col, tagValue) {
+  const cell = arenaGrid.value[row]?.[col]
+  if (!cell || arenaRoleTagLoading.value) return
+  const newTag = cell.roleTag === tagValue ? '' : tagValue
+  arenaRoleTagLoading.value = true
+  try {
+    const res = await setRoleTagApi(cell._id, { roleTag: newTag })
+    const updated = { ...cell, ...res.data.data }
+    arenaGrid.value[row][col] = updated
+    const idx = arenaAllAdventurers.value.findIndex(a => a._id === cell._id)
+    if (idx !== -1) {
+      arenaAllAdventurers.value[idx] = {
+        ...arenaAllAdventurers.value[idx],
+        ...res.data.data
+      }
+    }
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    arenaRoleTagLoading.value = false
+  }
+}
 
 const arenaTab = ref('match')
 
@@ -1102,10 +1146,62 @@ const arenaFilteredPickAdventurers = computed(() => {
   return arenaAllAdventurers.value.filter(adv => !isArenaPlaced(adv._id))
 })
 
+// ── 竞技场阵容冒险家详情弹窗 ──
+const { visible: arenaAdvDetailVisible } = useDialogRoute('arenaAdvDetail')
+const arenaAdvDetailId = ref('')
+const arenaAdvDetailRow = ref(0)
+const arenaAdvDetailCol = ref(0)
+
 function handleArenaCellClick(row, col) {
-  arenaPickRow.value = row
-  arenaPickCol.value = col
-  arenaPickDialogVisible.value = true
+  const cell = getArenaCell(row, col)
+  if (cell) {
+    // 已放置冒险家 → 显示详情弹窗
+    arenaAdvDetailId.value = cell._id
+    arenaAdvDetailRow.value = row
+    arenaAdvDetailCol.value = col
+    arenaAdvDetailVisible.value = true
+  } else {
+    // 空格子 → 打开选择弹窗
+    arenaPickRow.value = row
+    arenaPickCol.value = col
+    arenaPickDialogVisible.value = true
+  }
+}
+
+function handleArenaAdvDetailUpdated(updatedAdv) {
+  // 同步更新阵容网格上的冒险家数据
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      if (arenaGrid.value[r][c]?._id === updatedAdv._id) {
+        arenaGrid.value[r][c] = updatedAdv
+      }
+    }
+  }
+  // 也更新冒险家列表
+  const idx = arenaAllAdventurers.value.findIndex(a => a._id === updatedAdv._id)
+  if (idx !== -1) {
+    arenaAllAdventurers.value[idx] = updatedAdv
+  }
+}
+
+function handleArenaDetailReplace() {
+  arenaAdvDetailVisible.value = false
+  arenaPickRow.value = arenaAdvDetailRow.value
+  arenaPickCol.value = arenaAdvDetailCol.value
+  setTimeout(() => {
+    arenaPickDialogVisible.value = true
+  }, 300)
+}
+
+function handleArenaDetailRemove() {
+  const cell =
+    arenaGrid.value[arenaAdvDetailRow.value]?.[arenaAdvDetailCol.value]
+  if (cell && isAdventurerLocked(cell._id)) {
+    ElMessage.warning('已锁定的冒险家不能移除')
+    return
+  }
+  arenaGrid.value[arenaAdvDetailRow.value][arenaAdvDetailCol.value] = null
+  arenaAdvDetailVisible.value = false
 }
 
 function placeArenaAdventurer(adv) {

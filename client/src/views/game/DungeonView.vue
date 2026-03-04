@@ -906,6 +906,13 @@ function onBattleAnimationDone() {
   battleResultVisible.value = true
   if (battleResult.value?.battleResult?.winner === 'attacker') {
     ElMessage.success('胜利！迷宫等级提升！')
+    // 如果当前选择的符文石产出等级是升级前的最高等级，自动切换到新等级
+    const newDungeonLevel = dungeonInfo.value?.dungeonsLevel || 1
+    if (selectedLevel.value < newDungeonLevel) {
+      selectedLevel.value = newDungeonLevel
+      // 同步服务端
+      handleSelectLevel(newDungeonLevel)
+    }
   }
 }
 

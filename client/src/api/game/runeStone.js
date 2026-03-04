@@ -22,6 +22,13 @@ export function decomposeRuneStoneApi(id) {
 }
 
 /**
+ * 批量分解符文石
+ */
+export function batchDecomposeRuneStonesApi(data) {
+  return gameRequest.post('/rune-stones/batch-decompose', data)
+}
+
+/**
  * 升级符文石
  */
 export function upgradeRuneStoneApi(id) {

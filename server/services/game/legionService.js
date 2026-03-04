@@ -13,6 +13,7 @@ import {
   passiveBuffTypeDataBase,
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
+import { recordActivity } from './activityService.js'
 
 /**
  * 简易种子随机数生成器 (mulberry32)
@@ -261,6 +262,73 @@ function placeDemonsOnGrid(demons) {
 }
 
 /**
+ * 从战斗日志中找出击杀数最高的攻击方冒险家
+ * @param {Object} battleResult - 战斗引擎返回的结果
+ * @param {Array<Array<object|null>>} playerGrid - 玩家阵容网格
+ * @returns {Array<{name: string, kills: number, adventurerId: string}>}
+ */
+function findTopKillers(battleResult, playerGrid) {
+  const killCount = new Map() // adventurerId -> count
+  const nameMap = new Map() // adventurerId -> name
+  const avatarMap = new Map() // adventurerId -> avatar info
+
+  // 收集玩家冒险家信息
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const adv = playerGrid[r]?.[c]
+      if (adv) {
+        const id = adv._id?.toString() || adv._id
+        nameMap.set(id, adv.name)
+        avatarMap.set(id, {
+          defaultAvatarId: adv.defaultAvatarId,
+          hasCustomAvatar: adv.hasCustomAvatar,
+          elements: adv.elements
+        })
+      }
+    }
+  }
+
+  // 统计击杀数（当攻击后目标SAN值为0时记录击杀）
+  if (battleResult.log) {
+    for (const entry of battleResult.log) {
+      if (entry.type === 'attack' && entry.defenderRemainSan === 0) {
+        const attackerId = entry.attacker
+        if (nameMap.has(attackerId)) {
+          killCount.set(attackerId, (killCount.get(attackerId) || 0) + 1)
+        }
+      }
+      // 符文石技能也可能造成击杀
+      if (entry.type === 'runeStoneSkill' && entry.effects) {
+        for (const effect of entry.effects) {
+          if (effect.targetRemainSan === 0 && nameMap.has(entry.caster)) {
+            killCount.set(entry.caster, (killCount.get(entry.caster) || 0) + 1)
+          }
+        }
+      }
+    }
+  }
+
+  // 排序，取前3名
+  const sorted = [...killCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+
+  // 找出最高击杀数
+  if (sorted.length === 0) return []
+  const maxKills = sorted[0][1]
+
+  // 返回击杀数相同的最高击杀者们
+  return sorted
+    .filter(([, kills]) => kills === maxKills)
+    .map(([id, kills]) => ({
+      adventurerId: id,
+      name: nameMap.get(id) || '未知',
+      kills,
+      ...avatarMap.get(id)
+    }))
+}
+
+/**
  * 挑战地牢军团
  */
 export async function challengeLegion(accountId, formationSlot) {
@@ -361,6 +429,21 @@ export async function challengeLegion(accountId, formationSlot) {
       result.upgraded = true
       result.droppedRuneStone = legendaryRuneStone
       result.newDungeonLevel = playerInfo.dungeonsLevel
+
+      // 找出击杀数最高的冒险家
+      const topKillers = findTopKillers(battleResult, playerGrid)
+
+      // 记录玩家动态
+      recordActivity({
+        type: 'dungeon_victory',
+        account: accountId,
+        guildName: playerInfo.guildName,
+        title: `🏰 ${playerInfo.guildName} 攻破了迷宫 Lv.${currentLevel} 的军团！`,
+        extra: {
+          dungeonLevel: currentLevel,
+          topKillers
+        }
+      })
     }
 
     // 保存 playerInfo（lastBattleAt 以及可能的 dungeonsLevel 更新）

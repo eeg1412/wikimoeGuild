@@ -12,7 +12,7 @@
 
     <!-- 排序 & 筛选 -->
     <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <el-select
           v-model="sortMode"
           size="small"
@@ -37,9 +37,53 @@
           <el-option label="稀有" value="rare" />
           <el-option label="传说" value="legendary" />
         </el-select>
+        <el-select
+          v-model="equippedFilter"
+          size="small"
+          placeholder="装备状态"
+          clearable
+          style="width: 100px"
+          @change="handleEquippedFilterChange"
+        >
+          <el-option label="已装备" value="true" />
+          <el-option label="未装备" value="false" />
+        </el-select>
+        <el-select
+          v-model="listedFilter"
+          size="small"
+          placeholder="贩卖状态"
+          clearable
+          style="width: 100px"
+          @change="handleListedFilterChange"
+        >
+          <el-option label="出售中" value="true" />
+          <el-option label="未出售" value="false" />
+        </el-select>
       </div>
-      <el-button type="warning" size="small" @click="openSynthesisDialog">
-        🔮 合成
+      <div class="flex items-center gap-2">
+        <el-checkbox v-model="batchMode" size="small">批量选择</el-checkbox>
+        <el-button type="warning" size="small" @click="openSynthesisDialog">
+          🔮 合成
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 批量操作栏 -->
+    <div
+      v-if="batchMode && selectedIds.size > 0"
+      class="flex justify-center gap-2 mb-4 flex-wrap"
+    >
+      <el-button
+        type="danger"
+        size="small"
+        :loading="batchDecomposeLoading"
+        :disabled="batchDecomposeLoading"
+        @click="handleBatchDecompose"
+      >
+        🔥 批量分解 ({{ selectedIds.size }})
+      </el-button>
+      <el-button size="small" @click="handleSelectAll">
+        {{ isAllSelected ? '取消全选' : '全选当页' }}
       </el-button>
     </div>
 
@@ -63,7 +107,23 @@
           v-for="rs in runeStones"
           :key="rs._id"
           class="rpg-card rounded-xl p-4"
+          :class="{ 'ring-2 ring-yellow-400': selectedIds.has(rs._id) }"
+          @click="handleRuneStoneCardClick(rs)"
+          @mousedown="handleRuneStoneLongPressStart(rs, $event)"
+          @mouseup="handleLongPressEnd"
+          @mouseleave="handleLongPressEnd"
+          @touchstart.passive="handleRuneStoneLongPressStart(rs, $event)"
+          @touchend="handleLongPressEnd"
+          @touchcancel="handleLongPressEnd"
         >
+          <!-- 批量选择复选框 -->
+          <div v-if="batchMode" class="flex justify-end mb-1" @click.stop>
+            <el-checkbox
+              :model-value="selectedIds.has(rs._id)"
+              size="small"
+              @change="handleToggleSelect(rs._id)"
+            />
+          </div>
           <!-- 顶部：稀有度 + 等级 + 状态 -->
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-3">
@@ -514,7 +574,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -522,7 +582,8 @@ import {
   decomposeRuneStoneApi,
   upgradeRuneStoneApi,
   previewSynthesisApi,
-  confirmSynthesisApi
+  confirmSynthesisApi,
+  batchDecomposeRuneStonesApi
 } from '@/api/game/runeStone.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
@@ -542,6 +603,8 @@ const loading = ref(false)
 const runeStones = ref([])
 const sortMode = ref('newest')
 const rarityFilter = ref('')
+const equippedFilter = ref('')
+const listedFilter = ref('')
 const runeStonePageNum = ref(1)
 const runeStonePageSize = 20
 const runeStoneTotal = ref(0)
@@ -552,6 +615,16 @@ function handleSortChange() {
 }
 
 function handleRarityFilterChange() {
+  runeStonePageNum.value = 1
+  fetchRuneStones()
+}
+
+function handleEquippedFilterChange() {
+  runeStonePageNum.value = 1
+  fetchRuneStones()
+}
+
+function handleListedFilterChange() {
   runeStonePageNum.value = 1
   fetchRuneStones()
 }
@@ -567,6 +640,12 @@ async function fetchRuneStones() {
     if (rarityFilter.value) {
       params.rarity = rarityFilter.value
     }
+    if (equippedFilter.value) {
+      params.equipped = equippedFilter.value
+    }
+    if (listedFilter.value) {
+      params.listed = listedFilter.value
+    }
     const res = await getMyRuneStonesApi(params)
     runeStones.value = res.data.data?.list || []
     runeStoneTotal.value = res.data.data?.total || 0
@@ -574,6 +653,90 @@ async function fetchRuneStones() {
     runeStones.value = []
   } finally {
     loading.value = false
+  }
+}
+
+// ── 批量选择 ──
+const batchMode = ref(false)
+const selectedIds = ref(new Set())
+const batchDecomposeLoading = ref(false)
+
+function handleToggleSelect(id) {
+  const newSet = new Set(selectedIds.value)
+  if (newSet.has(id)) {
+    newSet.delete(id)
+  } else {
+    newSet.add(id)
+  }
+  selectedIds.value = newSet
+}
+
+function handleRuneStoneCardClick(rs) {
+  if (batchMode.value) {
+    handleToggleSelect(rs._id)
+  }
+}
+
+const isAllSelected = computed(() => {
+  if (runeStones.value.length === 0) return false
+  return runeStones.value.every(rs => selectedIds.value.has(rs._id))
+})
+
+function handleSelectAll() {
+  if (isAllSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(runeStones.value.map(rs => rs._id))
+  }
+}
+
+async function handleBatchDecompose() {
+  if (selectedIds.value.size === 0) return
+  try {
+    await ElMessageBox.confirm(
+      `确定批量分解 ${selectedIds.value.size} 个符文石？装备中或上架中的符文石将被跳过。`,
+      '确认批量分解',
+      { confirmButtonText: '分解', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  batchDecomposeLoading.value = true
+  try {
+    const res = await batchDecomposeRuneStonesApi({
+      runeStoneIds: [...selectedIds.value]
+    })
+    const data = res.data.data
+    ElMessage.success(
+      `批量分解完成！分解 ${data.decomposedCount} 个，获得 ${data.totalFragments} 碎片`
+    )
+    selectedIds.value = new Set()
+    batchMode.value = false
+    await nextTick()
+    await fetchRuneStones()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchDecomposeLoading.value = false
+  }
+}
+
+// ── 长按3秒进入批量选择 ──
+let longPressTimer = null
+
+function handleRuneStoneLongPressStart(rs, event) {
+  if (batchMode.value) return
+  longPressTimer = setTimeout(() => {
+    batchMode.value = true
+    selectedIds.value = new Set([rs._id])
+    longPressTimer = null
+  }, 3000)
+}
+
+function handleLongPressEnd() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
   }
 }
 

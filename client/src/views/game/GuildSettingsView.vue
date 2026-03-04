@@ -57,6 +57,71 @@
         </div>
       </div>
 
+      <!-- 公会升级卡片 -->
+      <div class="rpg-card rounded-xl p-4 mb-4">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+          📈 公会升级
+        </h3>
+        <div v-if="levelInfoLoading" class="flex justify-center py-4">
+          <span class="animate-spin inline-block text-xl">⏳</span>
+        </div>
+        <template v-else-if="levelInfo">
+          <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
+              <p class="text-xs text-gray-400">当前等级</p>
+              <p class="text-sm font-bold text-purple-500">
+                Lv.{{ levelInfo.guildLevel }}
+              </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
+              <p class="text-xs text-gray-400">升级费用</p>
+              <p class="text-sm font-bold text-yellow-500">
+                🪙 {{ levelInfo.fee?.toLocaleString() }}
+              </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
+              <p class="text-xs text-gray-400">所需满级冒险家</p>
+              <p
+                class="text-sm font-bold"
+                :class="
+                  levelInfo.qualifiedCount >= levelInfo.requiredCount
+                    ? 'text-green-500'
+                    : 'text-red-500'
+                "
+              >
+                {{ levelInfo.qualifiedCount }} / {{ levelInfo.requiredCount }}
+              </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
+              <p class="text-xs text-gray-400">所需综合等级</p>
+              <p class="text-sm font-bold text-blue-500">
+                Lv.{{ levelInfo.requiredCompLevel }}
+              </p>
+            </div>
+          </div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 space-y-1 mb-3">
+            <p>升级后冒险家上限: {{ levelInfo.nextMaxAdventurerCount }}</p>
+            <p>
+              升级后综合等级上限: Lv.{{ levelInfo.nextMaxComprehensiveLevel }}
+            </p>
+          </div>
+          <div class="flex justify-center">
+            <el-button
+              type="primary"
+              :loading="upgradeLoading"
+              :disabled="
+                upgradeLoading ||
+                levelInfo.gold < levelInfo.fee ||
+                levelInfo.qualifiedCount < levelInfo.requiredCount
+              "
+              @click="handleUpgradeGuild"
+            >
+              ⬆️ 升级公会 (🪙 {{ levelInfo.fee?.toLocaleString() }})
+            </el-button>
+          </div>
+        </template>
+      </div>
+
       <!-- 操作说明 -->
       <div class="rpg-card rounded-xl p-4 space-y-3">
         <div class="flex items-center justify-between">
@@ -310,7 +375,12 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { changeGuildLogoApi, changeGuildNameApi } from '@/api/game/guild.js'
+import {
+  changeGuildLogoApi,
+  changeGuildNameApi,
+  getGuildLevelInfoApi,
+  upgradeGuildLevelApi
+} from '@/api/game/guild.js'
 import {
   changePasswordApi,
   guestBindEmailSendCodeApi,
@@ -330,6 +400,49 @@ if (!isLoggedIn.value) {
 
 const loading = ref(false)
 const gameSettings = ref({})
+
+// ── 公会升级 ──
+const levelInfo = ref(null)
+const levelInfoLoading = ref(false)
+const upgradeLoading = ref(false)
+
+async function fetchGuildLevelInfo() {
+  levelInfoLoading.value = true
+  try {
+    const res = await getGuildLevelInfoApi()
+    levelInfo.value = res.data.data
+  } catch {
+    levelInfo.value = null
+  } finally {
+    levelInfoLoading.value = false
+  }
+}
+
+async function handleUpgradeGuild() {
+  try {
+    await ElMessageBox.confirm(
+      `确定花费 ${levelInfo.value.fee?.toLocaleString()} 金币升级公会？`,
+      '确认升级',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+  upgradeLoading.value = true
+  try {
+    await upgradeGuildLevelApi()
+    ElMessage.success('公会升级成功！')
+    await Promise.all([fetchPlayerInfo(), fetchGuildLevelInfo()])
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    upgradeLoading.value = false
+  }
+}
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -579,7 +692,11 @@ async function fetchGameSettings() {
 // ── 初始化 ──
 onMounted(async () => {
   loading.value = true
-  await Promise.all([fetchPlayerInfo(), fetchGameSettings()])
+  await Promise.all([
+    fetchPlayerInfo(),
+    fetchGameSettings(),
+    fetchGuildLevelInfo()
+  ])
   loading.value = false
 })
 </script>

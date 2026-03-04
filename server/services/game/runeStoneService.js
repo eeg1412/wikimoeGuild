@@ -121,12 +121,14 @@ export async function tryDropRuneStone(accountId, level = 1) {
  */
 export async function listMyRuneStones(
   accountId,
-  { page = 1, pageSize = 20, rarity, equipped, sort = 'newest' } = {}
+  { page = 1, pageSize = 20, rarity, equipped, listed, sort = 'newest' } = {}
 ) {
   const filter = { account: accountId }
   if (rarity) filter.rarity = rarity
   if (equipped === 'true') filter.equippedBy = { $ne: null }
   if (equipped === 'false') filter.equippedBy = null
+  if (listed === 'true') filter.listedOnMarket = true
+  if (listed === 'false') filter.listedOnMarket = { $ne: true }
 
   // 排序方式
   const RARITY_ORDER = { legendary: 0, rare: 1, normal: 2 }
@@ -220,6 +222,75 @@ export async function decomposeRuneStone(accountId, runeStoneId) {
     await GameRuneStone.deleteOne({ _id: runeStoneId })
 
     return { fragments }
+  })
+}
+
+/**
+ * 批量分解符文石
+ * @param {String} accountId
+ * @param {String[]} runeStoneIds
+ */
+export async function batchDecomposeRuneStones(accountId, runeStoneIds) {
+  return await executeInLock(`decompose:${accountId}`, async () => {
+    if (!Array.isArray(runeStoneIds) || runeStoneIds.length === 0) {
+      const err = new Error('请选择要分解的符文石')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+    if (runeStoneIds.length > 100) {
+      const err = new Error('单次最多分解 100 个符文石')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    const runeStones = await GameRuneStone.find({
+      _id: { $in: runeStoneIds },
+      account: accountId
+    }).lean()
+
+    if (runeStones.length === 0) {
+      const err = new Error('未找到可分解的符文石')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const rarityCoeff = { normal: 10, rare: 100, legendary: 500 }
+    let totalFragments = 0
+    const results = []
+    const validIds = []
+
+    for (const rs of runeStones) {
+      if (rs.equippedBy) {
+        results.push({ id: rs._id, success: false, reason: '装备中' })
+        continue
+      }
+      if (rs.listedOnMarket) {
+        results.push({ id: rs._id, success: false, reason: '上架中' })
+        continue
+      }
+      const fragments = (rarityCoeff[rs.rarity] || 10) * rs.level
+      totalFragments += fragments
+      validIds.push(rs._id)
+      results.push({ id: rs._id, success: true, fragments })
+    }
+
+    if (validIds.length > 0) {
+      await GamePlayerInventory.findOneAndUpdate(
+        { account: accountId },
+        { $inc: { runeFragment: totalFragments } },
+        { upsert: true }
+      )
+      await GameRuneStone.deleteMany({ _id: { $in: validIds } })
+    }
+
+    return {
+      totalFragments,
+      decomposedCount: validIds.length,
+      results
+    }
   })
 }
 

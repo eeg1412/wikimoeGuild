@@ -43,7 +43,7 @@
                   <span
                     class="battle-seq"
                     :style="{ fontSize: Math.max(10, nameFontSize - 1) + 'px' }"
-                    >{{ unit.row * 5 + unit.col + 1 }}</span
+                    >{{ `${unit.row + 1}-${unit.col + 1}` }}</span
                   >
                   <GameAdventurerAvatar
                     :adventurer="unit"
@@ -122,7 +122,7 @@
                   <span
                     class="battle-seq"
                     :style="{ fontSize: Math.max(10, nameFontSize - 1) + 'px' }"
-                    >{{ unit.row * 5 + unit.col + 1 }}</span
+                    >{{ `${unit.row + 1}-${unit.col + 1}` }}</span
                   >
                   <GameAdventurerAvatar
                     :adventurer="unit"

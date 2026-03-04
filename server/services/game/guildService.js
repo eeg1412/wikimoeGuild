@@ -8,6 +8,7 @@ import {
   getGuildLevelUpFee,
   getRequiredMaxLevelAdventurerCount
 } from 'shared/utils/guildLevelUtils.js'
+import { recordActivity } from './activityService.js'
 
 /**
  * 修改公会标志（消耗金币）
@@ -238,6 +239,15 @@ export async function upgradeGuildLevel(accountId) {
     playerInfo.gold -= fee
     playerInfo.guildLevel = guildLevel + 1
     await playerInfo.save()
+
+    // 记录玩家动态
+    recordActivity({
+      type: 'guild_upgrade',
+      account: accountId,
+      guildName: playerInfo.guildName,
+      title: `🏩 ${playerInfo.guildName} 升级了！`,
+      content: `公会等级提升至 Lv.${guildLevel + 1}`
+    })
 
     return {
       success: true,

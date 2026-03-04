@@ -27,3 +27,19 @@ export const runeStoneConfirmSynthesisSchema = Joi.object({
     .required()
     .messages({ 'any.required': '请指定是否接受合成' })
 })
+
+/**
+ * 符文石批量分解
+ */
+export const runeStonesBatchDecomposeSchema = Joi.object({
+  runeStoneIds: Joi.array()
+    .items(objectId.required())
+    .min(1)
+    .max(50)
+    .required()
+    .messages({
+      'array.min': '请至少选择一个符文石',
+      'array.max': '单次最多分解50个符文石',
+      'any.required': '请选择要分解的符文石'
+    })
+})
