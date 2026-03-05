@@ -1272,9 +1272,12 @@ function formatLogEntry(entry) {
       case 'attack':
         return `✨ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害`
       case 'buff':
-        return `⬆️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.buffType}+${entry.value}`
+        const buffLabel = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
+        return `⬆️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${buffLabel}+${entry.value}`
       case 'debuff':
-        return `⬇️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.debuffType}-${entry.value}`
+        const debuffLabel =
+          BUFF_TYPE_LABEL[entry.debuffType] || entry.debuffType
+        return `⬇️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${debuffLabel}-${entry.value}`
       case 'changeOrder':
         if (entry.success) {
           const posInfo = `(${entry.oldRow + 1},${entry.oldCol + 1})→(${entry.newRow + 1},${entry.newCol + 1})`
@@ -2121,14 +2124,13 @@ onUnmounted(() => {
   font-weight: 600;
 }
 .log-skill {
-  color: #a78bfa;
+  color: #f87171;
 }
 .log-buff {
   color: #34d399;
 }
 .log-debuff {
-  color: #f87171;
-  font-style: italic;
+  color: #a78bfa;
 }
 .log-heal {
   color: #6ee7b7;
