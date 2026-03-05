@@ -275,10 +275,10 @@ export function generateRandomAdventurerName() {
   return surname + '·' + givenName
 }
 
-// 随机选取冒险者头像ID 1-10
-export function generateRandomAdventurerAvatarId() {
-  return Math.floor(Math.random() * 10) + 1
-}
+// 随机选取冒险者头像ID 1-20 （废弃）
+// export function generateRandomAdventurerAvatarId() {
+//   return Math.floor(Math.random() * 20) + 1
+// }
 
 // NPC预设公会图标数量（server/publicgame/guildicon/ 下的 1.webp ~ N.webp）
 const NPC_GUILD_ICON_COUNT = 10

@@ -26,11 +26,11 @@ const gameAdventurerSchema = new mongoose.Schema(
       default: '1'
     },
 
-    // 默认头像ID 1-10
+    // 默认头像ID 1-20
     defaultAvatarId: {
       type: Number,
       min: 1,
-      max: 10,
+      max: 20,
       default: 1
     },
 

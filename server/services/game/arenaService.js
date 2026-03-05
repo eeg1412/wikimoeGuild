@@ -973,7 +973,7 @@ function generateNPCFormation(playerGrid, playerPoints = 500) {
         allBuffTypes[Math.floor(Math.random() * allBuffTypes.length)].value,
       attackPreference:
         allPreferences[Math.floor(Math.random() * allPreferences.length)].value,
-      defaultAvatarId: Math.floor(Math.random() * 10) + 1,
+      defaultAvatarId: generateRandomAdventurerAvatarId(),
       attackLevel: level,
       defenseLevel: level,
       speedLevel: level,
@@ -1087,7 +1087,7 @@ function generateHighTierNPCFormation(
         allBuffTypes[Math.floor(Math.random() * allBuffTypes.length)].value,
       attackPreference:
         allPreferences[Math.floor(Math.random() * allPreferences.length)].value,
-      defaultAvatarId: Math.floor(Math.random() * 10) + 1,
+      defaultAvatarId: generateRandomAdventurerAvatarId(),
       attackLevel,
       defenseLevel,
       speedLevel,

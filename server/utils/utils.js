@@ -149,10 +149,10 @@ export function executeInLock(key, fn) {
 // ──────────────────────────────────────────────
 
 /**
- * 随机生成冒险家头像 ID（1-10）
+ * 随机生成冒险家头像 ID（1-20）
  */
 export function generateRandomAdventurerAvatarId() {
-  return String(Math.floor(Math.random() * 10) + 1)
+  return String(Math.floor(Math.random() * 20) + 1)
 }
 
 // 冒险家名字词库
