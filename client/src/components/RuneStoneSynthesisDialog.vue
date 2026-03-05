@@ -308,7 +308,7 @@ async function open(mainRuneStone_arg, compLevel) {
       equipped: 'false',
       rarity: mainRuneStone_arg.rarity,
       sort: 'level_desc',
-      pageSize: 200
+      pageSize: 1000
     })
     materialOptions.value = (res.data.data?.list || []).filter(
       rs =>

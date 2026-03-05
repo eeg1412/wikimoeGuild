@@ -103,7 +103,7 @@ const filteredUnlistedRuneStones = computed(() => {
 async function loadUnlistedRuneStones() {
   unlistedLoading.value = true
   try {
-    const res = await getMyRuneStonesApi({ pageSize: 999 })
+    const res = await getMyRuneStonesApi({ pageSize: 1000 })
     // 只显示未装备且未上架的
     unlistedRuneStones.value = (res.data.data?.list || []).filter(
       rs => !rs.equippedBy && !rs.listedOnMarket

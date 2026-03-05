@@ -899,7 +899,7 @@ async function handleOpenEquipDialog() {
   if (runeStoneListLoading.value) return
   runeStoneListLoading.value = true
   try {
-    const res = await getMyRuneStonesApi({ equipped: 'false' })
+    const res = await getMyRuneStonesApi({ equipped: 'false', pageSize: 1000 })
     const compLevel = adventurer.value?.comprehensiveLevel || 4
     availableRuneStones.value = (res.data.data?.list || []).filter(
       rs => rs.level <= compLevel

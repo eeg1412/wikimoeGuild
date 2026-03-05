@@ -538,7 +538,7 @@ const filteredOfficialRuneStones = computed(() => {
 async function loadOfficialRuneStones() {
   officialRsLoading.value = true
   try {
-    const res = await getMyRuneStonesApi({ pageSize: 999 })
+    const res = await getMyRuneStonesApi({ pageSize: 1000 })
     officialRuneStones.value = (res.data.data?.list || []).filter(
       rs => !rs.equippedBy && !rs.listedOnMarket
     )
