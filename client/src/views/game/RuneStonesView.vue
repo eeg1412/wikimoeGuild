@@ -74,10 +74,13 @@
     </div>
 
     <!-- 批量操作栏 -->
-    <div
-      v-if="batchMode && selectedIds.size > 0"
-      class="flex justify-center gap-2 mb-4 flex-wrap"
-    >
+    <div v-if="batchMode" class="flex justify-center gap-2 mb-4 flex-wrap">
+      <!-- 已选择 -->
+      <div>
+        <span class="text-sm text-gray-500 dark:text-gray-400">
+          已选择 {{ selectedIds.size }} 个符文石
+        </span>
+      </div>
       <el-button
         type="danger"
         size="small"
@@ -87,7 +90,7 @@
       >
         🔥 批量分解 ({{ selectedIds.size }})
       </el-button>
-      <el-button size="small" @click="handleSelectAll">
+      <el-button size="small" @click="handleSelectAll" class="ml-0!">
         {{ isAllSelected ? '取消全选' : '全选当页' }}
       </el-button>
     </div>
@@ -106,32 +109,37 @@
         <!-- <el-icon :size="48" class="mb-3"><Diamond /></el-icon> -->
         <p>暂无符文石</p>
       </div>
-
-      <div v-else class="space-y-3">
-        <div
-          v-for="rs in runeStones"
-          :key="rs._id"
-          class="rpg-card rounded-xl p-4"
-          :class="{ 'ring-2 ring-yellow-400': selectedIds.has(rs._id) }"
-          @click="handleRuneStoneCardClick(rs)"
+      <!-- @click="handleRuneStoneCardClick(rs)"
           @mousedown="handleRuneStoneLongPressStart(rs, $event)"
           @mouseup="handleLongPressEnd"
           @mouseleave="handleLongPressEnd"
           @touchstart.passive="handleRuneStoneLongPressStart(rs, $event)"
           @touchend="handleLongPressEnd"
-          @touchcancel="handleLongPressEnd"
+          @touchcancel="handleLongPressEnd" -->
+      <div v-else class="space-y-3">
+        <div
+          v-for="rs in runeStones"
+          :key="rs._id"
+          class="rpg-card rounded-xl p-4"
+          :class="{
+            'ring-2 ring-yellow-400': selectedIds.has(rs._id),
+            'cursor-pointer': batchMode
+          }"
+          @click="handleRuneStoneCardClick(rs)"
         >
-          <!-- 批量选择复选框 -->
-          <div v-if="batchMode" class="flex justify-end mb-1" @click.stop>
-            <el-checkbox
-              :model-value="selectedIds.has(rs._id)"
-              size="small"
-              @change="handleToggleSelect(rs._id)"
-            />
-          </div>
           <!-- 顶部：稀有度 + 等级 + 状态 -->
           <div class="flex items-center justify-between mb-2">
+            <!-- 批量选择复选框 -->
+
             <div class="flex items-center gap-3">
+              <div v-if="batchMode" class="flex justify-end mb-1">
+                <el-checkbox
+                  :model-value="selectedIds.has(rs._id)"
+                  size="small"
+                  @change="handleToggleSelect(rs._id)"
+                  @click.stop
+                />
+              </div>
               <div
                 class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
                 :class="rarityBgClass(rs.rarity)"
@@ -163,18 +171,18 @@
               </span>
               <span
                 class="text-gray-400 cursor-pointer select-none"
-                @click="toggleExpand(rs._id)"
+                @click.stop="toggleExpand(rs._id)"
               >
                 {{ expandedIds.has(rs._id) ? '▲' : '▼' }}
               </span>
             </div>
           </div>
           <!-- 可收缩的详细信息 -->
-          <div v-if="expandedIds.has(rs._id)" class="mt-2">
+          <div v-if="expandedIds.has(rs._id)" class="mt-2" @click.stop>
             <RuneStoneInfoCard :rune-stone="rs" />
           </div>
           <!-- 内联操作按钮 -->
-          <div v-if="!rs.listedOnMarket" class="flex gap-2 mt-2">
+          <div v-if="!rs.listedOnMarket && !batchMode" class="flex gap-2 mt-2">
             <el-button
               v-if="!rs.equippedBy"
               type="danger"
@@ -182,7 +190,7 @@
               class="flex-1"
               :loading="decomposeLoadingId === rs._id"
               :disabled="!!decomposeLoadingId || !!upgradeLoadingId"
-              @click="handleInlineDecompose(rs)"
+              @click.stop="handleInlineDecompose(rs)"
             >
               分解 (+{{ getDecomposeFragments(rs) }}碎片)
             </el-button>
@@ -192,19 +200,19 @@
               class="flex-1"
               :loading="upgradeLoadingId === rs._id"
               :disabled="!!upgradeLoadingId || !!decomposeLoadingId"
-              @click="handleInlineUpgrade(rs)"
+              @click.stop="handleInlineUpgrade(rs)"
             >
               升级 ({{ getUpgradeCost(rs) }}碎片)
             </el-button>
           </div>
           <p
-            v-if="rs.equippedBy && !rs.listedOnMarket"
+            v-if="rs.equippedBy && !rs.listedOnMarket && !batchMode"
             class="text-center text-xs text-gray-400 mt-1"
           >
             已装备中，分解需先卸下
           </p>
           <p
-            v-if="rs.listedOnMarket"
+            v-if="rs.listedOnMarket && !batchMode"
             class="text-center text-xs text-orange-400 mt-1"
           >
             出售中，不可分解或升级
@@ -640,6 +648,8 @@ function handleListedFilterChange() {
 }
 
 async function fetchRuneStones() {
+  // 翻页或重新请求时释放选中的符文石
+  selectedIds.value = new Set()
   loading.value = true
   try {
     const params = {
@@ -726,6 +736,7 @@ async function handleBatchDecompose() {
     )
     selectedIds.value = new Set()
     batchMode.value = false
+    runeStonePageNum.value = 1
     await nextTick()
     await fetchRuneStones()
   } catch {
