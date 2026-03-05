@@ -310,6 +310,11 @@
               <div
                 class="cutin-avatar-wrap"
                 :class="`cutin-avatar-wrap--${runeCutInData.runeStoneRarity}`"
+                :style="{
+                  borderColor: getElementColor(
+                    unitState.get(runeCutInData.casterId)?.element
+                  )
+                }"
               >
                 <GameAdventurerAvatar
                   :adventurer="{
@@ -373,6 +378,11 @@
                       <div
                         class="cutin-target-avatar-wrap"
                         :class="{ 'cutin-target--ally': tgt.isTargetAlly }"
+                        :style="{
+                          borderColor: getElementColor(
+                            unitState.get(tgt.target)?.element
+                          )
+                        }"
                       >
                         <GameAdventurerAvatar
                           :adventurer="{
@@ -820,6 +830,7 @@ const unitDelayMap = ref(new Map())
 const currentLogIndex = ref(0)
 const actingUnitIds = ref(new Set())
 const hitUnitIds = ref(new Set())
+const counterHitUnitIds = ref(new Set())
 const buffedUnitIds = ref(new Set())
 const debuffedUnitIds = ref(new Set())
 const healedUnitIds = ref(new Set())
@@ -1039,6 +1050,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
   const map = unitState.value
   const newActing = new Set()
   const newHit = new Set()
+  const newCounterHit = new Set()
   const newBuffed = new Set()
   const newDebuffed = new Set()
   const newHealed = new Set()
@@ -1059,6 +1071,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
         }
         if (target.currentSan <= 0) target.alive = false
         newHit.add(entry.target)
+        if (entry.elementCounter) newCounterHit.add(entry.target)
         const koText = target.currentSan <= 0 ? ' 💀' : ''
         const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
         const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
@@ -1093,7 +1106,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
 
     if (entry.skillType === 'sanRecover') {
       const target = map.get(entry.target)
-      if (target) {
+      if (target && target.alive) {
         target.currentSan = entry.targetRemainSan
         needRefreshState = true
       }
@@ -1144,6 +1157,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
 
   actingUnitIds.value = newActing
   hitUnitIds.value = newHit
+  counterHitUnitIds.value = newCounterHit
   buffedUnitIds.value = newBuffed
   debuffedUnitIds.value = newDebuffed
   healedUnitIds.value = newHealed
@@ -1161,6 +1175,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
   hitClearTimer = setTimeout(() => {
     actingUnitIds.value = new Set()
     hitUnitIds.value = new Set()
+    counterHitUnitIds.value = new Set()
     buffedUnitIds.value = new Set()
     debuffedUnitIds.value = new Set()
     healedUnitIds.value = new Set()
@@ -1211,7 +1226,12 @@ function cellClass(unit) {
   if (!unit) return 'cell-empty'
   const cls = unit.alive ? 'cell-alive' : 'cell-dead'
   const acting = isActing(unit.id) ? ' cell-acting' : ''
-  const hit = isHit(unit.id) ? ' cell-hit' : ''
+  const isCounterHit = counterHitUnitIds.value.has(unit.id)
+  const hit = isCounterHit
+    ? ' cell-hit-counter'
+    : isHit(unit.id)
+      ? ' cell-hit'
+      : ''
   const buffed = buffedUnitIds.value.has(unit.id) ? ' cell-buffed' : ''
   const debuffed = debuffedUnitIds.value.has(unit.id) ? ' cell-debuffed' : ''
   const healed = healedUnitIds.value.has(unit.id) ? ' cell-healed' : ''
@@ -1220,7 +1240,7 @@ function cellClass(unit) {
 }
 
 function hpPercent(unit) {
-  if (!unit || unit.maxSan <= 0) return 0
+  if (!unit || unit.maxSan <= 0 || !unit.alive) return 0
   return Math.max(0, Math.round((unit.currentSan / unit.maxSan) * 100))
 }
 
@@ -1243,6 +1263,8 @@ function logEntryClass(entry) {
     if (entry.skillType === 'debuff') return 'log-debuff'
     if (entry.skillType === 'changeOrder')
       return entry.success ? 'log-move' : 'log-skill'
+    if (entry.skillType === 'attack')
+      return entry.elementCounter ? 'log-attack-counter' : 'log-skill'
     return 'log-skill'
   }
   return ''
@@ -1269,8 +1291,11 @@ function formatLogEntry(entry) {
     const casterLabel = getSideLabel(entry.caster)
     const targetLabel = entry.target ? getSideLabel(entry.target) : ''
     switch (entry.skillType) {
-      case 'attack':
-        return `✨ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害`
+      case 'attack': {
+        const counter = entry.elementCounter ? ' [克制!]' : ''
+        const ko = entry.targetRemainSan <= 0 ? ' 💀击倒！' : ` (剩余${entry.targetRemainSan})`
+        return `✨ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害${counter}${ko}`
+      }
       case 'buff':
         const buffLabel = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
         return `⬆️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${buffLabel}+${entry.value}`
@@ -1326,6 +1351,7 @@ function processLogEntry(entry) {
     // 之前已经 apply 过了，这里确保状态彻底干净
   }
   hitUnitIds.value = new Set()
+  counterHitUnitIds.value = new Set()
   buffedUnitIds.value = new Set()
   debuffedUnitIds.value = new Set()
   healedUnitIds.value = new Set()
@@ -1378,6 +1404,7 @@ function processLogEntry(entry) {
       }
       if (defender.currentSan <= 0) defender.alive = false
       hitUnitIds.value = new Set([entry.defender])
+      if (entry.elementCounter) counterHitUnitIds.value = new Set([entry.defender])
       // 浮动伤害数字
       const koText = defender.currentSan <= 0 ? ' 💀' : ''
       addEffect(entry.defender, `-${entry.damage}${koText}`, 'damage')
@@ -1395,6 +1422,7 @@ function processLogEntry(entry) {
         }
         if (target.currentSan <= 0) target.alive = false
         hitUnitIds.value = new Set([entry.target])
+        if (entry.elementCounter) counterHitUnitIds.value = new Set([entry.target])
         const koText = target.currentSan <= 0 ? ' 💀' : ''
         const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
         const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
@@ -1426,7 +1454,7 @@ function processLogEntry(entry) {
     }
     if (entry.skillType === 'sanRecover') {
       const target = map.get(entry.target)
-      if (target) {
+      if (target && target.alive) {
         target.currentSan = entry.targetRemainSan
         needRefreshState = true
       }
@@ -1488,6 +1516,7 @@ function processLogEntry(entry) {
   hitClearTimer = setTimeout(() => {
     actingUnitIds.value = new Set()
     hitUnitIds.value = new Set()
+    counterHitUnitIds.value = new Set()
     buffedUnitIds.value = new Set()
     debuffedUnitIds.value = new Set()
     healedUnitIds.value = new Set()
@@ -1520,6 +1549,7 @@ function batchProcessCurrentRound() {
   const map = unitState.value
   const newActing = new Set()
   const newHit = new Set()
+  const newCounterHit = new Set()
   const newBuffed = new Set()
   const newDebuffed = new Set()
   const newHealed = new Set()
@@ -1563,6 +1593,7 @@ function batchProcessCurrentRound() {
         }
         if (defender.currentSan <= 0) defender.alive = false
         newHit.add(entry.defender)
+        if (entry.elementCounter) newCounterHit.add(entry.defender)
         const koText = defender.currentSan <= 0 ? ' 💀' : ''
         addEffect(entry.defender, `-${entry.damage}${koText}`, 'damage')
         needRefreshState = true
@@ -1579,6 +1610,7 @@ function batchProcessCurrentRound() {
             target.currentSp = entry.targetCurrentSp
           if (target.currentSan <= 0) target.alive = false
           newHit.add(entry.target)
+          if (entry.elementCounter) newCounterHit.add(entry.target)
           const koText = target.currentSan <= 0 ? ' 💀' : ''
           const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
           const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
@@ -1610,7 +1642,7 @@ function batchProcessCurrentRound() {
       }
       if (entry.skillType === 'sanRecover') {
         const target = map.get(entry.target)
-        if (target) {
+        if (target && target.alive) {
           target.currentSan = entry.targetRemainSan
           needRefreshState = true
         }
@@ -1657,6 +1689,7 @@ function batchProcessCurrentRound() {
   // 一次性将所有同时出手单位的视觉状态写入（同时金边 / 同时红边）
   actingUnitIds.value = newActing
   hitUnitIds.value = newHit
+  counterHitUnitIds.value = newCounterHit
   buffedUnitIds.value = newBuffed
   debuffedUnitIds.value = newDebuffed
   healedUnitIds.value = newHealed
@@ -1673,6 +1706,7 @@ function batchProcessCurrentRound() {
     // 所有视觉特效同时消失
     actingUnitIds.value = new Set()
     hitUnitIds.value = new Set()
+    counterHitUnitIds.value = new Set()
     buffedUnitIds.value = new Set()
     debuffedUnitIds.value = new Set()
     healedUnitIds.value = new Set()
@@ -1984,6 +2018,12 @@ onUnmounted(() => {
   animation: hitShake 0.3s ease-in-out;
 }
 
+.cell-hit-counter {
+  border-color: rgba(255, 80, 0, 1) !important;
+  box-shadow: 0 0 18px rgba(255, 100, 30, 0.9);
+  animation: counterHitShake 0.5s ease-in-out;
+}
+
 @keyframes actPulse {
   0%,
   100% {
@@ -2015,6 +2055,33 @@ onUnmounted(() => {
   }
   100% {
     transform: translateX(0);
+  }
+}
+
+@keyframes counterHitShake {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  15% {
+    transform: translateX(-6px) rotate(-4deg);
+  }
+  30% {
+    transform: translateX(6px) rotate(4deg);
+  }
+  45% {
+    transform: translateX(-5px) rotate(-3deg);
+  }
+  60% {
+    transform: translateX(4px) rotate(2deg);
+  }
+  75% {
+    transform: translateX(-2px) rotate(-1deg);
+  }
+  90% {
+    transform: translateX(1px) rotate(0.5deg);
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
   }
 }
 

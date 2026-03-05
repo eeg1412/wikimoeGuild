@@ -528,6 +528,9 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
           target: target.id,
           targetName: target.name,
           skillElement: skill.element,
+          elementCounter: !!(
+            skill.element && isElementCounter(skill.element, target.element)
+          ),
           damage,
           targetRemainSan: target.currentSan,
           targetSpGain,
