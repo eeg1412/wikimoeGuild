@@ -767,8 +767,14 @@ export async function challengeOpponent(accountId, registrationId) {
 
     // 计算竞技点变动
     let pointsChange = 0
-    const pointsDiff = Math.abs(myReg.points - opponentPoints)
-    const changeAmount = Math.min(Math.max(pointsDiff, 10), 100)
+    // 对方的竞技点如果比自己低 那么加成的竞技点应该是最小值
+    let changeAmount = 25 // 基础/默认变动
+    if (opponentPoints < myReg.points) {
+      changeAmount = 10
+    } else {
+      const pointsDiff = Math.abs(myReg.points - opponentPoints)
+      changeAmount = Math.min(Math.max(pointsDiff, 10), 100)
+    }
 
     if (battleResult.winner === 'attacker') {
       pointsChange = changeAmount
@@ -1002,10 +1008,56 @@ function generateNPCFormation(playerGrid, playerPoints = 500) {
 }
 
 /**
+ * 将综合等级分配到4个属性（攻击/防御/速度/SAN），每个属性±10%浮动。
+ * 调整后保证各属性之和 = comprehensiveLevel，每个属性最小为1。
+ * @param {number} comprehensiveLevel
+ * @returns {number[]} [attackLevel, defenseLevel, speedLevel, SANLevel]
+ */
+function distributeComprehensiveLevel(comprehensiveLevel) {
+  const n = 4
+  const idealBase = comprehensiveLevel / n
+  const attrs = []
+  for (let i = 0; i < n; i++) {
+    // ±10% 随机浮动，最小1
+    const factor = 0.9 + Math.random() * 0.2
+    attrs.push(Math.max(1, Math.floor(idealBase * factor)))
+  }
+  // 找补：调整属性之和等于 comprehensiveLevel
+  let diff = comprehensiveLevel - attrs.reduce((a, b) => a + b, 0)
+  if (diff > 0) {
+    // 需要补充若干点，随机分配
+    for (let i = 0; i < diff; i++) {
+      attrs[Math.floor(Math.random() * n)]++
+    }
+  } else if (diff < 0) {
+    // 需要扣减若干点，随机选取但保持 >= 1
+    let remaining = -diff
+    let attempts = 0
+    while (remaining > 0 && attempts < 10000) {
+      const idx = Math.floor(Math.random() * n)
+      if (attrs[idx] > 1) {
+        attrs[idx]--
+        remaining--
+      }
+      attempts++
+    }
+    // 兜底处理（极端情况下综合等级 < 4）
+    if (remaining > 0) {
+      for (let i = 0; i < n && remaining > 0; i++) {
+        const canRemove = Math.min(attrs[i] - 1, remaining)
+        attrs[i] -= canRemove
+        remaining -= canRemove
+      }
+    }
+  }
+  return attrs
+}
+
+/**
  * 生成高段位NPC阵容（竞技点 >= 2000）
- * 固定25人，全员传说级符文石
- * 基础等级30，随竞技点平稳增长：level = 30 + floor((points - 2000) * 0.05)
- * 等级浮动 ±2
+ * 固定25人，全员传说级符文石。
+ * 每名NPC冒险家的综合等级 = 30 + floor((竞技点 - 2000) × 0.05)，浮动 ±2。
+ * 综合等级按 ±10% 浮动后随机分配到4个属性，最终保证属性之和 = 综合等级，各属性最小为1。
  */
 function generateHighTierNPCFormation(
   playerPoints,
@@ -1013,13 +1065,19 @@ function generateHighTierNPCFormation(
   allBuffTypes,
   allPreferences
 ) {
-  const baseLevel = 30 + Math.floor((playerPoints - 2000) * 0.05)
+  const baseComprehensiveLevel = 30 + Math.floor((playerPoints - 2000) * 0.05)
   const demons = []
 
   for (let i = 0; i < 25; i++) {
-    // 每个NPC在baseLevel基础上 ±2 浮动
-    const level = Math.max(1, baseLevel + Math.floor(Math.random() * 5) - 2)
-    const runeStone = generateHighTierNPCRuneStone(level)
+    // 每个NPC综合等级在基础值上 ±2 浮动，最小为1
+    const comprehensiveLevel = Math.max(
+      1,
+      baseComprehensiveLevel + Math.floor(Math.random() * 5) - 2
+    )
+    // 将综合等级分配到4个属性
+    const [attackLevel, defenseLevel, speedLevel, SANLevel] =
+      distributeComprehensiveLevel(comprehensiveLevel)
+    const runeStone = generateHighTierNPCRuneStone(comprehensiveLevel)
 
     demons.push({
       _id: `npc_adv_${i}`,
@@ -1030,11 +1088,11 @@ function generateHighTierNPCFormation(
       attackPreference:
         allPreferences[Math.floor(Math.random() * allPreferences.length)].value,
       defaultAvatarId: Math.floor(Math.random() * 10) + 1,
-      attackLevel: level,
-      defenseLevel: level,
-      speedLevel: level,
-      SANLevel: level,
-      comprehensiveLevel: level * 4 - 3,
+      attackLevel,
+      defenseLevel,
+      speedLevel,
+      SANLevel,
+      comprehensiveLevel,
       runeStone,
       isDemon: false
     })
@@ -1056,11 +1114,12 @@ function generateHighTierNPCFormation(
 /**
  * 生成高段位NPC传说级符文石（竞技点 >= 2000 专用）
  * 传说级：3主动技能 + 6被动增益（等级21-30）
+ * @param {number} comprehensiveLevel - 冒险家综合等级，符文石等级与其一致
  */
-function generateHighTierNPCRuneStone(adventurerLevel) {
+function generateHighTierNPCRuneStone(comprehensiveLevel) {
   const allSkills = runeStoneActiveSkillDataBase()
   const BUFF_TYPES = ['attack', 'defense', 'speed', 'san']
-  const runeLevel = Math.max(1, adventurerLevel)
+  const runeLevel = Math.max(1, comprehensiveLevel)
 
   // 传说级固定配置
   const shuffled = [...allSkills].sort(() => Math.random() - 0.5)

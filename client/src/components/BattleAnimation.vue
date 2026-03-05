@@ -98,10 +98,11 @@
                   </div>
                   <!-- 浮动效果指示器 -->
                   <div
-                    v-for="effect in getEffects(unit.id)"
+                    v-for="(effect, eIdx) in getEffects(unit.id)"
                     :key="effect.id"
                     class="effect-float"
                     :class="'effect-' + effect.type"
+                    :style="{ '--effect-idx': eIdx }"
                   >
                     {{ effect.text }}
                   </div>
@@ -193,10 +194,11 @@
                   </div>
                   <!-- 浮动效果指示器 -->
                   <div
-                    v-for="effect in getEffects(unit.id)"
+                    v-for="(effect, eIdx) in getEffects(unit.id)"
                     :key="effect.id"
                     class="effect-float"
                     :class="'effect-' + effect.type"
+                    :style="{ '--effect-idx': eIdx }"
                   >
                     {{ effect.text }}
                   </div>
@@ -996,6 +998,17 @@ function hideCutInEffect() {
   runeCutInData.value = null
 }
 
+/**
+ * 检查战斗是否已分出胜负（攻击方全灭 或 防守方全灭）
+ * 用于在攻击结算后、cut-in 触发前进行判断，若已决出胜负则跳过 cut-in 演出
+ */
+function isBattleDecided() {
+  const units = [...unitState.value.values()]
+  const anyAttackerAlive = units.some(u => isAllyId(u.id) && u.alive)
+  const anyDefenderAlive = units.some(u => !isAllyId(u.id) && u.alive)
+  return !anyAttackerAlive || !anyDefenderAlive
+}
+
 // 倍速控制：基础间隔450ms（降低3倍，原来150ms）
 const BASE_INTERVAL = 450
 const speedOptions = [1, 2, 3]
@@ -1513,12 +1526,17 @@ function batchProcessCurrentRound() {
     }
 
     if (pendingCutIns.length > 0) {
-      // 金边消失后再播 cut-in，消除叠加导致的卡顿感
-      // 每个 cut-in 播放前会在 processNextCutIn 里单独更新该施法者 SP
-      for (const ra of pendingCutIns) {
-        enqueueCutIn(ra)
+      // 若战斗已分出胜负（一方全灭），跳过 cut-in 演出，直接继续动画
+      if (isBattleDecided()) {
+        startAnimation()
+      } else {
+        // 金边消失后再播 cut-in，消除叠加导致的卡顿感
+        // 每个 cut-in 播放前会在 processNextCutIn 里单独更新该施法者 SP
+        for (const ra of pendingCutIns) {
+          enqueueCutIn(ra)
+        }
+        // processNextCutIn 由 enqueueCutIn 自动触发，结束后调 startAnimation
       }
-      // processNextCutIn 由 enqueueCutIn 自动触发，结束后调 startAnimation
     } else {
       // 无 cut-in：直接恢复动画
       startAnimation()
@@ -2052,7 +2070,7 @@ onUnmounted(() => {
 /* 浮动效果指示器 */
 .effect-float {
   position: absolute;
-  top: 0;
+  top: calc(var(--effect-idx, 0) * -18px);
   left: 50%;
   transform: translateX(-50%);
   pointer-events: none;

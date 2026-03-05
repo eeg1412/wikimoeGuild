@@ -47,7 +47,7 @@ const SP_GAIN_ON_HIT_MISSING_SAN_SCALE = 120
 const COUNTER_DAMAGE_RATE = 15000 // 150%, 以10000为基数
 
 const LEVEL_SUPPRESSION = {
-  startDiff: 4,
+  startDiff: 9,
   attackLinear: 0.006,
   attackQuadratic: 0.00032,
   defenseLinear: 0.0025,
@@ -947,7 +947,12 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
       }
 
       // SP达到阈值时结算符文石主动效果（攻击后触发）
-      tryTriggerRuneStoneSkill(unit, allUnits, skillMap, 'after', battleLog)
+      // 仅在敌方仍有存活单位时触发，避免战斗已分出胜负后继续播放 cut-in 演出
+      const enemySideAfter =
+        unit.side === 'attacker' ? defenderUnits : attackerUnits
+      if (enemySideAfter.some(u => u.alive)) {
+        tryTriggerRuneStoneSkill(unit, allUnits, skillMap, 'after', battleLog)
+      }
 
       // 增加延迟值（重新计算包含临时速度增减益后的有效延迟）
       const currentSpeed = Math.max(1, unit.speed + (unit.tempBuffs.speed || 0))

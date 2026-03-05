@@ -442,7 +442,9 @@ export async function digCell(accountId, mineId, row, col, formationSlot) {
         defenderUnits: battleResult.defenderUnits
       }
 
-      if (battleResult.winner === 'attacker') {
+      // 矿场守卫战必须全歼敌方才算胜利，HP 比例胜利不算
+      const allMinDefendersDead = !battleResult.defenderUnits.some(u => u.alive)
+      if (battleResult.winner === 'attacker' && allMinDefendersDead) {
         // 胜利
         cell.revealed = true
         cell.exploredBy = accountId
@@ -498,12 +500,16 @@ export async function digCell(accountId, mineId, row, col, formationSlot) {
           result.mineDepleted = true
         }
       } else {
-        // 失败：标记为已显示但未攻克
+        // 失败或未全歼：标记为已显示但未攻克
         cell.revealed = true
         cell.exploredBy = accountId
         cell.exploredByGuildName = playerInfo.guildName
         cell.challengeDefeated = false
         result.challengeFailed = true
+        // 区分「战斗获胜但未全歼」和「直接败北」，前端用于显示不同的提示
+        if (battleResult.winner === 'attacker') {
+          result.partialVictory = true
+        }
       }
     }
 
@@ -634,7 +640,7 @@ async function awardOwnerRevenue(
 
 /**
  * 生成矿场军团（同等级迷宫军团逻辑）
- * 等级增强系数: 1 + level * 0.002（每级+0.2%）
+ * 等级增强系数: 1 + level * 0.001（每级+0.1%）
  */
 function generateMineLegion(level) {
   const ELEMENTS = ['1', '2', '3', '4', '5', '6']
@@ -643,7 +649,7 @@ function generateMineLegion(level) {
   const allSkills = runeStoneActiveSkillDataBase()
   const DEMON_AVATAR_COUNT = 3
   // 等级增强系数：基于矿场等级的小幅增强曲线
-  const levelBoostFactor = 1 + level * 0.002
+  const levelBoostFactor = 1 + level * 0.001
 
   const demons = []
 

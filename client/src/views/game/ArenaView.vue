@@ -248,6 +248,18 @@
               <span class="animate-spin inline-block text-2xl">⏳</span>
             </div>
             <template v-else>
+              <!-- 我方战斗力展示 -->
+              <div
+                v-if="arenaCombatPower > 0"
+                class="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm flex items-center justify-between"
+              >
+                <span class="text-gray-500 dark:text-gray-400"
+                  >🏰 我方竞技场战斗力</span
+                >
+                <span class="font-mono font-bold text-blue-500">{{
+                  arenaCombatPower
+                }}</span>
+              </div>
               <div
                 v-if="matchList.length === 0"
                 class="text-center py-8 text-gray-400 text-sm"
@@ -296,6 +308,25 @@
                           class="text-xs text-orange-400 font-mono"
                         >
                           ⚔️ 战斗力: {{ opponent.combatPower }}
+                          <template v-if="arenaCombatPower > 0">
+                            <span
+                              v-if="arenaCombatPower > opponent.combatPower"
+                              class="text-green-500 ml-1"
+                              >↑+{{
+                                arenaCombatPower - opponent.combatPower
+                              }}</span
+                            >
+                            <span
+                              v-else-if="
+                                arenaCombatPower < opponent.combatPower
+                              "
+                              class="text-red-400 ml-1"
+                              >↓{{
+                                arenaCombatPower - opponent.combatPower
+                              }}</span
+                            >
+                            <span v-else class="text-gray-400 ml-1">持平</span>
+                          </template>
                         </p>
                       </div>
                     </div>
@@ -1430,6 +1461,8 @@ function handleSwitchArenaTab(tab) {
   arenaTab.value = tab
   if (tab === 'match') {
     fetchMatchList()
+    // 加载竞技场阵容，以便显示我方战斗力
+    fetchArenaFormation()
   } else if (tab === 'formation') {
     fetchArenaFormation()
   } else if (tab === 'leaderboard') {
@@ -1626,6 +1659,8 @@ onMounted(async () => {
   await Promise.all([fetchArenaInfo(), fetchFormations()])
   if (arenaInfo.value.registration) {
     fetchMatchList()
+    // 同时加载竞技场阵容，以便在匹配界面显示己方战斗力
+    fetchArenaFormation()
   }
 })
 

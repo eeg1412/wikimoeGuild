@@ -83,13 +83,13 @@ export function getDungeonLevelBonus(dungeonLevel, bonusBase = 100) {
 
 /**
  * 计算迷宫等级产出增益的公会等级上限
- * 不能超过 Math.floor(基数 × (1 + 0.5 × (公会等级 * 10 + 19) / 100))
+ * 不能超过 Math.floor(基数 × (1 + 0.5 × (公会等级 * 10 + 99) / 100))
  * @param {number} guildLevel - 公会等级
  * @param {number} bonusBase - 基数（默认100）
  * @returns {number}
  */
 export function getDungeonLevelBonusCap(guildLevel, bonusBase = 100) {
-  return Math.floor(bonusBase * (1 + (0.5 * (guildLevel * 10 + 19)) / 100))
+  return Math.floor(bonusBase * (1 + (0.5 * (guildLevel * 10 + 99)) / 100))
 }
 
 /**

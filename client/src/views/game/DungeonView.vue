@@ -294,9 +294,16 @@
             <span class="animate-spin inline-block text-2xl">⏳</span>
           </div>
           <div v-else-if="legionPreview">
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-              敌方军团（{{ legionPreview.demons?.length || 0 }} 只恶魔）
-            </p>
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                敌方军团（{{ legionPreview.demons?.length || 0 }} 只恶魔）
+              </p>
+              <!-- <p
+                class="text-sm font-semibold text-orange-500 dark:text-orange-400"
+              >
+                ⚔️ 敌方: {{ legionCombatPower }}
+              </p> -->
+            </div>
             <div class="grid grid-cols-5 gap-1 overflow-y-auto">
               <div
                 v-for="(demon, idx) in legionPreview.demons"
@@ -333,6 +340,51 @@
                 :value="f.slot"
               />
             </el-select>
+            <!-- 战斗力对比 -->
+            <div
+              class="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm h-[64px] flex flex-col justify-center overflow-hidden"
+            >
+              <div
+                v-if="selectedFormationDetailLoading"
+                class="text-center text-gray-400"
+              >
+                计算战斗力...
+              </div>
+              <template v-else-if="myFormationCombatPower > 0">
+                <div class="flex justify-between items-center px-1">
+                  <span class="text-blue-500 font-mono font-bold"
+                    >🏰 我方: {{ myFormationCombatPower }}</span
+                  >
+                  <span class="text-orange-500 font-mono font-bold"
+                    >😈 敌方: {{ legionCombatPower }}</span
+                  >
+                </div>
+                <div class="mt-1 text-center">
+                  <span
+                    v-if="myFormationCombatPower > legionCombatPower"
+                    class="text-green-500 text-sm font-semibold"
+                  >
+                    ✅ 我方战斗力领先 +{{
+                      myFormationCombatPower - legionCombatPower
+                    }}
+                  </span>
+                  <span
+                    v-else-if="myFormationCombatPower < legionCombatPower"
+                    class="text-red-400 text-sm font-semibold"
+                  >
+                    ⚠️ 敌方战斗力领先 +{{
+                      legionCombatPower - myFormationCombatPower
+                    }}
+                  </span>
+                  <span v-else class="text-gray-400 text-sm font-semibold"
+                    >战斗力持平</span
+                  >
+                </div>
+              </template>
+              <div v-else class="text-center text-gray-400 text-sm">
+                请选择出战阵容
+              </div>
+            </div>
           </div>
         </div>
         <template #footer>
@@ -383,16 +435,22 @@
           <p class="text-sm text-gray-500">
             战斗回合数：{{ battleResult.battleResult?.rounds || 0 }}
           </p>
-          <div
-            v-if="battleResultDisplay === 'win'"
-            class="text-sm text-green-400"
-          >
+          <div v-if="battleResult.upgraded" class="text-sm text-green-400">
             <p>迷宫等级提升！</p>
             <p
               v-if="battleResult.droppedRuneStone"
               class="text-yellow-400 mt-1"
             >
               🎁 获得传说符文石！
+            </p>
+          </div>
+          <div
+            v-else-if="battleResultDisplay === 'win'"
+            class="text-sm text-yellow-500"
+          >
+            <p>战斗获胜，但未能全歼敌方军团</p>
+            <p class="text-xs text-gray-400 mt-1">
+              需要将所有恶魔全部消灭才能升级迷宫
             </p>
           </div>
         </div>
@@ -464,7 +522,10 @@ import {
   challengeLegionApi,
   selectDungeonLevelApi
 } from '@/api/game/dungeon.js'
-import { getMyFormationsApi } from '@/api/game/formation.js'
+import {
+  getMyFormationsApi,
+  getFormationDetailApi
+} from '@/api/game/formation.js'
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
@@ -474,6 +535,7 @@ import {
   getDungeonLevelBonus,
   getDungeonLevelBonusCap
 } from 'shared/utils/guildLevelUtils.js'
+import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
@@ -828,8 +890,58 @@ async function handleSwitch() {
 const { visible: showLegionDialog } = useDialogRoute('legion')
 const legionPreviewLoading = ref(false)
 const legionPreview = ref(null)
+
+// 军团预览总战斗力
+const legionCombatPower = computed(() => {
+  if (!legionPreview.value?.demons?.length) return 0
+  return legionPreview.value.demons.reduce(
+    (total, demon) =>
+      total + calculateCombatPower(demon, demon.runeStone || null),
+    0
+  )
+})
+
+// 所选阵容的详细数据（含冰险家属性）及其战斗力
+const selectedFormationDetail = ref(null)
+const selectedFormationDetailLoading = ref(false)
+
+const myFormationCombatPower = computed(() => {
+  if (!selectedFormationDetail.value?.grid) return 0
+  let total = 0
+  for (const row of selectedFormationDetail.value.grid) {
+    for (const cell of row) {
+      if (cell && typeof cell === 'object' && cell._id) {
+        total += calculateCombatPower(cell, cell.runeStone || null)
+      }
+    }
+  }
+  return total
+})
+
 const myFormations = ref([])
 const selectedFormationSlot = ref(null)
+
+watch(
+  () => selectedFormationSlot.value,
+  async slot => {
+    if (!slot) {
+      selectedFormationDetail.value = null
+      return
+    }
+    const formation = myFormations.value.find(f => f.slot === slot)
+    if (!formation) return
+    selectedFormationDetailLoading.value = true
+    try {
+      const res = await getFormationDetailApi(formation._id)
+      selectedFormationDetail.value = res.data.data || null
+    } catch {
+      selectedFormationDetail.value = null
+    } finally {
+      selectedFormationDetailLoading.value = false
+    }
+  },
+  { immediate: true }
+)
 const challengeLoading = ref(false)
 const { visible: battleResultVisible } = useDialogRoute('battleResult')
 const battleResult = ref(null)
@@ -903,7 +1015,7 @@ async function handleChallenge() {
 function onBattleAnimationDone() {
   showBattleAnimation.value = false
   battleResultVisible.value = true
-  if (battleResult.value?.battleResult?.winner === 'attacker') {
+  if (battleResult.value?.upgraded) {
     ElMessage.success('胜利！迷宫等级提升！')
     // 如果当前选择的符文石产出等级是升级前的最高等级，自动切换到新等级
     const newDungeonLevel = dungeonInfo.value?.dungeonsLevel || 1
@@ -912,6 +1024,8 @@ function onBattleAnimationDone() {
       // 同步服务端
       handleSelectLevel(newDungeonLevel)
     }
+  } else if (battleResult.value?.battleResult?.winner === 'attacker') {
+    ElMessage.warning('战斗获胜，但未能全歼敌方军团，迷宫等级未提升')
   }
 }
 

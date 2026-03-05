@@ -338,14 +338,21 @@
 
         <!-- 奖励区域结果 -->
         <template v-else-if="digResult.type === 'reward'">
-          <template v-if="digResult.battleResult?.winner === 'attacker'">
+          <template v-if="!digResult.challengeFailed && digResult.battleResult">
             <div class="text-4xl mb-2">🎉</div>
             <p class="text-green-500 font-bold text-lg">战斗胜利！</p>
           </template>
           <template v-else-if="digResult.challengeFailed">
-            <div class="text-4xl mb-2">😔</div>
-            <p class="text-red-500 font-bold">战斗失败</p>
-            <p class="text-sm text-gray-400">其他玩家可以继续挑战</p>
+            <template v-if="digResult.partialVictory">
+              <div class="text-4xl mb-2">⚠️</div>
+              <p class="text-yellow-500 font-bold">战斗获胜，但未能全歼守卫</p>
+              <p class="text-sm text-gray-400">需要消灭所有守卫才能获得奖励</p>
+            </template>
+            <template v-else>
+              <div class="text-4xl mb-2">😔</div>
+              <p class="text-red-500 font-bold">战斗失败</p>
+              <p class="text-sm text-gray-400">其他玩家可以继续挑战</p>
+            </template>
           </template>
         </template>
 

@@ -46,7 +46,7 @@ function generateSeed(accountId, dungeonLevel) {
  * 前10级：迷宫等级 数量的 等级为 迷宫等级×1 的恶魔
  * 前25级：迷宫等级 数量的 等级为 迷宫等级×1 的恶魔，必定携带1个随机传说级符文石
  * 后25级：25名恶魔，综合等级 = 迷宫等级，全员持有传说级符文石
- * 等级增强系数: 1 + level * 0.002（每级+0.2%）
+ * 等级增强系数: 1 + level * 0.001（每级+0.1%）
  */
 function generateLegionDemons(dungeonLevel, seededRandom) {
   const ELEMENTS = ['1', '2', '3', '4', '5', '6']
@@ -56,7 +56,7 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
   // 恶魔头像 1-3（demon目录下有3个）
   const DEMON_AVATAR_COUNT = 3
   // 等级增强系数：基于迷宫等级的小幅增强曲线
-  const levelBoostFactor = 1 + dungeonLevel * 0.002
+  const levelBoostFactor = 1 + dungeonLevel * 0.001
 
   const demons = []
   if (dungeonLevel <= 10) {
@@ -423,8 +423,9 @@ export async function challengeLegion(accountId, formationSlot) {
       droppedRuneStone: null
     }
 
-    // 胜利处理
-    if (battleResult.winner === 'attacker') {
+    // 胜利处理：必须全歼敌方军团才算通关，HP 比例胜利不算
+    const allDefendersDead = !battleResult.defenderUnits.some(u => u.alive)
+    if (battleResult.winner === 'attacker' && allDefendersDead) {
       // 升级地牢
       playerInfo.dungeonsLevel += 1
 
