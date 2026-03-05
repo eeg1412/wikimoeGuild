@@ -1,5 +1,14 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import GameAdventurer from '../../models/gameAdventurer.js'
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const CUSTOM_AVATAR_DIR = path.resolve(
+  __dirname,
+  '../../public/uploads/custom-adventurer-avatar'
+)
 
 /**
  * 冒险家列表（分页）
@@ -91,4 +100,36 @@ export async function rename(id, name) {
   adventurer.name = name
   await adventurer.save()
   return adventurer
+}
+
+/**
+ * 重置冒险家头像为默认
+ */
+export async function resetAvatar(id) {
+  const adventurer = await GameAdventurer.findById(id)
+  if (!adventurer) {
+    const err = new Error('冒险家不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  if (!adventurer.hasCustomAvatar) {
+    const err = new Error('该冒险家未设置自定义头像')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 删除自定义头像文件（若存在）
+  const avatarFilePath = path.join(CUSTOM_AVATAR_DIR, `${id}.webp`)
+  try {
+    await fs.promises.unlink(avatarFilePath)
+  } catch {
+    // 文件不存在时忽略错误
+  }
+
+  adventurer.hasCustomAvatar = false
+  adventurer.customAvatarUpdatedAt = null
+  await adventurer.save()
 }

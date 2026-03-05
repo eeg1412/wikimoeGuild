@@ -28,3 +28,16 @@ export async function rename(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * 重置冒险家头像为默认
+ */
+export async function resetAvatar(req, res, next) {
+  try {
+    const { id } = req.params
+    await gameAdventurerService.resetAvatar(id)
+    res.success(null, '头像已重置为默认')
+  } catch (error) {
+    next(error)
+  }
+}

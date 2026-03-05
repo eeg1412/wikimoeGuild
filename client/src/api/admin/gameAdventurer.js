@@ -13,3 +13,10 @@ export function listGameAdventurersApi(params) {
 export function renameGameAdventurerApi(id, data) {
   return adminRequest.put(`/game-adventurers/${id}/rename`, data)
 }
+
+/**
+ * 重置冒险家头像为默认
+ */
+export function resetAdventurerAvatarApi(id) {
+  return adminRequest.put(`/game-adventurers/${id}/reset-avatar`)
+}

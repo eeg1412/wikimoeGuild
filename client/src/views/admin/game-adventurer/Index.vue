@@ -4,7 +4,7 @@
     <div class="mb-4">
       <h2 class="text-xl font-semibold dark:text-gray-100">冒险家列表</h2>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        查看并管理所有冒险家信息，支持改名操作
+        查看并管理所有冒险家信息，支持改名、重置头像操作
       </p>
     </div>
 
@@ -52,7 +52,7 @@
                 class="w-10 h-10 rounded-full object-cover"
               />
               <span
-                class="absolute -top-1 -right-1 w-3 h-3 rotate-45 border border-white dark:border-gray-700 rounded-sm"
+                class="absolute top-1 -right-1 w-3 h-3 rotate-45 border border-white dark:border-gray-700 rounded-sm"
                 :style="{ backgroundColor: getElementColor(row.elements) }"
               />
             </div>
@@ -71,11 +71,11 @@
             </el-tag>
           </template>
         </ResponsiveTableColumn>
-        <ResponsiveTableColumn label="被动增益" min-width="200">
+        <!-- <ResponsiveTableColumn label="被动增益" min-width="200">
           <template #default="{ row }">
             {{ getPassiveBuffName(row.passiveBuffType) }}
           </template>
-        </ResponsiveTableColumn>
+        </ResponsiveTableColumn> -->
         <ResponsiveTableColumn label="所属公会" min-width="120">
           <template #default="{ row }">
             {{ row.playerInfo?.guildName || '—' }}
@@ -92,7 +92,7 @@
             {{ formatDate(row.createdAt) }}
           </template>
         </ResponsiveTableColumn>
-        <ResponsiveTableColumn label="操作" width="100" align="center">
+        <ResponsiveTableColumn label="操作" width="160" align="center">
           <template #default="{ row }">
             <el-button
               type="primary"
@@ -102,6 +102,16 @@
               @click="openRenameDialog(row)"
             >
               改名
+            </el-button>
+            <el-button
+              v-if="row.hasCustomAvatar"
+              type="danger"
+              size="small"
+              text
+              :disabled="!!actioningId"
+              @click="handleResetAvatar(row)"
+            >
+              重置头像
             </el-button>
           </template>
         </ResponsiveTableColumn>
@@ -163,10 +173,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   listGameAdventurersApi,
-  renameGameAdventurerApi
+  renameGameAdventurerApi,
+  resetAdventurerAvatarApi
 } from '@/api/admin/gameAdventurer.js'
 import { formatDate } from '@shared'
 
@@ -256,6 +267,32 @@ async function handleRename() {
     })
     ElMessage.success('改名成功')
     renameDialogVisible.value = false
+    fetchData()
+  } catch {
+    // 错误已由拦截器处理
+  } finally {
+    actioningId.value = null
+  }
+}
+
+async function handleResetAvatar(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要将冒险家「${row.name}」的头像重置为默认吗？该操作无法撤销。`,
+      '重置头像确认',
+      {
+        confirmButtonText: '确定重置',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+  actioningId.value = row._id
+  try {
+    await resetAdventurerAvatarApi(row._id)
+    ElMessage.success('头像已重置为默认')
     fetchData()
   } catch {
     // 错误已由拦截器处理
