@@ -1,0 +1,1 @@
+import{g as u}from"./request-DdebkygV.js";function n(e){return u.post("/guild/logo",e)}function t(e){return u.post("/guild/name",e)}function o(e){return u.get(`/guild/info/${e}`)}function g(){return u.get("/guild/level-info")}function l(){return u.post("/guild/level-up")}export{o as a,t as b,n as c,g,l as u};
