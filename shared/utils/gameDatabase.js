@@ -3190,17 +3190,23 @@ const RUNE_RARITY_POWER_COEFFICIENT = {
 
 /**
  * 计算冒险家战斗力
- * 战斗力 = 综合等级基础分 + 符文石加分
+ * 战斗力 = (综合等级基础分 + 符文石加分) × 等级压制平衡系数
  *
- * 综合等级基础分 = (攻击等级 + 防御等级 + 速度等级 + SAN等级) × 10
+ * 1. 综合等级基础分 = (攻击等级 + 防御等级 + 速度等级 + SAN等级) × 10
  *
- * 符文石加分（未装备符文石则为0）:
+ * 2. 符文石加分（未装备符文石则为0）:
  *   稀有度系数: normal=1, rare=3, legendary=8
  *   被动增益分 = Σ(buffLevel × 稀有度系数)
  *   主动技能分 = 主动技能数量 × 符文石等级 × 稀有度系数
  *   符文石加分 = (符文石等级 × 稀有度系数 × 5) + 被动增益分 + 主动技能分
  *
- * @param {object} adventurer - 冒险家对象（需包含 attackLevel, defenseLevel, speedLevel, SANLevel）
+ * 3. 等级压制平衡系数 (Level Scaling Factor):
+ *   由于游戏存在等级压制（差9级起效），高等级对低等级有绝对优势。
+ *   系数公式：1 + (comprehensiveLevel / 100)
+ *   意为每100级提供额外的100%战斗力权重（即综合等级每提升1级，整体权重增加1%）。
+ *   这能更好地反映高等级在实战中通过等级压制带来的生存与输出质变。
+ *
+ * @param {object} adventurer - 冒险家对象（需包含 attackLevel, defenseLevel, speedLevel, SANLevel, comprehensiveLevel）
  * @param {object|null} runeStone - 符文石对象（需包含 rarity, level, activeSkills, passiveBuffs），可为null
  * @returns {number} 战斗力值
  */
@@ -3236,5 +3242,14 @@ export function calculateCombatPower(adventurer, runeStone = null) {
     runePower += skillCount * runeLevel * rarityCoeff
   }
 
-  return Math.floor(basePower + runePower)
+  // 计算综合等级因子
+  // 综合等级 = 4项属性等级之和 - 3（初始1级时和为4，-3=1）
+  const compLevel =
+    adventurer.comprehensiveLevel ??
+    attackLevel + defenseLevel + speedLevel + sanLevel - 3
+
+  // 等级压制权重系数：基础 1.0，综合等级每 1 级增加 0.01 的权重
+  const levelScalingFactor = 1 + compLevel * 0.01
+
+  return Math.floor((basePower + runePower) * levelScalingFactor)
 }

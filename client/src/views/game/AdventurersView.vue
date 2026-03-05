@@ -73,6 +73,15 @@
       ><span class="text-sm text-gray-500 dark:text-gray-400"
         >（已选中：{{ selectedIds.size }}）</span
       >
+      <el-button
+        v-if="batchMode"
+        type="primary"
+        text
+        size="small"
+        @click="handleSelectAll"
+      >
+        {{ isAllSelected ? '取消全选' : '全选当前' }}
+      </el-button>
       <div
         class="flex items-center justify-center gap-2 flex-wrap"
         v-if="batchMode"
@@ -645,6 +654,8 @@ const filterTag = ref('')
 
 function handleFilterTag(tag) {
   filterTag.value = tag
+  // 切换标签时清空已选项
+  selectedIds.value = new Set()
 }
 
 // ── 排序 ──
@@ -798,6 +809,33 @@ const batchMode = ref(false)
 const selectedIds = ref(new Set())
 const batchEquipLoading = ref(false)
 
+const isAllSelected = computed(() => {
+  if (filteredAdventurers.value.length === 0) return false
+  return filteredAdventurers.value.every(adv => selectedIds.value.has(adv._id))
+})
+
+function handleSelectAll() {
+  if (isAllSelected.value) {
+    // 取消全显（仅从当前过滤后的列表中移除）
+    const newSet = new Set(selectedIds.value)
+    filteredAdventurers.value.forEach(adv => newSet.delete(adv._id))
+    selectedIds.value = newSet
+  } else {
+    // 全选（合并到当前已选项）
+    const newSet = new Set(selectedIds.value)
+    filteredAdventurers.value.forEach(adv => newSet.add(adv._id))
+    selectedIds.value = newSet
+  }
+}
+
+// 监听 batchMode 变化，取消批量选择时清空选择
+import { watch } from 'vue'
+watch(batchMode, newVal => {
+  if (!newVal) {
+    selectedIds.value = new Set()
+  }
+})
+
 // ── 长按3秒进入批量选择 ──
 let advLongPressTimer = null
 
@@ -838,7 +876,7 @@ async function handleBatchEquipBest() {
     const equipped = results.filter(r => r.success).length
     ElMessage.success(`批量装备完成，${equipped} 名冒险家已装备符文石`)
     selectedIds.value = new Set()
-    batchMode.value = false
+    // batchMode.value = false // 仅取消选择，不退出批量模式
     await fetchAdventurers()
   } catch {
     // handled by interceptor
@@ -1093,7 +1131,7 @@ async function handleConfirmBatchRatio() {
     ElMessage.success(msg)
     batchReportVisible.value = false
     selectedIds.value = new Set()
-    batchMode.value = false
+    // batchMode.value = false // 仅取消选择，不退出批量模式
     await fetchAdventurers()
     await fetchPlayerInfo()
   } catch {

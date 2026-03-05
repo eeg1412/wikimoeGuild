@@ -90,3 +90,7 @@ a {
     min-width: 90vw;
   }
 }
+body.el-popup-parent--hidden {
+  overflow: auto !important;
+  width: auto !important;
+}

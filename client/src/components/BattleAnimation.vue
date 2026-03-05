@@ -838,6 +838,8 @@ let cutInTimer = null
 const cutInKey = ref(0)
 // 待播放的符文激活队列（同一次激活合并为一个cut in）
 const runeCutInQueue = []
+// 当前一组 cut-in 对应的符文技能效果，等全部 cut-in 播放完后统一应用
+let pendingRuneSkillLogsAfterCutIn = []
 
 const RARITY_LABELS = { normal: '普通', rare: '稀有', legendary: '传说' }
 
@@ -860,6 +862,13 @@ function processNextCutIn() {
   }
   const cutInItem = runeCutInQueue.shift()
   const duration = getCutInDuration(cutInItem.runeStoneRarity)
+
+  if (
+    Array.isArray(cutInItem._runeSkillLogs) &&
+    cutInItem._runeSkillLogs.length
+  ) {
+    pendingRuneSkillLogsAfterCutIn.push(...cutInItem._runeSkillLogs)
+  }
 
   // cut-in 播放前先应用该施法者的 SP 归零，这样 SP 条动画在每个 cut-in 期间都可见
   if (cutInItem._casterSpUpdate) {
@@ -935,6 +944,15 @@ function processNextCutIn() {
     cutInTimer = setTimeout(() => {
       cutInTimer = null
       hideCutInEffect()
+      const clearDelay = applyCutInRuneSkillLogs(pendingRuneSkillLogsAfterCutIn)
+      pendingRuneSkillLogsAfterCutIn = []
+      if (clearDelay > 0) {
+        cutInTimer = setTimeout(() => {
+          cutInTimer = null
+          startAnimation()
+        }, clearDelay)
+        return
+      }
       startAnimation()
     }, 50)
   }, duration)
@@ -985,7 +1003,9 @@ function enqueueCutIn(entry) {
     isDemon: entry.isDemon,
     skills: normalizedSkills,
     // 施法者 SP 归零的更新，在对应 cut-in 播放前才应用（使 SP 条动画在每个 cut-in 期间可见）
-    _casterSpUpdate: entry._casterSpUpdate ?? null
+    _casterSpUpdate: entry._casterSpUpdate ?? null,
+    // 与该次 runeActivate 绑定的 runeSkill 日志，全部 cut-in 结束后统一应用
+    _runeSkillLogs: entry._runeSkillLogs ?? []
   })
 
   if (!showRuneCutIn.value && !cutInTimer) {
@@ -996,6 +1016,158 @@ function enqueueCutIn(entry) {
 function hideCutInEffect() {
   showRuneCutIn.value = false
   runeCutInData.value = null
+}
+
+function consumeRuneSkillLogsForCutIn(casterId) {
+  const runeSkillLogs = []
+  while (currentLogIndex.value < props.battleLog.length) {
+    const nextEntry = props.battleLog[currentLogIndex.value]
+    if (nextEntry.type === 'runeSkill' && nextEntry.caster === casterId) {
+      runeSkillLogs.push(nextEntry)
+      displayedLogs.value.push(nextEntry)
+      currentLogIndex.value++
+      continue
+    }
+    break
+  }
+  return runeSkillLogs
+}
+
+function applyCutInRuneSkillLogs(runeSkillLogs) {
+  if (!Array.isArray(runeSkillLogs) || runeSkillLogs.length === 0) return 0
+
+  const map = unitState.value
+  const newActing = new Set()
+  const newHit = new Set()
+  const newBuffed = new Set()
+  const newDebuffed = new Set()
+  const newHealed = new Set()
+  const newMoved = new Set()
+  let needRefreshState = false
+
+  for (const entry of runeSkillLogs) {
+    if (!entry || entry.type !== 'runeSkill') continue
+
+    newActing.add(entry.caster)
+
+    if (entry.skillType === 'attack') {
+      const target = map.get(entry.target)
+      if (target) {
+        target.currentSan = entry.targetRemainSan
+        if (typeof entry.targetCurrentSp === 'number') {
+          target.currentSp = entry.targetCurrentSp
+        }
+        if (target.currentSan <= 0) target.alive = false
+        newHit.add(entry.target)
+        const koText = target.currentSan <= 0 ? ' 💀' : ''
+        const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
+        const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
+        addEffect(
+          entry.target,
+          `${attackIcon}-${entry.damage}${koText}`,
+          'damage'
+        )
+        needRefreshState = true
+      }
+    }
+
+    if (entry.skillType === 'buff') {
+      newBuffed.add(entry.target)
+      const label = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
+      addEffect(
+        entry.target,
+        `${SKILL_TYPE_ICONS.buff}${label}+${entry.value}`,
+        'buff'
+      )
+    }
+
+    if (entry.skillType === 'debuff') {
+      newDebuffed.add(entry.target)
+      const label = BUFF_TYPE_LABEL[entry.debuffType] || entry.debuffType
+      addEffect(
+        entry.target,
+        `${SKILL_TYPE_ICONS.debuff}${label}-${entry.value}`,
+        'debuff'
+      )
+    }
+
+    if (entry.skillType === 'sanRecover') {
+      const target = map.get(entry.target)
+      if (target) {
+        target.currentSan = entry.targetRemainSan
+        needRefreshState = true
+      }
+      newHealed.add(entry.target)
+      addEffect(
+        entry.target,
+        `${SKILL_TYPE_ICONS.sanRecover}+${entry.healAmount}`,
+        'heal'
+      )
+    }
+
+    if (entry.skillType === 'changeOrder' && entry.success) {
+      const target = map.get(entry.target)
+      let swapTarget = null
+
+      if (entry.swapped && entry.swapTarget) {
+        swapTarget = map.get(entry.swapTarget) || null
+      }
+
+      if (!swapTarget && target) {
+        for (const unit of map.values()) {
+          if (unit.id === target.id) continue
+          if (unit.side !== target.side) continue
+          if (unit.row === entry.newRow && unit.col === entry.newCol) {
+            swapTarget = unit
+            break
+          }
+        }
+      }
+
+      if (target) {
+        target.row = entry.newRow
+        target.col = entry.newCol
+        newMoved.add(entry.target)
+        addEffect(entry.target, '🔀 移动', 'move')
+      }
+
+      if (swapTarget) {
+        swapTarget.row = entry.oldRow
+        swapTarget.col = entry.oldCol
+        newMoved.add(swapTarget.id)
+        addEffect(swapTarget.id, '🔀 互换', 'move')
+      }
+
+      needRefreshState = true
+    }
+  }
+
+  actingUnitIds.value = newActing
+  hitUnitIds.value = newHit
+  buffedUnitIds.value = newBuffed
+  debuffedUnitIds.value = newDebuffed
+  healedUnitIds.value = newHealed
+  movedUnitIds.value = newMoved
+
+  if (needRefreshState) {
+    unitState.value = new Map(unitState.value)
+  }
+
+  if (hitClearTimer) {
+    clearTimeout(hitClearTimer)
+    hitClearTimer = null
+  }
+  const clearDelay = Math.max(300, Math.round(600 / playbackSpeed.value))
+  hitClearTimer = setTimeout(() => {
+    actingUnitIds.value = new Set()
+    hitUnitIds.value = new Set()
+    buffedUnitIds.value = new Set()
+    debuffedUnitIds.value = new Set()
+    healedUnitIds.value = new Set()
+    movedUnitIds.value = new Set()
+  }, clearDelay)
+
+  return clearDelay
 }
 
 /**
@@ -1361,12 +1533,14 @@ function batchProcessCurrentRound() {
     if (entry.type === 'runeActivate') {
       // SP 不在此处立即更新，而是存入 _casterSpUpdate
       // 在对应 cut-in 播放前才应用，使 SP 条归零动画在每个 cut-in 期间可见
+      const runeSkillLogs = consumeRuneSkillLogsForCutIn(entry.caster)
       pendingCutIns.push({
         ...entry,
         _casterSpUpdate:
           typeof entry.casterCurrentSp === 'number'
             ? { id: entry.caster, sp: entry.casterCurrentSp }
-            : null
+            : null,
+        _runeSkillLogs: runeSkillLogs
       })
       continue
     }
@@ -1577,7 +1751,8 @@ function playNextLog() {
       _casterSpUpdate:
         typeof entry.casterCurrentSp === 'number'
           ? { id: entry.caster, sp: entry.casterCurrentSp }
-          : null
+          : null,
+      _runeSkillLogs: consumeRuneSkillLogsForCutIn(entry.caster)
     })
     return
   }
@@ -1617,6 +1792,7 @@ function handleSkip() {
     hitClearTimer = null
   }
   runeCutInQueue.length = 0
+  pendingRuneSkillLogsAfterCutIn = []
   hideCutInEffect()
   stopAnimation()
   // 跳过时立即释放锁
@@ -1664,7 +1840,7 @@ onMounted(() => {
   // 等待弹窗弹出动画结束后再开始播放演出
   setTimeout(() => {
     startAnimation()
-  }, 500)
+  }, 800)
   startSkipCountdown()
   // 演出开始时请求防止息屏
   requestWakeLock()
@@ -1691,6 +1867,7 @@ onUnmounted(() => {
     cutInTimer = null
   }
   runeCutInQueue.length = 0
+  pendingRuneSkillLogsAfterCutIn = []
 })
 </script>
 

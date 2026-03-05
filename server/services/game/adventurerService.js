@@ -742,24 +742,25 @@ export async function batchEquipBestRuneStones(accountId, adventurerIds) {
     const scoredRuneStones = availableRuneStones
       .map(rs => ({
         runeStone: rs,
-        score: rs.level * (RARITY_WEIGHT[rs.rarity] ?? 1)
+        score: rs.level * (RARITY_WEIGHT[rs.rarity] ?? 1),
+        used: false
       }))
       .sort(
         (a, b) => b.score - a.score || b.runeStone.level - a.runeStone.level
       )
 
     const results = []
-    const usedRuneStoneIds = new Set()
+    const usedRuneStoneIds = []
+    const adventurerUpdates = []
+    const runeStoneUpdates = []
 
     // 第三步：冒险家按综合等级从高到低，依次匹配评分最高且满足等级约束的符文石
     for (const adv of adventurers) {
-      const bestEntry = scoredRuneStones.find(
-        ({ runeStone: rs }) =>
-          !usedRuneStoneIds.has(rs._id.toString()) &&
-          rs.level <= adv.comprehensiveLevel
+      const bestEntryIdx = scoredRuneStones.findIndex(
+        entry => !entry.used && entry.runeStone.level <= adv.comprehensiveLevel
       )
 
-      if (!bestEntry) {
+      if (bestEntryIdx === -1) {
         results.push({
           adventurerId: adv._id,
           adventurerName: adv.name,
@@ -769,15 +770,24 @@ export async function batchEquipBestRuneStones(accountId, adventurerIds) {
         continue
       }
 
+      const bestEntry = scoredRuneStones[bestEntryIdx]
       const { runeStone: bestRs } = bestEntry
 
-      adv.runeStone = bestRs._id
-      await adv.save()
+      adventurerUpdates.push({
+        updateOne: {
+          filter: { _id: adv._id },
+          update: { $set: { runeStone: bestRs._id } }
+        }
+      })
 
-      bestRs.equippedBy = adv._id
-      await bestRs.save()
+      runeStoneUpdates.push({
+        updateOne: {
+          filter: { _id: bestRs._id },
+          update: { $set: { equippedBy: adv._id } }
+        }
+      })
 
-      usedRuneStoneIds.add(bestRs._id.toString())
+      bestEntry.used = true
 
       results.push({
         adventurerId: adv._id,
@@ -786,6 +796,13 @@ export async function batchEquipBestRuneStones(accountId, adventurerIds) {
         runeStoneLevel: bestRs.level,
         runeStoneRarity: bestRs.rarity
       })
+    }
+
+    if (adventurerUpdates.length > 0) {
+      await Promise.all([
+        GameAdventurer.bulkWrite(adventurerUpdates),
+        GameRuneStone.bulkWrite(runeStoneUpdates)
+      ])
     }
 
     return results
