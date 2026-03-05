@@ -893,12 +893,20 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
     const minDelay = Math.min(...aliveUnits.map(u => u.delay))
     const actingUnits = aliveUnits.filter(u => u.delay === minDelay)
 
+    // 记录所有存活单位的当前延迟值，供前端计算行动准备度进度条
+    const unitDelays = aliveUnits.map(u => ({
+      id: u.id,
+      delay: u.delay,
+      baseDelay: u.baseDelay
+    }))
+
     battleLog.push({
       type: 'roundStart',
       round,
       actingCount: actingUnits.length,
       spGainPerRound: SP_GAIN_PER_ROUND,
-      spChanges
+      spChanges,
+      unitDelays
     })
 
     // 所有同时行动的单位执行攻击
@@ -1004,9 +1012,13 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
     }
   }
 
+  // 以实际推入 roundStart 的数量为准，避免循环最后一次
+  // 因空检测 break 时 round 已自增但未记录日志导致的 rounds 偏大 1 的问题
+  const actualRounds = battleLog.filter(e => e.type === 'roundStart').length
+
   return {
     winner,
-    rounds: round,
+    rounds: actualRounds,
     log: battleLog,
     attackerUnits: attackerUnits.map(buildResultUnit),
     defenderUnits: defenderUnits.map(buildResultUnit)

@@ -438,7 +438,7 @@ export async function challengeLegion(accountId, formationSlot) {
         type: 'dungeon_victory',
         account: accountId,
         guildName: playerInfo.guildName,
-        title: `🏰 ${playerInfo.guildName} 攻破了迷宫 Lv.${currentLevel} 的军团！`,
+        title: `🏰 「${playerInfo.guildName}」攻破了迷宫 Lv.${currentLevel} 的军团！`,
         extra: {
           dungeonLevel: currentLevel,
           topKillers

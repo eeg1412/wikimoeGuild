@@ -690,7 +690,7 @@ export async function setRoleTag(accountId, adventurerId, roleTag) {
  */
 export async function batchEquipBestRuneStones(accountId, adventurerIds) {
   return await executeInLock(`batchEquip:${accountId}`, async () => {
-    // 获取所有目标冒险家
+    // 获取所有目标冒险家，按综合等级降序（高等级优先获得更好的符文石）
     const adventurers = await GameAdventurer.find({
       _id: { $in: adventurerIds },
       account: accountId
@@ -703,25 +703,63 @@ export async function batchEquipBestRuneStones(accountId, adventurerIds) {
       throw err
     }
 
-    // 获取所有未装备、未上架的符文石，按等级降序
+    // 第一步：将所有目标冒险家已装备的符文石全部卸下，归还到可用池
+    const equippedRuneStoneIds = adventurers
+      .filter(adv => adv.runeStone)
+      .map(adv => adv.runeStone)
+
+    if (equippedRuneStoneIds.length > 0) {
+      await GameRuneStone.updateMany(
+        { _id: { $in: equippedRuneStoneIds } },
+        { $set: { equippedBy: null } }
+      )
+      await GameAdventurer.updateMany(
+        { _id: { $in: adventurers.map(a => a._id) } },
+        { $set: { runeStone: null } }
+      )
+      // 同步更新内存数据
+      for (const adv of adventurers) {
+        adv.runeStone = null
+      }
+    }
+
+    // 第二步：获取所有可用符文石（包含刚卸下的），计算综合评分
+    // 评分公式：等级 × 稀有度权重
+    // 稀有度权重参考品质系数比例：普通(0.0012) : 稀有(0.0022) : 传说(0.0033) ≈ 1 : 2 : 3
+    const RARITY_WEIGHT = {
+      legendary: 3,
+      rare: 2,
+      normal: 1
+    }
+
     const availableRuneStones = await GameRuneStone.find({
       account: accountId,
       equippedBy: null,
       listedOnMarket: { $ne: true }
-    }).sort({ level: -1 })
+    })
+
+    // 按综合评分降序排列，评分相同时优先选等级更高的
+    const scoredRuneStones = availableRuneStones
+      .map(rs => ({
+        runeStone: rs,
+        score: rs.level * (RARITY_WEIGHT[rs.rarity] ?? 1)
+      }))
+      .sort(
+        (a, b) => b.score - a.score || b.runeStone.level - a.runeStone.level
+      )
 
     const results = []
     const usedRuneStoneIds = new Set()
 
+    // 第三步：冒险家按综合等级从高到低，依次匹配评分最高且满足等级约束的符文石
     for (const adv of adventurers) {
-      // 找到可以装备且等级最高的符文石
-      const best = availableRuneStones.find(
-        rs =>
+      const bestEntry = scoredRuneStones.find(
+        ({ runeStone: rs }) =>
           !usedRuneStoneIds.has(rs._id.toString()) &&
           rs.level <= adv.comprehensiveLevel
       )
 
-      if (!best) {
+      if (!bestEntry) {
         results.push({
           adventurerId: adv._id,
           adventurerName: adv.name,
@@ -731,29 +769,22 @@ export async function batchEquipBestRuneStones(accountId, adventurerIds) {
         continue
       }
 
-      // 如果冒险家已装备符文石，先卸下
-      if (adv.runeStone) {
-        await GameRuneStone.updateOne(
-          { _id: adv.runeStone },
-          { equippedBy: null }
-        )
-      }
+      const { runeStone: bestRs } = bestEntry
 
-      // 装备新符文石
-      adv.runeStone = best._id
+      adv.runeStone = bestRs._id
       await adv.save()
 
-      best.equippedBy = adv._id
-      await best.save()
+      bestRs.equippedBy = adv._id
+      await bestRs.save()
 
-      usedRuneStoneIds.add(best._id.toString())
+      usedRuneStoneIds.add(bestRs._id.toString())
 
       results.push({
         adventurerId: adv._id,
         adventurerName: adv.name,
         success: true,
-        runeStoneLevel: best.level,
-        runeStoneRarity: best.rarity
+        runeStoneLevel: bestRs.level,
+        runeStoneRarity: bestRs.rarity
       })
     }
 

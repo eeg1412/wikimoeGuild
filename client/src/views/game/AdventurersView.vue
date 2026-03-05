@@ -69,8 +69,14 @@
         <el-option label="等级（高→低）" value="level_desc" />
         <el-option label="等级（低→高）" value="level_asc" />
       </el-select>
-      <el-checkbox v-model="batchMode" size="small">批量选择</el-checkbox>
-      <template v-if="batchMode && selectedIds.size > 0">
+      <el-checkbox v-model="batchMode" size="small">批量选择</el-checkbox
+      ><span class="text-sm text-gray-500 dark:text-gray-400"
+        >（已选中：{{ selectedIds.size }}）</span
+      >
+      <div
+        class="flex items-center justify-center gap-2 flex-wrap"
+        v-if="batchMode"
+      >
         <el-button
           type="warning"
           size="small"
@@ -114,9 +120,8 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-      </template>
+      </div>
     </div>
-
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-12">
       <span class="animate-spin inline-block text-4xl">⏳</span>

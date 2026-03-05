@@ -762,7 +762,7 @@ export async function challengeOpponent(accountId, registrationId) {
         type: 'arena_victory',
         account: accountId,
         guildName: myReg.guildName,
-        title: `⚔️ ${myReg.guildName} 在竞技场击败了 ${opponentGuildName}！`,
+        title: `⚔️ 「${myReg.guildName}」在竞技场击败了「${opponentGuildName}」！`,
         extra: {
           opponentGuildName,
           pointsChange,

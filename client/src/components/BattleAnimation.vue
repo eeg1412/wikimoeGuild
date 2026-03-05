@@ -70,14 +70,27 @@
                       }"
                     />
                   </div>
-                  <!-- 符文技能蓄力进度条 -->
+                  <!-- 行动准备度条 -->
+                  <div v-if="unit.alive" class="act-bar-bg">
+                    <div
+                      class="act-bar-fill"
+                      :style="{ width: actionReadiness(unit) + '%' }"
+                    />
+                  </div>
+                  <div v-else class="act-bar-bg">
+                    <div class="act-bar-fill" style="width: 0%"></div>
+                  </div>
+                  <!-- 符文技能蓄力进度条（SP） -->
                   <div
                     v-if="runeProgress(unit) >= 0 && unit.alive"
                     class="rune-bar-bg"
                   >
                     <div
                       class="rune-bar-fill"
-                      :style="{ width: runeProgress(unit) + '%' }"
+                      :style="{
+                        width: runeProgress(unit) + '%',
+                        ...spBarColor(unit)
+                      }"
                     />
                   </div>
                   <div v-else class="rune-bar-bg">
@@ -152,14 +165,27 @@
                       }"
                     />
                   </div>
-                  <!-- 符文技能蓄力进度条 -->
+                  <!-- 行动准备度条 -->
+                  <div v-if="unit.alive" class="act-bar-bg">
+                    <div
+                      class="act-bar-fill"
+                      :style="{ width: actionReadiness(unit) + '%' }"
+                    />
+                  </div>
+                  <div v-else class="act-bar-bg">
+                    <div class="act-bar-fill" style="width: 0%"></div>
+                  </div>
+                  <!-- 符文技能蓄力进度条（SP） -->
                   <div
                     v-if="runeProgress(unit) >= 0 && unit.alive"
                     class="rune-bar-bg"
                   >
                     <div
                       class="rune-bar-fill"
-                      :style="{ width: runeProgress(unit) + '%' }"
+                      :style="{
+                        width: runeProgress(unit) + '%',
+                        ...spBarColor(unit)
+                      }"
                     />
                   </div>
                   <div v-else class="rune-bar-bg">
@@ -370,6 +396,7 @@
                 <!-- 持续进度条 -->
                 <div class="cutin-timer-bar">
                   <div
+                    :key="cutInKey"
                     class="cutin-timer-fill"
                     :class="`cutin-timer-fill--${runeCutInData.runeStoneRarity}`"
                     :style="{
@@ -659,6 +686,18 @@ const logFontSize = computed(() =>
 const effectOverlays = ref([])
 let effectCounter = 0
 
+// 将被延迟的 AT 条百分比更新立即写入 unitDelayMap
+function applyPendingDelays() {
+  if (actingUnitPendingDelays.size > 0) {
+    const newMap = new Map(unitDelayMap.value)
+    for (const [id, pct] of actingUnitPendingDelays) {
+      newMap.set(id, pct)
+    }
+    unitDelayMap.value = newMap
+    actingUnitPendingDelays = new Map()
+  }
+}
+
 function addEffect(unitId, text, type) {
   const id = ++effectCounter
   effectOverlays.value.push({ unitId, text, type, id })
@@ -701,6 +740,34 @@ function initUnitState() {
     })
   }
   unitState.value = map
+}
+
+// 行动准备度：返回 0-100（延迟值越低代表越快行动，即越接近 100%）
+function actionReadiness(unit) {
+  if (!unit || !unit.alive) return 0
+  const pct = unitDelayMap.value.get(unit.id)
+  return pct === undefined ? 0 : pct
+}
+
+// SP 条动态颜色：根据百分比从深紫色渐变成亮橙色，告知玩家即将释放大招
+function spBarColor(unit) {
+  const pct = runeProgress(unit)
+  const t = Math.max(0, Math.min(1, (pct < 0 ? 0 : pct) / 100))
+  // 渐变起始色：深紫 #4c1d95 (76,29,149) → 鲜橙 #f97316 (249,115,22)
+  const r1 = Math.round(76 + (249 - 76) * t)
+  const g1 = Math.round(29 + (115 - 29) * t)
+  const b1 = Math.round(149 + (22 - 149) * t)
+  // 渐变结束色：中紫 #7c3aed (124,58,237) → 亮黄橙 #fbbf24 (251,191,36)
+  const r2 = Math.round(124 + (251 - 124) * t)
+  const g2 = Math.round(58 + (191 - 58) * t)
+  const b2 = Math.round(237 + (36 - 237) * t)
+  // 发光强度随百分比增强（0% 几乎无光，100% 强烈橙光）
+  const glowAlpha = (0.15 + t * 0.85).toFixed(2)
+  const glowSpread = Math.round(2 + t * 6)
+  return {
+    background: `linear-gradient(90deg, rgb(${r1},${g1},${b1}), rgb(${r2},${g2},${b2}))`,
+    boxShadow: `0 0 ${glowSpread}px rgba(${r2},${g2},50, ${glowAlpha})`
+  }
 }
 
 // 符文技能进度：返回 0-100（SP百分比）
@@ -746,6 +813,8 @@ const defenderDisplayUnits = computed(() => {
 // 日志回放
 const displayedLogs = ref([])
 const currentRound = ref(0)
+// 各单位行动准备度：unitId → 0-100 百分比（越高表示距下次行动越近）
+const unitDelayMap = ref(new Map())
 const currentLogIndex = ref(0)
 const actingUnitIds = ref(new Set())
 const hitUnitIds = ref(new Set())
@@ -755,12 +824,16 @@ const healedUnitIds = ref(new Set())
 const movedUnitIds = ref(new Set())
 let animationTimer = null
 let hitClearTimer = null
+// 待应用的行动单位 AT 条更新（金边消失后才清零）
+let actingUnitPendingDelays = new Map()
 const logContainer = ref(null)
 
 // ── 符文石激活 Cut-in 特效 ──
 const showRuneCutIn = ref(false)
 const runeCutInData = ref(null)
 let cutInTimer = null
+// 每次新 cut-in 播放时自增，强制重建 timer-fill 元素以重启 CSS animation
+const cutInKey = ref(0)
 // 待播放的符文激活队列（同一次激活合并为一个cut in）
 const runeCutInQueue = []
 
@@ -785,6 +858,16 @@ function processNextCutIn() {
   }
   const cutInItem = runeCutInQueue.shift()
   const duration = getCutInDuration(cutInItem.runeStoneRarity)
+
+  // cut-in 播放前先应用该施法者的 SP 归零，这样 SP 条动画在每个 cut-in 期间都可见
+  if (cutInItem._casterSpUpdate) {
+    const unit = unitState.value.get(cutInItem._casterSpUpdate.id)
+    if (unit) {
+      unit.currentSp = cutInItem._casterSpUpdate.sp
+      unitState.value = new Map(unitState.value)
+    }
+  }
+
   const skillEffects = (cutInItem.skills || []).map(skill => ({
     skillLabel: skill.skillLabel,
     skillType: skill.skillType,
@@ -836,6 +919,8 @@ function processNextCutIn() {
     targetIsDemon: firstSkill?.targetIsDemon,
     duration
   }
+  // 每次新 cut-in 自增 key，强制 Vue 销毁并重建 cutin-timer-fill 元素，重启 CSS animation
+  cutInKey.value++
   showRuneCutIn.value = true
   cutInTimer = setTimeout(() => {
     // 队列中还有内容时直接切下一条，避免中间空窗导致闪动
@@ -849,7 +934,7 @@ function processNextCutIn() {
       cutInTimer = null
       hideCutInEffect()
       startAnimation()
-    }, 180)
+    }, 50)
   }, duration)
 }
 
@@ -896,7 +981,9 @@ function enqueueCutIn(entry) {
     hasCustomAvatar: entry.hasCustomAvatar,
     customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
     isDemon: entry.isDemon,
-    skills: normalizedSkills
+    skills: normalizedSkills,
+    // 施法者 SP 归零的更新，在对应 cut-in 播放前才应用（使 SP 条动画在每个 cut-in 期间可见）
+    _casterSpUpdate: entry._casterSpUpdate ?? null
   })
 
   if (!showRuneCutIn.value && !cutInTimer) {
@@ -911,8 +998,8 @@ function hideCutInEffect() {
 
 // 倍速控制：基础间隔450ms（降低3倍，原来150ms）
 const BASE_INTERVAL = 450
-const speedOptions = [1, 2, 3]
-const playbackSpeed = ref(1)
+const speedOptions = [0.5, 2, 3]
+const playbackSpeed = ref(0.5)
 
 function getInterval() {
   return Math.round(BASE_INTERVAL / playbackSpeed.value)
@@ -1039,10 +1126,16 @@ function processLogEntry(entry) {
   }
 
   const map = unitState.value
+
+  // 在处理新 log 之前，先应用并清除上一轮待定的 AT 更新
+  // 这样如果连续多个回合没有特效，AT 条也能正常刷新
+  applyPendingDelays()
+
   // 清除上一轮的特效状态
   if (hitClearTimer) {
     clearTimeout(hitClearTimer)
     hitClearTimer = null
+    // 之前已经 apply 过了，这里确保状态彻底干净
   }
   hitUnitIds.value = new Set()
   buffedUnitIds.value = new Set()
@@ -1054,6 +1147,20 @@ function processLogEntry(entry) {
 
   if (entry.type === 'roundStart') {
     currentRound.value = entry.round
+    // 直接应用本回合行动前的 AT 条值（机制：金边消失时再取下一个 roundStart 的后置值，与金边同帧更新）
+    if (Array.isArray(entry.unitDelays) && entry.unitDelays.length > 0) {
+      const minD = Math.min(...entry.unitDelays.map(d => d.delay))
+      const newMap = new Map()
+      for (const { id, delay, baseDelay } of entry.unitDelays) {
+        const base = baseDelay || 1
+        const pct = Math.max(
+          0,
+          Math.min(100, Math.round((1 - (delay - minD) / base) * 100))
+        )
+        newMap.set(id, pct)
+      }
+      unitDelayMap.value = newMap
+    }
     if (Array.isArray(entry.spChanges)) {
       for (const spEntry of entry.spChanges) {
         const unit = map.get(spEntry.id)
@@ -1197,10 +1304,233 @@ function processLogEntry(entry) {
     debuffedUnitIds.value = new Set()
     healedUnitIds.value = new Set()
     movedUnitIds.value = new Set()
+    // 金边消失后，再将行动单位的 AT 条清零（触发清零动画）
+    applyPendingDelays()
   }, clearDelay)
 }
 
 const animationFinished = ref(false)
+
+/**
+ * 批量处理当前回合所有同时出手的条目。
+ * 从 currentLogIndex 开始向前收集，直到下一个 roundStart（或日志末尾）。
+ * - attack / runeSkill：合并到同一个 acting/hit/buffed... Set，一次性设置 → 实现同时金边/红边
+ * - runeActivate：更新 SP，收集进 pendingCutIns 队列
+ *   cut-in 在 hitClearTimer（金边消失）后才触发，不与金边叠加，消除卡顿感
+ */
+function batchProcessCurrentRound() {
+  // ① 立即停止 setInterval，防止游离 tick 提前调用 applyPendingDelays
+  stopAnimation()
+
+  // ② 若上一轮的金边清除定时器还在跑，立即结算
+  if (hitClearTimer) {
+    clearTimeout(hitClearTimer)
+    hitClearTimer = null
+    applyPendingDelays()
+  }
+
+  const map = unitState.value
+  const newActing = new Set()
+  const newHit = new Set()
+  const newBuffed = new Set()
+  const newDebuffed = new Set()
+  const newHealed = new Set()
+  const newMoved = new Set()
+  let needRefreshState = false
+  const pendingCutIns = []
+
+  while (currentLogIndex.value < props.battleLog.length) {
+    const entry = props.battleLog[currentLogIndex.value]
+    if (entry.type === 'roundStart') break
+    currentLogIndex.value++
+    displayedLogs.value.push(entry)
+
+    if (entry.type === 'runeActivate') {
+      // SP 不在此处立即更新，而是存入 _casterSpUpdate
+      // 在对应 cut-in 播放前才应用，使 SP 条归零动画在每个 cut-in 期间可见
+      pendingCutIns.push({
+        ...entry,
+        _casterSpUpdate:
+          typeof entry.casterCurrentSp === 'number'
+            ? { id: entry.caster, sp: entry.casterCurrentSp }
+            : null
+      })
+      continue
+    }
+
+    if (entry.type === 'attack') {
+      newActing.add(entry.attacker)
+      const attacker = map.get(entry.attacker)
+      if (attacker && typeof entry.attackerCurrentSp === 'number') {
+        attacker.currentSp = entry.attackerCurrentSp
+        needRefreshState = true
+      }
+      const defender = map.get(entry.defender)
+      if (defender) {
+        defender.currentSan = entry.defenderRemainSan
+        if (typeof entry.defenderCurrentSp === 'number') {
+          defender.currentSp = entry.defenderCurrentSp
+        }
+        if (defender.currentSan <= 0) defender.alive = false
+        newHit.add(entry.defender)
+        const koText = defender.currentSan <= 0 ? ' 💀' : ''
+        addEffect(entry.defender, `-${entry.damage}${koText}`, 'damage')
+        needRefreshState = true
+      }
+    }
+
+    if (entry.type === 'runeSkill') {
+      newActing.add(entry.caster)
+      if (entry.skillType === 'attack') {
+        const target = map.get(entry.target)
+        if (target) {
+          target.currentSan = entry.targetRemainSan
+          if (typeof entry.targetCurrentSp === 'number')
+            target.currentSp = entry.targetCurrentSp
+          if (target.currentSan <= 0) target.alive = false
+          newHit.add(entry.target)
+          const koText = target.currentSan <= 0 ? ' 💀' : ''
+          const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
+          const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
+          addEffect(
+            entry.target,
+            `${attackIcon}-${entry.damage}${koText}`,
+            'damage'
+          )
+          needRefreshState = true
+        }
+      }
+      if (entry.skillType === 'buff') {
+        newBuffed.add(entry.target)
+        const label = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
+        addEffect(
+          entry.target,
+          `${SKILL_TYPE_ICONS.buff}${label}+${entry.value}`,
+          'buff'
+        )
+      }
+      if (entry.skillType === 'debuff') {
+        newDebuffed.add(entry.target)
+        const label = BUFF_TYPE_LABEL[entry.debuffType] || entry.debuffType
+        addEffect(
+          entry.target,
+          `${SKILL_TYPE_ICONS.debuff}${label}-${entry.value}`,
+          'debuff'
+        )
+      }
+      if (entry.skillType === 'sanRecover') {
+        const target = map.get(entry.target)
+        if (target) {
+          target.currentSan = entry.targetRemainSan
+          needRefreshState = true
+        }
+        newHealed.add(entry.target)
+        addEffect(
+          entry.target,
+          `${SKILL_TYPE_ICONS.sanRecover}+${entry.healAmount}`,
+          'heal'
+        )
+      }
+      if (entry.skillType === 'changeOrder' && entry.success) {
+        const target = map.get(entry.target)
+        let swapTarget = null
+        if (entry.swapped && entry.swapTarget) {
+          swapTarget = map.get(entry.swapTarget) || null
+        }
+        if (!swapTarget && target) {
+          for (const unit of map.values()) {
+            if (unit.id === target.id) continue
+            if (unit.side !== target.side) continue
+            if (unit.row === entry.newRow && unit.col === entry.newCol) {
+              swapTarget = unit
+              break
+            }
+          }
+        }
+        if (target) {
+          target.row = entry.newRow
+          target.col = entry.newCol
+          newMoved.add(entry.target)
+          addEffect(entry.target, '🔀 移动', 'move')
+        }
+        if (swapTarget) {
+          swapTarget.row = entry.oldRow
+          swapTarget.col = entry.oldCol
+          newMoved.add(swapTarget.id)
+          addEffect(swapTarget.id, '🔀 互换', 'move')
+        }
+        needRefreshState = true
+      }
+    }
+  }
+
+  // 一次性将所有同时出手单位的视觉状态写入（同时金边 / 同时红边）
+  actingUnitIds.value = newActing
+  hitUnitIds.value = newHit
+  buffedUnitIds.value = newBuffed
+  debuffedUnitIds.value = newDebuffed
+  healedUnitIds.value = newHealed
+  movedUnitIds.value = newMoved
+
+  if (needRefreshState) {
+    unitState.value = new Map(unitState.value)
+  }
+
+  // ③ 统一清除定时器：金边消失、AT 条归零、cut-in 触发 严格同帧
+  const clearDelay = Math.max(300, Math.round(600 / playbackSpeed.value))
+  hitClearTimer = setTimeout(() => {
+    hitClearTimer = null
+    // 所有视觉特效同时消失
+    actingUnitIds.value = new Set()
+    hitUnitIds.value = new Set()
+    buffedUnitIds.value = new Set()
+    debuffedUnitIds.value = new Set()
+    healedUnitIds.value = new Set()
+    movedUnitIds.value = new Set()
+
+    // 「与金边消失同帧」更新 AT 条：
+    // 前瞻下一个 roundStart（round N+1）的 unitDelays，其中行动单位的值已是本轮行动后的后置值
+    // （行动单位 delay 增加了 baseDelay，百分比接近 0%）
+    const nextRound = props.battleLog
+      .slice(currentLogIndex.value)
+      .find(e => e.type === 'roundStart')
+    if (
+      nextRound &&
+      Array.isArray(nextRound.unitDelays) &&
+      nextRound.unitDelays.length > 0
+    ) {
+      const minD = Math.min(...nextRound.unitDelays.map(d => d.delay))
+      const newMap = new Map(unitDelayMap.value)
+      for (const { id, delay, baseDelay } of nextRound.unitDelays) {
+        const base = baseDelay || 1
+        const pct = Math.max(
+          0,
+          Math.min(100, Math.round((1 - (delay - minD) / base) * 100))
+        )
+        newMap.set(id, pct)
+      }
+      unitDelayMap.value = newMap
+    }
+
+    if (pendingCutIns.length > 0) {
+      // 金边消失后再播 cut-in，消除叠加导致的卡顿感
+      // 每个 cut-in 播放前会在 processNextCutIn 里单独更新该施法者 SP
+      for (const ra of pendingCutIns) {
+        enqueueCutIn(ra)
+      }
+      // processNextCutIn 由 enqueueCutIn 自动触发，结束后调 startAnimation
+    } else {
+      // 无 cut-in：直接恢复动画
+      startAnimation()
+    }
+  }, clearDelay)
+
+  nextTick(() => {
+    if (logContainer.value) {
+      logContainer.value.scrollTop = logContainer.value.scrollHeight
+    }
+  })
+}
 
 function playNextLog() {
   if (currentLogIndex.value >= props.battleLog.length) {
@@ -1211,11 +1541,26 @@ function playNextLog() {
   }
   const entry = props.battleLog[currentLogIndex.value]
 
-  // 符文石激活：停止主动画，将所有技能入队逐一展示 cut-in，播完后自动恢复
+  // roundStart：先处理本条（AT 条 / SP / 回合数），再批量处理本轮所有同时行动
+  if (entry.type === 'roundStart') {
+    processLogEntry(entry)
+    displayedLogs.value.push(entry)
+    currentLogIndex.value++
+    batchProcessCurrentRound()
+    return
+  }
+
+  // 兜底：若非 roundStart 条目游离在外（理论上不应发生），按原逻辑逐条处理
   if (entry.type === 'runeActivate') {
     currentLogIndex.value++
     stopAnimation()
-    enqueueCutIn(entry)
+    enqueueCutIn({
+      ...entry,
+      _casterSpUpdate:
+        typeof entry.casterCurrentSp === 'number'
+          ? { id: entry.caster, sp: entry.casterCurrentSp }
+          : null
+    })
     return
   }
 
@@ -1230,7 +1575,10 @@ function playNextLog() {
 }
 
 function startAnimation() {
+  if (animationTimer) clearInterval(animationTimer)
   animationTimer = setInterval(playNextLog, getInterval())
+  // 立即触发第一次，消除 cut-in/hitClearTimer 结束后等待第一个间隔的尴尬感
+  playNextLog()
 }
 
 function stopAnimation() {
@@ -1245,6 +1593,10 @@ function handleSkip() {
   if (cutInTimer) {
     clearTimeout(cutInTimer)
     cutInTimer = null
+  }
+  if (hitClearTimer) {
+    clearTimeout(hitClearTimer)
+    hitClearTimer = null
   }
   runeCutInQueue.length = 0
   hideCutInEffect()
@@ -1513,9 +1865,29 @@ onUnmounted(() => {
   height: 100%;
   width: 0%;
   border-radius: 2px;
-  background: linear-gradient(90deg, #a78bfa, #f5c842);
-  transition: width 0.3s ease;
-  box-shadow: 0 0 4px rgba(167, 139, 250, 0.6);
+  /* background 由 spBarColor() 内联样式动态计算 */
+  transition:
+    width 0.3s ease,
+    background 0.5s ease,
+    box-shadow 0.5s ease;
+}
+
+/* 行动准备度条（每个单位格内，显示距下次行动的准备程度） */
+.act-bar-bg {
+  width: 90%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-top: 1px;
+  overflow: hidden;
+}
+
+.act-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #0891b2, #22d3ee);
+  transition: width 0.35s ease;
+  box-shadow: 0 0 3px rgba(34, 211, 238, 0.55);
 }
 
 .battle-log-area {

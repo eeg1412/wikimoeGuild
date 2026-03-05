@@ -531,6 +531,7 @@ import AdventurerFinalStats from '@/components/AdventurerFinalStats.vue'
 import StatLevelUpPanel from '@/components/StatLevelUpPanel.vue'
 import Cropper from '@/components/Cropper.vue'
 import { getMaxComprehensiveLevel } from 'shared/utils/guildLevelUtils.js'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -871,7 +872,7 @@ async function handleSaveName() {
 }
 
 // ── 装备/卸下符文石（管理模式） ──
-const showEquipDialog = ref(false)
+const { visible: showEquipDialog } = useDialogRoute('equipRuneStone')
 const availableRuneStones = ref([])
 const runeStoneListLoading = ref(false)
 const equipLoading = ref(false)
@@ -891,6 +892,7 @@ async function handleOpenEquipDialog() {
   } finally {
     runeStoneListLoading.value = false
   }
+  // 数据加载完成后才弹出对话框
   showEquipDialog.value = true
 }
 

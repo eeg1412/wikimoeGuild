@@ -318,7 +318,7 @@ export async function register(req, { email, password, guildName, code }) {
       type: 'guild_created',
       account: account._id,
       guildName,
-      title: `公会「${guildName}」已创建`,
+      title: `「${guildName}」公会正式成立！`,
       content: '欢迎新公会加入冒险！'
     })
 
@@ -753,7 +753,7 @@ export async function guestRegister(req) {
       type: 'guild_created',
       account: account._id,
       guildName,
-      title: `公会「${guildName}」已创建`,
+      title: `「${guildName}」公会正式成立！`,
       content: '欢迎新公会加入冒险！'
     })
 
