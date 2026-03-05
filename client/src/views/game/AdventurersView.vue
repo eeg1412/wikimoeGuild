@@ -122,6 +122,28 @@
         </el-dropdown>
       </div>
     </div>
+
+    <!-- 按阵容升级 -->
+    <div class="flex justify-center mb-4">
+      <el-dropdown
+        split-button
+        type="success"
+        size="small"
+        trigger="click"
+        :disabled="batchRatioLoading || formationUpgradeLoading"
+        @click="handleOpenFormationUpgrade(10)"
+        @command="handleOpenFormationUpgrade"
+      >
+        🏗️ 按阵容升级+10
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item :command="1">+1</el-dropdown-item>
+            <el-dropdown-item :command="5">+5</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
+
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-12">
       <span class="animate-spin inline-block text-4xl">⏳</span>
@@ -242,6 +264,11 @@
           Lv.{{ adv.comprehensiveLevel || 1 }}
         </p>
 
+        <!-- 战斗力 -->
+        <p class="text-xs text-orange-400 mt-0.5 font-mono">
+          ⚔️ {{ calculateCombatPower(adv, adv.runeStone || null) }}
+        </p>
+
         <!-- 装备状态标签 -->
         <div
           v-if="adv.runeStone"
@@ -299,7 +326,6 @@
       :title="
         statUpgradeAdv ? `${statUpgradeAdv.name} - 属性升降级` : '属性升降级'
       "
-      width="380px"
       align-center
       destroy-on-close
       class="game-dialog"
@@ -327,7 +353,17 @@
           class="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-center"
         >
           <p>
-            共 <b>{{ batchReportData.length }}</b> 名冒险家，每人
+            共 <b>{{ batchReportData.length }}</b> 名冒险家，
+            <span class="text-green-500"
+              >{{ batchReportData.filter(i => !i.error).length }} 名可操作</span
+            >
+            <span
+              v-if="batchReportData.some(i => i.error)"
+              class="text-red-400 ml-1"
+            >
+              {{ batchReportData.filter(i => i.error).length }} 名将被跳过
+            </span>
+            ，每人
             {{ batchReportDirection === 'up' ? '+' : '-'
             }}{{ batchReportTotalPerAdv }} 级
           </p>
@@ -352,7 +388,7 @@
         </div>
 
         <!-- 每个冒险家详情 -->
-        <div class="max-h-60 overflow-y-auto space-y-2">
+        <div class="overflow-y-auto space-y-2">
           <div
             v-for="item in batchReportData"
             :key="item.adventurerId"
@@ -410,6 +446,139 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- ==================== 按阵容升级弹窗 ==================== -->
+    <el-dialog
+      v-model="formationSelectVisible"
+      title="🏗️ 按阵容升级"
+      width="90%"
+      style="max-width: 600px"
+      align-center
+      destroy-on-close
+      class="game-dialog"
+    >
+      <!-- 阵容选择 -->
+      <div v-if="!formationSelectedId" class="space-y-3">
+        <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
+          选择阵容后，将对阵容中的冒险家批量升级
+          <b>+{{ formationUpgradeLevels }}</b> 级
+        </p>
+        <div v-if="formationListLoading" class="flex justify-center py-6">
+          <span class="animate-spin inline-block text-2xl">⏳</span>
+        </div>
+        <div v-else class="space-y-2">
+          <!-- 竞技场阵容 -->
+          <div
+            v-if="arenaFormationOption"
+            class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border border-gray-300 dark:border-gray-600"
+            @click="handleSelectFormation('arena')"
+          >
+            <p class="font-medium text-sm">⚔️ 当前竞技场阵容</p>
+            <p class="text-xs text-gray-400 mt-0.5">
+              {{ arenaFormationOption.advCount }} 名冒险家
+            </p>
+          </div>
+          <!-- 预设阵容列表 -->
+          <div
+            v-for="f in formationOptions"
+            :key="f.slot"
+            class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border border-gray-300 dark:border-gray-600"
+            @click="handleSelectFormation(f.slot)"
+          >
+            <p class="font-medium text-sm">
+              📋 {{ f.name }}（槽位{{ f.slot }}）
+            </p>
+            <p class="text-xs text-gray-400 mt-0.5">
+              {{ f.advCount }} 名冒险家
+            </p>
+          </div>
+          <p
+            v-if="!arenaFormationOption && formationOptions.length === 0"
+            class="text-center text-gray-400 py-4"
+          >
+            暂无可用阵容，请先配置阵容
+          </p>
+        </div>
+      </div>
+
+      <!-- 选择阵容后：冒险家勾选列表 -->
+      <div v-else class="space-y-3">
+        <div class="flex items-center justify-between">
+          <el-button size="small" @click="handleBackToFormationList">
+            ← 重选阵容
+          </el-button>
+          <span class="text-sm text-gray-500">
+            已选 {{ formationSelectedAdvIds.size }} /
+            {{ formationAdvList.length }}
+          </span>
+        </div>
+        <div class="overflow-y-auto space-y-2 pr-1">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div
+              v-for="adv in formationAdvList"
+              :key="adv._id"
+              class="rpg-card relative flex flex-col items-center p-3 rounded-xl cursor-pointer transition-all"
+              :class="{
+                'ring-2 ring-yellow-400': formationSelectedAdvIds.has(adv._id)
+              }"
+              @click="handleToggleFormationAdv(adv._id)"
+            >
+              <!-- 批量选择复选框 -->
+              <div class="absolute top-1 right-1 z-20" @click.stop>
+                <el-checkbox
+                  :model-value="formationSelectedAdvIds.has(adv._id)"
+                  size="small"
+                  @change="handleToggleFormationAdv(adv._id)"
+                />
+              </div>
+
+              <!-- 头像 -->
+              <div class="relative w-12 h-12 mb-2">
+                <GameAdventurerAvatar
+                  :adventurer="adv"
+                  :alt="adv.name"
+                  class="w-full h-full rounded-full object-cover border-2 transition-colors"
+                  :style="{ borderColor: getElementColor(adv.elements) }"
+                />
+              </div>
+
+              <!-- 名字 -->
+              <p
+                class="text-xs font-medium text-gray-700 dark:text-gray-200 text-center truncate w-full"
+              >
+                {{ adv.name }}
+              </p>
+
+              <!-- 综合等级 -->
+              <p class="text-xs text-yellow-500 mt-1 font-mono">
+                Lv.{{ adv.comprehensiveLevel || 1 }}
+              </p>
+
+              <!-- 战斗力 -->
+              <p class="text-xs text-orange-400 mt-0.5 font-mono">
+                ⚔️ {{ calculateCombatPower(adv, adv.runeStone || null) }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <template v-if="formationSelectedId">
+          <el-button @click="formationSelectVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :disabled="formationSelectedAdvIds.size === 0"
+            @click="handleFormationUpgradePreview"
+          >
+            预览升级报表
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button @click="formationSelectVisible = false">关闭</el-button>
+        </template>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -445,6 +614,10 @@ const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(
 import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
 import AdventurerRuneStoneDialog from '@/components/AdventurerRuneStoneDialog.vue'
 import StatLevelUpPanel from '@/components/StatLevelUpPanel.vue'
+import GameAdventurerAvatar from '@/components/GameAdventurerAvatar.vue'
+import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
+import { getMyFormationsApi } from '@/api/game/formation.js'
+import { getArenaFormationApi } from '@/api/game/arena.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
@@ -734,7 +907,6 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
     speedCrystal: 0,
     sanCrystal: 0
   }
-  let hasError = false
   const reportItems = []
   const selectedAdvs = adventurers.value.filter(a =>
     selectedIds.value.has(a._id)
@@ -759,17 +931,13 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
   }
 
   for (const adv of selectedAdvs) {
-    const ratio = adv.statDistributeRatio || {
-      attack: 25,
-      defense: 25,
-      speed: 25,
-      san: 25
-    }
-    const ratioTotal = ratio.attack + ratio.defense + ratio.speed + ratio.san
+    const ratio = adv.statDistributeRatio
+    const ratioTotal = ratio
+      ? ratio.attack + ratio.defense + ratio.speed + ratio.san
+      : 0
     let error = ''
     if (ratioTotal !== 100) {
-      error = '分配比例未设置（需合计100%）'
-      hasError = true
+      error = '分配比例未设置（需合计100%），将被跳过'
     }
 
     let effectiveLevels = totalLevels
@@ -782,20 +950,27 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
         3
       const remaining = maxCompLevel - currentComp
       if (remaining <= 0) {
-        error = '综合等级已达上限'
-        hasError = true
+        error = '综合等级已达上限，将被跳过'
       } else {
         effectiveLevels = Math.min(totalLevels, remaining)
       }
     }
 
     const alloc = {
-      attack: Math.round((effectiveLevels * ratio.attack) / 100),
-      defense: Math.round((effectiveLevels * ratio.defense) / 100),
-      speed: Math.round((effectiveLevels * ratio.speed) / 100),
+      attack: error
+        ? 0
+        : Math.round((effectiveLevels * (ratio?.attack || 0)) / 100),
+      defense: error
+        ? 0
+        : Math.round((effectiveLevels * (ratio?.defense || 0)) / 100),
+      speed: error
+        ? 0
+        : Math.round((effectiveLevels * (ratio?.speed || 0)) / 100),
       san: 0
     }
-    alloc.san = effectiveLevels - alloc.attack - alloc.defense - alloc.speed
+    alloc.san = error
+      ? 0
+      : effectiveLevels - alloc.attack - alloc.defense - alloc.speed
 
     let itemGold = 0
     const itemCrystals = { attack: 0, defense: 0, speed: 0, san: 0 }
@@ -822,8 +997,7 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
           if (allocCount <= 0) continue
           const currentLevel = adv[statLevelKeys[statType]] || 1
           if (currentLevel - allocCount < 1) {
-            error = `${statNames[statType]}等级不足以降级 ${allocCount} 级（当前 Lv.${currentLevel}）`
-            hasError = true
+            error = `${statNames[statType]}等级不足以降级 ${allocCount} 级（当前 Lv.${currentLevel}），将被跳过`
             break
           }
         }
@@ -876,7 +1050,8 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
   batchReportData.value = reportItems
   batchReportTotalGold.value = totalGold
   batchReportTotalCrystals.value = totalCrystalsAcc
-  batchReportHasError.value = hasError
+  // 只有全部都有错误时才阻止提交
+  batchReportHasError.value = reportItems.every(item => !!item.error)
   batchReportVisible.value = true
 }
 
@@ -906,10 +1081,16 @@ async function handleConfirmBatchRatio() {
       }))
     if (ops.length === 0) return
 
-    await batchRatioDistributeApi({ operations: ops })
-    ElMessage.success(
-      `批量${batchReportDirection.value === 'up' ? '升级' : '降级'}完成`
-    )
+    const res = await batchRatioDistributeApi({ operations: ops })
+    const { results, skipped } = res.data.data
+    const successCount = results?.length || 0
+    const skippedCount =
+      (skipped?.length || 0) + batchReportData.value.filter(i => i.error).length
+    let msg = `批量${batchReportDirection.value === 'up' ? '升级' : '降级'}完成，${successCount} 名成功`
+    if (skippedCount > 0) {
+      msg += `，${skippedCount} 名被跳过`
+    }
+    ElMessage.success(msg)
     batchReportVisible.value = false
     selectedIds.value = new Set()
     batchMode.value = false
@@ -920,6 +1101,143 @@ async function handleConfirmBatchRatio() {
   } finally {
     batchRatioLoading.value = false
   }
+}
+
+// ── 按阵容升级 ──
+const { visible: formationSelectVisible } = useDialogRoute('formationUpgrade')
+const formationUpgradeLoading = ref(false)
+const formationListLoading = ref(false)
+const formationUpgradeLevels = ref(10)
+const formationOptions = ref([])
+const arenaFormationOption = ref(null)
+const formationSelectedId = ref(null)
+const formationAdvList = ref([])
+const formationSelectedAdvIds = ref(new Set())
+
+// 保存原始阵容数据以便查找冒险家
+let formationDataCache = []
+let arenaFormationCache = null
+
+async function handleOpenFormationUpgrade(levels) {
+  formationUpgradeLevels.value = levels
+  formationSelectedId.value = null
+  formationAdvList.value = []
+  formationSelectedAdvIds.value = new Set()
+  formationListLoading.value = true
+  formationSelectVisible.value = true
+
+  try {
+    const [formRes, arenaRes] = await Promise.allSettled([
+      getMyFormationsApi(),
+      getArenaFormationApi()
+    ])
+
+    // 预设阵容
+    if (formRes.status === 'fulfilled') {
+      const formations = formRes.value.data.data || []
+      formationDataCache = formations
+      formationOptions.value = formations
+        .filter(f => {
+          // 过滤有效阵容（至少有一个冒险家）
+          return f.grid?.some(row => row?.some(cell => cell !== null))
+        })
+        .map(f => {
+          const advCount = f.grid.flat().filter(cell => cell !== null).length
+          return { slot: f.slot, name: f.name, advCount }
+        })
+    } else {
+      formationOptions.value = []
+      formationDataCache = []
+    }
+
+    // 竞技场阵容
+    if (arenaRes.status === 'fulfilled' && arenaRes.value.data.data) {
+      const arenaData = arenaRes.value.data.data
+      arenaFormationCache = arenaData
+      if (arenaData.grid?.some(row => row?.some(cell => cell !== null))) {
+        const advCount = arenaData.grid
+          .flat()
+          .filter(cell => cell !== null).length
+        arenaFormationOption.value = { advCount }
+      } else {
+        arenaFormationOption.value = null
+      }
+    } else {
+      arenaFormationOption.value = null
+      arenaFormationCache = null
+    }
+  } catch {
+    formationOptions.value = []
+    arenaFormationOption.value = null
+  } finally {
+    formationListLoading.value = false
+  }
+}
+
+function handleSelectFormation(idOrSlot) {
+  formationSelectedId.value = idOrSlot
+
+  let advIds = []
+  if (idOrSlot === 'arena' && arenaFormationCache) {
+    advIds = arenaFormationCache.grid
+      .flat()
+      .filter(cell => cell !== null)
+      .map(cell => (typeof cell === 'object' ? cell._id : cell))
+  } else {
+    const formation = formationDataCache.find(f => f.slot === idOrSlot)
+    if (formation) {
+      advIds = formation.grid
+        .flat()
+        .filter(cell => cell !== null)
+        .map(cell => (typeof cell === 'object' ? cell._id : cell))
+    }
+  }
+
+  // 去重
+  const uniqueIds = [...new Set(advIds)]
+
+  // 从现有冒险家列表中匹配
+  formationAdvList.value = uniqueIds
+    .map(id => adventurers.value.find(a => a._id === id))
+    .filter(Boolean)
+
+  // 默认全选
+  formationSelectedAdvIds.value = new Set(
+    formationAdvList.value.map(a => a._id)
+  )
+}
+
+function handleBackToFormationList() {
+  formationSelectedId.value = null
+  formationAdvList.value = []
+  formationSelectedAdvIds.value = new Set()
+}
+
+function handleToggleFormationAdv(id) {
+  const newSet = new Set(formationSelectedAdvIds.value)
+  if (newSet.has(id)) {
+    newSet.delete(id)
+  } else {
+    newSet.add(id)
+  }
+  formationSelectedAdvIds.value = newSet
+}
+
+function handleFormationUpgradePreview() {
+  if (formationSelectedAdvIds.value.size === 0) return
+
+  // 暂存选中的阵容冒险家ID
+  const advIds = new Set(formationSelectedAdvIds.value)
+  const levels = formationUpgradeLevels.value
+
+  // 先关闭阵容选择弹窗
+  formationSelectVisible.value = false
+
+  // 等待路由变更后再打开批量报表弹窗
+  setTimeout(() => {
+    selectedIds.value = advIds
+    handleOpenBatchRatioReport('up', levels)
+  }, 300)
 }
 
 // ── 初始化 ──

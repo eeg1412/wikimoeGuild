@@ -2,7 +2,6 @@
   <el-dialog
     v-model="visible"
     :title="adventurer?.name || '冒险家详情'"
-    width="380px"
     align-center
     destroy-on-close
     class="rpg-dialog game-dialog"
@@ -162,6 +161,14 @@
             <span class="text-xs text-gray-400 font-normal">
               / {{ maxCompLevel }}</span
             >
+          </span>
+        </div>
+
+        <!-- 战斗力 -->
+        <div class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5">
+          <span class="info-label">战斗力</span>
+          <span class="info-value rpg-number text-orange-500">
+            {{ combatPower }}
           </span>
         </div>
 
@@ -403,13 +410,13 @@
     v-if="showManage"
     v-model="showEquipDialog"
     title="选择符文石"
-    width="380px"
     align-center
     destroy-on-close
   >
     <RuneStoneSelectPanel
       :rune-stones="availableRuneStones"
       :loading="runeStoneListLoading"
+      :adventurer="adventurer"
       @select="handleEquipSelect"
     >
       <template #action="{ runeStone }">
@@ -531,6 +538,7 @@ import AdventurerFinalStats from '@/components/AdventurerFinalStats.vue'
 import StatLevelUpPanel from '@/components/StatLevelUpPanel.vue'
 import Cropper from '@/components/Cropper.vue'
 import { getMaxComprehensiveLevel } from 'shared/utils/guildLevelUtils.js'
+import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const props = defineProps({
@@ -562,6 +570,15 @@ const { fetchPlayerInfo, playerInfo } = useGameUser()
 // ── 公会等级限制计算 ──
 const maxCompLevel = computed(() => {
   return getMaxComprehensiveLevel(playerInfo.value?.guildLevel || 1)
+})
+
+// ── 战斗力 ──
+const combatPower = computed(() => {
+  if (!adventurer.value) return 0
+  return calculateCombatPower(
+    adventurer.value,
+    adventurer.value.runeStone || null
+  )
 })
 
 // ── 管理模式数据 ──

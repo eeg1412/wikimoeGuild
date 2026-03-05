@@ -291,6 +291,12 @@
                         <p class="text-sm text-gray-400">
                           竞技点: {{ opponent.points }}
                         </p>
+                        <p
+                          v-if="opponent.combatPower != null"
+                          class="text-xs text-orange-400 font-mono"
+                        >
+                          ⚔️ 战斗力: {{ opponent.combatPower }}
+                        </p>
                       </div>
                     </div>
                     <el-button
@@ -313,14 +319,23 @@
                   </div>
                 </div>
               </div>
-              <div class="flex justify-center mt-4">
+              <div class="flex flex-col items-center mt-4 gap-1">
+                <p v-if="matchRefreshedAt" class="text-xs text-gray-400">
+                  数据更新时间: {{ formatRefreshedAt(matchRefreshedAt) }}
+                </p>
                 <el-button
                   text
                   size="small"
                   :loading="matchLoading"
-                  @click="fetchMatchList"
-                  >🔄 刷新对手</el-button
+                  :disabled="refreshCooldown > 0 || matchLoading"
+                  @click="handleRefreshMatchList"
                 >
+                  {{
+                    refreshCooldown > 0
+                      ? `🔄 刷新对手 (${refreshCooldown}s)`
+                      : '🔄 刷新对手'
+                  }}
+                </el-button>
               </div>
             </template>
           </div>
@@ -349,8 +364,11 @@
                 @set-role-tag="handleArenaGridRoleTag"
               />
 
-              <p class="text-center text-sm text-gray-400 mb-4">
+              <p class="text-center text-sm text-gray-400 mb-2">
                 已放置 {{ arenaPlacedCount }} 名冒险家
+              </p>
+              <p class="text-center text-sm text-orange-400 font-mono mb-4">
+                ⚔️ 综合战斗力: {{ arenaCombatPower }}
               </p>
 
               <div class="flex justify-center gap-3 mb-4">
@@ -951,7 +969,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import FormationGrid from '@/components/FormationGrid.vue'
@@ -991,6 +1009,7 @@ const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(([value, info]) => ({
   ...info
 }))
 import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
+import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
@@ -1059,6 +1078,9 @@ const matchList = ref([])
 const matchLoading = ref(false)
 const challengeLoading = ref(null)
 const challengedOpponents = ref(new Set())
+const matchRefreshedAt = ref(null)
+const refreshCooldown = ref(0)
+let refreshCooldownTimer = null
 
 // 排行榜
 const leaderboard = ref([])
@@ -1117,6 +1139,18 @@ const arenaPlacedCount = computed(() => {
     }
   }
   return count
+})
+
+const arenaCombatPower = computed(() => {
+  let total = 0
+  for (const row of arenaGrid.value) {
+    for (const cell of row) {
+      if (cell) {
+        total += calculateCombatPower(cell, cell.runeStone || null)
+      }
+    }
+  }
+  return total
 })
 
 function getArenaCell(row, col) {
@@ -1405,17 +1439,62 @@ function handleSwitchArenaTab(tab) {
   }
 }
 
-async function fetchMatchList() {
+async function fetchMatchList(forceRefresh = false) {
   matchLoading.value = true
-  challengedOpponents.value = new Set()
+  if (forceRefresh) {
+    challengedOpponents.value = new Set()
+  }
   try {
-    const res = await getMatchListApi()
-    matchList.value = res.data.data?.opponents || []
+    const params = forceRefresh ? { refresh: '1' } : {}
+    const res = await getMatchListApi(params)
+    const data = res.data.data
+    matchList.value = data?.opponents || []
+    if (data?.refreshedAt) {
+      matchRefreshedAt.value = new Date(data.refreshedAt)
+      startRefreshCooldown()
+    }
   } catch {
-    matchList.value = []
+    if (forceRefresh) {
+      // 冷却中时不清空已有列表
+    } else {
+      matchList.value = []
+    }
   } finally {
     matchLoading.value = false
   }
+}
+
+function startRefreshCooldown() {
+  if (refreshCooldownTimer) {
+    clearInterval(refreshCooldownTimer)
+    refreshCooldownTimer = null
+  }
+  if (!matchRefreshedAt.value) return
+  const calcRemaining = () => {
+    const elapsed = Date.now() - matchRefreshedAt.value.getTime()
+    return Math.max(0, Math.ceil((10000 - elapsed) / 1000))
+  }
+  refreshCooldown.value = calcRemaining()
+  if (refreshCooldown.value > 0) {
+    refreshCooldownTimer = setInterval(() => {
+      refreshCooldown.value = calcRemaining()
+      if (refreshCooldown.value <= 0) {
+        clearInterval(refreshCooldownTimer)
+        refreshCooldownTimer = null
+      }
+    }, 500)
+  }
+}
+
+function handleRefreshMatchList() {
+  fetchMatchList(true)
+}
+
+function formatRefreshedAt(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  const pad = n => String(n).padStart(2, '0')
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 async function handleChallenge(opponent) {
@@ -1547,6 +1626,13 @@ onMounted(async () => {
   await Promise.all([fetchArenaInfo(), fetchFormations()])
   if (arenaInfo.value.registration) {
     fetchMatchList()
+  }
+})
+
+onBeforeUnmount(() => {
+  if (refreshCooldownTimer) {
+    clearInterval(refreshCooldownTimer)
+    refreshCooldownTimer = null
   }
 })
 </script>

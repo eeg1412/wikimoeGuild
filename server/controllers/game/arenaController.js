@@ -68,7 +68,8 @@ export async function getArenaFormation(req, res, next) {
 export async function getMatchList(req, res, next) {
   try {
     const accountId = req.player.id
-    const result = await arenaService.getMatchList(accountId)
+    const forceRefresh = req.query.refresh === '1'
+    const result = await arenaService.getMatchList(accountId, forceRefresh)
     res.success(result, '获取对手列表成功')
   } catch (error) {
     next(error)

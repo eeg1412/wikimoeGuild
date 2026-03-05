@@ -35,6 +35,7 @@
           <option value="time">获取时间</option>
           <option value="rarity">稀有度</option>
           <option value="level">等级</option>
+          <option v-if="adventurer" value="power">战斗力加成</option>
         </select>
       </div>
     </div>
@@ -82,6 +83,17 @@
               <p class="text-xs text-gray-400 truncate">
                 {{ getSkillSummary(rs) }}
               </p>
+              <!-- 战斗力加成 -->
+              <p
+                v-if="adventurer"
+                class="text-xs font-semibold mt-0.5"
+                :class="getCombatPowerDiffClass(rs)"
+              >
+                ⚔️ {{ getCombatPowerAfter(rs) }} (<span>{{
+                  getCombatPowerDiffText(rs)
+                }}</span
+                >)
+              </p>
             </div>
           </div>
           <div class="flex items-center gap-1 shrink-0">
@@ -107,11 +119,16 @@
 <script setup>
 import { ref, computed } from 'vue'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
-import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
+import {
+  runeStoneActiveSkillDataBase,
+  calculateCombatPower
+} from 'shared/utils/gameDatabase.js'
 
 const props = defineProps({
   runeStones: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  /** 传入冒险家对象时，展示装备该符文石后的战斗力变化 */
+  adventurer: { type: Object, default: null }
 })
 
 const emit = defineEmits(['select'])
@@ -157,6 +174,11 @@ const sortedList = computed(() => {
       break
     case 'level':
       list.sort((a, b) => b.level - a.level)
+      break
+    case 'power':
+      if (props.adventurer) {
+        list.sort((a, b) => getCombatPowerAfter(b) - getCombatPowerAfter(a))
+      }
       break
     case 'time':
     default:
@@ -212,6 +234,36 @@ function getSkillSummary(rs) {
 // 点击项目
 function handleItemClick(rs) {
   emit('select', rs)
+}
+
+// ── 战斗力加成计算 ──
+const currentCombatPower = computed(() => {
+  if (!props.adventurer) return 0
+  return calculateCombatPower(
+    props.adventurer,
+    props.adventurer.runeStone || null
+  )
+})
+
+function getCombatPowerAfter(rs) {
+  if (!props.adventurer) return 0
+  return calculateCombatPower(props.adventurer, rs)
+}
+
+function getCombatPowerDiffText(rs) {
+  const after = getCombatPowerAfter(rs)
+  const diff = after - currentCombatPower.value
+  if (diff > 0) return `+${diff}`
+  if (diff < 0) return `${diff}`
+  return '±0'
+}
+
+function getCombatPowerDiffClass(rs) {
+  const after = getCombatPowerAfter(rs)
+  const diff = after - currentCombatPower.value
+  if (diff > 0) return 'text-green-500'
+  if (diff < 0) return 'text-red-500'
+  return 'text-gray-400'
 }
 
 // 样式工具

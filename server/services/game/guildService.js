@@ -245,7 +245,7 @@ export async function upgradeGuildLevel(accountId) {
       type: 'guild_upgrade',
       account: accountId,
       guildName: playerInfo.guildName,
-      title: `🏩 「${playerInfo.guildName}」升级到 Lv.${guildLevel + 1}！`,
+      title: `🏰 「${playerInfo.guildName}」升级到 Lv.${guildLevel + 1}！`,
       content: `公会等级提升至 Lv.${guildLevel + 1}`
     })
 

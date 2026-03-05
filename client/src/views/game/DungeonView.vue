@@ -285,7 +285,6 @@
       <el-dialog
         v-model="showLegionDialog"
         title="⚔️ 挑战迷宫军团"
-        width="380px"
         align-center
         destroy-on-close
       >

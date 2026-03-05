@@ -232,7 +232,6 @@
     <el-dialog
       v-model="synthesisVisible"
       title="🔮 符文石合成"
-      width="380px"
       align-center
       destroy-on-close
     >
@@ -563,7 +562,6 @@
     <el-dialog
       v-model="pickRuneVisible"
       title="选择符文石"
-      width="380px"
       align-center
       destroy-on-close
     >

@@ -45,7 +45,8 @@ function generateSeed(accountId, dungeonLevel) {
  * 生成军团恶魔（使用种子随机数确保一致性）
  * 前10级：迷宫等级 数量的 等级为 迷宫等级×1 的恶魔
  * 前25级：迷宫等级 数量的 等级为 迷宫等级×1 的恶魔，必定携带1个随机传说级符文石
- * 后25级：25名恶魔，综合等级 = 25 + (地牢等级 × 10)，全员持有传说级符文石
+ * 后25级：25名恶魔，综合等级 = 迷宫等级，全员持有传说级符文石
+ * 等级增强系数: 1 + level * 0.002（每级+0.2%）
  */
 function generateLegionDemons(dungeonLevel, seededRandom) {
   const ELEMENTS = ['1', '2', '3', '4', '5', '6']
@@ -54,12 +55,17 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
   const allSkills = runeStoneActiveSkillDataBase()
   // 恶魔头像 1-3（demon目录下有3个）
   const DEMON_AVATAR_COUNT = 3
+  // 等级增强系数：基于迷宫等级的小幅增强曲线
+  const levelBoostFactor = 1 + dungeonLevel * 0.002
 
   const demons = []
   if (dungeonLevel <= 10) {
     // 前10级：迷宫等级 数量的恶魔，等级为 迷宫等级 × 1
     const demonCount = Math.min(dungeonLevel, 10)
-    const compLevel = dungeonLevel * 1
+    const compLevel = Math.max(
+      1,
+      Math.floor(dungeonLevel * 1 * levelBoostFactor)
+    )
     for (let i = 0; i < demonCount; i++) {
       demons.push(
         createDemon(
@@ -77,7 +83,10 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
   } else if (dungeonLevel <= 25) {
     // 前25级：迷宫等级 数量的恶魔，等级为 迷宫等级 × 1
     const demonCount = Math.min(dungeonLevel, 25)
-    const compLevel = dungeonLevel * 1
+    const compLevel = Math.max(
+      1,
+      Math.floor(dungeonLevel * 1 * levelBoostFactor)
+    )
     for (let i = 0; i < demonCount; i++) {
       // 必定携带1个随机传说级符文石
       const runeStone = generateDemonRuneStone(
@@ -99,9 +108,9 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
       )
     }
   } else {
-    // 后25级：25名恶魔，综合等级 = 迷宫等级
+    // 后25级：25名恶魔，综合等级 = 迷宫等级 × 增强系数
     for (let i = 0; i < 25; i++) {
-      const compLevel = dungeonLevel
+      const compLevel = Math.max(1, Math.floor(dungeonLevel * levelBoostFactor))
       // 随机传说级符文石
       const runeStone = generateDemonRuneStone(
         compLevel,

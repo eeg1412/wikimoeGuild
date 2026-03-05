@@ -3,7 +3,6 @@
   <el-dialog
     v-model="materialPickVisible"
     title="🔮 选择素材符文石（将被销毁）"
-    width="380px"
     align-center
     destroy-on-close
   >

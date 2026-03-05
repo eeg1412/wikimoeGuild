@@ -2,7 +2,6 @@
   <el-dialog
     v-model="visible"
     :title="dialogTitle"
-    width="380px"
     align-center
     destroy-on-close
     class="game-dialog"
@@ -128,13 +127,13 @@
   <el-dialog
     v-model="equipDialogVisible"
     title="选择符文石"
-    width="380px"
     align-center
     destroy-on-close
   >
     <RuneStoneSelectPanel
       :rune-stones="availableRuneStones"
       :loading="runeStoneListLoading"
+      :adventurer="adventurer"
       @select="handleEquipSelect"
     >
       <template #action="{ runeStone }">

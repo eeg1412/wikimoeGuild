@@ -861,11 +861,15 @@ export async function autoDistributeLevelUp(
       throw err
     }
 
-    const ratio = adventurer.statDistributeRatio || {
-      attack: 25,
-      defense: 25,
-      speed: 25,
-      san: 25
+    const ratio = adventurer.statDistributeRatio
+    if (
+      !ratio ||
+      ratio.attack + ratio.defense + ratio.speed + ratio.san !== 100
+    ) {
+      const err = new Error('请先设置属性分配比例（四项之和必须为100%）')
+      err.statusCode = 400
+      err.expose = true
+      throw err
     }
 
     const maxCompLevel = getMaxComprehensiveLevel(playerInfo.guildLevel || 1)
@@ -1072,91 +1076,71 @@ export async function batchRatioDistribute(accountId, operations) {
       advMap.set(adv._id.toString(), adv)
     }
 
-    // 第 1 阶段：预计算并检查所有消耗
-    let totalGoldNeeded = 0
-    const totalCrystalNeeded = {
-      attackCrystal: 0,
-      defenseCrystal: 0,
-      speedCrystal: 0,
-      sanCrystal: 0
-    }
-    const opPlans = [] // 每个操作的计划
+    // 第 1 阶段：预计算，跳过不可操作的冒险家
+    const opPlans = [] // 可操作的计划
+    const skippedResults = [] // 被跳过的结果
 
     for (const op of operations) {
       const adv = advMap.get(op.adventurerId)
       if (!adv) {
-        const err = new Error(`冒险家 ${op.adventurerId} 不存在`)
-        err.statusCode = 404
-        err.expose = true
-        throw err
+        skippedResults.push({
+          adventurerId: op.adventurerId,
+          adventurerName: '未知',
+          skipped: true,
+          skipReason: '冒险家不存在'
+        })
+        continue
       }
 
-      const ratio = adv.statDistributeRatio || {
-        attack: 25,
-        defense: 25,
-        speed: 25,
-        san: 25
-      }
-      const ratioTotal = ratio.attack + ratio.defense + ratio.speed + ratio.san
+      const ratio = adv.statDistributeRatio
+      const ratioTotal = ratio
+        ? ratio.attack + ratio.defense + ratio.speed + ratio.san
+        : 0
       if (ratioTotal !== 100) {
-        const err = new Error(
-          `冒险家 ${adv.name} 的分配比例未设置（需合计100%）`
-        )
-        err.statusCode = 400
-        err.expose = true
-        throw err
+        skippedResults.push({
+          adventurerId: adv._id,
+          adventurerName: adv.name,
+          skipped: true,
+          skipReason: '分配比例未设置（需合计100%）'
+        })
+        continue
       }
-
-      // 按比例计算分配
-      const alloc = {
-        attack: Math.round((op.totalLevels * ratio.attack) / 100),
-        defense: Math.round((op.totalLevels * ratio.defense) / 100),
-        speed: Math.round((op.totalLevels * ratio.speed) / 100),
-        san: 0
-      }
-      alloc.san = op.totalLevels - alloc.attack - alloc.defense - alloc.speed
 
       if (op.direction === 'up') {
-        // 检查综合等级上限
         const currentComp =
           adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
         const remaining = maxCompLevel - currentComp
         if (remaining <= 0) {
-          const err = new Error(`冒险家 ${adv.name} 综合等级已达上限`)
-          err.statusCode = 400
-          err.expose = true
-          throw err
+          skippedResults.push({
+            adventurerId: adv._id,
+            adventurerName: adv.name,
+            skipped: true,
+            skipReason: '综合等级已达上限'
+          })
+          continue
         }
-        const effectiveLevels = Math.min(op.totalLevels, remaining)
-        if (effectiveLevels < op.totalLevels) {
-          // 重新分配
-          alloc.attack = Math.round((effectiveLevels * ratio.attack) / 100)
-          alloc.defense = Math.round((effectiveLevels * ratio.defense) / 100)
-          alloc.speed = Math.round((effectiveLevels * ratio.speed) / 100)
-          alloc.san =
-            effectiveLevels - alloc.attack - alloc.defense - alloc.speed
-        }
+      }
 
-        // 计算消耗
-        for (const [statType, allocCount] of Object.entries(alloc)) {
-          if (allocCount <= 0) continue
-          const stat = statMap[statType]
-          let currentLevel = adv[stat.level]
-          for (let i = 0; i < allocCount; i++) {
-            totalCrystalNeeded[stat.crystal] += getAdventurerLevelUpCrystalCost(
-              currentLevel,
-              crystalBase
-            )
-            totalGoldNeeded += getAdventurerLevelUpGoldCost(
-              currentLevel,
-              goldBase
-            )
-            currentLevel++
-          }
-        }
-      } else {
-        // direction === 'down'
+      // 按比例计算分配
+      let effectiveLevels = op.totalLevels
+      if (op.direction === 'up') {
+        const currentComp =
+          adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
+        const remaining = maxCompLevel - currentComp
+        effectiveLevels = Math.min(op.totalLevels, remaining)
+      }
+
+      const alloc = {
+        attack: Math.round((effectiveLevels * ratio.attack) / 100),
+        defense: Math.round((effectiveLevels * ratio.defense) / 100),
+        speed: Math.round((effectiveLevels * ratio.speed) / 100),
+        san: 0
+      }
+      alloc.san = effectiveLevels - alloc.attack - alloc.defense - alloc.speed
+
+      if (op.direction === 'down') {
         // 检查属性等级是否足够降级
+        let canDown = true
         for (const [statType, allocCount] of Object.entries(alloc)) {
           if (allocCount <= 0) continue
           const stat = statMap[statType]
@@ -1167,54 +1151,126 @@ export async function batchRatioDistribute(accountId, operations) {
               speed: '速度',
               san: 'SAN'
             }[statType]
-            const err = new Error(
-              `冒险家 ${adv.name} 的${statName}等级不足以降级 ${allocCount} 级（当前 Lv.${adv[stat.level]}）`
-            )
-            err.statusCode = 400
-            err.expose = true
-            throw err
+            skippedResults.push({
+              adventurerId: adv._id,
+              adventurerName: adv.name,
+              skipped: true,
+              skipReason: `${statName}等级不足以降级 ${allocCount} 级（当前 Lv.${adv[stat.level]}）`
+            })
+            canDown = false
+            break
           }
         }
-        totalGoldNeeded += op.totalLevels * downPricePerLevel
+        if (!canDown) continue
+      }
+
+      // 计算该冒险家的消耗
+      let advGoldNeeded = 0
+      const advCrystalNeeded = {
+        attackCrystal: 0,
+        defenseCrystal: 0,
+        speedCrystal: 0,
+        sanCrystal: 0
+      }
+
+      if (op.direction === 'up') {
+        for (const [statType, allocCount] of Object.entries(alloc)) {
+          if (allocCount <= 0) continue
+          const stat = statMap[statType]
+          let currentLevel = adv[stat.level]
+          for (let i = 0; i < allocCount; i++) {
+            advCrystalNeeded[stat.crystal] += getAdventurerLevelUpCrystalCost(
+              currentLevel,
+              crystalBase
+            )
+            advGoldNeeded += getAdventurerLevelUpGoldCost(
+              currentLevel,
+              goldBase
+            )
+            currentLevel++
+          }
+        }
+      } else {
+        advGoldNeeded = effectiveLevels * downPricePerLevel
       }
 
       opPlans.push({
         adv,
         alloc,
         direction: op.direction,
-        totalLevels: op.totalLevels
+        totalLevels: effectiveLevels,
+        goldNeeded: advGoldNeeded,
+        crystalNeeded: { ...advCrystalNeeded }
       })
     }
 
-    // 检查资源
-    if (playerInfo.gold < totalGoldNeeded) {
-      const err = new Error(
-        `金币不足：需要 ${totalGoldNeeded}，当前 ${playerInfo.gold}`
-      )
+    if (opPlans.length === 0) {
+      const err = new Error('没有可操作的冒险家')
       err.statusCode = 400
       err.expose = true
       throw err
     }
-    for (const [crystalType, needed] of Object.entries(totalCrystalNeeded)) {
-      if (needed > 0 && (inventory[crystalType] || 0) < needed) {
-        const crystalName = {
-          attackCrystal: '攻击',
-          defenseCrystal: '防御',
-          speedCrystal: '速度',
-          sanCrystal: 'SAN'
-        }[crystalType]
-        const err = new Error(
-          `${crystalName}水晶不足：需要 ${needed}，当前 ${inventory[crystalType] || 0}`
-        )
-        err.statusCode = 400
-        err.expose = true
-        throw err
-      }
+
+    // 第 2 阶段：按优先级逐个检查资源，能升的升，不够的跳过
+    let remainingGold = playerInfo.gold
+    const remainingCrystals = {
+      attackCrystal: inventory.attackCrystal || 0,
+      defenseCrystal: inventory.defenseCrystal || 0,
+      speedCrystal: inventory.speedCrystal || 0,
+      sanCrystal: inventory.sanCrystal || 0
     }
 
-    // 第 2 阶段：执行操作
-    const results = []
+    const executablePlans = []
     for (const plan of opPlans) {
+      // 检查资源是否足够
+      if (remainingGold < plan.goldNeeded) {
+        skippedResults.push({
+          adventurerId: plan.adv._id,
+          adventurerName: plan.adv.name,
+          skipped: true,
+          skipReason: `金币不足（需要 ${plan.goldNeeded}）`
+        })
+        continue
+      }
+      let crystalSufficient = true
+      for (const [crystalType, needed] of Object.entries(plan.crystalNeeded)) {
+        if (needed > 0 && remainingCrystals[crystalType] < needed) {
+          const crystalName = {
+            attackCrystal: '攻击',
+            defenseCrystal: '防御',
+            speedCrystal: '速度',
+            sanCrystal: 'SAN'
+          }[crystalType]
+          skippedResults.push({
+            adventurerId: plan.adv._id,
+            adventurerName: plan.adv.name,
+            skipped: true,
+            skipReason: `${crystalName}水晶不足（需要 ${needed}，剩余 ${remainingCrystals[crystalType]}）`
+          })
+          crystalSufficient = false
+          break
+        }
+      }
+      if (!crystalSufficient) continue
+
+      // 预扣资源
+      remainingGold -= plan.goldNeeded
+      for (const [crystalType, needed] of Object.entries(plan.crystalNeeded)) {
+        remainingCrystals[crystalType] -= needed
+      }
+      executablePlans.push(plan)
+    }
+
+    if (executablePlans.length === 0) {
+      const err = new Error('资源不足，无法为任何冒险家执行操作')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 第 3 阶段：执行操作
+    const results = []
+    for (const plan of executablePlans) {
       const { adv, alloc, direction } = plan
 
       if (direction === 'up') {
@@ -1273,6 +1329,6 @@ export async function batchRatioDistribute(accountId, operations) {
     await playerInfo.save()
     await inventory.save()
 
-    return { results }
+    return { results, skipped: skippedResults }
   })
 }

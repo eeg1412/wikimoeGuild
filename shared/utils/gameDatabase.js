@@ -3075,8 +3075,8 @@ export const runeStoneActiveSkillDataBase = () => {
 
   // 触发时机配置：before 触发时 baseValue 较小，after 触发时 baseValue 较大
   const triggerTimings = [
-    { value: 'before', label: '攻击前', baseValue: 20 },
-    { value: 'after', label: '攻击后', baseValue: 30 }
+    { value: 'before', label: '攻击前', baseValue: 16 },
+    { value: 'after', label: '攻击后', baseValue: 24 }
   ]
 
   const items = []
@@ -3090,7 +3090,7 @@ export const runeStoneActiveSkillDataBase = () => {
         label: `${element.name}属性攻击符文石·${pref.label}`,
         type: 'attack',
         description: `造成${element.name}属性攻击伤害·${pref.label}`,
-        baseValue: 100,
+        baseValue: 80,
         element: element.value,
         triggerTiming: 'after',
         stackable: false,
@@ -3151,7 +3151,7 @@ export const runeStoneActiveSkillDataBase = () => {
       label: `改变排序符文石·${pref.label}`,
       type: 'changeOrder',
       description:
-        '根据符文石等级与目标等级差计算概率，将敌方移动到随机位置或与该位置冒险家互换（目标等级≤符文石等级时100%，每高1级-3%，最低30%）',
+        '根据符文石等级与目标等级差计算概率，将敌方移动到随机位置或与该位置冒险家互换（目标等级≤符文石等级时100%，每高1级-4%，最低25%）',
       baseValue: 100,
       triggerTiming: 'after',
       stackable: false,
@@ -3169,7 +3169,7 @@ export const runeStoneActiveSkillDataBase = () => {
       label: `SAN值恢复符文石·${timing.label}`,
       type: 'sanRecover',
       description: `恢复剩余SAN值最少的己方冒险家的SAN值·${timing.label}触发`,
-      baseValue: 50,
+      baseValue: 40,
       triggerTiming: timing.value,
       stackable: false,
       target: 'self',
@@ -3179,4 +3179,62 @@ export const runeStoneActiveSkillDataBase = () => {
   }
 
   return items
+}
+
+// 符文石稀有度系数（战斗力计算用）
+const RUNE_RARITY_POWER_COEFFICIENT = {
+  normal: 1,
+  rare: 3,
+  legendary: 8
+}
+
+/**
+ * 计算冒险家战斗力
+ * 战斗力 = 综合等级基础分 + 符文石加分
+ *
+ * 综合等级基础分 = (攻击等级 + 防御等级 + 速度等级 + SAN等级) × 10
+ *
+ * 符文石加分（未装备符文石则为0）:
+ *   稀有度系数: normal=1, rare=3, legendary=8
+ *   被动增益分 = Σ(buffLevel × 稀有度系数)
+ *   主动技能分 = 主动技能数量 × 符文石等级 × 稀有度系数
+ *   符文石加分 = (符文石等级 × 稀有度系数 × 5) + 被动增益分 + 主动技能分
+ *
+ * @param {object} adventurer - 冒险家对象（需包含 attackLevel, defenseLevel, speedLevel, SANLevel）
+ * @param {object|null} runeStone - 符文石对象（需包含 rarity, level, activeSkills, passiveBuffs），可为null
+ * @returns {number} 战斗力值
+ */
+export function calculateCombatPower(adventurer, runeStone = null) {
+  const attackLevel = adventurer.attackLevel || 1
+  const defenseLevel = adventurer.defenseLevel || 1
+  const speedLevel = adventurer.speedLevel || 1
+  const sanLevel = adventurer.SANLevel || 1
+
+  // 综合等级基础分
+  const basePower = (attackLevel + defenseLevel + speedLevel + sanLevel) * 10
+
+  // 符文石加分
+  let runePower = 0
+  if (runeStone) {
+    const rarityCoeff = RUNE_RARITY_POWER_COEFFICIENT[runeStone.rarity] || 1
+    const runeLevel = runeStone.level || 1
+
+    // 符文石等级基础分
+    runePower += runeLevel * rarityCoeff * 5
+
+    // 被动增益分
+    if (runeStone.passiveBuffs && runeStone.passiveBuffs.length > 0) {
+      for (const buff of runeStone.passiveBuffs) {
+        runePower += (buff.buffLevel || 1) * rarityCoeff
+      }
+    }
+
+    // 主动技能分
+    const skillCount = runeStone.activeSkills
+      ? runeStone.activeSkills.length
+      : 0
+    runePower += skillCount * runeLevel * rarityCoeff
+  }
+
+  return Math.floor(basePower + runePower)
 }

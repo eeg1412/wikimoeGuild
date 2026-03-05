@@ -998,8 +998,8 @@ function hideCutInEffect() {
 
 // 倍速控制：基础间隔450ms（降低3倍，原来150ms）
 const BASE_INTERVAL = 450
-const speedOptions = [0.5, 2, 3]
-const playbackSpeed = ref(0.5)
+const speedOptions = [1, 2, 3]
+const playbackSpeed = ref(1)
 
 function getInterval() {
   return Math.round(BASE_INTERVAL / playbackSpeed.value)
@@ -1643,7 +1643,10 @@ onMounted(() => {
     window.visualViewport.addEventListener('resize', onResize)
   }
   initUnitState()
-  startAnimation()
+  // 等待弹窗弹出动画结束后再开始播放演出
+  setTimeout(() => {
+    startAnimation()
+  }, 500)
   startSkipCountdown()
   // 演出开始时请求防止息屏
   requestWakeLock()

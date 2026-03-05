@@ -12,6 +12,8 @@
  * - 每回合SP: +40
  * - 受伤SP: 40 + floor((1 - 剩余SAN比例) * 120)
  * - 被克制伤害倍率: 15000 (150%)
+ * - 符文石主动技能基础值: 攻击类80, 增益/减益(攻击前)16, 增益/减益(攻击后)24, SAN恢复40
+ * - 改变排序概率: 每高1级-4%, 最低25%
  *
  * 被动增益计算公式: 对应属性 × (增益等级 × 品质系数)
  * 品质系数: 普通=0.0012, 稀有=0.0022, 传说=0.0033
@@ -620,12 +622,12 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
             .sort((a, b) => a.currentSan - b.currentSan)[0]
         if (!target) break
 
-        // 概率计算：目标等级 ≤ 符文石等级时100%，每高1级减少3%，最低30%
+        // 概率计算：目标等级 ≤ 符文石等级时100%，每高1级减少4%，最低25%
         const runeLevel = unit.runeStone?.level || 1
         const levelDiff = (target.comprehensiveLevel || 4) - runeLevel
         let probability = 100
         if (levelDiff > 0) {
-          probability = Math.max(100 - levelDiff * 3, 30)
+          probability = Math.max(100 - levelDiff * 4, 25)
         }
 
         const roll = Math.floor(Math.random() * 100)

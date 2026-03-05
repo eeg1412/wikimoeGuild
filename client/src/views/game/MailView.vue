@@ -100,7 +100,6 @@
     <el-dialog
       v-model="detailVisible"
       :title="detailMail?.title || '邮件详情'"
-      width="380px"
       align-center
       destroy-on-close
     >

@@ -63,6 +63,16 @@ const gameArenaRegistrationSchema = new mongoose.Schema(
     guildName: {
       type: String,
       default: ''
+    },
+    // 缓存的对手列表（刷新时保存）
+    cachedOpponents: {
+      type: Array,
+      default: () => []
+    },
+    // 上次刷新对手列表的时间
+    lastMatchRefreshAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }

@@ -83,9 +83,12 @@
         <el-button @click="handleClear"> 清空棋盘 </el-button>
       </div>
 
-      <!-- 已放置计数 -->
-      <p class="text-center text-sm text-gray-400 mb-4">
+      <!-- 已放置计数 + 综合战斗力 -->
+      <p class="text-center text-sm text-gray-400 mb-2">
         已放置 {{ placedCount }} / 25 名冒险家
+      </p>
+      <p class="text-center text-sm text-orange-400 font-mono mb-4">
+        ⚔️ 综合战斗力: {{ formationCombatPower }}
       </p>
     </template>
 
@@ -234,6 +237,7 @@ import {
 } from '@/composables/useFormationGrid.js'
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
 import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
+import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
 
 const router = useRouter()
 
@@ -297,6 +301,18 @@ const placedCount = computed(() => {
     }
   }
   return count
+})
+
+const formationCombatPower = computed(() => {
+  let total = 0
+  for (const row of grid.value) {
+    for (const cell of row) {
+      if (cell) {
+        total += calculateCombatPower(cell, cell.runeStone || null)
+      }
+    }
+  }
+  return total
 })
 
 function getSlotLabel(slot) {

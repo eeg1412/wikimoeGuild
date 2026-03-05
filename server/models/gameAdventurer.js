@@ -101,10 +101,10 @@ const gameAdventurerSchema = new mongoose.Schema(
     },
     // 属性自动分配比例（attack + defense + speed + san = 100）
     statDistributeRatio: {
-      attack: { type: Number, default: 25, min: 0, max: 100 },
-      defense: { type: Number, default: 25, min: 0, max: 100 },
-      speed: { type: Number, default: 25, min: 0, max: 100 },
-      san: { type: Number, default: 25, min: 0, max: 100 }
+      attack: { type: Number, default: 0, min: 0, max: 100 },
+      defense: { type: Number, default: 0, min: 0, max: 100 },
+      speed: { type: Number, default: 0, min: 0, max: 100 },
+      san: { type: Number, default: 0, min: 0, max: 100 }
     }
   },
   {

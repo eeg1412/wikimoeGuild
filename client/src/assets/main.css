@@ -80,3 +80,13 @@ a {
   /* 细滚动条 */
   scrollbar-width: thin;
 }
+.game-layout .el-dialog {
+  max-width: 600px;
+  width: 100vw;
+}
+/* 小于600px时 */
+@media (max-width: 600px) {
+  .game-layout .el-dialog {
+    min-width: 90vw;
+  }
+}

@@ -634,6 +634,7 @@ async function awardOwnerRevenue(
 
 /**
  * 生成矿场军团（同等级迷宫军团逻辑）
+ * 等级增强系数: 1 + level * 0.002（每级+0.2%）
  */
 function generateMineLegion(level) {
   const ELEMENTS = ['1', '2', '3', '4', '5', '6']
@@ -641,13 +642,15 @@ function generateMineLegion(level) {
   const allPreferences = attackPreferenceDataBase()
   const allSkills = runeStoneActiveSkillDataBase()
   const DEMON_AVATAR_COUNT = 3
+  // 等级增强系数：基于矿场等级的小幅增强曲线
+  const levelBoostFactor = 1 + level * 0.002
 
   const demons = []
 
   //  前10级：迷宫等级 数量的 等级为 迷宫等级×1 的恶魔
   if (level <= 10) {
     const demonCount = Math.min(level, 10)
-    const compLevel = level * 1
+    const compLevel = Math.max(1, Math.floor(level * 1 * levelBoostFactor))
     for (let i = 0; i < demonCount; i++) {
       demons.push(
         createMineDemon(
@@ -664,7 +667,7 @@ function generateMineLegion(level) {
   } else if (level <= 25) {
     // 前25级：迷宫等级 数量的恶魔，等级为 迷宫等级 × 1，必定携带1个随机传说级符文石
     const demonCount = Math.min(level, 25)
-    const compLevel = level * 1
+    const compLevel = Math.max(1, Math.floor(level * 1 * levelBoostFactor))
     for (let i = 0; i < demonCount; i++) {
       const runeStone = generateMineDemonRuneStone(compLevel, allSkills)
       demons.push(
@@ -680,9 +683,9 @@ function generateMineLegion(level) {
       )
     }
   } else {
-    // 后25级：25名恶魔，综合等级 = 迷宫等级
+    // 后25级：25名恶魔，综合等级 = 矿场等级 × 增强系数
     for (let i = 0; i < 25; i++) {
-      const compLevel = level
+      const compLevel = Math.max(1, Math.floor(level * levelBoostFactor))
       const runeStone = generateMineDemonRuneStone(compLevel, allSkills)
       demons.push(
         createMineDemon(

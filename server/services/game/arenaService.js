@@ -443,9 +443,11 @@ export async function updateFormationPosition(accountId, newGrid) {
 }
 
 /**
- * 获取匹配对手列表（竞技点±500内的10名玩家，不足用NPC补）
+ * 获取对手列表（优先返回缓存，支持强制刷新）
+ * @param {string} accountId
+ * @param {boolean} forceRefresh - 是否强制刷新
  */
-export async function getMatchList(accountId) {
+export async function getMatchList(accountId, forceRefresh = false) {
   const season = await getOrCreateActiveSeason()
   if (!season) {
     const err = new Error('当前不在赛季进行期间')
@@ -457,12 +459,39 @@ export async function getMatchList(accountId) {
   const myReg = await GameArenaRegistration.findOne({
     account: accountId,
     season: season._id
-  }).lean()
+  })
   if (!myReg) {
     const err = new Error('你还没有报名本赛季')
     err.statusCode = 400
     err.expose = true
     throw err
+  }
+
+  // 如果不强制刷新，且有缓存数据，直接返回缓存
+  if (
+    !forceRefresh &&
+    myReg.cachedOpponents &&
+    myReg.cachedOpponents.length > 0 &&
+    myReg.lastMatchRefreshAt
+  ) {
+    return {
+      myPoints: myReg.points,
+      opponents: myReg.cachedOpponents,
+      refreshedAt: myReg.lastMatchRefreshAt
+    }
+  }
+
+  // 强制刷新时检查10秒冷却
+  if (forceRefresh && myReg.lastMatchRefreshAt) {
+    const elapsed = Date.now() - new Date(myReg.lastMatchRefreshAt).getTime()
+    if (elapsed < 10000) {
+      const err = new Error(
+        `刷新冷却中，请${Math.ceil((10000 - elapsed) / 1000)}秒后再试`
+      )
+      err.statusCode = 429
+      err.expose = true
+      throw err
+    }
   }
 
   const myPoints = myReg.points
@@ -475,10 +504,10 @@ export async function getMatchList(accountId) {
   })
     .sort({ points: -1 })
     .limit(10)
-    .select('account guildName points')
+    .select('account guildName points formationGrid')
     .lean()
 
-  // 获取对手的 playerInfoId（用于公会信息查看，避免泄露 accountId）
+  // 获取对手的 playerInfoId 和公会图标信息
   const opAccountIds = opponents.map(op => op.account)
   const GamePlayerInfoModel = (await import('../../models/gamePlayerInfos.js'))
     .default
@@ -492,8 +521,48 @@ export async function getMatchList(accountId) {
     opInfoMap.set(info.account.toString(), info)
   }
 
+  // 批量获取对手阵容冒险家用于计算战斗力
+  const allOpAdvIds = []
+  for (const op of opponents) {
+    if (op.formationGrid) {
+      const advIds = op.formationGrid.flat().filter(id => id !== null)
+      allOpAdvIds.push(...advIds)
+    }
+  }
+  const opAdventurers =
+    allOpAdvIds.length > 0
+      ? await GameAdventurer.find({ _id: { $in: allOpAdvIds } })
+          .populate('runeStone')
+          .select('attackLevel defenseLevel speedLevel SANLevel runeStone')
+          .lean()
+      : []
+  const opAdvMap = new Map()
+  for (const adv of opAdventurers) {
+    opAdvMap.set(adv._id.toString(), adv)
+  }
+
+  // 导入战斗力计算函数
+  const { calculateCombatPower } = await import('shared/utils/gameDatabase.js')
+
   const result = opponents.map(op => {
     const opInfo = opInfoMap.get(op.account.toString())
+    // 计算阵容综合战斗力
+    let totalCombatPower = 0
+    if (op.formationGrid) {
+      for (const row of op.formationGrid) {
+        for (const id of row) {
+          if (id) {
+            const adv = opAdvMap.get(id.toString())
+            if (adv) {
+              totalCombatPower += calculateCombatPower(
+                adv,
+                adv.runeStone || null
+              )
+            }
+          }
+        }
+      }
+    }
     return {
       _id: op._id,
       registrationId: op._id.toString(),
@@ -503,13 +572,39 @@ export async function getMatchList(accountId) {
       points: op.points,
       isNpc: false,
       hasCustomGuildIcon: opInfo?.hasCustomGuildIcon || false,
-      customGuildIconUpdatedAt: opInfo?.customGuildIconUpdatedAt || null
+      customGuildIconUpdatedAt: opInfo?.customGuildIconUpdatedAt || null,
+      combatPower: totalCombatPower
     }
   })
 
   // 不足10名用NPC补足
   while (result.length < 10) {
-    const npcPoints = myPoints + Math.floor(Math.random() * 200) - 100
+    let npcPoints
+    if (myPoints >= 2000) {
+      // 竞技点>=2000时，检查是否前三名
+      const higherCount = await GameArenaRegistration.countDocuments({
+        season: season._id,
+        points: { $gt: myPoints }
+      })
+      if (higherCount < 3) {
+        // 前三名：NPC竞技点 = 玩家竞技点 - random(0, 500)
+        npcPoints = myPoints - Math.floor(Math.random() * 501)
+      } else {
+        npcPoints = myPoints + Math.floor(Math.random() * 200) - 100
+      }
+    } else {
+      npcPoints = myPoints + Math.floor(Math.random() * 200) - 100
+    }
+    // 计算NPC综合战斗力（生成临时阵容计算）
+    const npcFormation = generateNPCFormation(null, myPoints)
+    let npcCombatPower = 0
+    for (const row of npcFormation.grid) {
+      for (const cell of row) {
+        if (cell) {
+          npcCombatPower += calculateCombatPower(cell, cell.runeStone || null)
+        }
+      }
+    }
     const npcId = `npc_${result.length}`
     result.push({
       _id: npcId,
@@ -518,11 +613,18 @@ export async function getMatchList(accountId) {
       guildName: generateRandomAdventurerName() + '公会',
       points: Math.max(npcPoints, 0),
       isNpc: true,
-      npcGuildIconId: getRandomNpcGuildIconId()
+      npcGuildIconId: getRandomNpcGuildIconId(),
+      combatPower: npcCombatPower
     })
   }
 
-  return { myPoints, opponents: result }
+  // 保存缓存到数据库
+  const now = new Date()
+  myReg.cachedOpponents = result
+  myReg.lastMatchRefreshAt = now
+  await myReg.save()
+
+  return { myPoints, opponents: result, refreshedAt: now }
 }
 
 /**
@@ -596,22 +698,25 @@ export async function challengeOpponent(accountId, registrationId) {
     let opponentPoints = 500
 
     if (isNPC) {
-      // 生成NPC阵容（基于玩家阵容）
+      // 生成NPC阵容
       const npcResult = generateNPCFormation(myGrid, myReg.points)
       opponentGrid = npcResult.grid
       opponentGuildName = generateRandomAdventurerName() + '公会'
-      opponentPoints = myReg.points + Math.floor(Math.random() * 200) - 100
 
-      // 当玩家竞技点>=2000且排名前三时，禁止生成比玩家分高的NPC
       if (myReg.points >= 2000) {
+        // 竞技点>=2000时检查排名
         const higherCount = await GameArenaRegistration.countDocuments({
           season: season._id,
           points: { $gt: myReg.points }
         })
         if (higherCount < 3) {
-          // 玩家在前三名，NPC绝不超过玩家分数
-          opponentPoints = Math.min(opponentPoints, myReg.points)
+          // 前三名：NPC竞技点 = 玩家竞技点 - random(0, 500)
+          opponentPoints = myReg.points - Math.floor(Math.random() * 501)
+        } else {
+          opponentPoints = myReg.points + Math.floor(Math.random() * 200) - 100
         }
+      } else {
+        opponentPoints = myReg.points + Math.floor(Math.random() * 200) - 100
       }
     } else {
       // 加载对手阵容
@@ -782,14 +887,27 @@ export async function challengeOpponent(accountId, registrationId) {
 }
 
 /**
- * 生成NPC阵容（基于玩家的阵容生成相似规模和等级的对手）
+ * 生成NPC阵容
+ * - 竞技点 < 2000: 基于玩家阵容生成相似规模和等级的对手
+ * - 竞技点 >= 2000: 固定25人，全员传说符文石，30级起步，随竞技点增长
  * @param {Array<Array<object|null>>} playerGrid - 玩家的5x5阵容
- * @param {number} playerPoints - 玩家的竞技点，用于决定NPC是否携带符文石
+ * @param {number} playerPoints - 玩家的竞技点，用于决定NPC生成策略
  */
 function generateNPCFormation(playerGrid, playerPoints = 500) {
   const ELEMENTS = ['1', '2', '3', '4', '5', '6']
   const allBuffTypes = passiveBuffTypeDataBase()
   const allPreferences = attackPreferenceDataBase()
+
+  // 竞技点 >= 2000 时使用全新的固定强度生成策略
+  if (playerPoints >= 2000) {
+    return generateHighTierNPCFormation(
+      playerPoints,
+      ELEMENTS,
+      allBuffTypes,
+      allPreferences
+    )
+  }
+
   const shouldHaveRuneStone = playerPoints >= 1500
 
   // 分析玩家阵容：统计冒险家数量和等级
@@ -881,6 +999,80 @@ function generateNPCFormation(playerGrid, playerPoints = 500) {
   }
 
   return { grid, demons }
+}
+
+/**
+ * 生成高段位NPC阵容（竞技点 >= 2000）
+ * 固定25人，全员传说级符文石
+ * 基础等级30，随竞技点平稳增长：level = 30 + floor((points - 2000) * 0.05)
+ * 等级浮动 ±2
+ */
+function generateHighTierNPCFormation(
+  playerPoints,
+  elements,
+  allBuffTypes,
+  allPreferences
+) {
+  const baseLevel = 30 + Math.floor((playerPoints - 2000) * 0.05)
+  const demons = []
+
+  for (let i = 0; i < 25; i++) {
+    // 每个NPC在baseLevel基础上 ±2 浮动
+    const level = Math.max(1, baseLevel + Math.floor(Math.random() * 5) - 2)
+    const runeStone = generateHighTierNPCRuneStone(level)
+
+    demons.push({
+      _id: `npc_adv_${i}`,
+      name: generateRandomAdventurerName(),
+      elements: elements[Math.floor(Math.random() * elements.length)],
+      passiveBuffType:
+        allBuffTypes[Math.floor(Math.random() * allBuffTypes.length)].value,
+      attackPreference:
+        allPreferences[Math.floor(Math.random() * allPreferences.length)].value,
+      defaultAvatarId: Math.floor(Math.random() * 10) + 1,
+      attackLevel: level,
+      defenseLevel: level,
+      speedLevel: level,
+      SANLevel: level,
+      comprehensiveLevel: level * 4 - 3,
+      runeStone,
+      isDemon: false
+    })
+  }
+
+  // 将NPC按前排/后排倾向排布到5x5棋盘
+  const grid = Array.from({ length: 5 }, () => Array(5).fill(null))
+  let idx = 0
+  for (let row = 0; row < 5 && idx < demons.length; row++) {
+    for (let col = 0; col < 5 && idx < demons.length; col++) {
+      grid[row][col] = demons[idx]
+      idx++
+    }
+  }
+
+  return { grid, demons }
+}
+
+/**
+ * 生成高段位NPC传说级符文石（竞技点 >= 2000 专用）
+ * 传说级：3主动技能 + 6被动增益（等级21-30）
+ */
+function generateHighTierNPCRuneStone(adventurerLevel) {
+  const allSkills = runeStoneActiveSkillDataBase()
+  const BUFF_TYPES = ['attack', 'defense', 'speed', 'san']
+  const runeLevel = Math.max(1, adventurerLevel)
+
+  // 传说级固定配置
+  const shuffled = [...allSkills].sort(() => Math.random() - 0.5)
+  const activeSkills = shuffled.slice(0, 3).map(s => ({ skillId: s.value }))
+  const passiveBuffs = []
+  for (let i = 0; i < 6; i++) {
+    passiveBuffs.push({
+      buffType: BUFF_TYPES[Math.floor(Math.random() * BUFF_TYPES.length)],
+      buffLevel: Math.floor(Math.random() * 10) + 21
+    })
+  }
+  return { rarity: 'legendary', level: runeLevel, activeSkills, passiveBuffs }
 }
 
 /**

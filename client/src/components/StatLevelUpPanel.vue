@@ -348,10 +348,10 @@ const CRYSTAL_TYPES = [
 
 // ── 自动分配比例 ──
 const ratioForm = ref({
-  attack: 25,
-  defense: 25,
-  speed: 25,
-  san: 25
+  attack: 0,
+  defense: 0,
+  speed: 0,
+  san: 0
 })
 
 const ratioSum = computed(() => {
