@@ -1,0 +1,1 @@
+import{o as i,I as s,r}from"./index-DN65NHEe.js";function l(o=768){const n=r(!1);let e=null;function t(a){n.value=!a.matches}return i(()=>{e=window.matchMedia(`(min-width: ${o}px)`),n.value=!e.matches,e.addEventListener("change",t)}),s(()=>{e&&e.removeEventListener("change",t)}),{isMobile:n}}export{l as u};
