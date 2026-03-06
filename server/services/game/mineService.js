@@ -665,8 +665,7 @@ function generateMineLegion(level) {
           allBuffTypes,
           allPreferences,
           DEMON_AVATAR_COUNT,
-          null,
-          allSkills
+          null
         )
       )
     }
@@ -683,16 +682,17 @@ function generateMineLegion(level) {
           allBuffTypes,
           allPreferences,
           DEMON_AVATAR_COUNT,
-          runeStone,
-          allSkills
+          runeStone
         )
       )
     }
   } else {
     // 后25级：25名恶魔，综合等级 = 矿场等级 × 增强系数
+    // 前10名（前2排）极端偏向防御/SAN，中间5名（第3排）均衡加点，后10名（后2排）极端偏向攻击/速度
     for (let i = 0; i < 25; i++) {
       const compLevel = Math.max(1, Math.floor(level * levelBoostFactor))
       const runeStone = generateMineDemonRuneStone(compLevel, allSkills)
+      const role = i < 10 ? 'frontTank' : i < 15 ? 'balanced' : 'backDPS'
       demons.push(
         createMineDemon(
           compLevel,
@@ -701,7 +701,7 @@ function generateMineLegion(level) {
           allPreferences,
           DEMON_AVATAR_COUNT,
           runeStone,
-          allSkills
+          role
         )
       )
     }
@@ -719,13 +719,54 @@ function generateMineLegion(level) {
   return grid
 }
 
+/**
+ * 前排属性分配（极端偏向防御和SAN）
+ * 防御/SAN各占45%，攻击/速度各占5%
+ */
+function distributeStatLevelsMineFrontRow(comprehensiveLevel) {
+  const remaining = Math.max(comprehensiveLevel - 1, 0)
+  const parts = [0, 0, 0, 0] // [attack, defense, speed, san]
+  for (let i = 0; i < remaining; i++) {
+    const r = Math.random()
+    if (r < 0.05)
+      parts[0]++ // 5% 攻击
+    else if (r < 0.5)
+      parts[1]++ // 45% 防御
+    else if (r < 0.55)
+      parts[2]++ // 5% 速度
+    else parts[3]++ // 45% SAN
+  }
+  return [parts[0] + 1, parts[1] + 1, parts[2] + 1, parts[3] + 1]
+}
+
+/**
+ * 后排属性分配（极端偏向攻击和速度）
+ * 攻击/速度各占45%，防御/SAN各占5%
+ */
+function distributeStatLevelsMineBackRow(comprehensiveLevel) {
+  const remaining = Math.max(comprehensiveLevel - 1, 0)
+  const parts = [0, 0, 0, 0] // [attack, defense, speed, san]
+  for (let i = 0; i < remaining; i++) {
+    const r = Math.random()
+    if (r < 0.45)
+      parts[0]++ // 45% 攻击
+    else if (r < 0.5)
+      parts[1]++ // 5% 防御
+    else if (r < 0.95)
+      parts[2]++ // 45% 速度
+    else parts[3]++ // 5% SAN
+  }
+  return [parts[0] + 1, parts[1] + 1, parts[2] + 1, parts[3] + 1]
+}
+
 function createMineDemon(
   comprehensiveLevel,
   elements,
   allBuffTypes,
   allPreferences,
   avatarCount,
-  runeStone
+  runeStone,
+  role = 'balanced'
 ) {
   const element = elements[Math.floor(Math.random() * elements.length)]
   const passiveBuff =
@@ -733,10 +774,18 @@ function createMineDemon(
   const preference =
     allPreferences[Math.floor(Math.random() * allPreferences.length)]
 
-  const remaining = Math.max(comprehensiveLevel - 1, 0)
-  const parts = [0, 0, 0, 0]
-  for (let i = 0; i < remaining; i++) {
-    parts[Math.floor(Math.random() * 4)]++
+  let statParts
+  if (role === 'frontTank') {
+    statParts = distributeStatLevelsMineFrontRow(comprehensiveLevel)
+  } else if (role === 'backDPS') {
+    statParts = distributeStatLevelsMineBackRow(comprehensiveLevel)
+  } else {
+    const remaining = Math.max(comprehensiveLevel - 1, 0)
+    const rawParts = [0, 0, 0, 0]
+    for (let i = 0; i < remaining; i++) {
+      rawParts[Math.floor(Math.random() * 4)]++
+    }
+    statParts = rawParts.map(p => p + 1)
   }
 
   return {
@@ -746,10 +795,10 @@ function createMineDemon(
     passiveBuffType: passiveBuff.value,
     attackPreference: preference.value,
     defaultAvatarId: Math.floor(Math.random() * avatarCount) + 1,
-    attackLevel: parts[0] + 1,
-    defenseLevel: parts[1] + 1,
-    speedLevel: parts[2] + 1,
-    SANLevel: parts[3] + 1,
+    attackLevel: statParts[0],
+    defenseLevel: statParts[1],
+    speedLevel: statParts[2],
+    SANLevel: statParts[3],
     comprehensiveLevel,
     runeStone,
     isDemon: true

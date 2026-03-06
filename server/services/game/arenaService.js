@@ -1008,58 +1008,43 @@ function generateNPCFormation(playerGrid, playerPoints = 500) {
 }
 
 /**
- * 将综合等级分配到4个属性（攻击/防御/速度/SAN），每个属性±10%浮动。
- * 调整后保证各属性之和 = comprehensiveLevel，每个属性最小为1。
+ * 将综合等级分配到4个属性（攻击/防御/速度/SAN）
+ * role: 'frontTank' - 极端偏向防御/SAN，'backDPS' - 极端偏向攻击/速度，'balanced' - 均衡分配
+ * 属性之和 = comprehensiveLevel + 3，与玩家冒险家保持一致，每个属性最小为1。
  * @param {number} comprehensiveLevel
+ * @param {string} role - 'frontTank' | 'backDPS' | 'balanced'
  * @returns {number[]} [attackLevel, defenseLevel, speedLevel, SANLevel]
  */
-function distributeComprehensiveLevel(comprehensiveLevel) {
-  const n = 4
-  // 属性之和应为 comprehensiveLevel + 3，与玩家冒险家保持一致（comprehensiveLevel = sum - 3）
-  const target = comprehensiveLevel + 3
-  const idealBase = target / n
-  const attrs = []
-  for (let i = 0; i < n; i++) {
-    // ±10% 随机浮动，最小1
-    const factor = 0.9 + Math.random() * 0.2
-    attrs.push(Math.max(1, Math.floor(idealBase * factor)))
-  }
-  // 找补：调整属性之和等于 target
-  let diff = target - attrs.reduce((a, b) => a + b, 0)
-  if (diff > 0) {
-    // 需要补充若干点，随机分配
-    for (let i = 0; i < diff; i++) {
-      attrs[Math.floor(Math.random() * n)]++
-    }
-  } else if (diff < 0) {
-    // 需要扣减若干点，随机选取但保持 >= 1
-    let remaining = -diff
-    let attempts = 0
-    while (remaining > 0 && attempts < 10000) {
-      const idx = Math.floor(Math.random() * n)
-      if (attrs[idx] > 1) {
-        attrs[idx]--
-        remaining--
-      }
-      attempts++
-    }
-    // 兜底处理（极端情况下综合等级 < 4）
-    if (remaining > 0) {
-      for (let i = 0; i < n && remaining > 0; i++) {
-        const canRemove = Math.min(attrs[i] - 1, remaining)
-        attrs[i] -= canRemove
-        remaining -= canRemove
-      }
+function distributeComprehensiveLevel(comprehensiveLevel, role = 'balanced') {
+  const remaining = Math.max(comprehensiveLevel - 1, 0)
+  const parts = [0, 0, 0, 0] // [attack, defense, speed, san]
+  for (let i = 0; i < remaining; i++) {
+    const r = Math.random()
+    if (role === 'frontTank') {
+      // 前排：defense 45%, san 45%, attack 5%, speed 5%
+      if (r < 0.05) parts[0]++
+      else if (r < 0.5) parts[1]++
+      else if (r < 0.55) parts[2]++
+      else parts[3]++
+    } else if (role === 'backDPS') {
+      // 后排：attack 45%, speed 45%, defense 5%, san 5%
+      if (r < 0.45) parts[0]++
+      else if (r < 0.5) parts[1]++
+      else if (r < 0.95) parts[2]++
+      else parts[3]++
+    } else {
+      // 均衡：各属性各占25%
+      parts[Math.floor(r * 4)]++
     }
   }
-  return attrs
+  return [parts[0] + 1, parts[1] + 1, parts[2] + 1, parts[3] + 1]
 }
 
 /**
  * 生成高段位NPC阵容（竞技点 >= 2000）
  * 固定25人，全员传说级符文石。
  * 每名NPC冒险家的综合等级 = 30 + floor((竞技点 - 2000) × 0.05)，浮动 ±2。
- * 综合等级按 ±10% 浮动后随机分配到4个属性，最终保证属性之和 = 综合等级，各属性最小为1。
+ * 前10名（前2排）极端偏向防御/SAN，中间5名（第3排）均衡加点，后10名（后2排）极端偏向攻击/速度。
  */
 function generateHighTierNPCFormation(
   playerPoints,
@@ -1076,9 +1061,11 @@ function generateHighTierNPCFormation(
       1,
       baseComprehensiveLevel + Math.floor(Math.random() * 5) - 2
     )
-    // 将综合等级分配到4个属性
+    // 前10名（前2排）极端偏向防御/SAN，中间5名（第3排）均衡加点，后10名（后2排）极端偏向攻击/速度
+    const role = i < 10 ? 'frontTank' : i < 15 ? 'balanced' : 'backDPS'
+    // 将综合等级按角色分配到4个属性
     const [attackLevel, defenseLevel, speedLevel, SANLevel] =
-      distributeComprehensiveLevel(comprehensiveLevel)
+      distributeComprehensiveLevel(comprehensiveLevel, role)
     const runeStone = generateHighTierNPCRuneStone(comprehensiveLevel)
 
     demons.push({

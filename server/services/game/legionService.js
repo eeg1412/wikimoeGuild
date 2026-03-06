@@ -109,6 +109,7 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
     }
   } else {
     // 后25级：25名恶魔，综合等级 = 迷宫等级 × 增强系数
+    // 前10名（前2排）极端偏向防御/SAN，中间5名（第3排）均衡加点，后10名（后2排）极端偏向攻击/速度
     for (let i = 0; i < 25; i++) {
       const compLevel = Math.max(1, Math.floor(dungeonLevel * levelBoostFactor))
       // 随机传说级符文石
@@ -117,6 +118,7 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
         allSkills,
         seededRandom
       )
+      const role = i < 10 ? 'frontTank' : i < 15 ? 'balanced' : 'backDPS'
       demons.push(
         createDemon(
           compLevel,
@@ -126,7 +128,8 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
           DEMON_AVATAR_COUNT,
           runeStone,
           allSkills,
-          seededRandom
+          seededRandom,
+          role
         )
       )
     }
@@ -146,14 +149,22 @@ function createDemon(
   avatarCount,
   runeStone,
   allSkills,
-  rng
+  rng,
+  role = 'balanced'
 ) {
   const element = elements[Math.floor(rng() * elements.length)]
   const passiveBuff = allBuffTypes[Math.floor(rng() * allBuffTypes.length)]
   const preference = allPreferences[Math.floor(rng() * allPreferences.length)]
 
   // 分配属性等级（属性之和应为 comprehensiveLevel + 3，与玩家冒险家保持一致）
-  const statLevels = distributeStatLevels(comprehensiveLevel + 3, rng)
+  let statLevels
+  if (role === 'frontTank') {
+    statLevels = distributeStatLevelsFrontRow(comprehensiveLevel + 3, rng)
+  } else if (role === 'backDPS') {
+    statLevels = distributeStatLevelsBackRow(comprehensiveLevel + 3, rng)
+  } else {
+    statLevels = distributeStatLevels(comprehensiveLevel + 3, rng)
+  }
 
   return {
     _id: `demon_${Math.floor(rng() * 2176782336).toString(36)}`,
@@ -185,6 +196,56 @@ function distributeStatLevels(totalLevel, rng) {
     parts[Math.floor(rng() * 4)]++
   }
 
+  return {
+    attack: parts[0] + 1,
+    defense: parts[1] + 1,
+    speed: parts[2] + 1,
+    san: parts[3] + 1
+  }
+}
+
+/**
+ * 前排属性分配（极端偏向防御和SAN）
+ * 防御/SAN各占45%，攻击/速度各占5%
+ */
+function distributeStatLevelsFrontRow(totalLevel, rng) {
+  const remaining = Math.max(totalLevel - 4, 0)
+  const parts = [0, 0, 0, 0] // [attack, defense, speed, san]
+  for (let i = 0; i < remaining; i++) {
+    const r = rng()
+    if (r < 0.05)
+      parts[0]++ // 5% 攻击
+    else if (r < 0.5)
+      parts[1]++ // 45% 防御
+    else if (r < 0.55)
+      parts[2]++ // 5% 速度
+    else parts[3]++ // 45% SAN
+  }
+  return {
+    attack: parts[0] + 1,
+    defense: parts[1] + 1,
+    speed: parts[2] + 1,
+    san: parts[3] + 1
+  }
+}
+
+/**
+ * 后排属性分配（极端偏向攻击和速度）
+ * 攻击/速度各占45%，防御/SAN各占5%
+ */
+function distributeStatLevelsBackRow(totalLevel, rng) {
+  const remaining = Math.max(totalLevel - 4, 0)
+  const parts = [0, 0, 0, 0] // [attack, defense, speed, san]
+  for (let i = 0; i < remaining; i++) {
+    const r = rng()
+    if (r < 0.45)
+      parts[0]++ // 45% 攻击
+    else if (r < 0.5)
+      parts[1]++ // 5% 防御
+    else if (r < 0.95)
+      parts[2]++ // 45% 速度
+    else parts[3]++ // 5% SAN
+  }
   return {
     attack: parts[0] + 1,
     defense: parts[1] + 1,
