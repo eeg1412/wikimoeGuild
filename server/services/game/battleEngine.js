@@ -447,8 +447,9 @@ function getSkillEffectText(skill, effectValue) {
 
 /**
  * 执行符文石主动技能
+ * @param {string} triggerTiming - 触发时机：'before'（攻击前）或 'after'（攻击后）
  */
-function performRuneStoneSkill(unit, allUnits, skillData, log) {
+function performRuneStoneSkill(unit, allUnits, skillData, log, triggerTiming) {
   const allyUnits = allUnits.filter(u => u.alive && u.side === unit.side)
   const enemyUnits = allUnits.filter(u => u.alive && u.side !== unit.side)
 
@@ -531,7 +532,10 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
           damage,
           targetRemainSan: target.currentSan,
           targetSpGain,
-          targetCurrentSp: target.currentSp
+          targetCurrentSp: target.currentSp,
+          elementCounter: !!(
+            skill.element && isElementCounter(skill.element, target.element)
+          )
         })
         break
       }
@@ -780,7 +784,8 @@ function performRuneStoneSkill(unit, allUnits, skillData, log) {
       defaultAvatarId: unit.defaultAvatarId,
       hasCustomAvatar: !!unit.hasCustomAvatar,
       customAvatarUpdatedAt: unit.customAvatarUpdatedAt || null,
-      isDemon: !!unit.isDemon
+      isDemon: !!unit.isDemon,
+      triggerTiming: triggerTiming || 'after'
     })
   }
 
@@ -806,7 +811,7 @@ function tryTriggerRuneStoneSkill(
 
   while (unit.currentSp >= SP_TRIGGER_THRESHOLD) {
     unit.currentSp -= SP_TRIGGER_THRESHOLD
-    performRuneStoneSkill(unit, allUnits, timingSkills, log)
+    performRuneStoneSkill(unit, allUnits, timingSkills, log, triggerTiming)
   }
 }
 

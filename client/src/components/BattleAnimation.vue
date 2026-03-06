@@ -310,6 +310,16 @@
               <div
                 class="cutin-avatar-wrap"
                 :class="`cutin-avatar-wrap--${runeCutInData.runeStoneRarity}`"
+                :style="
+                  runeCutInData.casterElement
+                    ? {
+                        borderColor: getElementColor(
+                          runeCutInData.casterElement
+                        ),
+                        boxShadow: `0 0 20px ${getElementColor(runeCutInData.casterElement)}cc, 0 0 8px ${getElementColor(runeCutInData.casterElement)}88`
+                      }
+                    : {}
+                "
               >
                 <GameAdventurerAvatar
                   :adventurer="{
@@ -820,6 +830,7 @@ const unitDelayMap = ref(new Map())
 const currentLogIndex = ref(0)
 const actingUnitIds = ref(new Set())
 const hitUnitIds = ref(new Set())
+const counterHitUnitIds = ref(new Set()) // 受到克制攻击的单位
 const buffedUnitIds = ref(new Set())
 const debuffedUnitIds = ref(new Set())
 const healedUnitIds = ref(new Set())
@@ -840,12 +851,28 @@ const cutInKey = ref(0)
 const runeCutInQueue = []
 // 当前一组 cut-in 对应的符文技能效果，等全部 cut-in 播放完后统一应用
 let pendingRuneSkillLogsAfterCutIn = []
+// cut-in 结束后的下一阶段回调（用于攻击前/攻击/攻击后 3 阶段演出）
+let nextPhaseCallback = null
 
 const RARITY_LABELS = { normal: '普通', rare: '稀有', legendary: '传说' }
 
 function getCutInDuration(rarity) {
   const base = rarity === 'legendary' ? 1400 : 1200
   return Math.max(400, Math.round(base / playbackSpeed.value))
+}
+
+/**
+ * cut-in 全部完成后的恢复逻辑：
+ * 若存在阶段回调（preAttack cut-in 结束后去执行攻击阶段）则调用它，否则恢复主动画。
+ */
+function _resumeAfterCutIn() {
+  if (nextPhaseCallback) {
+    const cb = nextPhaseCallback
+    nextPhaseCallback = null
+    cb()
+  } else {
+    startAnimation()
+  }
 }
 
 /**
@@ -857,7 +884,7 @@ function processNextCutIn() {
 
   if (runeCutInQueue.length === 0) {
     hideCutInEffect()
-    startAnimation()
+    _resumeAfterCutIn()
     return
   }
   const cutInItem = runeCutInQueue.shift()
@@ -915,8 +942,13 @@ function processNextCutIn() {
     }
   }
 
+  // 获取施法者元素类型，用于 cut-in 头像渐变边框颜色
+  const casterUnit = unitState.value.get(cutInItem.casterId)
+  const casterElement = casterUnit?.element || null
+
   runeCutInData.value = {
     ...cutInItem,
+    casterElement,
     isCombined: skillEffects.length > 1,
     skillEffects,
     targets,
@@ -949,11 +981,11 @@ function processNextCutIn() {
       if (clearDelay > 0) {
         cutInTimer = setTimeout(() => {
           cutInTimer = null
-          startAnimation()
+          _resumeAfterCutIn()
         }, clearDelay)
         return
       }
-      startAnimation()
+      _resumeAfterCutIn()
     }, 50)
   }, duration)
 }
@@ -1039,6 +1071,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
   const map = unitState.value
   const newActing = new Set()
   const newHit = new Set()
+  const newCounterHit = new Set()
   const newBuffed = new Set()
   const newDebuffed = new Set()
   const newHealed = new Set()
@@ -1052,21 +1085,32 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
 
     if (entry.skillType === 'attack') {
       const target = map.get(entry.target)
+      // 若目标已阵亡，跳过 HP 更新，防止因演出顺序差异导致血条异常回升
+      if (target && !target.alive) continue
       if (target) {
         target.currentSan = entry.targetRemainSan
         if (typeof entry.targetCurrentSp === 'number') {
           target.currentSp = entry.targetCurrentSp
         }
         if (target.currentSan <= 0) target.alive = false
-        newHit.add(entry.target)
         const koText = target.currentSan <= 0 ? ' 💀' : ''
         const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
         const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
-        addEffect(
-          entry.target,
-          `${attackIcon}-${entry.damage}${koText}`,
-          'damage'
-        )
+        if (entry.elementCounter) {
+          newCounterHit.add(entry.target)
+          addEffect(
+            entry.target,
+            `${attackIcon}-${entry.damage}${koText}`,
+            'damage-counter'
+          )
+        } else {
+          newHit.add(entry.target)
+          addEffect(
+            entry.target,
+            `${attackIcon}-${entry.damage}${koText}`,
+            'damage'
+          )
+        }
         needRefreshState = true
       }
     }
@@ -1093,6 +1137,8 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
 
     if (entry.skillType === 'sanRecover') {
       const target = map.get(entry.target)
+      // 若目标已阵亡，跳过 HP 恢复，防止血条异常回升
+      if (target && !target.alive) continue
       if (target) {
         target.currentSan = entry.targetRemainSan
         needRefreshState = true
@@ -1144,6 +1190,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
 
   actingUnitIds.value = newActing
   hitUnitIds.value = newHit
+  counterHitUnitIds.value = newCounterHit
   buffedUnitIds.value = newBuffed
   debuffedUnitIds.value = newDebuffed
   healedUnitIds.value = newHealed
@@ -1161,6 +1208,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
   hitClearTimer = setTimeout(() => {
     actingUnitIds.value = new Set()
     hitUnitIds.value = new Set()
+    counterHitUnitIds.value = new Set()
     buffedUnitIds.value = new Set()
     debuffedUnitIds.value = new Set()
     healedUnitIds.value = new Set()
@@ -1212,11 +1260,14 @@ function cellClass(unit) {
   const cls = unit.alive ? 'cell-alive' : 'cell-dead'
   const acting = isActing(unit.id) ? ' cell-acting' : ''
   const hit = isHit(unit.id) ? ' cell-hit' : ''
+  const counterHit = counterHitUnitIds.value.has(unit.id)
+    ? ' cell-hit-counter'
+    : ''
   const buffed = buffedUnitIds.value.has(unit.id) ? ' cell-buffed' : ''
   const debuffed = debuffedUnitIds.value.has(unit.id) ? ' cell-debuffed' : ''
   const healed = healedUnitIds.value.has(unit.id) ? ' cell-healed' : ''
   const moved = movedUnitIds.value.has(unit.id) ? ' cell-moved' : ''
-  return cls + acting + hit + buffed + debuffed + healed + moved
+  return cls + acting + hit + counterHit + buffed + debuffed + healed + moved
 }
 
 function hpPercent(unit) {
@@ -1238,6 +1289,8 @@ function logEntryClass(entry) {
     return entry.elementCounter ? 'log-attack-counter' : 'log-attack'
   }
   if (entry.type === 'runeSkill') {
+    if (entry.skillType === 'attack' && entry.elementCounter)
+      return 'log-attack-counter'
     if (entry.skillType === 'sanRecover') return 'log-heal'
     if (entry.skillType === 'buff') return 'log-buff'
     if (entry.skillType === 'debuff') return 'log-debuff'
@@ -1269,8 +1322,10 @@ function formatLogEntry(entry) {
     const casterLabel = getSideLabel(entry.caster)
     const targetLabel = entry.target ? getSideLabel(entry.target) : ''
     switch (entry.skillType) {
-      case 'attack':
-        return `✨ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害`
+      case 'attack': {
+        const counterMark = entry.elementCounter ? ' 克制!' : ''
+        return `✨ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害${counterMark}`
+      }
       case 'buff':
         const buffLabel = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
         return `⬆️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${buffLabel}+${entry.value}`
@@ -1377,10 +1432,18 @@ function processLogEntry(entry) {
         defender.currentSp = entry.defenderCurrentSp
       }
       if (defender.currentSan <= 0) defender.alive = false
-      hitUnitIds.value = new Set([entry.defender])
-      // 浮动伤害数字
+      // 克制攻击使用专用震动动画
+      if (entry.elementCounter) {
+        counterHitUnitIds.value = new Set([entry.defender])
+      } else {
+        hitUnitIds.value = new Set([entry.defender])
+      }
       const koText = defender.currentSan <= 0 ? ' 💀' : ''
-      addEffect(entry.defender, `-${entry.damage}${koText}`, 'damage')
+      addEffect(
+        entry.defender,
+        `-${entry.damage}${koText}`,
+        entry.elementCounter ? 'damage-counter' : 'damage'
+      )
       needRefreshState = true
     }
   }
@@ -1388,21 +1451,33 @@ function processLogEntry(entry) {
     actingUnitIds.value = new Set([entry.caster])
     if (entry.skillType === 'attack') {
       const target = map.get(entry.target)
-      if (target) {
+      // 防御性检查：如果目标已阵亡，跳过 HP 更新
+      if (target && !target.alive) {
+        /* skip */
+      } else if (target) {
         target.currentSan = entry.targetRemainSan
         if (typeof entry.targetCurrentSp === 'number') {
           target.currentSp = entry.targetCurrentSp
         }
         if (target.currentSan <= 0) target.alive = false
-        hitUnitIds.value = new Set([entry.target])
         const koText = target.currentSan <= 0 ? ' 💀' : ''
         const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
         const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
-        addEffect(
-          entry.target,
-          `${attackIcon}-${entry.damage}${koText}`,
-          'damage'
-        )
+        if (entry.elementCounter) {
+          counterHitUnitIds.value = new Set([entry.target])
+          addEffect(
+            entry.target,
+            `${attackIcon}-${entry.damage}${koText}`,
+            'damage-counter'
+          )
+        } else {
+          hitUnitIds.value = new Set([entry.target])
+          addEffect(
+            entry.target,
+            `${attackIcon}-${entry.damage}${koText}`,
+            'damage'
+          )
+        }
         needRefreshState = true
       }
     }
@@ -1426,7 +1501,8 @@ function processLogEntry(entry) {
     }
     if (entry.skillType === 'sanRecover') {
       const target = map.get(entry.target)
-      if (target) {
+      // 防御性检查：已阵亡目标不恢复 HP
+      if (target && target.alive) {
         target.currentSan = entry.targetRemainSan
         needRefreshState = true
       }
@@ -1488,6 +1564,7 @@ function processLogEntry(entry) {
   hitClearTimer = setTimeout(() => {
     actingUnitIds.value = new Set()
     hitUnitIds.value = new Set()
+    counterHitUnitIds.value = new Set()
     buffedUnitIds.value = new Set()
     debuffedUnitIds.value = new Set()
     healedUnitIds.value = new Set()
@@ -1500,11 +1577,10 @@ function processLogEntry(entry) {
 const animationFinished = ref(false)
 
 /**
- * 批量处理当前回合所有同时出手的条目。
- * 从 currentLogIndex 开始向前收集，直到下一个 roundStart（或日志末尾）。
- * - attack / runeSkill：合并到同一个 acting/hit/buffed... Set，一次性设置 → 实现同时金边/红边
- * - runeActivate：更新 SP，收集进 pendingCutIns 队列
- *   cut-in 在 hitClearTimer（金边消失）后才触发，不与金边叠加，消除卡顿感
+ * 批量处理当前回合所有同时出手的条目（3阶段演出版本）：
+ * 阶段1（攻击前）：triggerTiming='before' 的 runeActivate → cut-in 展示 → 应用技能效果
+ * 阶段2（攻击）：attack 条目 → 同时金边/红边展示
+ * 阶段3（攻击后）：triggerTiming='after' 的 runeActivate → cut-in 展示 → 应用技能效果
  */
 function batchProcessCurrentRound() {
   // ① 立即停止 setInterval，防止游离 tick 提前调用 applyPendingDelays
@@ -1518,15 +1594,11 @@ function batchProcessCurrentRound() {
   }
 
   const map = unitState.value
-  const newActing = new Set()
-  const newHit = new Set()
-  const newBuffed = new Set()
-  const newDebuffed = new Set()
-  const newHealed = new Set()
-  const newMoved = new Set()
-  let needRefreshState = false
-  const pendingCutIns = []
+  const preAttackCutIns = [] // triggerTiming='before' 的 cut-in
+  const attackEntries = [] // attack 日志条目
+  const postAttackCutIns = [] // triggerTiming='after' 的 cut-in
 
+  // === 扫描本回合所有条目：消费 runeSkill 日志并按阶段分类 ===
   while (currentLogIndex.value < props.battleLog.length) {
     const entry = props.battleLog[currentLogIndex.value]
     if (entry.type === 'roundStart') break
@@ -1534,21 +1606,63 @@ function batchProcessCurrentRound() {
     displayedLogs.value.push(entry)
 
     if (entry.type === 'runeActivate') {
-      // SP 不在此处立即更新，而是存入 _casterSpUpdate
-      // 在对应 cut-in 播放前才应用，使 SP 条归零动画在每个 cut-in 期间可见
+      // SP 延迟到 cut-in 播放前应用，使 SP 条动画可见
       const runeSkillLogs = consumeRuneSkillLogsForCutIn(entry.caster)
-      pendingCutIns.push({
+      const cutInEntry = {
         ...entry,
         _casterSpUpdate:
           typeof entry.casterCurrentSp === 'number'
             ? { id: entry.caster, sp: entry.casterCurrentSp }
             : null,
         _runeSkillLogs: runeSkillLogs
-      })
+      }
+      if (entry.triggerTiming === 'before') {
+        preAttackCutIns.push(cutInEntry)
+      } else {
+        postAttackCutIns.push(cutInEntry)
+      }
       continue
     }
 
     if (entry.type === 'attack') {
+      attackEntries.push(entry)
+      continue
+    }
+
+    // 兜底：独立的 runeSkill 条目（理论上不会出现，防御性处理）
+    if (entry.type === 'runeSkill') {
+      postAttackCutIns.push({
+        casterId: entry.caster,
+        casterName: entry.casterName,
+        isCasterAlly: isAllyId(entry.caster),
+        runeStoneRarity: 'normal',
+        runeStoneLevel: 1,
+        defaultAvatarId: null,
+        hasCustomAvatar: false,
+        customAvatarUpdatedAt: null,
+        isDemon: false,
+        skills: [],
+        _casterSpUpdate: null,
+        _runeSkillLogs: [entry]
+      })
+    }
+  }
+
+  // 日志区域滚动到底部
+  nextTick(() => {
+    if (logContainer.value) {
+      logContainer.value.scrollTop = logContainer.value.scrollHeight
+    }
+  })
+
+  // === 攻击阶段：展示攻击效果，结束后触发 post-attack cut-in 或恢复动画 ===
+  function executeAttackPhase() {
+    const newActing = new Set()
+    const newHit = new Set()
+    const newCounterHit = new Set()
+    let needRefreshState = false
+
+    for (const entry of attackEntries) {
       newActing.add(entry.attacker)
       const attacker = map.get(entry.attacker)
       if (attacker && typeof entry.attackerCurrentSp === 'number') {
@@ -1562,169 +1676,96 @@ function batchProcessCurrentRound() {
           defender.currentSp = entry.defenderCurrentSp
         }
         if (defender.currentSan <= 0) defender.alive = false
-        newHit.add(entry.defender)
         const koText = defender.currentSan <= 0 ? ' 💀' : ''
-        addEffect(entry.defender, `-${entry.damage}${koText}`, 'damage')
-        needRefreshState = true
-      }
-    }
-
-    if (entry.type === 'runeSkill') {
-      newActing.add(entry.caster)
-      if (entry.skillType === 'attack') {
-        const target = map.get(entry.target)
-        if (target) {
-          target.currentSan = entry.targetRemainSan
-          if (typeof entry.targetCurrentSp === 'number')
-            target.currentSp = entry.targetCurrentSp
-          if (target.currentSan <= 0) target.alive = false
-          newHit.add(entry.target)
-          const koText = target.currentSan <= 0 ? ' 💀' : ''
-          const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
-          const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
+        if (entry.elementCounter) {
+          newCounterHit.add(entry.defender)
           addEffect(
-            entry.target,
-            `${attackIcon}-${entry.damage}${koText}`,
-            'damage'
+            entry.defender,
+            `-${entry.damage}${koText}`,
+            'damage-counter'
           )
-          needRefreshState = true
-        }
-      }
-      if (entry.skillType === 'buff') {
-        newBuffed.add(entry.target)
-        const label = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
-        addEffect(
-          entry.target,
-          `${SKILL_TYPE_ICONS.buff}${label}+${entry.value}`,
-          'buff'
-        )
-      }
-      if (entry.skillType === 'debuff') {
-        newDebuffed.add(entry.target)
-        const label = BUFF_TYPE_LABEL[entry.debuffType] || entry.debuffType
-        addEffect(
-          entry.target,
-          `${SKILL_TYPE_ICONS.debuff}${label}-${entry.value}`,
-          'debuff'
-        )
-      }
-      if (entry.skillType === 'sanRecover') {
-        const target = map.get(entry.target)
-        if (target) {
-          target.currentSan = entry.targetRemainSan
-          needRefreshState = true
-        }
-        newHealed.add(entry.target)
-        addEffect(
-          entry.target,
-          `${SKILL_TYPE_ICONS.sanRecover}+${entry.healAmount}`,
-          'heal'
-        )
-      }
-      if (entry.skillType === 'changeOrder' && entry.success) {
-        const target = map.get(entry.target)
-        let swapTarget = null
-        if (entry.swapped && entry.swapTarget) {
-          swapTarget = map.get(entry.swapTarget) || null
-        }
-        if (!swapTarget && target) {
-          for (const unit of map.values()) {
-            if (unit.id === target.id) continue
-            if (unit.side !== target.side) continue
-            if (unit.row === entry.newRow && unit.col === entry.newCol) {
-              swapTarget = unit
-              break
-            }
-          }
-        }
-        if (target) {
-          target.row = entry.newRow
-          target.col = entry.newCol
-          newMoved.add(entry.target)
-          addEffect(entry.target, '🔀 移动', 'move')
-        }
-        if (swapTarget) {
-          swapTarget.row = entry.oldRow
-          swapTarget.col = entry.oldCol
-          newMoved.add(swapTarget.id)
-          addEffect(swapTarget.id, '🔀 互换', 'move')
+        } else {
+          newHit.add(entry.defender)
+          addEffect(entry.defender, `-${entry.damage}${koText}`, 'damage')
         }
         needRefreshState = true
       }
     }
-  }
 
-  // 一次性将所有同时出手单位的视觉状态写入（同时金边 / 同时红边）
-  actingUnitIds.value = newActing
-  hitUnitIds.value = newHit
-  buffedUnitIds.value = newBuffed
-  debuffedUnitIds.value = newDebuffed
-  healedUnitIds.value = newHealed
-  movedUnitIds.value = newMoved
-
-  if (needRefreshState) {
-    unitState.value = new Map(unitState.value)
-  }
-
-  // ③ 统一清除定时器：金边消失、AT 条归零、cut-in 触发 严格同帧
-  const clearDelay = Math.max(300, Math.round(600 / playbackSpeed.value))
-  hitClearTimer = setTimeout(() => {
-    hitClearTimer = null
-    // 所有视觉特效同时消失
-    actingUnitIds.value = new Set()
-    hitUnitIds.value = new Set()
+    // 一次性写入视觉状态（同时金边 / 同时红边）
+    actingUnitIds.value = newActing
+    hitUnitIds.value = newHit
+    counterHitUnitIds.value = newCounterHit
     buffedUnitIds.value = new Set()
     debuffedUnitIds.value = new Set()
     healedUnitIds.value = new Set()
     movedUnitIds.value = new Set()
 
-    // 「与金边消失同帧」更新 AT 条：
-    // 前瞻下一个 roundStart（round N+1）的 unitDelays，其中行动单位的值已是本轮行动后的后置值
-    // （行动单位 delay 增加了 baseDelay，百分比接近 0%）
-    const nextRound = props.battleLog
-      .slice(currentLogIndex.value)
-      .find(e => e.type === 'roundStart')
-    if (
-      nextRound &&
-      Array.isArray(nextRound.unitDelays) &&
-      nextRound.unitDelays.length > 0
-    ) {
-      const minD = Math.min(...nextRound.unitDelays.map(d => d.delay))
-      const newMap = new Map(unitDelayMap.value)
-      for (const { id, delay, baseDelay } of nextRound.unitDelays) {
-        const base = baseDelay || 1
-        const pct = Math.max(
-          0,
-          Math.min(100, Math.round((1 - (delay - minD) / base) * 100))
-        )
-        newMap.set(id, pct)
-      }
-      unitDelayMap.value = newMap
+    if (needRefreshState) {
+      unitState.value = new Map(unitState.value)
     }
 
-    if (pendingCutIns.length > 0) {
-      // 若战斗已分出胜负（一方全灭），跳过 cut-in 演出，直接继续动画
-      if (isBattleDecided()) {
-        startAnimation()
+    // 若无攻击条目，跳过 hitClearTimer 直接进入下一阶段
+    if (attackEntries.length === 0) {
+      if (postAttackCutIns.length > 0 && !isBattleDecided()) {
+        for (const ra of postAttackCutIns) enqueueCutIn(ra)
       } else {
-        // 金边消失后再播 cut-in，消除叠加导致的卡顿感
-        // 每个 cut-in 播放前会在 processNextCutIn 里单独更新该施法者 SP
-        for (const ra of pendingCutIns) {
-          enqueueCutIn(ra)
-        }
-        // processNextCutIn 由 enqueueCutIn 自动触发，结束后调 startAnimation
+        startAnimation()
       }
-    } else {
-      // 无 cut-in：直接恢复动画
-      startAnimation()
+      return
     }
-  }, clearDelay)
 
-  nextTick(() => {
-    if (logContainer.value) {
-      logContainer.value.scrollTop = logContainer.value.scrollHeight
-    }
-  })
+    // ③ 统一清除定时器：金边消失、AT 条归零与 post-attack cut-in 触发严格同帧
+    const clearDelay = Math.max(300, Math.round(600 / playbackSpeed.value))
+    hitClearTimer = setTimeout(() => {
+      hitClearTimer = null
+      actingUnitIds.value = new Set()
+      hitUnitIds.value = new Set()
+      counterHitUnitIds.value = new Set()
+      buffedUnitIds.value = new Set()
+      debuffedUnitIds.value = new Set()
+      healedUnitIds.value = new Set()
+      movedUnitIds.value = new Set()
+
+      // 「与金边消失同帧」更新 AT 条
+      const nextRound = props.battleLog
+        .slice(currentLogIndex.value)
+        .find(e => e.type === 'roundStart')
+      if (
+        nextRound &&
+        Array.isArray(nextRound.unitDelays) &&
+        nextRound.unitDelays.length > 0
+      ) {
+        const minD = Math.min(...nextRound.unitDelays.map(d => d.delay))
+        const newMap = new Map(unitDelayMap.value)
+        for (const { id, delay, baseDelay } of nextRound.unitDelays) {
+          const base = baseDelay || 1
+          const pct = Math.max(
+            0,
+            Math.min(100, Math.round((1 - (delay - minD) / base) * 100))
+          )
+          newMap.set(id, pct)
+        }
+        unitDelayMap.value = newMap
+      }
+
+      if (postAttackCutIns.length > 0 && !isBattleDecided()) {
+        for (const ra of postAttackCutIns) enqueueCutIn(ra)
+        // processNextCutIn → _resumeAfterCutIn → startAnimation
+      } else {
+        startAnimation()
+      }
+    }, clearDelay)
+  }
+
+  // === 阶段调度：攻击前 cut-in → 攻击阶段 → 攻击后 cut-in → 动画恢复 ===
+  if (preAttackCutIns.length > 0 && !isBattleDecided()) {
+    // pre-attack cut-in 结束后 _resumeAfterCutIn 会调用 executeAttackPhase
+    nextPhaseCallback = executeAttackPhase
+    for (const ra of preAttackCutIns) enqueueCutIn(ra)
+  } else {
+    executeAttackPhase()
+  }
 }
 
 function playNextLog() {
@@ -1796,6 +1837,7 @@ function handleSkip() {
   }
   runeCutInQueue.length = 0
   pendingRuneSkillLogsAfterCutIn = []
+  nextPhaseCallback = null
   hideCutInEffect()
   stopAnimation()
   // 跳过时立即释放锁
@@ -1984,6 +2026,15 @@ onUnmounted(() => {
   animation: hitShake 0.3s ease-in-out;
 }
 
+/* 克制命中：幅度更大的震动（带小幅度旋转的摇摆） */
+.cell-hit-counter {
+  border-color: rgba(255, 140, 0, 0.9) !important;
+  box-shadow:
+    0 0 16px rgba(255, 140, 0, 0.8),
+    0 0 4px rgba(255, 200, 0, 0.6);
+  animation: hitShakeCounter 0.5s ease-in-out;
+}
+
 @keyframes actPulse {
   0%,
   100% {
@@ -2015,6 +2066,38 @@ onUnmounted(() => {
   }
   100% {
     transform: translateX(0);
+  }
+}
+
+/* 克制命中大幅度震动（幅度更大，带旋转摇摆） */
+@keyframes hitShakeCounter {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  10% {
+    transform: translateX(-7px) rotate(-4deg);
+    background: rgba(255, 140, 0, 0.4);
+  }
+  25% {
+    transform: translateX(8px) rotate(4deg);
+    background: rgba(255, 140, 0, 0.35);
+  }
+  40% {
+    transform: translateX(-6px) rotate(-3deg);
+    background: rgba(255, 140, 0, 0.25);
+  }
+  55% {
+    transform: translateX(5px) rotate(2deg);
+    background: rgba(255, 140, 0, 0.15);
+  }
+  70% {
+    transform: translateX(-3px) rotate(-1deg);
+  }
+  85% {
+    transform: translateX(2px) rotate(0.5deg);
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
   }
 }
 
@@ -2265,6 +2348,16 @@ onUnmounted(() => {
 .effect-damage {
   color: #ff4444;
   font-size: 13px;
+}
+/* 克制伤害浮动文字：更大、加粗、橙色 */
+.effect-damage-counter {
+  color: #ff8c00;
+  font-size: 16px;
+  font-weight: 900;
+  text-shadow:
+    0 0 8px rgba(255, 140, 0, 0.8),
+    0 1px 4px rgba(0, 0, 0, 0.9),
+    0 0 3px rgba(255, 50, 0, 0.6);
 }
 .effect-buff {
   color: #34d399;
