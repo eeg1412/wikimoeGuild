@@ -451,9 +451,6 @@ function getSkillEffectText(skill, effectValue) {
  */
 function performRuneStoneSkill(unit, allUnits, skillData, log, triggerTiming) {
   const allyUnits = allUnits.filter(u => u.alive && u.side === unit.side)
-  const enemyUnits = allUnits.filter(u => u.alive && u.side !== unit.side)
-
-  const enemyFrontRow = getFrontRow(enemyUnits)
 
   const skillsInfo = []
   const runeSkillLogs = []
@@ -464,11 +461,13 @@ function performRuneStoneSkill(unit, allUnits, skillData, log, triggerTiming) {
 
     switch (skill.type) {
       case 'attack': {
-        // 攻击类符文石
-        let targets = enemyFrontRow
+        // 攻击类符文石 - 每次技能独立重新计算存活敌方前排，防止前一技能击杀目标后仍对其施法
+        const currentEnemyUnits = allUnits.filter(
+          u => u.alive && u.side !== unit.side
+        )
         const target = selectTarget(
           unit,
-          targets,
+          getFrontRow(currentEnemyUnits),
           skill.preference,
           skill.order
         )
@@ -579,11 +578,20 @@ function performRuneStoneSkill(unit, allUnits, skillData, log, triggerTiming) {
       }
 
       case 'debuff': {
-        // 减益类符文石（敌方）
-        let targets = enemyFrontRow
+        // 减益类符文石（敌方）- 每次技能独立重新计算存活敌方前排
+        const currentDebuffEnemyUnits = allUnits.filter(
+          u => u.alive && u.side !== unit.side
+        )
         const target =
-          selectTarget(unit, targets, skill.preference, skill.order) ||
-          enemyUnits[Math.floor(Math.random() * enemyUnits.length)]
+          selectTarget(
+            unit,
+            getFrontRow(currentDebuffEnemyUnits),
+            skill.preference,
+            skill.order
+          ) ||
+          currentDebuffEnemyUnits[
+            Math.floor(Math.random() * currentDebuffEnemyUnits.length)
+          ]
         if (!target) break
 
         target.tempBuffs[skill.debuffType] =
@@ -617,11 +625,18 @@ function performRuneStoneSkill(unit, allUnits, skillData, log, triggerTiming) {
       }
 
       case 'changeOrder': {
-        // 改变排序类：将目标移动到棋盘上的随机位置
-        let targets = enemyFrontRow
+        // 改变排序类：将目标移动到棋盘上的随机位置 - 每次技能独立重新计算存活敌方前排
+        const currentOrderEnemyUnits = allUnits.filter(
+          u => u.alive && u.side !== unit.side
+        )
         const target =
-          selectTarget(unit, targets, skill.preference, skill.order) ||
-          enemyUnits
+          selectTarget(
+            unit,
+            getFrontRow(currentOrderEnemyUnits),
+            skill.preference,
+            skill.order
+          ) ||
+          currentOrderEnemyUnits
             .filter(u => u.currentSan > 0)
             .sort((a, b) => a.currentSan - b.currentSan)[0]
         if (!target) break
@@ -664,8 +679,8 @@ function performRuneStoneSkill(unit, allUnits, skillData, log, triggerTiming) {
           const newPos =
             allPositions[Math.floor(Math.random() * allPositions.length)]
 
-          // 检查新位置是否有冒险家
-          const occupant = enemyUnits.find(
+          // 检查新位置是否有存活冒险家
+          const occupant = currentOrderEnemyUnits.find(
             u =>
               u.id !== target.id && u.row === newPos.row && u.col === newPos.col
           )
@@ -933,6 +948,10 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
       // SP达到阈值时结算符文石主动效果（攻击前触发）
       tryTriggerRuneStoneSkill(unit, allUnits, skillMap, 'before', battleLog)
 
+      // 攻击前技能结算后，重新获取敌方存活前排（攻击前技能可能已击杀部分敌方）
+      const aliveEnemiesAfterBefore = enemySide.filter(u => u.alive)
+      const frontRowForAttack = getFrontRow(aliveEnemiesAfterBefore)
+
       // 选择攻击目标（根据冒险家攻击偏好）
       let prefType = 'remainSan'
       let prefOrder = 'asc'
@@ -943,7 +962,7 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
           prefOrder = pref.order
         }
       }
-      const target = selectTarget(unit, frontRow, prefType, prefOrder)
+      const target = selectTarget(unit, frontRowForAttack, prefType, prefOrder)
       if (target && target.alive) {
         const attackEntry = performAttack(unit, target, battleLog)
         const attackerSpGain = gainSp(unit, SP_GAIN_ON_ATTACK)
