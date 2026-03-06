@@ -13,6 +13,13 @@ import {
   generateRandomAdventurerName,
   generateRandomAdventurerAvatarId
 } from '../../utils/utils.js'
+
+/**
+ * 后4排（索引5-24）中使用自由均衡分配的角色数量
+ * 数值越大，高难度阵容的整体强度越低
+ */
+const NPC_FREE_ALLOC_COUNT = 5
+
 import {
   runeStoneActiveSkillDataBase,
   passiveBuffTypeDataBase,
@@ -689,10 +696,21 @@ function generateMineLegion(level) {
   } else {
     // 后25级：25名恶魔，综合等级 = 矿场等级 × 增强系数
     // 前10名（前2排）极端偏向防御/SAN，中间5名（第3排）均衡加点，后10名（后2排）极端偏向攻击/速度
+    // 后4排（索引5-24）中随机 NPC_FREE_ALLOC_COUNT 名使用均衡自由分配
+    const freeAllocIndices = new Set()
+    while (freeAllocIndices.size < Math.min(NPC_FREE_ALLOC_COUNT, 20)) {
+      freeAllocIndices.add(5 + Math.floor(Math.random() * 20))
+    }
     for (let i = 0; i < 25; i++) {
       const compLevel = Math.max(1, Math.floor(level * levelBoostFactor))
       const runeStone = generateMineDemonRuneStone(compLevel, allSkills)
-      const role = i < 10 ? 'frontTank' : i < 15 ? 'balanced' : 'backDPS'
+      const role = freeAllocIndices.has(i)
+        ? 'balanced'
+        : i < 10
+          ? 'frontTank'
+          : i < 15
+            ? 'balanced'
+            : 'backDPS'
       demons.push(
         createMineDemon(
           compLevel,
