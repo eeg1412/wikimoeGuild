@@ -931,28 +931,25 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
       unitDelays
     })
 
-    // 所有同时行动的单位执行攻击
+    // 同回合真正同时行动：拆成3个独立阶段，每阶段开始前重新检查存活状态
+    // 阶段1：所有行动单位的攻击前符文石技能全部结算完毕
+    for (const unit of actingUnits) {
+      if (!unit.alive) continue
+      tryTriggerRuneStoneSkill(unit, allUnits, skillMap, 'before', battleLog)
+    }
+
+    // 阶段2：所有仍存活的行动单位执行普通攻击
+    // （攻击前阶段可能已击杀部分行动单位，被击杀的单位此阶段跳过）
     for (const unit of actingUnits) {
       if (!unit.alive) continue
 
       const enemySide = unit.side === 'attacker' ? defenderUnits : attackerUnits
-      const allySide = unit.side === 'attacker' ? attackerUnits : defenderUnits
       const aliveEnemies = enemySide.filter(u => u.alive)
-
       if (aliveEnemies.length === 0) continue
 
-      // 获取敌方最前排
-      const frontRow = getFrontRow(aliveEnemies)
-      if (frontRow.length === 0) continue
+      const frontRowForAttack = getFrontRow(aliveEnemies)
+      if (frontRowForAttack.length === 0) continue
 
-      // SP达到阈值时结算符文石主动效果（攻击前触发）
-      tryTriggerRuneStoneSkill(unit, allUnits, skillMap, 'before', battleLog)
-
-      // 攻击前技能结算后，重新获取敌方存活前排（攻击前技能可能已击杀部分敌方）
-      const aliveEnemiesAfterBefore = enemySide.filter(u => u.alive)
-      const frontRowForAttack = getFrontRow(aliveEnemiesAfterBefore)
-
-      // 选择攻击目标（根据冒险家攻击偏好）
       let prefType = 'remainSan'
       let prefOrder = 'asc'
       if (unit.attackPreference) {
@@ -969,16 +966,23 @@ export function executeBattle(attackerGrid, defenderGrid, allSkillsDB) {
         attackEntry.attackerSpGain = attackerSpGain
         attackEntry.attackerCurrentSp = unit.currentSp
       }
+    }
 
-      // SP达到阈值时结算符文石主动效果（攻击后触发）
-      // 仅在敌方仍有存活单位时触发，避免战斗已分出胜负后继续播放 cut-in 演出
+    // 阶段3：所有仍存活的行动单位的攻击后符文石技能
+    // （攻击前或攻击阶段可能已击杀部分行动单位，被击杀的单位此阶段跳过）
+    for (const unit of actingUnits) {
+      if (!unit.alive) continue
       const enemySideAfter =
         unit.side === 'attacker' ? defenderUnits : attackerUnits
+      // 仅在敌方仍有存活单位时触发，避免战斗已分出胜负后继续播放 cut-in 演出
       if (enemySideAfter.some(u => u.alive)) {
         tryTriggerRuneStoneSkill(unit, allUnits, skillMap, 'after', battleLog)
       }
+    }
 
-      // 增加延迟值（重新计算包含临时速度增减益后的有效延迟）
+    // 更新延迟值：仅存活单位需要继续参与后续行动
+    for (const unit of actingUnits) {
+      if (!unit.alive) continue
       const currentSpeed = Math.max(1, unit.speed + (unit.tempBuffs.speed || 0))
       const effectiveSpeed = Math.pow(currentSpeed + 100, 0.8)
       const adjustedDelay = Math.floor(10000 / effectiveSpeed)
