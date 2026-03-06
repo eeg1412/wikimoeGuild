@@ -1015,15 +1015,17 @@ function generateNPCFormation(playerGrid, playerPoints = 500) {
  */
 function distributeComprehensiveLevel(comprehensiveLevel) {
   const n = 4
-  const idealBase = comprehensiveLevel / n
+  // 属性之和应为 comprehensiveLevel + 3，与玩家冒险家保持一致（comprehensiveLevel = sum - 3）
+  const target = comprehensiveLevel + 3
+  const idealBase = target / n
   const attrs = []
   for (let i = 0; i < n; i++) {
     // ±10% 随机浮动，最小1
     const factor = 0.9 + Math.random() * 0.2
     attrs.push(Math.max(1, Math.floor(idealBase * factor)))
   }
-  // 找补：调整属性之和等于 comprehensiveLevel
-  let diff = comprehensiveLevel - attrs.reduce((a, b) => a + b, 0)
+  // 找补：调整属性之和等于 target
+  let diff = target - attrs.reduce((a, b) => a + b, 0)
   if (diff > 0) {
     // 需要补充若干点，随机分配
     for (let i = 0; i < diff; i++) {

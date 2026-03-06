@@ -152,8 +152,8 @@ function createDemon(
   const passiveBuff = allBuffTypes[Math.floor(rng() * allBuffTypes.length)]
   const preference = allPreferences[Math.floor(rng() * allPreferences.length)]
 
-  // 分配属性等级
-  const statLevels = distributeStatLevels(comprehensiveLevel, rng)
+  // 分配属性等级（属性之和应为 comprehensiveLevel + 3，与玩家冒险家保持一致）
+  const statLevels = distributeStatLevels(comprehensiveLevel + 3, rng)
 
   return {
     _id: `demon_${Math.floor(rng() * 2176782336).toString(36)}`,
@@ -490,7 +490,7 @@ export async function previewLegion(accountId) {
       speedLevel: d.speedLevel,
       SANLevel: d.SANLevel,
       comprehensiveLevel: d.comprehensiveLevel,
-      hasRuneStone: !!d.runeStone
+      runeStone: d.runeStone || null
     }))
   }
 }
