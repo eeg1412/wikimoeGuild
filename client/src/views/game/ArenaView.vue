@@ -555,7 +555,7 @@
                   :page-size="logsPageSize"
                   :total="logsTotal"
                   layout="prev, pager, next"
-                  small
+                  size="small"
                   @current-change="fetchBattleLogs"
                 />
               </div>

@@ -40,7 +40,7 @@
           :page-size="pageSize"
           :total="listingsTotal"
           layout="prev, pager, next"
-          small
+          size="small"
           @current-change="fetchListings"
         />
       </div>

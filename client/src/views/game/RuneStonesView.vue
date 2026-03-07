@@ -246,7 +246,7 @@
           :page-size="runeStonePageSize"
           :total="runeStoneTotal"
           layout="prev, pager, next"
-          small
+          size="small"
           @current-change="fetchRuneStones"
         />
       </div>

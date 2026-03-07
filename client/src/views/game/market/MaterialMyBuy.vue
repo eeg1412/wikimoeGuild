@@ -192,7 +192,7 @@
           :page-size="pageSize"
           :total="ordersTotal"
           layout="prev, pager, next"
-          small
+          size="small"
           @current-change="fetchOrders"
         />
       </div>

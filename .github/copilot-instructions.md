@@ -38,3 +38,4 @@
 - 使用 server\utils\utils.js 中的 generateRandomAdventurerAvatarId() 函数来生成冒险者头像ID。
 - 修改冒险家头像范围时需要注意model的同步更新，保持一致性。
 - 所有弹窗，在按钮接口调用完成前禁止允许关闭弹窗。
+- 游戏相关的组件和页面页码均采用 size="small"

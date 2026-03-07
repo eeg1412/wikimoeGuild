@@ -119,7 +119,7 @@
             :page-size="listPageSize"
             :total="listTotal"
             layout="prev, pager, next"
-            small
+            size="small"
             @current-change="fetchMineList"
           />
         </div>
@@ -306,7 +306,7 @@
             :page-size="revenuePageSize"
             :total="revenueTotal"
             layout="prev, pager, next"
-            small
+            size="small"
             @current-change="fetchRevenue"
           />
         </div>
