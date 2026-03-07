@@ -894,16 +894,23 @@ export async function autoDistributeLevelUp(
     const crystalBase = gameSettings.adventurerLevelUpCrystalBase ?? 100
     const goldBase = gameSettings.adventurerLevelUpGoldBase ?? 500
 
-    // 按比例计算每种属性分配多少级
+    // 按比例计算每种属性分配多少级，san 取剩余保证总数精确
+    // round 最多使三项之和超出 1，此时 san=-1，从分配最多的属性减 1 修正
     const statAlloc = {
       attack: Math.round((totalLevels * ratio.attack) / 100),
       defense: Math.round((totalLevels * ratio.defense) / 100),
       speed: Math.round((totalLevels * ratio.speed) / 100),
       san: 0
     }
-    // san 用剩余填充，保证总数精确
     statAlloc.san =
       totalLevels - statAlloc.attack - statAlloc.defense - statAlloc.speed
+    if (statAlloc.san < 0) {
+      const maxKey = ['attack', 'defense', 'speed'].reduce((a, b) =>
+        statAlloc[a] >= statAlloc[b] ? a : b
+      )
+      statAlloc[maxKey] -= 1
+      statAlloc.san = 0
+    }
 
     const statMap = {
       attack: { crystal: 'attackCrystal', level: 'attackLevel' },
@@ -932,7 +939,6 @@ export async function autoDistributeLevelUp(
     // 限制总升级数不超过剩余容量
     const effectiveTotalLevels = Math.min(totalLevels, remainingCapacity)
     if (effectiveTotalLevels < totalLevels) {
-      // 重新分配
       statAlloc.attack = Math.round((effectiveTotalLevels * ratio.attack) / 100)
       statAlloc.defense = Math.round(
         (effectiveTotalLevels * ratio.defense) / 100
@@ -943,6 +949,13 @@ export async function autoDistributeLevelUp(
         statAlloc.attack -
         statAlloc.defense -
         statAlloc.speed
+      if (statAlloc.san < 0) {
+        const maxKey = ['attack', 'defense', 'speed'].reduce((a, b) =>
+          statAlloc[a] >= statAlloc[b] ? a : b
+        )
+        statAlloc[maxKey] -= 1
+        statAlloc.san = 0
+      }
     }
 
     // 事前检查所有消耗
@@ -1147,6 +1160,8 @@ export async function batchRatioDistribute(accountId, operations) {
         effectiveLevels = Math.min(op.totalLevels, remaining)
       }
 
+      // 按比例分配，san 取剩余保证总数精确
+      // round 最多使三项之和超出 1，此时 san=-1，从分配最多的属性减 1 修正
       const alloc = {
         attack: Math.round((effectiveLevels * ratio.attack) / 100),
         defense: Math.round((effectiveLevels * ratio.defense) / 100),
@@ -1154,6 +1169,13 @@ export async function batchRatioDistribute(accountId, operations) {
         san: 0
       }
       alloc.san = effectiveLevels - alloc.attack - alloc.defense - alloc.speed
+      if (alloc.san < 0) {
+        const maxKey = ['attack', 'defense', 'speed'].reduce((a, b) =>
+          alloc[a] >= alloc[b] ? a : b
+        )
+        alloc[maxKey] -= 1
+        alloc.san = 0
+      }
 
       if (op.direction === 'down') {
         // 检查属性等级是否足够降级
