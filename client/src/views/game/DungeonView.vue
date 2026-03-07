@@ -1066,9 +1066,12 @@ async function fetchExplorers() {
   try {
     const res = await getMyAdventurersApi()
     const all = res.data.data || []
-    // 取最多5个冒险家用于动画展示
+    // 取最多10个冒险家用于动画展示
+    const MAX_EXPLORERS = 10
     const selected =
-      all.length <= 5 ? all : all.sort(() => Math.random() - 0.5).slice(0, 5)
+      all.length <= MAX_EXPLORERS
+        ? all
+        : all.sort(() => Math.random() - 0.5).slice(0, MAX_EXPLORERS)
     exploringAdventurers.value = selected.map((adv, idx) => ({
       ...adv,
       direction: idx % 2 === 0 ? 'walk-right' : 'walk-left',
@@ -1106,7 +1109,30 @@ const MOOD_EMOJIS = [
   '🌟',
   '👀',
   '😁',
-  '🫣'
+  '🫣',
+  '🗡️',
+  '🏹',
+  '🪓',
+  '🪄',
+  '🔮',
+  '📜',
+  '🧭',
+  '🏆',
+  '👑',
+  '💰',
+  '🪙',
+  '🧪',
+  '🧫',
+  '🐉',
+  '👻',
+  '🧙',
+  '🧝',
+  '🧌',
+  '🦄',
+  '🦇',
+  '🌙',
+  '⭐',
+  '🗺️'
 ]
 
 let bubbleTimer = null
