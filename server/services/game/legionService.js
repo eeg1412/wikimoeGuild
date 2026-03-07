@@ -3,9 +3,9 @@ import GameAdventurer from '../../models/gameAdventurer.js'
 import GameFormation from '../../models/gameFormation.js'
 import { executeInLock } from '../../utils/utils.js'
 import {
-  generateRandomAdventurerName,
-  generateRandomAdventurerAvatarId
-} from '../../utils/utils.js'
+  getRandomDemonAvatarId,
+  generateRandomDemonName
+} from 'shared/utils/utils.js'
 import { executeBattle } from './battleEngine.js'
 import * as runeStoneService from './runeStoneService.js'
 import {
@@ -14,12 +14,7 @@ import {
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
 import { recordActivity } from './activityService.js'
-
-/**
- * 后4排（索引5-24）中使用自由均衡分配的角色数量
- * 数值越大，高难度阵容的整体强度越低
- */
-const NPC_FREE_ALLOC_COUNT = 5
+import { NPC_FREE_ALLOC_COUNT } from 'shared/constants/index.js'
 
 /**
  * 简易种子随机数生成器 (mulberry32)
@@ -59,8 +54,6 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
   const allBuffTypes = passiveBuffTypeDataBase()
   const allPreferences = attackPreferenceDataBase()
   const allSkills = runeStoneActiveSkillDataBase()
-  // 恶魔头像 1-3（demon目录下有3个）
-  const DEMON_AVATAR_COUNT = 3
   // 等级增强系数：基于迷宫等级的小幅增强曲线
   const levelBoostFactor = 1 + dungeonLevel * 0.001
 
@@ -79,7 +72,6 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
           ELEMENTS,
           allBuffTypes,
           allPreferences,
-          DEMON_AVATAR_COUNT,
           null,
           allSkills,
           seededRandom
@@ -106,7 +98,6 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
           ELEMENTS,
           allBuffTypes,
           allPreferences,
-          DEMON_AVATAR_COUNT,
           runeStone,
           allSkills,
           seededRandom
@@ -142,7 +133,6 @@ function generateLegionDemons(dungeonLevel, seededRandom) {
           ELEMENTS,
           allBuffTypes,
           allPreferences,
-          DEMON_AVATAR_COUNT,
           runeStone,
           allSkills,
           seededRandom,
@@ -163,7 +153,6 @@ function createDemon(
   elements,
   allBuffTypes,
   allPreferences,
-  avatarCount,
   runeStone,
   allSkills,
   rng,
@@ -185,11 +174,11 @@ function createDemon(
 
   return {
     _id: `demon_${Math.floor(rng() * 2176782336).toString(36)}`,
-    name: generateRandomAdventurerName(),
+    name: generateRandomDemonName(),
     elements: element,
     passiveBuffType: passiveBuff.value,
     attackPreference: preference.value,
-    defaultAvatarId: Math.floor(rng() * avatarCount) + 1,
+    defaultAvatarId: getRandomDemonAvatarId(rng),
     attackLevel: statLevels.attack,
     defenseLevel: statLevels.defense,
     speedLevel: statLevels.speed,

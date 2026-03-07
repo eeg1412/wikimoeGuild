@@ -40,6 +40,17 @@
       </div>
     </div>
 
+    <!-- 主动技能 & 被动增益筛选 -->
+    <div class="mb-3">
+      <RuneStoneSkillBuffFilter
+        :skill-mode="skillMode"
+        :skill-selected="skillSelected"
+        :buff-mode="buffMode"
+        :buff-selected="buffSelected"
+        @change="onSkillBuffFilterChange"
+      />
+    </div>
+
     <!-- 列表 -->
     <div v-if="loading" class="text-center py-6">
       <span class="animate-spin inline-block text-2xl">⏳</span>
@@ -54,8 +65,8 @@
       <div
         v-for="rs in sortedList"
         :key="rs._id"
-        class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border border-gray-300 dark:border-gray-600 relative"
-        @click="handleItemClick(rs)"
+        class="rpg-card rounded-xl p-3 hover:border-yellow-400 transition-colors border border-gray-300 dark:border-gray-600 relative cursor-pointer"
+        @click.stop="handleToggleExpand(rs._id)"
       >
         <!-- New 标记 -->
         <span
@@ -99,7 +110,7 @@
           <div class="flex items-center gap-1 shrink-0">
             <slot name="action" :rune-stone="rs" />
             <button
-              class="text-gray-400 hover:text-gray-200 text-sm px-1"
+              class="text-gray-400 hover:text-gray-200 text-sm px-1 cursor-pointer"
               :title="expandedIds.has(rs._id) ? '收起详情' : '展开详情'"
               @click.stop="handleToggleExpand(rs._id)"
             >
@@ -119,6 +130,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
+import RuneStoneSkillBuffFilter from '@/components/RuneStoneSkillBuffFilter.vue'
 import {
   runeStoneActiveSkillDataBase,
   calculateCombatPower
@@ -152,12 +164,68 @@ function handleSortChange() {
   // select 的 v-model 已经更新
 }
 
+// ── 主动技能 & 被动增益筛选 ──
+// 实际应用的筛选状态（'' = 不筛, 'and' = 与, 'or' = 或, 'not' = 非）
+const skillMode = ref('')
+const skillSelected = ref(new Set())
+const buffMode = ref('')
+const buffSelected = ref(new Set())
+
+function onSkillBuffFilterChange({
+  skillMode: sm,
+  skillSelected: ss,
+  buffMode: bm,
+  buffSelected: bs
+}) {
+  skillMode.value = sm
+  skillSelected.value = ss
+  buffMode.value = bm
+  buffSelected.value = bs
+}
+
+// skillId → type 映射（缓存）
+const skillIdTypeMap = computed(() => {
+  const map = new Map()
+  for (const s of runeStoneActiveSkillDataBase()) {
+    map.set(s.value, s.type)
+  }
+  return map
+})
+
 const RARITY_ORDER = { legendary: 0, rare: 1, normal: 2 }
 
 const filteredList = computed(() => {
   let list = props.runeStones
   if (rarityFilter.value) {
     list = list.filter(rs => rs.rarity === rarityFilter.value)
+  }
+  // 主动技能筛选
+  if (skillMode.value !== '' && skillSelected.value.size > 0) {
+    const selected = [...skillSelected.value]
+    list = list.filter(rs => {
+      const rsTypes = new Set(
+        (rs.activeSkills || [])
+          .map(s => skillIdTypeMap.value.get(s.skillId || s))
+          .filter(Boolean)
+      )
+      if (skillMode.value === 'and') return selected.every(t => rsTypes.has(t))
+      if (skillMode.value === 'or') return selected.some(t => rsTypes.has(t))
+      if (skillMode.value === 'not') return selected.every(t => !rsTypes.has(t))
+      return true
+    })
+  }
+  // 被动增益筛选
+  if (buffMode.value !== '' && buffSelected.value.size > 0) {
+    const selected = [...buffSelected.value]
+    list = list.filter(rs => {
+      const rsTypes = new Set(
+        (rs.passiveBuffs || []).map(b => b.buffType).filter(Boolean)
+      )
+      if (buffMode.value === 'and') return selected.every(t => rsTypes.has(t))
+      if (buffMode.value === 'or') return selected.some(t => rsTypes.has(t))
+      if (buffMode.value === 'not') return selected.every(t => !rsTypes.has(t))
+      return true
+    })
   }
   return list
 })
@@ -309,5 +377,8 @@ function rarityTextClass(r) {
 .filter-btn--active {
   border-color: currentColor;
   font-weight: bold;
+}
+.rune-stone-select-panel :deep(.skill-filter-popover) {
+  padding: 12px;
 }
 </style>

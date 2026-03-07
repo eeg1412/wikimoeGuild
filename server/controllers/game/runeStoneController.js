@@ -6,14 +6,71 @@ import * as runeStoneService from '../../services/game/runeStoneService.js'
 export async function listMyRuneStones(req, res, next) {
   try {
     const accountId = req.player.id
-    const { page, pageSize, rarity, equipped, listed, sort } = req.query
+    const {
+      page,
+      pageSize,
+      rarity,
+      equipped,
+      listed,
+      sort,
+      skillFilters,
+      buffFilters
+    } = req.query
+
+    // 解析 skillFilters 和 buffFilters（JSON 字符串）
+    let parsedSkillFilters = null
+    let parsedBuffFilters = null
+    const validModes = ['and', 'or', 'not']
+    const validSkillTypes = [
+      'attack',
+      'buff',
+      'debuff',
+      'changeOrder',
+      'sanRecover'
+    ]
+    const validBuffTypes = ['attack', 'defense', 'speed', 'san']
+    if (skillFilters) {
+      try {
+        const arr = JSON.parse(skillFilters)
+        if (Array.isArray(arr)) {
+          parsedSkillFilters = arr.filter(
+            f =>
+              f &&
+              validModes.includes(f.mode) &&
+              validSkillTypes.includes(f.type)
+          )
+          if (parsedSkillFilters.length === 0) parsedSkillFilters = null
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (buffFilters) {
+      try {
+        const arr = JSON.parse(buffFilters)
+        if (Array.isArray(arr)) {
+          parsedBuffFilters = arr.filter(
+            f =>
+              f &&
+              validModes.includes(f.mode) &&
+              validBuffTypes.includes(f.type)
+          )
+          if (parsedBuffFilters.length === 0) parsedBuffFilters = null
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     const result = await runeStoneService.listMyRuneStones(accountId, {
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
       rarity,
       equipped,
       listed,
-      sort
+      sort,
+      skillFilters: parsedSkillFilters,
+      buffFilters: parsedBuffFilters
     })
     res.success(result, '获取符文石列表成功')
   } catch (error) {

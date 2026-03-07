@@ -12,8 +12,8 @@ export function updateArenaFormationApi(data) {
   return gameRequest.put('/arena/formation', data)
 }
 
-export function getArenaFormationApi() {
-  return gameRequest.get('/arena/formation')
+export function getArenaFormationApi(params = {}) {
+  return gameRequest.get('/arena/formation', { params })
 }
 
 export function getMatchListApi(params = {}) {

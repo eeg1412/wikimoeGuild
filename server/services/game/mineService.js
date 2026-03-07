@@ -10,21 +10,15 @@ import { recordActivity } from './activityService.js'
 import { executeBattle } from './battleEngine.js'
 import * as runeStoneService from './runeStoneService.js'
 import {
-  generateRandomAdventurerName,
-  generateRandomAdventurerAvatarId
-} from '../../utils/utils.js'
-
-/**
- * 后4排（索引5-24）中使用自由均衡分配的角色数量
- * 数值越大，高难度阵容的整体强度越低
- */
-const NPC_FREE_ALLOC_COUNT = 5
-
+  getRandomDemonAvatarId,
+  generateRandomDemonName
+} from 'shared/utils/utils.js'
 import {
   runeStoneActiveSkillDataBase,
   passiveBuffTypeDataBase,
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
+import { NPC_FREE_ALLOC_COUNT } from 'shared/constants/index.js'
 
 // SSE 连接管理：mineId → Set<{ res, accountId }>
 const sseClients = new Map()
@@ -654,7 +648,6 @@ function generateMineLegion(level) {
   const allBuffTypes = passiveBuffTypeDataBase()
   const allPreferences = attackPreferenceDataBase()
   const allSkills = runeStoneActiveSkillDataBase()
-  const DEMON_AVATAR_COUNT = 3
   // 等级增强系数：基于矿场等级的小幅增强曲线
   const levelBoostFactor = 1 + level * 0.001
 
@@ -666,14 +659,7 @@ function generateMineLegion(level) {
     const compLevel = Math.max(1, Math.floor(level * 1 * levelBoostFactor))
     for (let i = 0; i < demonCount; i++) {
       demons.push(
-        createMineDemon(
-          compLevel,
-          ELEMENTS,
-          allBuffTypes,
-          allPreferences,
-          DEMON_AVATAR_COUNT,
-          null
-        )
+        createMineDemon(compLevel, ELEMENTS, allBuffTypes, allPreferences, null)
       )
     }
   } else if (level <= 25) {
@@ -688,7 +674,6 @@ function generateMineLegion(level) {
           ELEMENTS,
           allBuffTypes,
           allPreferences,
-          DEMON_AVATAR_COUNT,
           runeStone
         )
       )
@@ -717,7 +702,6 @@ function generateMineLegion(level) {
           ELEMENTS,
           allBuffTypes,
           allPreferences,
-          DEMON_AVATAR_COUNT,
           runeStone,
           role
         )
@@ -782,7 +766,6 @@ function createMineDemon(
   elements,
   allBuffTypes,
   allPreferences,
-  avatarCount,
   runeStone,
   role = 'balanced'
 ) {
@@ -808,11 +791,11 @@ function createMineDemon(
 
   return {
     _id: `mine_demon_${Math.random().toString(36).slice(2, 10)}`,
-    name: generateRandomAdventurerName(),
+    name: generateRandomDemonName(),
     elements: element,
     passiveBuffType: passiveBuff.value,
     attackPreference: preference.value,
-    defaultAvatarId: Math.floor(Math.random() * avatarCount) + 1,
+    defaultAvatarId: getRandomDemonAvatarId(),
     attackLevel: statParts[0],
     defenseLevel: statParts[1],
     speedLevel: statParts[2],

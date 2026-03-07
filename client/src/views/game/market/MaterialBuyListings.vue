@@ -72,6 +72,9 @@
       width="340px"
       align-center
       destroy-on-close
+      :close-on-click-modal="!fulfillLoading"
+      :close-on-press-escape="!fulfillLoading"
+      :show-close="!fulfillLoading"
     >
       <div v-if="fulfillDialogOrder" class="space-y-3">
         <div class="text-sm text-gray-600 dark:text-gray-300">

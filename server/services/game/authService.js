@@ -497,6 +497,19 @@ export async function resetPassword(req, { email, code, newPassword }) {
 // ──────────────────────────────────────────────
 // 获取当前玩家信息
 // ──────────────────────────────────────────────
+
+/**
+ * 邮箱脱敏：保留首尾字符和域名
+ * 例: test@example.com → t***t@example.com
+ */
+function maskEmail(email) {
+  if (!email) return ''
+  const [local, domain] = email.split('@')
+  if (!domain) return '***'
+  if (local.length <= 2) return local[0] + '***@' + domain
+  return local[0] + '***' + local[local.length - 1] + '@' + domain
+}
+
 export async function getPlayerInfo(playerId) {
   const account = await GamePlayerAccount.findById(playerId)
     .select('isGuest email')
@@ -508,7 +521,7 @@ export async function getPlayerInfo(playerId) {
     .lean()
   if (playerInfo && account) {
     playerInfo.isGuest = account.isGuest || false
-    playerInfo.email = account.email
+    playerInfo.email = maskEmail(account.email)
   }
   return playerInfo
 }

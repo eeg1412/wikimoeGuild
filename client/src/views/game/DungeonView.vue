@@ -1,7 +1,7 @@
 <template>
-  <div class="w-full relative" :style="[dungeonBgStyle, { minHeight: '70vh' }]">
+  <div class="w-full relative" :style="[{ minHeight: '70vh' }]">
     <!-- 遮罩层 -->
-    <div class="absolute inset-0 bg-gray-400/60 dark:bg-black/60 z-0" />
+    <div class="absolute inset-0 z-0" />
 
     <!-- 内容层 -->
     <div class="relative z-10 py-6 px-4 max-w-lg mx-auto">
@@ -13,9 +13,8 @@
           🏰 地下迷宫
         </h1>
         <p class="text-gray-300 text-sm mt-1">
-          迷宫等级 Lv.{{
-            dungeonInfo.dungeonsLevel || playerInfo?.dungeonsLevel || 1
-          }}
+          地下
+          {{ dungeonInfo.dungeonsLevel || playerInfo?.dungeonsLevel || 1 }} 层
         </p>
       </div>
 
@@ -49,7 +48,10 @@
       </div>
 
       <!-- 冒险家探索动画框 -->
-      <div class="dungeon-explorer-box rounded-2xl mb-4">
+      <div
+        class="dungeon-explorer-box rounded-2xl mb-4"
+        :style="dungeonBgStyle"
+      >
         <div class="dungeon-explorer-inner">
           <div
             v-for="(adv, idx) in exploringAdventurers"
@@ -287,6 +289,9 @@
         title="⚔️ 挑战迷宫军团"
         align-center
         destroy-on-close
+        :close-on-click-modal="!challengeLoading"
+        :close-on-press-escape="!challengeLoading"
+        :show-close="!challengeLoading"
       >
         <div class="space-y-4">
           <!-- 军团预览 -->

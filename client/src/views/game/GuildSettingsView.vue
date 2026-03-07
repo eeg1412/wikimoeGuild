@@ -53,6 +53,9 @@
             >
               📅 创建于 {{ formatDate(playerInfo.createdAt) }}
             </p>
+            <p v-if="playerInfo?.email" class="text-xs text-gray-400 mt-0.5">
+              📧 {{ playerInfo.email }}
+            </p>
           </div>
         </div>
       </div>
@@ -197,6 +200,9 @@
       width="360px"
       align-center
       destroy-on-close
+      :close-on-click-modal="!logoSaving"
+      :close-on-press-escape="!logoSaving"
+      :show-close="!logoSaving"
     >
       <p class="text-sm text-gray-500 mb-3">
         消耗 {{ gameSettings.guildCustomLogoPrice ?? 5000 }} 金币
@@ -230,6 +236,9 @@
       width="320px"
       align-center
       destroy-on-close
+      :close-on-click-modal="!nameSaving"
+      :close-on-press-escape="!nameSaving"
+      :show-close="!nameSaving"
     >
       <p class="text-sm text-gray-500 mb-3">
         消耗 {{ gameSettings.guildChangeNamePrice ?? 1000 }} 金币
@@ -262,6 +271,9 @@
       width="360px"
       align-center
       destroy-on-close
+      :close-on-click-modal="!passwordSaving"
+      :close-on-press-escape="!passwordSaving"
+      :show-close="!passwordSaving"
     >
       <el-form
         ref="passwordFormRef"
@@ -317,6 +329,9 @@
       width="360px"
       align-center
       destroy-on-close
+      :close-on-click-modal="!bindEmailSaving"
+      :close-on-press-escape="!bindEmailSaving"
+      :show-close="!bindEmailSaving"
     >
       <p class="text-sm text-gray-500 mb-3">
         绑定正式邮箱后，游客标记将被移除，您将使用新邮箱登录。

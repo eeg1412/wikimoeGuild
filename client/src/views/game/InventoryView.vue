@@ -33,6 +33,14 @@
           >
             {{ (inventory[cry.key] || 0).toLocaleString() }}
           </span>
+          <el-button
+            type="warning"
+            size="small"
+            class="mt-2"
+            @click="openQuickSellDialog(cry.key)"
+          >
+            出售
+          </el-button>
         </div>
       </div>
 
@@ -46,17 +54,114 @@
         <p class="text-sm text-gray-400 mt-2">可用于升级符文石</p>
       </div>
     </template>
+
+    <!-- ===== 快速出售水晶弹窗 ===== -->
+    <el-dialog
+      v-model="quickSellVisible"
+      :title="`快速出售 ${quickSellCrystalLabel}`"
+      width="320px"
+      align-center
+      destroy-on-close
+      v-bind="inventoryQuickSellLockProps"
+    >
+      <div class="space-y-3">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          当前持有:
+          <span class="font-bold text-yellow-500">
+            {{ inventory?.[quickSellCrystalType] ?? 0 }}
+          </span>
+        </p>
+        <p class="text-xs text-gray-400">
+          收购单价:
+          <span class="text-yellow-500 font-semibold"
+            >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
+          >
+        </p>
+        <div class="flex gap-2">
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(10)"
+          >
+            出售 10 ({{
+              (
+                10 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(100)"
+          >
+            出售 100 ({{
+              (
+                100 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(1000)"
+          >
+            出售 1000 ({{
+              (
+                1000 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+        </div>
+        <div class="flex items-center gap-2">
+          <el-input-number
+            v-model="quickSellCustomAmount"
+            :min="1"
+            :max="99999"
+            size="small"
+            class="flex-1"
+          />
+          <el-button
+            type="primary"
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(quickSellCustomAmount)"
+          >
+            出售
+          </el-button>
+        </div>
+        <div class="text-sm text-gray-400">
+          预计获得:
+          <span class="text-yellow-500 font-semibold"
+            >🪙
+            {{
+              (
+                quickSellCustomAmount *
+                (gameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}</span
+          >
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
+import { sellCrystalToOfficialApi } from '@/api/game/market.js'
+import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
+import { useDialogLock } from '@/composables/useDialogLock.js'
 
 const router = useRouter()
-const { isLoggedIn } = useGameUser()
+const { isLoggedIn, fetchPlayerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
@@ -64,6 +169,7 @@ if (!isLoggedIn.value) {
 
 const loading = ref(false)
 const inventory = ref({})
+const gameSettings = ref({})
 
 const crystalList = [
   { key: 'attackCrystal', name: '攻击', icon: '⚔️', color: '#e05c4f' },
@@ -75,8 +181,12 @@ const crystalList = [
 async function fetchInventory() {
   loading.value = true
   try {
-    const res = await getMyInventoryApi()
-    inventory.value = res.data.data || {}
+    const [invRes, settingsRes] = await Promise.all([
+      getMyInventoryApi(),
+      getGameSettingsApi()
+    ])
+    inventory.value = invRes.data.data || {}
+    gameSettings.value = settingsRes.data.data || {}
   } catch {
     inventory.value = {}
   } finally {
@@ -85,6 +195,46 @@ async function fetchInventory() {
 }
 
 onMounted(fetchInventory)
+
+// ── 快速出售水晶 ──
+const quickSellVisible = ref(false)
+const quickSellCrystalType = ref('attackCrystal')
+const quickSellCustomAmount = ref(10)
+const quickSellLoading = ref(false)
+const { dialogLockProps: inventoryQuickSellLockProps } = useDialogLock(
+  () => quickSellLoading.value
+)
+
+const quickSellCrystalLabel = computed(() => {
+  return (
+    crystalList.find(c => c.key === quickSellCrystalType.value)?.name +
+      '水晶' || '水晶'
+  )
+})
+
+function openQuickSellDialog(crystalType) {
+  quickSellCrystalType.value = crystalType
+  quickSellCustomAmount.value = 10
+  quickSellVisible.value = true
+}
+
+async function handleQuickSell(amount) {
+  if (!amount || amount <= 0) return
+  quickSellLoading.value = true
+  try {
+    const res = await sellCrystalToOfficialApi({
+      crystalType: quickSellCrystalType.value,
+      quantity: amount
+    })
+    const { goldEarned } = res.data.data
+    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
+    await Promise.all([fetchInventory(), fetchPlayerInfo()])
+  } catch {
+    // handled by interceptor
+  } finally {
+    quickSellLoading.value = false
+  }
+}
 </script>
 
 <style scoped>

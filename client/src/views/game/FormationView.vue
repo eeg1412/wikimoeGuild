@@ -413,7 +413,7 @@ function handleRestore() {
 }
 
 // ── 棋盘交互 ──
-const pickDialogVisible = ref(false)
+const { visible: pickDialogVisible } = useDialogRoute('pickAdv')
 const pickRow = ref(0)
 const pickCol = ref(0)
 
@@ -506,7 +506,9 @@ function handleDetailReplace() {
   advDetailVisible.value = false
   pickRow.value = pos.row
   pickCol.value = pos.col
-  pickDialogVisible.value = true
+  setTimeout(() => {
+    pickDialogVisible.value = true
+  }, 100)
 }
 
 // 从详情弹窗中移除冒险家

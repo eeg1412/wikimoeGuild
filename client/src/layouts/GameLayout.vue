@@ -1,10 +1,13 @@
 <template>
   <div
-    class="min-h-screen flex flex-col bg-gray-50 dark:bg-[#141414] transition-colors game-layout"
+    class="min-h-screen flex flex-col bg-gray-100 dark:bg-[#141414] transition-colors game-layout"
+    :class="
+      route.name === 'GameDungeon' ? '!bg-[#141414] game-layout-dungeon' : ''
+    "
   >
     <!-- 顶栏 -->
     <header
-      class="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-white dark:bg-[#1d1e1f] shadow-sm"
+      class="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-gray-50 dark:bg-[#1d1e1f] shadow-sm"
     >
       <!-- 左侧标题 -->
       <router-link
@@ -173,40 +176,25 @@
             <template v-else-if="backpackInventory">
               <div class="grid grid-cols-1 gap-1.5">
                 <div
+                  v-for="cry in backpackCrystalList"
+                  :key="cry.key"
                   class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
                 >
-                  <span class="text-xs text-gray-500">⚔️ 攻击水晶</span>
-                  <span
-                    class="text-sm font-semibold text-red-400 tabular-nums"
-                    >{{ backpackInventory.attackCrystal ?? 0 }}</span
+                  <span class="text-xs text-gray-500"
+                    >{{ cry.icon }} {{ cry.name }}</span
                   >
-                </div>
-                <div
-                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
-                >
-                  <span class="text-xs text-gray-500">🛡️ 防御水晶</span>
-                  <span
-                    class="text-sm font-semibold text-blue-400 tabular-nums"
-                    >{{ backpackInventory.defenseCrystal ?? 0 }}</span
-                  >
-                </div>
-                <div
-                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
-                >
-                  <span class="text-xs text-gray-500">💨 速度水晶</span>
-                  <span
-                    class="text-sm font-semibold text-green-400 tabular-nums"
-                    >{{ backpackInventory.speedCrystal ?? 0 }}</span
-                  >
-                </div>
-                <div
-                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
-                >
-                  <span class="text-xs text-gray-500">❤️ SAN水晶</span>
-                  <span
-                    class="text-sm font-semibold text-purple-400 tabular-nums"
-                    >{{ backpackInventory.sanCrystal ?? 0 }}</span
-                  >
+                  <span class="flex items-center gap-1">
+                    <span
+                      class="text-sm font-semibold tabular-nums"
+                      :class="cry.colorClass"
+                      >{{ backpackInventory[cry.key] ?? 0 }}</span
+                    >
+                    <span
+                      class="text-xs text-yellow-500 cursor-pointer hover:underline"
+                      @click="openBackpackSellDialog(cry.key)"
+                      >出售</span
+                    >
+                  </span>
                 </div>
               </div>
               <div
@@ -419,6 +407,99 @@
         @click="fabOpen = false"
       />
     </transition>
+
+    <!-- ===== 背包快速出售水晶弹窗 ===== -->
+    <el-dialog
+      v-model="backpackSellVisible"
+      :title="`快速出售 ${backpackSellCrystalLabel}`"
+      width="320px"
+      align-center
+      destroy-on-close
+      v-bind="backpackSellLockProps"
+    >
+      <div class="space-y-3">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          当前持有:
+          <span class="font-bold text-yellow-500">
+            {{ backpackInventory?.[backpackSellCrystalType] ?? 0 }}
+          </span>
+        </p>
+        <p class="text-xs text-gray-400">
+          收购单价:
+          <span class="text-yellow-500 font-semibold"
+            >🪙 {{ backpackGameSettings?.officialCrystalBuyPrice ?? 100 }}</span
+          >
+        </p>
+        <div class="flex gap-2">
+          <el-button
+            size="small"
+            :loading="backpackSellLoading"
+            :disabled="backpackSellLoading"
+            @click="handleBackpackSell(10)"
+          >
+            出售 10 ({{
+              (
+                10 * (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+          <el-button
+            size="small"
+            :loading="backpackSellLoading"
+            :disabled="backpackSellLoading"
+            @click="handleBackpackSell(100)"
+          >
+            出售 100 ({{
+              (
+                100 * (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+          <el-button
+            size="small"
+            :loading="backpackSellLoading"
+            :disabled="backpackSellLoading"
+            @click="handleBackpackSell(1000)"
+          >
+            出售 1000 ({{
+              (
+                1000 * (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+        </div>
+        <div class="flex items-center gap-2">
+          <el-input-number
+            v-model="backpackSellCustomAmount"
+            :min="1"
+            :max="99999"
+            size="small"
+            class="flex-1"
+          />
+          <el-button
+            type="primary"
+            size="small"
+            :loading="backpackSellLoading"
+            :disabled="backpackSellLoading"
+            @click="handleBackpackSell(backpackSellCustomAmount)"
+          >
+            出售
+          </el-button>
+        </div>
+        <div class="text-sm text-gray-400">
+          预计获得:
+          <span class="text-yellow-500 font-semibold"
+            >🪙
+            {{
+              (
+                backpackSellCustomAmount *
+                (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}</span
+          >
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -430,8 +511,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useTheme } from '@/composables/useTheme.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
+import { useDialogLock } from '@/composables/useDialogLock.js'
 import { getGuildLevelInfoApi, upgradeGuildLevelApi } from '@/api/game/guild.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
+import { sellCrystalToOfficialApi } from '@/api/game/market.js'
+import { getGameSettingsApi } from '@/api/game/config.js'
 import { getUnreadCountApi } from '@/api/game/mail.js'
 
 const router = useRouter()
@@ -547,6 +631,82 @@ async function handleBackpackPopoverShow() {
 
 function handleBackpackPopoverAfterLeave() {
   backpackInventory.value = null
+}
+
+// ── 背包快速出售 ──
+const backpackCrystalList = [
+  {
+    key: 'attackCrystal',
+    name: '攻击水晶',
+    icon: '⚔️',
+    colorClass: 'text-red-400'
+  },
+  {
+    key: 'defenseCrystal',
+    name: '防御水晶',
+    icon: '🛡️',
+    colorClass: 'text-blue-400'
+  },
+  {
+    key: 'speedCrystal',
+    name: '速度水晶',
+    icon: '💨',
+    colorClass: 'text-green-400'
+  },
+  {
+    key: 'sanCrystal',
+    name: 'SAN水晶',
+    icon: '❤️',
+    colorClass: 'text-purple-400'
+  }
+]
+
+const backpackSellVisible = ref(false)
+const backpackSellCrystalType = ref('attackCrystal')
+const backpackSellCustomAmount = ref(10)
+const backpackSellLoading = ref(false)
+const { dialogLockProps: backpackSellLockProps } = useDialogLock(
+  () => backpackSellLoading.value
+)
+const backpackGameSettings = ref({})
+
+const backpackSellCrystalLabel = computed(() => {
+  return (
+    backpackCrystalList.find(c => c.key === backpackSellCrystalType.value)
+      ?.name || '水晶'
+  )
+})
+
+async function openBackpackSellDialog(crystalType) {
+  backpackSellCrystalType.value = crystalType
+  backpackSellCustomAmount.value = 10
+  try {
+    const res = await getGameSettingsApi()
+    backpackGameSettings.value = res.data.data || {}
+  } catch {
+    // ignore
+  }
+  backpackSellVisible.value = true
+}
+
+async function handleBackpackSell(amount) {
+  if (!amount || amount <= 0) return
+  backpackSellLoading.value = true
+  try {
+    const res = await sellCrystalToOfficialApi({
+      crystalType: backpackSellCrystalType.value,
+      quantity: amount
+    })
+    const { goldEarned } = res.data.data
+    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
+    // 刷新背包和玩家信息
+    const [invRes] = await Promise.all([getMyInventoryApi(), fetchPlayerInfo()])
+    backpackInventory.value = invRes.data.data
+  } catch {
+    // handled by interceptor
+  } finally {
+    backpackSellLoading.value = false
+  }
 }
 
 function handleNavTo(routeObj) {
@@ -754,5 +914,15 @@ function handleLogout() {
   border-radius: 9px;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* dungeons_texturize.webp */
+.game-layout-dungeon {
+  background-image: url('/publicgame/assets/dungeons_texturize.webp');
+  /* 平铺 */
+  background-repeat: repeat;
+  /* 固定在视口 */
+  background-attachment: fixed;
+  background-size: 50%;
 }
 </style>

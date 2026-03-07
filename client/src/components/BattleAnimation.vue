@@ -223,7 +223,7 @@
 
         <!-- 按钮区域 -->
         <div
-          class="flex items-center justify-center gap-2 py-1 mt-1 shrink-0 flex-wrap sticky bottom-[-8px] bg-gray-800/80 rounded-4xl z-10 ring-1 ring-white/20"
+          class="flex items-center justify-center gap-2 py-1 mt-1 shrink-0 flex-wrap sticky bottom-[-8px] bg-gray-800/80 rounded-4xl z-[51] ring-1 ring-white/20"
         >
           <!-- 倍速控制 -->
           <div v-if="!animationFinished" class="flex items-center gap-1">

@@ -5,6 +5,7 @@
     align-center
     destroy-on-close
     class="rpg-dialog game-dialog"
+    v-bind="detailLockProps"
   >
     <div v-if="adventurer" class="flex flex-col items-center gap-3 pt-2">
       <!-- 头像 -->
@@ -26,7 +27,7 @@
         <!-- 标记图标 -->
         <span
           v-if="adventurer.roleTag && ROLE_TAG_MAP[adventurer.roleTag]"
-          class="absolute bottom-0 right-0 bg-black/65 rounded-tl text-sm leading-none p-1"
+          class="absolute bottom-0 right-0 rounded-tl text-sm leading-none p-1"
         >
           {{ ROLE_TAG_MAP[adventurer.roleTag].emoji }}
         </span>
@@ -313,6 +314,9 @@
           <div class="flex items-center justify-between">
             <span class="text-xs text-gray-400">
               升级消耗：{{ runeStoneUpgradeCost }} 碎片
+              <span class="ml-1 text-purple-400">
+                (持有 {{ inventory?.runeFragment ?? 0 }})
+              </span>
             </span>
             <el-button
               type="primary"
@@ -348,6 +352,7 @@
     width="360px"
     align-center
     destroy-on-close
+    v-bind="avatarLockProps"
   >
     <p class="text-sm text-gray-500 mb-3">
       消耗 {{ gameSettings.adventurerCustomAvatarPrice ?? 5000 }} 金币
@@ -382,6 +387,7 @@
     width="320px"
     align-center
     destroy-on-close
+    v-bind="nameLockProps"
   >
     <p class="text-sm text-gray-500 mb-3">
       消耗 {{ gameSettings.adventurerCustomNamePrice ?? 1000 }} 金币
@@ -412,6 +418,7 @@
     title="选择符文石"
     align-center
     destroy-on-close
+    v-bind="equipLockProps"
   >
     <RuneStoneSelectPanel
       :rune-stones="availableRuneStones"
@@ -449,6 +456,7 @@
     width="320px"
     align-center
     destroy-on-close
+    v-bind="detailQuickSellLockProps"
   >
     <div class="space-y-3">
       <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -457,6 +465,12 @@
           {{ inventory?.[quickSellCrystalType] ?? 0 }}
         </span>
       </p>
+      <p class="text-xs text-gray-400">
+        收购单价:
+        <span class="text-yellow-500 font-semibold"
+          >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
+        >
+      </p>
       <div class="flex gap-2">
         <el-button
           size="small"
@@ -464,7 +478,11 @@
           :disabled="quickSellLoading"
           @click="handleQuickSell(10)"
         >
-          出售 10
+          出售 10 ({{
+            (
+              10 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+            ).toLocaleString()
+          }}🪙)
         </el-button>
         <el-button
           size="small"
@@ -472,7 +490,11 @@
           :disabled="quickSellLoading"
           @click="handleQuickSell(100)"
         >
-          出售 100
+          出售 100 ({{
+            (
+              100 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+            ).toLocaleString()
+          }}🪙)
         </el-button>
         <el-button
           size="small"
@@ -480,7 +502,11 @@
           :disabled="quickSellLoading"
           @click="handleQuickSell(1000)"
         >
-          出售 1000
+          出售 1000 ({{
+            (
+              1000 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+            ).toLocaleString()
+          }}🪙)
         </el-button>
       </div>
       <div class="flex items-center gap-2">
@@ -500,6 +526,18 @@
         >
           出售
         </el-button>
+      </div>
+      <div class="text-sm text-gray-400">
+        预计获得:
+        <span class="text-yellow-500 font-semibold"
+          >🪙
+          {{
+            (
+              quickSellCustomAmount *
+              (gameSettings?.officialCrystalBuyPrice ?? 100)
+            ).toLocaleString()
+          }}</span
+        >
       </div>
     </div>
   </el-dialog>
@@ -540,6 +578,7 @@ import Cropper from '@/components/Cropper.vue'
 import { getMaxComprehensiveLevel } from 'shared/utils/guildLevelUtils.js'
 import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import { useDialogLock } from '@/composables/useDialogLock.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -825,7 +864,7 @@ async function handleReroll(rerollType) {
 }
 
 // ── 自定义头像（管理模式） ──
-const showAvatarDialog = ref(false)
+const { visible: showAvatarDialog } = useDialogRoute('avatar')
 const avatarPreview = ref('')
 const avatarBase64 = ref('')
 const avatarSaving = ref(false)
@@ -864,7 +903,7 @@ async function handleSaveAvatar() {
 }
 
 // ── 自定义名字（管理模式） ──
-const showNameDialog = ref(false)
+const { visible: showNameDialog } = useDialogRoute('advName')
 const newName = ref('')
 const nameSaving = ref(false)
 
@@ -949,10 +988,36 @@ async function handleUnequip() {
 }
 
 // ── 快速出售水晶（管理模式） ──
-const quickSellVisible = ref(false)
+const { visible: quickSellVisible } = useDialogRoute('quickSell')
 const quickSellCrystalType = ref('attackCrystal')
 const quickSellCustomAmount = ref(10)
 const quickSellLoading = ref(false)
+
+// 合并所有操作 loading 状态
+const detailAnyLoading = computed(
+  () =>
+    roleTagLoading.value ||
+    rerollLoading.value ||
+    runeStoneUpgradeLoading.value ||
+    equipLoading.value ||
+    unequipLoading.value ||
+    avatarSaving.value ||
+    nameSaving.value ||
+    quickSellLoading.value
+)
+const { dialogLockProps: detailLockProps } = useDialogLock(
+  () => detailAnyLoading.value
+)
+const { dialogLockProps: avatarLockProps } = useDialogLock(
+  () => avatarSaving.value
+)
+const { dialogLockProps: nameLockProps } = useDialogLock(() => nameSaving.value)
+const { dialogLockProps: equipLockProps } = useDialogLock(
+  () => equipLoading.value
+)
+const { dialogLockProps: detailQuickSellLockProps } = useDialogLock(
+  () => quickSellLoading.value
+)
 
 const quickSellCrystalLabel = computed(() => {
   return (

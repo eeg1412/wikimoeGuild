@@ -31,6 +31,7 @@ declare module 'vue' {
     RuneStoneInfoCard: typeof import('./components/RuneStoneInfoCard.vue')['default']
     RuneStoneMarketList: typeof import('./components/RuneStoneMarketList.vue')['default']
     RuneStoneSelectPanel: typeof import('./components/RuneStoneSelectPanel.vue')['default']
+    RuneStoneSkillBuffFilter: typeof import('./components/RuneStoneSkillBuffFilter.vue')['default']
     RuneStoneSynthesisDialog: typeof import('./components/RuneStoneSynthesisDialog.vue')['default']
     StatLevelUpPanel: typeof import('./components/StatLevelUpPanel.vue')['default']
   }

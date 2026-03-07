@@ -128,7 +128,7 @@ export async function switchDungeon(accountId) {
     playerInfo.dungeonsCryRates = rates
 
     // 随机新的地牢背景
-    playerInfo.dungeonsBackgroundId = Math.floor(Math.random() * 5) + 1
+    playerInfo.dungeonsBackgroundId = Math.floor(Math.random() * 11) + 1
 
     // 重置结算时间
     playerInfo.lastDungeonSettleAt = now

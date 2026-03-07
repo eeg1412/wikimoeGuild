@@ -320,7 +320,23 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    // 仅弹窗 query（dlg）发生变化时，不改变滚动位置，避免 body 抖动
+    if (to.name === from.name) {
+      const toQuery = { ...to.query }
+      const fromQuery = { ...from.query }
+      delete toQuery.dlg
+      delete fromQuery.dlg
+      if (JSON.stringify(toQuery) === JSON.stringify(fromQuery)) {
+        return false
+      }
+    }
+    if (savedPosition) {
+      return savedPosition
+    }
+    return { top: 0 }
+  }
 })
 
 // 管理后台路由守卫

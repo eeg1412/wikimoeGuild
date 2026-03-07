@@ -21,12 +21,25 @@
         <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
           {{ inventory?.[cType.key] ?? 0 }}
         </p>
+        <el-button
+          type="warning"
+          size="small"
+          class="mt-1"
+          @click="openQuickSellDialog(cType.key)"
+        >
+          出售
+        </el-button>
       </div>
     </div>
 
     <!-- 精细加点 / 自动分配切换 -->
     <div class="flex items-center justify-between mb-3">
-      <el-checkbox v-model="manualMode" size="small">精细加点</el-checkbox>
+      <el-switch
+        v-model="manualMode"
+        size="small"
+        active-text="精细加点"
+        inactive-text="按比例"
+      />
       <span class="text-xs text-gray-400">
         综合等级 Lv.{{ adventurer.comprehensiveLevel }} / {{ maxCompLevel }}
       </span>
@@ -50,6 +63,9 @@
           <p class="text-[10px] text-gray-400 text-center leading-tight">
             升级: {{ getStatLevelUpCrystalCost(stat.levelKey) }}💎 +
             {{ getStatLevelUpGoldCost(stat.levelKey) }}🪙
+          </p>
+          <p class="text-[10px] text-red-400 text-center leading-tight">
+            降级: {{ gameSettings?.adventurerLevelDownGoldPrice ?? 1000 }}🪙/级
           </p>
           <!-- 降级按钮组 -->
           <div class="flex gap-0.5 w-full">
@@ -272,6 +288,176 @@
     >
       已达公会等级上限 (Lv.{{ maxCompLevel }})，请先升级公会
     </p>
+
+    <!-- ===== 按比例降级报表弹窗 ===== -->
+    <el-dialog
+      v-model="downgradeReportVisible"
+      title="📉 按比例降级报表预览"
+      width="90%"
+      style="max-width: 500px"
+      align-center
+      destroy-on-close
+      v-bind="autoDistributeLockProps"
+    >
+      <div v-if="downgradeReportData" class="text-sm space-y-3">
+        <!-- 总览 -->
+        <div class="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-center">
+          <p>
+            降级 <b>{{ downgradeReportData.totalLevels }}</b> 级
+          </p>
+          <p class="mt-1">
+            💰 预计消耗:
+            <span class="text-yellow-500 font-bold">{{
+              downgradeReportData.totalGoldCost.toLocaleString()
+            }}</span>
+            金币
+            <span class="text-xs text-gray-400 ml-1">
+              ({{
+                (
+                  gameSettings?.adventurerLevelDownGoldPrice ?? 1000
+                ).toLocaleString()
+              }}🪙/级)
+            </span>
+          </p>
+        </div>
+        <!-- 每个属性的变化 -->
+        <div class="p-2 border rounded dark:border-gray-600">
+          <p class="font-medium mb-2">{{ adventurer.name }}</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 text-xs">
+            <span v-for="stat in STAT_LIST" :key="stat.key">
+              {{ stat.icon }} Lv.{{ adventurer[stat.levelKey] }} → Lv.{{
+                adventurer[stat.levelKey] -
+                (downgradeReportData.alloc[stat.key] || 0)
+              }}
+              <span
+                v-if="downgradeReportData.alloc[stat.key] > 0"
+                class="text-red-400"
+              >
+                <!-- (-{{ downgradeReportData.alloc[stat.key] }}) -->
+              </span>
+            </span>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            综合 {{ adventurer.comprehensiveLevel }} →
+            {{
+              adventurer.comprehensiveLevel - downgradeReportData.totalLevels
+            }}
+          </p>
+        </div>
+        <p v-if="downgradeReportData.error" class="text-xs text-red-500">
+          ⚠️ {{ downgradeReportData.error }}
+        </p>
+      </div>
+      <template #footer>
+        <el-button
+          :disabled="autoDistributeLoading"
+          @click="downgradeReportVisible = false"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="danger"
+          :loading="autoDistributeLoading"
+          :disabled="autoDistributeLoading || !!downgradeReportData?.error"
+          @click="handleConfirmAutoDistributeDown"
+        >
+          确认降级
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- ===== 快速出售水晶弹窗 ===== -->
+    <el-dialog
+      v-model="quickSellVisible"
+      :title="`快速出售 ${quickSellCrystalLabel}`"
+      width="320px"
+      align-center
+      destroy-on-close
+      v-bind="statQuickSellLockProps"
+    >
+      <div class="space-y-3">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          当前持有:
+          <span class="font-bold text-yellow-500">
+            {{ inventory?.[quickSellCrystalType] ?? 0 }}
+          </span>
+        </p>
+        <p class="text-xs text-gray-400">
+          收购单价:
+          <span class="text-yellow-500 font-semibold"
+            >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
+          >
+        </p>
+        <div class="flex gap-2">
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(10)"
+          >
+            出售 10 ({{
+              (
+                10 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(100)"
+          >
+            出售 100 ({{
+              (
+                100 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+          <el-button
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(1000)"
+          >
+            出售 1000 ({{
+              (
+                1000 * (gameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}🪙)
+          </el-button>
+        </div>
+        <div class="flex items-center gap-2">
+          <el-input-number
+            v-model="quickSellCustomAmount"
+            :min="1"
+            :max="99999"
+            size="small"
+            class="flex-1"
+          />
+          <el-button
+            type="primary"
+            size="small"
+            :loading="quickSellLoading"
+            :disabled="quickSellLoading"
+            @click="handleQuickSell(quickSellCustomAmount)"
+          >
+            出售
+          </el-button>
+        </div>
+        <div class="text-sm text-gray-400">
+          预计获得:
+          <span class="text-yellow-500 font-semibold"
+            >🪙
+            {{
+              (
+                quickSellCustomAmount *
+                (gameSettings?.officialCrystalBuyPrice ?? 100)
+              ).toLocaleString()
+            }}</span
+          >
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -286,7 +472,9 @@ import {
 } from '@/api/game/adventurer.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
+import { sellCrystalToOfficialApi } from '@/api/game/market.js'
 import { useGameUser } from '@/composables/useGameUser.js'
+import { useDialogLock } from '@/composables/useDialogLock.js'
 import {
   getAdventurerLevelUpCrystalCost,
   getAdventurerLevelUpGoldCost,
@@ -340,10 +528,10 @@ const STAT_LIST = [
 ]
 
 const CRYSTAL_TYPES = [
-  { key: 'attackCrystal', icon: '⚔️' },
-  { key: 'defenseCrystal', icon: '🛡️' },
-  { key: 'speedCrystal', icon: '💨' },
-  { key: 'sanCrystal', icon: '❤️' }
+  { key: 'attackCrystal', icon: '⚔️', label: '攻击水晶' },
+  { key: 'defenseCrystal', icon: '🛡️', label: '防御水晶' },
+  { key: 'speedCrystal', icon: '💨', label: '速度水晶' },
+  { key: 'sanCrystal', icon: '❤️', label: 'SAN水晶' }
 ]
 
 // ── 自动分配比例 ──
@@ -415,7 +603,16 @@ const anyLoading = computed(
   () =>
     levelUpLoading.value ||
     levelDownLoading.value ||
-    autoDistributeLoading.value
+    autoDistributeLoading.value ||
+    quickSellLoading.value
+)
+
+defineExpose({ anyLoading })
+const { dialogLockProps: autoDistributeLockProps } = useDialogLock(
+  () => autoDistributeLoading.value
+)
+const { dialogLockProps: statQuickSellLockProps } = useDialogLock(
+  () => quickSellLoading.value
 )
 
 // ── 精细加点操作 ──
@@ -581,70 +778,80 @@ async function handleAutoDistribute(totalLevels) {
   }
 }
 
-// ── 按比例自动分配降级 ──
-async function handleAutoDistributeDown(totalLevels) {
-  if (ratioSum.value !== 100) {
-    ElMessage.warning('请先设置正确的分配比例（合计 100%）')
-    return
-  }
+// ── 按比例自动分配降级（报表预览） ──
+const downgradeReportVisible = ref(false)
+const downgradeReportData = ref(null)
 
-  // 按比例计算每种属性降多少级
-  const ratio = ratioForm.value
-  const allocDown = {
+/**
+ * 计算按比例分配的等级分配，与后端 autoDistributeLevelUp 保持一致的算法
+ * san 取剩余保证总数精确，round 最多使三项之和超出 1 时修正
+ */
+function calcProportionalAlloc(totalLevels, ratio) {
+  const alloc = {
     attack: Math.round((totalLevels * ratio.attack) / 100),
     defense: Math.round((totalLevels * ratio.defense) / 100),
     speed: Math.round((totalLevels * ratio.speed) / 100),
     san: 0
   }
-  allocDown.san =
-    totalLevels - allocDown.attack - allocDown.defense - allocDown.speed
+  alloc.san = totalLevels - alloc.attack - alloc.defense - alloc.speed
+  if (alloc.san < 0) {
+    const maxKey = ['attack', 'defense', 'speed'].reduce((a, b) =>
+      alloc[a] >= alloc[b] ? a : b
+    )
+    alloc[maxKey] -= 1
+    alloc.san = 0
+  }
+  return alloc
+}
 
-  // 检查每个属性是否可以降级
+function handleAutoDistributeDown(totalLevels) {
+  if (ratioSum.value !== 100) {
+    ElMessage.warning('请先设置正确的分配比例（合计 100%）')
+    return
+  }
+
+  const ratio = ratioForm.value
+  const allocDown = calcProportionalAlloc(totalLevels, ratio)
+
+  // 检查每个属性是否可以降级（确保不低于1）
   const statMap = {
     attack: 'attackLevel',
     defense: 'defenseLevel',
     speed: 'speedLevel',
     san: 'SANLevel'
   }
-  const warnings = []
+  let error = ''
   for (const [key, levels] of Object.entries(allocDown)) {
     if (levels <= 0) continue
     const currentLevel = props.adventurer[statMap[key]]
     if (currentLevel - levels < 1) {
       const name = STAT_LIST.find(s => s.key === key)?.name || key
-      warnings.push(
-        `${name}等级不足（当前 Lv.${currentLevel}，需降 ${levels} 级）`
-      )
+      error = `${name}等级不足（当前 Lv.${currentLevel}，需降 ${levels} 级）`
+      break
     }
-  }
-  if (warnings.length > 0) {
-    ElMessage.warning(warnings.join('；'))
-    return
   }
 
   const pricePerLevel = gameSettings.value?.adventurerLevelDownGoldPrice ?? 1000
   const totalGoldCost = totalLevels * pricePerLevel
-  const allocStr = `攻击-${allocDown.attack} 防御-${allocDown.defense} 速度-${allocDown.speed} SAN-${allocDown.san}`
 
-  try {
-    await ElMessageBox.confirm(
-      `按比例降级 ${totalLevels} 级\n${allocStr}\n预计消耗 ${totalGoldCost.toLocaleString()} 金币`,
-      '确认降级',
-      {
-        confirmButtonText: '确定降级',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-  } catch {
-    return
+  downgradeReportData.value = {
+    totalLevels,
+    alloc: allocDown,
+    totalGoldCost,
+    error
   }
+  downgradeReportVisible.value = true
+}
 
-  // 逐属性调用降级接口
+async function handleConfirmAutoDistributeDown() {
+  if (!downgradeReportData.value || downgradeReportData.value.error) return
+  const { alloc, totalLevels } = downgradeReportData.value
+  const allocStr = `攻击-${alloc.attack} 防御-${alloc.defense} 速度-${alloc.speed} SAN-${alloc.san}`
+
   autoDistributeLoading.value = true
   try {
     let latestAdv = null
-    for (const [statType, levels] of Object.entries(allocDown)) {
+    for (const [statType, levels] of Object.entries(alloc)) {
       if (levels <= 0) continue
       const res = await levelDownStatApi(
         latestAdv?._id || props.adventurer._id,
@@ -656,12 +863,50 @@ async function handleAutoDistributeDown(totalLevels) {
       ElMessage.success(`成功降级 ${totalLevels} 级！(${allocStr})`)
       emit('updated', latestAdv)
     }
+    downgradeReportVisible.value = false
     await Promise.all([fetchPlayerInfo(), refreshInventory()])
   } catch {
     // handled by interceptor; 部分属性可能已降级，需刷新
     await fetchPlayerInfo()
   } finally {
     autoDistributeLoading.value = false
+  }
+}
+
+// ── 快速出售水晶 ──
+const quickSellVisible = ref(false)
+const quickSellCrystalType = ref('attackCrystal')
+const quickSellCustomAmount = ref(10)
+const quickSellLoading = ref(false)
+
+const quickSellCrystalLabel = computed(() => {
+  return (
+    CRYSTAL_TYPES.find(c => c.key === quickSellCrystalType.value)?.label ||
+    '水晶'
+  )
+})
+
+function openQuickSellDialog(crystalType) {
+  quickSellCrystalType.value = crystalType
+  quickSellCustomAmount.value = 10
+  quickSellVisible.value = true
+}
+
+async function handleQuickSell(amount) {
+  if (!amount || amount <= 0) return
+  quickSellLoading.value = true
+  try {
+    const res = await sellCrystalToOfficialApi({
+      crystalType: quickSellCrystalType.value,
+      quantity: amount
+    })
+    const { goldEarned } = res.data.data
+    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
+    await Promise.all([refreshInventory(), fetchPlayerInfo()])
+  } catch {
+    // handled by interceptor
+  } finally {
+    quickSellLoading.value = false
   }
 }
 </script>

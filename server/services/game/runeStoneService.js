@@ -121,7 +121,16 @@ export async function tryDropRuneStone(accountId, level = 1) {
  */
 export async function listMyRuneStones(
   accountId,
-  { page = 1, pageSize = 20, rarity, equipped, listed, sort = 'newest' } = {}
+  {
+    page = 1,
+    pageSize = 20,
+    rarity,
+    equipped,
+    listed,
+    sort = 'newest',
+    skillFilters,
+    buffFilters
+  } = {}
 ) {
   const filter = { account: accountId }
   if (rarity) filter.rarity = rarity
@@ -129,6 +138,74 @@ export async function listMyRuneStones(
   if (equipped === 'false') filter.equippedBy = null
   if (listed === 'true') filter.listedOnMarket = true
   if (listed === 'false') filter.listedOnMarket = { $ne: true }
+
+  // 主动技能类型筛选
+  if (skillFilters && skillFilters.length > 0) {
+    const skillDb = runeStoneActiveSkillDataBase()
+    const andConditions = []
+    const orTypes = []
+    const notTypes = []
+    for (const sf of skillFilters) {
+      if (sf.mode === 'and') andConditions.push(sf.type)
+      else if (sf.mode === 'or') orTypes.push(sf.type)
+      else if (sf.mode === 'not') notTypes.push(sf.type)
+    }
+    // 构建 skillId → type 映射
+    const typeToSkillIds = {}
+    for (const skill of skillDb) {
+      if (!typeToSkillIds[skill.type]) typeToSkillIds[skill.type] = []
+      typeToSkillIds[skill.type].push(skill.value)
+    }
+    // AND: 每个类型都必须至少有一个对应的 skillId
+    for (const t of andConditions) {
+      const ids = typeToSkillIds[t] || []
+      if (!filter.$and) filter.$and = []
+      filter.$and.push({ 'activeSkills.skillId': { $in: ids } })
+    }
+    // OR: 至少有一个类型匹配
+    if (orTypes.length > 0) {
+      const orIds = []
+      for (const t of orTypes) {
+        orIds.push(...(typeToSkillIds[t] || []))
+      }
+      if (!filter.$and) filter.$and = []
+      filter.$and.push({ 'activeSkills.skillId': { $in: orIds } })
+    }
+    // NOT: 所有这些类型都不能有
+    if (notTypes.length > 0) {
+      const notIds = []
+      for (const t of notTypes) {
+        notIds.push(...(typeToSkillIds[t] || []))
+      }
+      if (!filter.$and) filter.$and = []
+      filter.$and.push({ 'activeSkills.skillId': { $nin: notIds } })
+    }
+  }
+
+  // 被动增益类型筛选
+  if (buffFilters && buffFilters.length > 0) {
+    const andBuffTypes = []
+    const orBuffTypes = []
+    const notBuffTypes = []
+    for (const bf of buffFilters) {
+      if (bf.mode === 'and') andBuffTypes.push(bf.type)
+      else if (bf.mode === 'or') orBuffTypes.push(bf.type)
+      else if (bf.mode === 'not') notBuffTypes.push(bf.type)
+    }
+    if (!filter.$and) filter.$and = []
+    // AND: 每个 buffType 都必须存在
+    for (const t of andBuffTypes) {
+      filter.$and.push({ 'passiveBuffs.buffType': t })
+    }
+    // OR: 至少有一个 buffType 匹配
+    if (orBuffTypes.length > 0) {
+      filter.$and.push({ 'passiveBuffs.buffType': { $in: orBuffTypes } })
+    }
+    // NOT: 排除拥有这些 buffType 的
+    if (notBuffTypes.length > 0) {
+      filter.$and.push({ 'passiveBuffs.buffType': { $nin: notBuffTypes } })
+    }
+  }
 
   // 排序方式
   const RARITY_ORDER = { legendary: 0, rare: 1, normal: 2 }

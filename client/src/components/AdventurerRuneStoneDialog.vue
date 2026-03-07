@@ -5,6 +5,7 @@
     align-center
     destroy-on-close
     class="game-dialog"
+    v-bind="anyLoadingLockProps"
   >
     <div v-if="adventurer && adventurer.runeStone" class="space-y-3">
       <!-- 冒险家信息 -->
@@ -49,6 +50,9 @@
       <div class="flex items-center justify-between">
         <span class="text-xs text-gray-400">
           升级消耗：{{ upgradeCost }} 碎片
+          <span class="ml-1 text-purple-400">
+            (持有 {{ inventory?.runeFragment ?? 0 }})
+          </span>
         </span>
         <el-button
           type="primary"
@@ -129,6 +133,7 @@
     title="选择符文石"
     align-center
     destroy-on-close
+    v-bind="equipLoadingLockProps"
   >
     <RuneStoneSelectPanel
       :rune-stones="availableRuneStones"
@@ -160,7 +165,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   equipRuneStoneApi,
@@ -170,10 +175,13 @@ import {
   getMyRuneStonesApi,
   upgradeRuneStoneApi
 } from '@/api/game/runeStone.js'
+import { getMyInventoryApi } from '@/api/game/inventory.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
 import RuneStoneSynthesisDialog from '@/components/RuneStoneSynthesisDialog.vue'
 import GameAdventurerAvatar from '@/components/GameAdventurerAvatar.vue'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import { useDialogLock } from '@/composables/useDialogLock.js'
 
 const ELEMENT_MAP = {
   1: { name: '地', color: '#a0855b' },
@@ -237,6 +245,32 @@ const runeStoneListLoading = ref(false)
 const anyLoading = computed(
   () => upgradeLoading.value || unequipLoading.value || equipLoading.value
 )
+const { dialogLockProps: anyLoadingLockProps } = useDialogLock(
+  () => anyLoading.value
+)
+const { dialogLockProps: equipLoadingLockProps } = useDialogLock(
+  () => equipLoading.value
+)
+
+// ── 库存（获取符文碎片数量） ──
+const inventory = ref(null)
+
+async function fetchInventory() {
+  try {
+    const res = await getMyInventoryApi()
+    inventory.value = res.data.data || null
+  } catch {
+    // ignore
+  }
+}
+
+watch(
+  () => props.modelValue,
+  val => {
+    if (val) fetchInventory()
+  },
+  { immediate: true }
+)
 
 // ── 升级 ──
 const RARITY_UPGRADE_COST = { normal: 100, rare: 1000, legendary: 5000 }
@@ -263,6 +297,7 @@ async function handleUpgradeRuneStone() {
       runeStone: res.data.data
     }
     emit('updated', updatedAdv)
+    fetchInventory()
   } catch {
     // handled by interceptor
   } finally {
@@ -286,7 +321,7 @@ async function handleUnequip() {
 }
 
 // ── 装备/替换 ──
-const equipDialogVisible = ref(false)
+const { visible: equipDialogVisible } = useDialogRoute('rsEquip')
 const availableRuneStones = ref([])
 
 async function handleOpenEquip() {

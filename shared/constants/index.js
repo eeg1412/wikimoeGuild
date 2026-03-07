@@ -22,3 +22,9 @@ export const ROLE_TAG_MAP = {
  * 有效的角色标记值列表（含空字符串用于清除）
  */
 export const VALID_ROLE_TAGS = ['', '1', '2', '3', '4']
+
+/**
+ * 后4排（索引5-24）中使用自由均衡分配的NPC角色数量
+ * 数值越大，高难度NPC阵容的整体强度越低
+ */
+export const NPC_FREE_ALLOC_COUNT = 5

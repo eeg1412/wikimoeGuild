@@ -5,6 +5,7 @@
     title="🔮 选择素材符文石（将被销毁）"
     align-center
     destroy-on-close
+    v-bind="previewLockProps"
   >
     <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
       仅显示与装备符文石<strong>稀有度相同</strong>、等级 ≤ 冒险家综合等级
@@ -262,6 +263,8 @@ import { getAdventurerDetailApi } from '@/api/game/adventurer.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
+import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import { useDialogLock } from '@/composables/useDialogLock.js'
 
 const props = defineProps({
   /** 冒险家 ID，合成完成后用于刷新冒险家数据 */
@@ -271,12 +274,15 @@ const props = defineProps({
 const emit = defineEmits(['updated'])
 
 // ── 内部状态 ──
-const materialPickVisible = ref(false)
+const { visible: materialPickVisible } = useDialogRoute('rsMaterial')
 const materialLoading = ref(false)
 const materialOptions = ref([])
 
 const previewVisible = ref(false)
 const previewLoading = ref(false)
+const { dialogLockProps: previewLockProps } = useDialogLock(
+  () => previewLoading.value
+)
 const previewData = ref(null)
 const previewToken = ref('')
 const confirmLoading = ref(false)

@@ -13,6 +13,11 @@
       >
         持有数：{{ totalCount }} / 500
       </div>
+      <div
+        class="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-700 ml-1"
+      >
+        💠 碎片：{{ (inventory?.runeFragment ?? 0).toLocaleString() }}
+      </div>
     </div>
 
     <!-- 排序 & 筛选 -->
@@ -71,6 +76,17 @@
           🔮 合成
         </el-button>
       </div>
+    </div>
+
+    <!-- 主动技能 & 被动增益筛选 -->
+    <div class="mb-4">
+      <RuneStoneSkillBuffFilter
+        :skill-mode="skillMode"
+        :skill-selected="skillSelected"
+        :buff-mode="buffMode"
+        :buff-selected="buffSelected"
+        @change="onSkillBuffFilterChange"
+      />
     </div>
 
     <!-- 批量操作栏 -->
@@ -242,6 +258,9 @@
       title="🔮 符文石合成"
       align-center
       destroy-on-close
+      :close-on-click-modal="!synthesisConfirmLoading"
+      :close-on-press-escape="!synthesisConfirmLoading"
+      :show-close="!synthesisConfirmLoading"
     >
       <!-- 第 1 步: 选择符文石 -->
       <template v-if="synthesisStep === 'select'">
@@ -602,10 +621,12 @@ import {
   confirmSynthesisApi,
   batchDecomposeRuneStonesApi
 } from '@/api/game/runeStone.js'
+import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
+import RuneStoneSkillBuffFilter from '@/components/RuneStoneSkillBuffFilter.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
@@ -626,6 +647,36 @@ const runeStonePageNum = ref(1)
 const runeStonePageSize = 20
 const runeStoneTotal = ref(0)
 const totalCount = ref(0)
+const inventory = ref(null)
+
+// ── 主动技能/被动增益筛选 ──
+const skillMode = ref('')
+const skillSelected = ref(new Set())
+const buffMode = ref('')
+const buffSelected = ref(new Set())
+
+function onSkillBuffFilterChange({
+  skillMode: sm,
+  skillSelected: ss,
+  buffMode: bm,
+  buffSelected: bs
+}) {
+  skillMode.value = sm
+  skillSelected.value = ss
+  buffMode.value = bm
+  buffSelected.value = bs
+  runeStonePageNum.value = 1
+  fetchRuneStones()
+}
+
+async function fetchInventory() {
+  try {
+    const res = await getMyInventoryApi()
+    inventory.value = res.data.data || null
+  } catch {
+    // ignore
+  }
+}
 
 function handleSortChange() {
   runeStonePageNum.value = 1
@@ -665,6 +716,22 @@ async function fetchRuneStones() {
     }
     if (listedFilter.value) {
       params.listed = listedFilter.value
+    }
+    // 主动技能筛选
+    if (skillMode.value !== '' && skillSelected.value.size > 0) {
+      const arr = []
+      skillSelected.value.forEach(type =>
+        arr.push({ type, mode: skillMode.value })
+      )
+      params.skillFilters = JSON.stringify(arr)
+    }
+    // 被动增益筛选
+    if (buffMode.value !== '' && buffSelected.value.size > 0) {
+      const arr = []
+      buffSelected.value.forEach(type =>
+        arr.push({ type, mode: buffMode.value })
+      )
+      params.buffFilters = JSON.stringify(arr)
     }
     const res = await getMyRuneStonesApi(params)
     runeStones.value = res.data.data?.list || []
@@ -739,6 +806,7 @@ async function handleBatchDecompose() {
     runeStonePageNum.value = 1
     await nextTick()
     await fetchRuneStones()
+    fetchInventory()
   } catch {
     // handled by interceptor
   } finally {
@@ -852,6 +920,7 @@ async function handleInlineDecompose(rs) {
     await decomposeRuneStoneApi(rs._id)
     ElMessage.success(`分解成功！获得 ${fragments} 碎片`)
     await fetchRuneStones()
+    fetchInventory()
   } catch {
     // 错误已由拦截器处理
   } finally {
@@ -870,6 +939,7 @@ async function handleInlineUpgrade(rs) {
     // 同步列表中的数据
     const idx = runeStones.value.findIndex(r => r._id === rs._id)
     if (idx >= 0) runeStones.value[idx] = { ...res.data.data }
+    fetchInventory()
   } catch {
     // 错误已由拦截器处理
   } finally {
@@ -1122,7 +1192,10 @@ async function handleConfirmSynthesis(accept) {
 }
 
 // ── 初始化 ──
-onMounted(fetchRuneStones)
+onMounted(() => {
+  fetchRuneStones()
+  fetchInventory()
+})
 onUnmounted(() => {
   if (previewTimer) clearInterval(previewTimer)
 })

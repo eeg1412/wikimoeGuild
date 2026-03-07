@@ -58,7 +58,8 @@ export async function updateFormationPosition(req, res, next) {
 export async function getArenaFormation(req, res, next) {
   try {
     const accountId = req.player.id
-    const result = await arenaService.getArenaFormation(accountId)
+    const silent = req.query.silent === 'true'
+    const result = await arenaService.getArenaFormation(accountId, { silent })
     res.success(result, '获取竞技场阵容成功')
   } catch (error) {
     next(error)

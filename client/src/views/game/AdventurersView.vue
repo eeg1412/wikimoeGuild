@@ -57,6 +57,24 @@
       </el-button>
     </div>
 
+    <!-- 阵容筛选 -->
+    <div class="flex flex-wrap justify-center gap-1.5 mb-2">
+      <el-select
+        v-model="formationFilter"
+        size="small"
+        style="width: 180px"
+        @change="handleFormationFilter"
+        placeholder="筛选阵容"
+      >
+        <el-option
+          v-for="opt in formationFilterOptions"
+          :key="opt.value"
+          :label="opt.label"
+          :value="opt.value"
+        />
+      </el-select>
+    </div>
+
     <!-- 排序栏 + 批量操作 -->
     <div class="flex justify-center items-center gap-2 mb-4 flex-wrap">
       <el-select
@@ -338,9 +356,11 @@
       align-center
       destroy-on-close
       class="game-dialog"
+      v-bind="statPanelLockProps"
     >
       <StatLevelUpPanel
         v-if="statUpgradeAdv"
+        ref="statLevelUpPanelRef"
         :adventurer="statUpgradeAdv"
         @updated="handleStatUpgradeUpdated"
       />
@@ -355,6 +375,7 @@
       align-center
       destroy-on-close
       class="game-dialog"
+      v-bind="batchRatioLockProps"
     >
       <div v-if="batchReportData.length" class="text-sm">
         <!-- 总览 -->
@@ -381,6 +402,16 @@
             <span class="text-yellow-500 font-bold">{{
               batchReportTotalGold.toLocaleString()
             }}</span>
+            <span
+              v-if="batchReportDirection === 'down'"
+              class="text-xs text-gray-400 ml-1"
+            >
+              ({{
+                (
+                  gameSettings?.adventurerLevelDownGoldPrice ?? 1000
+                ).toLocaleString()
+              }}🪙/级)
+            </span>
           </p>
           <p v-if="batchReportDirection === 'up'" class="mt-1 space-x-2">
             <span
@@ -465,6 +496,7 @@
       align-center
       destroy-on-close
       class="game-dialog"
+      v-bind="formationUpgradeLockProps"
     >
       <!-- 阵容选择 -->
       <div v-if="!formationSelectedId" class="space-y-3">
@@ -605,6 +637,7 @@ import {
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import { useDialogLock } from '@/composables/useDialogLock.js'
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
 import {
   getMaxAdventurerCount,
@@ -658,6 +691,71 @@ function handleFilterTag(tag) {
   selectedIds.value = new Set()
 }
 
+// ── 阵容筛选 ──
+const formationFilter = ref('')
+// key: 'arena' | 'slot_X' → Set<advId>
+const formationSlotAdvIdsMap = ref({})
+// 选项列表（初始含基础两项，fetchFormationIds 后动态填充）
+const formationFilterOptions = ref([
+  { value: '', label: '全部阵容' },
+  { value: 'notInAny', label: '📭 未配置任何阵容' }
+])
+
+function handleFormationFilter() {
+  selectedIds.value = new Set()
+}
+
+async function fetchFormationIds() {
+  try {
+    const [formRes, arenaRes] = await Promise.allSettled([
+      getMyFormationsApi(),
+      getArenaFormationApi({ silent: true })
+    ])
+    const newMap = {}
+    const opts = [{ value: '', label: '全部阵容' }]
+
+    if (arenaRes.status === 'fulfilled' && arenaRes.value.data.data?.grid) {
+      const ids = new Set()
+      for (const row of arenaRes.value.data.data.grid) {
+        for (const cell of row) {
+          if (cell) ids.add(typeof cell === 'object' ? cell._id : cell)
+        }
+      }
+      if (ids.size > 0) {
+        newMap['arena'] = ids
+        opts.push({ value: 'arena', label: '⚔️ 竞技场阵容' })
+      }
+    }
+
+    if (formRes.status === 'fulfilled') {
+      const formations = formRes.value.data.data || []
+      for (const f of formations) {
+        if (!f.grid) continue
+        const ids = new Set()
+        for (const row of f.grid) {
+          for (const cell of row) {
+            if (cell) ids.add(typeof cell === 'object' ? cell._id : cell)
+          }
+        }
+        if (ids.size > 0) {
+          const key = 'slot_' + f.slot
+          newMap[key] = ids
+          opts.push({
+            value: key,
+            label: `📋 ${f.name || '阵容' + f.slot}（槽${f.slot}）`
+          })
+        }
+      }
+    }
+
+    opts.push({ value: 'notInAny', label: '📭 未配置任何阵容' })
+    formationSlotAdvIdsMap.value = newMap
+    formationFilterOptions.value = opts
+  } catch {
+    // ignore
+  }
+}
+
 // ── 排序 ──
 const sortMode = ref('default')
 
@@ -673,6 +771,16 @@ const filteredAdventurers = computed(() => {
     } else {
       list = list.filter(a => a.roleTag === filterTag.value)
     }
+  }
+  if (formationFilter.value === 'notInAny') {
+    const allIds = new Set()
+    for (const ids of Object.values(formationSlotAdvIdsMap.value)) {
+      for (const id of ids) allIds.add(id)
+    }
+    list = list.filter(a => !allIds.has(a._id))
+  } else if (formationFilter.value) {
+    const ids = formationSlotAdvIdsMap.value[formationFilter.value]
+    if (ids) list = list.filter(a => ids.has(a._id))
   }
   if (sortMode.value === 'level_desc') {
     list = [...list].sort(
@@ -898,6 +1006,19 @@ function handleRuneStoneDialogUpdated(updatedAdv) {
 // ── 属性升级弹窗 ──
 const { visible: statUpgradeVisible } = useDialogRoute('statUpgrade')
 const statUpgradeAdv = ref(null)
+const statLevelUpPanelRef = ref(null)
+const statPanelLoading = computed(
+  () => statLevelUpPanelRef.value?.anyLoading ?? false
+)
+const { dialogLockProps: statPanelLockProps } = useDialogLock(
+  () => statPanelLoading.value
+)
+const { dialogLockProps: batchRatioLockProps } = useDialogLock(
+  () => batchRatioLoading.value
+)
+const { dialogLockProps: formationUpgradeLockProps } = useDialogLock(
+  () => formationUpgradeLoading.value
+)
 
 function handleOpenStatUpgrade(adv) {
   statUpgradeAdv.value = { ...adv }
@@ -926,7 +1047,10 @@ const batchReportTotalCrystals = ref({
 const batchReportHasError = ref(false)
 
 function handleOpenBatchRatioReport(direction, totalLevels) {
-  if (selectedIds.value.size === 0) return
+  if (selectedIds.value.size === 0) {
+    ElMessage.warning('请先选中冒险家')
+    return
+  }
 
   batchReportDirection.value = direction
   batchReportTotalPerAdv.value = totalLevels
@@ -1167,7 +1291,7 @@ async function handleOpenFormationUpgrade(levels) {
   try {
     const [formRes, arenaRes] = await Promise.allSettled([
       getMyFormationsApi(),
-      getArenaFormationApi()
+      getArenaFormationApi({ silent: true })
     ])
 
     // 预设阵容
@@ -1262,7 +1386,10 @@ function handleToggleFormationAdv(id) {
 }
 
 function handleFormationUpgradePreview() {
-  if (formationSelectedAdvIds.value.size === 0) return
+  if (formationSelectedAdvIds.value.size === 0) {
+    ElMessage.warning('请先选中冒险家')
+    return
+  }
 
   // 暂存选中的阵容冒险家ID
   const advIds = new Set(formationSelectedAdvIds.value)
@@ -1283,6 +1410,7 @@ onMounted(() => {
   fetchAdventurers()
   fetchGameSettings()
   fetchPlayerInfo()
+  fetchFormationIds()
 })
 </script>
 

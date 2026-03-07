@@ -18,14 +18,12 @@ import * as mailService from './mailService.js'
  * 后4排（索引5-24）中使用自由均衡分配的角色数量
  * 数值越大，高段位NPC阵容的整体强度越低
  */
-const NPC_FREE_ALLOC_COUNT = 5
-
 import {
   runeStoneActiveSkillDataBase,
   passiveBuffTypeDataBase,
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
-import { BATTLE_VERSION } from 'shared/constants/index.js'
+import { BATTLE_VERSION, NPC_FREE_ALLOC_COUNT } from 'shared/constants/index.js'
 
 /**
  * 获取或创建活跃赛季（仅在赛季进行中时返回，用于战斗等操作）
@@ -243,9 +241,11 @@ function formatRegistrationInfo(registration) {
 /**
  * 获取竞技场阵容详情（含冒险家详细信息）
  */
-export async function getArenaFormation(accountId) {
+export async function getArenaFormation(accountId, options = {}) {
+  const { silent = false } = options
   const season = await getOrCreateActiveSeason()
   if (!season) {
+    if (silent) return null
     const err = new Error('当前不在赛季进行期间')
     err.statusCode = 400
     err.expose = true
@@ -257,6 +257,7 @@ export async function getArenaFormation(accountId) {
     season: season._id
   }).lean()
   if (!registration) {
+    if (silent) return null
     const err = new Error('你还没有报名本赛季')
     err.statusCode = 400
     err.expose = true
