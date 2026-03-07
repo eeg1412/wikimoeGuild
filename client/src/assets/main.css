@@ -57,7 +57,7 @@ a {
   -webkit-text-size-adjust: none;
 }
 
-.game-layout .avatar-uploader .el-upload.el-upload--text {
+body .avatar-uploader .el-upload.el-upload--text {
   width: 100%;
 }
 
