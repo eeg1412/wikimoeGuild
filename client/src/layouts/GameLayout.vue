@@ -923,6 +923,6 @@ function handleLogout() {
   background-repeat: repeat;
   /* 固定在视口 */
   background-attachment: fixed;
-  background-size: 50%;
+  background-size: 512px;
 }
 </style>
