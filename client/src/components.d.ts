@@ -16,6 +16,7 @@ declare module 'vue' {
     AdventurerFinalStats: typeof import('./components/AdventurerFinalStats.vue')['default']
     AdventurerRuneStoneDialog: typeof import('./components/AdventurerRuneStoneDialog.vue')['default']
     BattleAnimation: typeof import('./components/BattleAnimation.vue')['default']
+    BattleAnimationOld: typeof import('./components/BattleAnimationOld.vue')['default']
     Cropper: typeof import('./components/Cropper.vue')['default']
     DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
     DraggableList: typeof import('./components/DraggableList.vue')['default']

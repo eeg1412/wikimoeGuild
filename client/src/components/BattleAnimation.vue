@@ -1100,6 +1100,8 @@ function enqueueCutIn(entry) {
   })
 
   // 若过滤后主 cut-in 仍有技能，才入队；否则直接跳过（所有技能都失败了）
+  // 当主 cut-in 未入队时，将 SP 更新和其余日志分配给第一个失败 cut-in，防止丢失
+  let spAndLogsInherited = false
   if (mainSkills.length > 0) {
     runeCutInQueue.push({
       casterId: entry.caster,
@@ -1117,6 +1119,7 @@ function enqueueCutIn(entry) {
       // 主 cut-in 不含失败 changeOrder 的日志
       _runeSkillLogs: otherRuneSkillLogs
     })
+    spAndLogsInherited = true
   }
 
   // 为每个失败的 changeOrder 在队列末尾追加一个独立 cut-in
@@ -1129,6 +1132,9 @@ function enqueueCutIn(entry) {
       normalizedSkills.find(s => s.skillType === 'changeOrder') ||
       null
 
+    // 主 cut-in 未入队时，第一个失败 cut-in 继承 SP 更新和其余日志
+    const inheritSpAndLogs = !spAndLogsInherited
+
     runeCutInQueue.push({
       casterId: entry.caster,
       casterName: entry.casterName,
@@ -1140,10 +1146,15 @@ function enqueueCutIn(entry) {
       customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
       isDemon: entry.isDemon,
       skills: matchedSkill ? [{ ...matchedSkill }] : [],
-      _casterSpUpdate: null,
-      _runeSkillLogs: [failLog],
+      _casterSpUpdate: inheritSpAndLogs
+        ? (entry._casterSpUpdate ?? null)
+        : null,
+      _runeSkillLogs: inheritSpAndLogs
+        ? [...otherRuneSkillLogs, failLog]
+        : [failLog],
       _isFailedChangeOrder: true
     })
+    spAndLogsInherited = true
   }
 
   if (!showRuneCutIn.value && !cutInTimer) {
@@ -1666,7 +1677,7 @@ function processLogEntry(entry) {
 
     if (entry.skillType === 'changeOrder' && !entry.success) {
       debuffedUnitIds.value = new Set([...debuffedUnitIds.value, entry.target])
-      addEffect(entry.target, '🔀 ✗ 失败', 'miss')
+      addEffect(entry.target, '🔀 失败', 'miss')
     }
   }
 
@@ -1955,6 +1966,7 @@ function handleSkip() {
   pendingRuneSkillLogsAfterCutIn = []
   nextPhaseCallback = null
   hideCutInEffect()
+  cutInFailExiting.value = false
   stopAnimation()
   // 跳过时立即释放锁
   releaseWakeLock()
