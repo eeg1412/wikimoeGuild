@@ -822,11 +822,35 @@ function tryTriggerRuneStoneSkill(
     .map(s => skillMap.get(s.skillId))
     .filter(s => s && s.triggerTiming === triggerTiming)
 
-  if (timingSkills.length === 0) return
+  if (triggerTiming === 'before') {
+    // 攻击前阶段：消耗 SP 并触发攻击前技能
+    // 同时记录激活次数，供攻击后阶段复用（一次 SP 消耗同时触发攻击前和攻击后技能）
+    let count = 0
+    while (unit.currentSp >= SP_TRIGGER_THRESHOLD) {
+      unit.currentSp -= SP_TRIGGER_THRESHOLD
+      count++
+      if (timingSkills.length > 0) {
+        performRuneStoneSkill(unit, allUnits, timingSkills, log, triggerTiming)
+      }
+    }
+    unit._runeActivationCount = count
+  } else {
+    // 攻击后阶段：复用攻击前阶段的激活次数 + 攻击阶段新获得 SP 的额外激活
+    let count = unit._runeActivationCount || 0
+    unit._runeActivationCount = 0
 
-  while (unit.currentSp >= SP_TRIGGER_THRESHOLD) {
-    unit.currentSp -= SP_TRIGGER_THRESHOLD
-    performRuneStoneSkill(unit, allUnits, timingSkills, log, triggerTiming)
+    if (timingSkills.length === 0) return
+
+    // 先触发攻击前阶段预留的激活次数
+    for (let i = 0; i < count; i++) {
+      performRuneStoneSkill(unit, allUnits, timingSkills, log, triggerTiming)
+    }
+
+    // 再消耗攻击阶段新获得的 SP（如有足够则额外激活）
+    while (unit.currentSp >= SP_TRIGGER_THRESHOLD) {
+      unit.currentSp -= SP_TRIGGER_THRESHOLD
+      performRuneStoneSkill(unit, allUnits, timingSkills, log, triggerTiming)
+    }
   }
 }
 
