@@ -1,0 +1,1 @@
+import{a as n}from"./config-CB8eQPe_.js";import{r as s}from"./index-DZjaTgF1.js";const e=s({siteTitle:"",siteSubTitle:"",siteKeywords:"",siteUrl:""}),t=s(!1);function u(){async function i(){if(!t.value)try{const a=await n();Object.assign(e.value,a.data.data||{}),t.value=!0}catch{}}return{siteSettings:e,settingsLoaded:t,loadSiteSettings:i}}export{u};
