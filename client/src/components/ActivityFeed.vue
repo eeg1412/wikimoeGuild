@@ -91,7 +91,7 @@
         :page-size="pageSize"
         :total="total"
         layout="prev, pager, next"
-        small
+        background
         @current-change="handlePageChange"
       />
     </div>

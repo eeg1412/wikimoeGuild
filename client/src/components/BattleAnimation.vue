@@ -274,7 +274,8 @@
           class="rune-cutin-overlay"
           :class="{
             'rune-cutin-overlay--ally': runeCutInData.isCasterAlly,
-            'rune-cutin-overlay--enemy': !runeCutInData.isCasterAlly
+            'rune-cutin-overlay--enemy': !runeCutInData.isCasterAlly,
+            'rune-cutin-overlay--fail-exit': cutInFailExiting
           }"
         >
           <!-- 背景斜纹 -->
@@ -285,7 +286,15 @@
           <!-- 主卡片 -->
           <div
             class="cutin-card"
-            :class="`cutin-card--${runeCutInData.runeStoneRarity}`"
+            :class="[
+              `cutin-card--${runeCutInData.runeStoneRarity}`,
+              { 'cutin-card--fail-exit': cutInFailExiting }
+            ]"
+            :style="
+              cutInFailExiting
+                ? { animationDuration: cutInFailExitDuration + 'ms' }
+                : {}
+            "
           >
             <!-- 粒子特效层（现在在卡片内显示） -->
             <div class="cutin-particles">
@@ -847,6 +856,10 @@ const runeCutInData = ref(null)
 let cutInTimer = null
 // 每次新 cut-in 播放时自增，强制重建 timer-fill 元素以重启 CSS animation
 const cutInKey = ref(0)
+// 交换类技能失败时的独立退场动画标志
+const cutInFailExiting = ref(false)
+// 失败退场动画时长（ms），随播放速度缩放，同步传给 CSS
+const cutInFailExitDuration = ref(350)
 // 待播放的符文激活队列（同一次激活合并为一个cut in）
 const runeCutInQueue = []
 // 当前一组 cut-in 对应的符文技能效果，等全部 cut-in 播放完后统一应用
@@ -888,6 +901,8 @@ function processNextCutIn() {
     return
   }
   const cutInItem = runeCutInQueue.shift()
+  // 是否为失败 changeOrder 专属独立 cut-in
+  const isFailItem = !!cutInItem._isFailedChangeOrder
   const duration = getCutInDuration(cutInItem.runeStoneRarity)
 
   if (
@@ -965,13 +980,56 @@ function processNextCutIn() {
   // 每次新 cut-in 自增 key，强制 Vue 销毁并重建 cutin-timer-fill 元素，重启 CSS animation
   cutInKey.value++
   showRuneCutIn.value = true
+
+  /**
+   * 失败 changeOrder 专属退场：倾斜 + 下落 + 淡出
+   * 动画结束后再继续处理剩余队列或恢复主动画
+   */
+  function playFailExit() {
+    const FAIL_EXIT_DURATION = Math.max(
+      180,
+      Math.round(350 / playbackSpeed.value)
+    )
+    cutInFailExitDuration.value = FAIL_EXIT_DURATION
+    cutInFailExiting.value = true
+    cutInTimer = setTimeout(() => {
+      cutInFailExiting.value = false
+      showRuneCutIn.value = false
+      cutInTimer = setTimeout(() => {
+        cutInTimer = null
+        if (runeCutInQueue.length > 0) {
+          processNextCutIn()
+          return
+        }
+        hideCutInEffect()
+        const clearDelay = applyCutInRuneSkillLogs(
+          pendingRuneSkillLogsAfterCutIn
+        )
+        pendingRuneSkillLogsAfterCutIn = []
+        if (clearDelay > 0) {
+          cutInTimer = setTimeout(() => {
+            cutInTimer = null
+            _resumeAfterCutIn()
+          }, clearDelay)
+          return
+        }
+        _resumeAfterCutIn()
+      }, 50)
+    }, FAIL_EXIT_DURATION)
+  }
+
   cutInTimer = setTimeout(() => {
-    // 队列中还有内容时直接切下一条，避免中间空窗导致闪动
+    // 失败专属 cut-in：无论队列是否还有内容，都必须先完整播放倾斜掉落动画
+    if (isFailItem) {
+      playFailExit()
+      return
+    }
+    // 普通 cut-in：队列中还有内容时直接切下一条，避免中间空窗导致闪动
     if (runeCutInQueue.length > 0) {
       processNextCutIn()
       return
     }
-    // 最后一条播放结束后再执行离场
+    // 普通 cut-in 最后一条：正常退场
     showRuneCutIn.value = false
     cutInTimer = setTimeout(() => {
       cutInTimer = null
@@ -1023,22 +1081,70 @@ function enqueueCutIn(entry) {
     }
   })
 
-  runeCutInQueue.push({
-    casterId: entry.caster,
-    casterName: entry.casterName,
-    isCasterAlly: isAllyId(entry.caster),
-    runeStoneRarity: entry.runeStoneRarity,
-    runeStoneLevel: entry.runeStoneLevel,
-    defaultAvatarId: entry.defaultAvatarId,
-    hasCustomAvatar: entry.hasCustomAvatar,
-    customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
-    isDemon: entry.isDemon,
-    skills: normalizedSkills,
-    // 施法者 SP 归零的更新，在对应 cut-in 播放前才应用（使 SP 条动画在每个 cut-in 期间可见）
-    _casterSpUpdate: entry._casterSpUpdate ?? null,
-    // 与该次 runeActivate 绑定的 runeSkill 日志，全部 cut-in 结束后统一应用
-    _runeSkillLogs: entry._runeSkillLogs ?? []
+  const allRuneSkillLogs = entry._runeSkillLogs ?? []
+  // 将失败的 changeOrder 日志单独剥离，主 cut-in 只保留其余日志
+  const failedChangeLogs = allRuneSkillLogs.filter(
+    log => log.skillType === 'changeOrder' && log.success === false
+  )
+  const otherRuneSkillLogs = allRuneSkillLogs.filter(
+    log => !(log.skillType === 'changeOrder' && log.success === false)
+  )
+
+  // 从主 cut-in 技能列表中移除有失败日志对应的 changeOrder 技能
+  // 用失败日志的 target 集合来匹配，若一个 changeOrder 技能的 target 出现在失败日志里则剔除
+  const failedTargets = new Set(failedChangeLogs.map(log => log.target))
+  const mainSkills = normalizedSkills.filter(skill => {
+    if (skill.skillType !== 'changeOrder') return true
+    // changeOrder 技能：若其对应目标在失败列表中，则从主 cut-in 移除
+    return !failedTargets.has(skill.target)
   })
+
+  // 若过滤后主 cut-in 仍有技能，才入队；否则直接跳过（所有技能都失败了）
+  if (mainSkills.length > 0) {
+    runeCutInQueue.push({
+      casterId: entry.caster,
+      casterName: entry.casterName,
+      isCasterAlly: isAllyId(entry.caster),
+      runeStoneRarity: entry.runeStoneRarity,
+      runeStoneLevel: entry.runeStoneLevel,
+      defaultAvatarId: entry.defaultAvatarId,
+      hasCustomAvatar: entry.hasCustomAvatar,
+      customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
+      isDemon: entry.isDemon,
+      skills: mainSkills,
+      // 施法者 SP 归零的更新，在对应 cut-in 播放前才应用（使 SP 条动画在每个 cut-in 期间可见）
+      _casterSpUpdate: entry._casterSpUpdate ?? null,
+      // 主 cut-in 不含失败 changeOrder 的日志
+      _runeSkillLogs: otherRuneSkillLogs
+    })
+  }
+
+  // 为每个失败的 changeOrder 在队列末尾追加一个独立 cut-in
+  for (const failLog of failedChangeLogs) {
+    // 从 normalizedSkills 里找到对应的技能描述（含目标头像信息），用于专属 cut-in 展示
+    const matchedSkill =
+      normalizedSkills.find(
+        s => s.skillType === 'changeOrder' && s.target === failLog.target
+      ) ||
+      normalizedSkills.find(s => s.skillType === 'changeOrder') ||
+      null
+
+    runeCutInQueue.push({
+      casterId: entry.caster,
+      casterName: entry.casterName,
+      isCasterAlly: isAllyId(entry.caster),
+      runeStoneRarity: entry.runeStoneRarity,
+      runeStoneLevel: entry.runeStoneLevel,
+      defaultAvatarId: entry.defaultAvatarId,
+      hasCustomAvatar: entry.hasCustomAvatar,
+      customAvatarUpdatedAt: entry.customAvatarUpdatedAt,
+      isDemon: entry.isDemon,
+      skills: matchedSkill ? [{ ...matchedSkill }] : [],
+      _casterSpUpdate: null,
+      _runeSkillLogs: [failLog],
+      _isFailedChangeOrder: true
+    })
+  }
 
   if (!showRuneCutIn.value && !cutInTimer) {
     processNextCutIn()
@@ -1185,6 +1291,11 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
       }
 
       needRefreshState = true
+    }
+
+    if (entry.skillType === 'changeOrder' && !entry.success) {
+      newDebuffed.add(entry.target)
+      addEffect(entry.target, '🔀 失败', 'miss')
     }
   }
 
@@ -1551,6 +1662,11 @@ function processLogEntry(entry) {
 
       movedUnitIds.value = moved
       needRefreshState = true
+    }
+
+    if (entry.skillType === 'changeOrder' && !entry.success) {
+      debuffedUnitIds.value = new Set([...debuffedUnitIds.value, entry.target])
+      addEffect(entry.target, '🔀 ✗ 失败', 'miss')
     }
   }
 
@@ -2375,6 +2491,11 @@ onUnmounted(() => {
   color: #60a5fa;
   font-size: 14px;
 }
+.effect-miss {
+  color: #9ca3af;
+  font-size: 13px;
+  font-style: italic;
+}
 
 @keyframes effectFloatUp {
   0% {
@@ -2416,6 +2537,46 @@ onUnmounted(() => {
   }
   to {
     opacity: 0;
+  }
+}
+
+/* 交换失败退场：覆盖层放开 overflow，让卡片能飞出边界 */
+.rune-cutin-overlay.rune-cutin-overlay--fail-exit {
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* 交换失败独立退场动画：卡片倾斜 + 快速下落 + 淡出（牌子砸地效果） */
+.cutin-card.cutin-card--fail-exit {
+  /* 时长由内联 style 覆盖，此处为默认值 */
+  animation: cutinFailExit 0.35s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+@keyframes cutinFailExit {
+  0% {
+    transform: rotate(0deg) translateY(0) scale(1);
+    opacity: 1;
+    filter: grayscale(0%);
+  }
+  12% {
+    transform: rotate(-10deg) translateY(0px) scale(0.99);
+    opacity: 1;
+    filter: grayscale(100%);
+  }
+  35% {
+    transform: rotate(0deg) translateY(30px) scale(0.94);
+    opacity: 0.7;
+    filter: grayscale(100%);
+  }
+  70% {
+    transform: rotate(0deg) translateY(120px) scale(0.85);
+    opacity: 0.25;
+    filter: grayscale(100%);
+  }
+  100% {
+    transform: rotate(0deg) translateY(220px) scale(0.75);
+    opacity: 0;
+    filter: grayscale(100%);
   }
 }
 

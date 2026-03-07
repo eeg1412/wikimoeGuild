@@ -243,6 +243,7 @@
         width="320px"
         align-center
         destroy-on-close
+        append-to-body
       >
         <div v-if="settleResult" class="space-y-2 text-sm">
           <div class="flex justify-between">
@@ -292,6 +293,7 @@
         :close-on-click-modal="!challengeLoading"
         :close-on-press-escape="!challengeLoading"
         :show-close="!challengeLoading"
+        append-to-body
       >
         <div class="space-y-4">
           <!-- 军团预览 -->
@@ -412,6 +414,7 @@
         width="340px"
         align-center
         destroy-on-close
+        append-to-body
       >
         <div v-if="battleResult" class="text-center space-y-3">
           <div class="text-4xl">
@@ -480,6 +483,7 @@
         width="340px"
         align-center
         destroy-on-close
+        append-to-body
       >
         <div v-if="discoveredMine" class="text-center space-y-3">
           <div class="text-4xl">⛰️</div>
@@ -644,10 +648,7 @@ async function fetchDungeonInfo() {
 
 // 背景
 const dungeonBgStyle = computed(() => {
-  const bgId =
-    dungeonInfo.value?.dungeonsBackgroundId ||
-    playerInfo.value?.dungeonsBackgroundId ||
-    1
+  const bgId = playerInfo.value?.dungeonsBackgroundId || null
   return {
     backgroundImage: `url(/publicgame/dungeons/${bgId}.webp)`,
     backgroundSize: 'cover',
@@ -1047,8 +1048,8 @@ function buildExplorerStyle(idx, total) {
   const duration = 10 + Math.random() * 10
   // 随机起始位置，错开步调
   const delay = -(Math.random() * duration)
-  // 框高120px，头像36px，可用范围 0~84px
-  const maxTop = 120 - 36
+  // 框高240px，头像36px，可用范围 0~204px
+  const maxTop = 240 - 36
   const topPx = total <= 1 ? maxTop / 2 : (idx / (total - 1)) * maxTop
   // 走路弹跳速度
   const bounceSpeed = 0.3 + Math.random() * 0.2
@@ -1243,7 +1244,7 @@ onUnmounted(() => {
   border: 1px solid rgba(200, 160, 80, 0.3);
   backdrop-filter: blur(2px);
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.15);
-  height: 120px;
+  height: 240px;
   position: relative;
 }
 

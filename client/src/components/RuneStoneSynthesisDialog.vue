@@ -6,6 +6,7 @@
     align-center
     destroy-on-close
     v-bind="previewLockProps"
+    append-to-body
   >
     <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
       仅显示与装备符文石<strong>稀有度相同</strong>、等级 ≤ 冒险家综合等级
@@ -48,6 +49,7 @@
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     :show-close="false"
+    append-to-body
   >
     <div v-if="previewData" class="space-y-3">
       <!-- 等级变化 -->

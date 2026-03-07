@@ -6,6 +6,7 @@
     destroy-on-close
     class="rpg-dialog game-dialog"
     v-bind="detailLockProps"
+    append-to-body
   >
     <div v-if="adventurer" class="flex flex-col items-center gap-3 pt-2">
       <!-- 头像 -->
@@ -353,6 +354,7 @@
     align-center
     destroy-on-close
     v-bind="avatarLockProps"
+    append-to-body
   >
     <p class="text-sm text-gray-500 mb-3">
       消耗 {{ gameSettings.adventurerCustomAvatarPrice ?? 5000 }} 金币
@@ -388,6 +390,7 @@
     align-center
     destroy-on-close
     v-bind="nameLockProps"
+    append-to-body
   >
     <p class="text-sm text-gray-500 mb-3">
       消耗 {{ gameSettings.adventurerCustomNamePrice ?? 1000 }} 金币
@@ -419,6 +422,7 @@
     align-center
     destroy-on-close
     v-bind="equipLockProps"
+    append-to-body
   >
     <RuneStoneSelectPanel
       :rune-stones="availableRuneStones"
@@ -457,6 +461,7 @@
     align-center
     destroy-on-close
     v-bind="detailQuickSellLockProps"
+    append-to-body
   >
     <div class="space-y-3">
       <p class="text-sm text-gray-500 dark:text-gray-400">

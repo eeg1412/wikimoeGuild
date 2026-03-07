@@ -7,6 +7,7 @@
     align-center
     destroy-on-close
     @closed="handleConfirm"
+    append-to-body
   >
     <div class="space-y-3">
       <el-alert type="warning" :closable="false" show-icon>

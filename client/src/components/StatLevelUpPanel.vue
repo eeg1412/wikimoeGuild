@@ -298,6 +298,7 @@
       align-center
       destroy-on-close
       v-bind="autoDistributeLockProps"
+      append-to-body
     >
       <div v-if="downgradeReportData" class="text-sm space-y-3">
         <!-- 总览 -->
@@ -374,6 +375,7 @@
       align-center
       destroy-on-close
       v-bind="statQuickSellLockProps"
+      append-to-body
     >
       <div class="space-y-3">
         <p class="text-sm text-gray-500 dark:text-gray-400">

@@ -22,6 +22,7 @@
     width="80%"
     :lock-scroll="false"
     :align-center="true"
+    append-to-body
   >
     <div class="cropper-body">
       <vue-cropper

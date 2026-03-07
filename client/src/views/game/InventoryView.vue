@@ -63,6 +63,7 @@
       align-center
       destroy-on-close
       v-bind="inventoryQuickSellLockProps"
+      append-to-body
     >
       <div class="space-y-3">
         <p class="text-sm text-gray-500 dark:text-gray-400">

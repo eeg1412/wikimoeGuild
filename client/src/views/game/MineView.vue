@@ -320,6 +320,7 @@
       width="340px"
       align-center
       destroy-on-close
+      append-to-body
     >
       <div v-if="digResult" class="text-center space-y-3">
         <!-- 数字格子结果 -->

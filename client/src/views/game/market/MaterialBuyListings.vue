@@ -75,6 +75,7 @@
       :close-on-click-modal="!fulfillLoading"
       :close-on-press-escape="!fulfillLoading"
       :show-close="!fulfillLoading"
+      append-to-body
     >
       <div v-if="fulfillDialogOrder" class="space-y-3">
         <div class="text-sm text-gray-600 dark:text-gray-300">

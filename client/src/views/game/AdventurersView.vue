@@ -357,6 +357,7 @@
       destroy-on-close
       class="game-dialog"
       v-bind="statPanelLockProps"
+      append-to-body
     >
       <StatLevelUpPanel
         v-if="statUpgradeAdv"
@@ -376,6 +377,7 @@
       destroy-on-close
       class="game-dialog"
       v-bind="batchRatioLockProps"
+      append-to-body
     >
       <div v-if="batchReportData.length" class="text-sm">
         <!-- 总览 -->
@@ -497,6 +499,7 @@
       destroy-on-close
       class="game-dialog"
       v-bind="formationUpgradeLockProps"
+      append-to-body
     >
       <!-- 阵容选择 -->
       <div v-if="!formationSelectedId" class="space-y-3">

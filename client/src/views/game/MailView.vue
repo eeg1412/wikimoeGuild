@@ -105,6 +105,7 @@
       :close-on-click-modal="!claimLoading && !deleteLoading"
       :close-on-press-escape="!claimLoading && !deleteLoading"
       :show-close="!claimLoading && !deleteLoading"
+      append-to-body
     >
       <div v-if="detailLoading" class="flex justify-center py-8">
         <span class="animate-spin inline-block text-2xl">⏳</span>

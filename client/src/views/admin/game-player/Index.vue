@@ -137,6 +137,7 @@
       width="420px"
       :close-on-click-modal="!actioningId"
       destroy-on-close
+      append-to-body
     >
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
         将封禁玩家 <strong>{{ currentRow?.accountInfo?.email }}</strong
@@ -175,6 +176,7 @@
       width="420px"
       :close-on-click-modal="!actioningId"
       destroy-on-close
+      append-to-body
     >
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
         修改玩家 <strong>{{ currentRow?.accountInfo?.email }}</strong> 的密码，

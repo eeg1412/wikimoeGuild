@@ -99,6 +99,7 @@
       width="340px"
       align-center
       :destroy-on-close="true"
+      append-to-body
     >
       <div v-if="adventurersLoading" class="text-center py-6">
         <span class="animate-spin inline-block text-2xl">⏳</span>

@@ -6,6 +6,7 @@
     destroy-on-close
     class="game-dialog"
     v-bind="anyLoadingLockProps"
+    append-to-body
   >
     <div v-if="adventurer && adventurer.runeStone" class="space-y-3">
       <!-- 冒险家信息 -->
@@ -134,6 +135,7 @@
     align-center
     destroy-on-close
     v-bind="equipLoadingLockProps"
+    append-to-body
   >
     <RuneStoneSelectPanel
       :rune-stones="availableRuneStones"

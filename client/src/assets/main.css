@@ -62,13 +62,13 @@ a {
 }
 
 /* ── 全局弹窗高度约束 ── */
-.game-layout .el-dialog {
+body .el-dialog {
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 40px);
-  max-height: calc(100dvh - 40px);
+  max-height: calc(100vh - 80px);
+  max-height: calc(100dvh - 80px);
 }
-.game-layout .el-dialog__body {
+body .el-dialog__body {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
@@ -80,13 +80,13 @@ a {
   /* 细滚动条 */
   scrollbar-width: thin;
 }
-.game-layout .el-dialog {
+body .el-dialog {
   max-width: 600px;
   width: 100vw;
 }
 /* 小于600px时 */
 @media (max-width: 600px) {
-  .game-layout .el-dialog {
+  body .el-dialog {
     min-width: 90vw;
   }
 }

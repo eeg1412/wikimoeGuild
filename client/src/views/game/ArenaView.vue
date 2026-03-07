@@ -573,6 +573,7 @@
       width="340px"
       align-center
       :destroy-on-close="true"
+      append-to-body
     >
       <div v-if="arenaAdventurersLoading" class="text-center py-6">
         <span class="animate-spin inline-block text-2xl">⏳</span>
@@ -675,6 +676,7 @@
       width="340px"
       align-center
       destroy-on-close
+      append-to-body
     >
       <div v-if="battleResult" class="text-center space-y-3">
         <div class="text-4xl mb-2">
@@ -749,6 +751,7 @@
       style="max-width: 500px"
       align-center
       destroy-on-close
+      append-to-body
     >
       <div v-if="logDetailLoading" class="flex justify-center py-8">
         <span class="animate-spin inline-block text-2xl">⏳</span>

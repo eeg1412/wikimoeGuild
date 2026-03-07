@@ -6,6 +6,7 @@
     align-center
     destroy-on-close
     class="rpg-dialog game-dialog"
+    append-to-body
   >
     <div v-if="loading" class="flex justify-center py-8">
       <span class="animate-spin inline-block text-2xl">⏳</span>

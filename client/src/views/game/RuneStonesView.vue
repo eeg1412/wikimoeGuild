@@ -261,6 +261,7 @@
       :close-on-click-modal="!synthesisConfirmLoading"
       :close-on-press-escape="!synthesisConfirmLoading"
       :show-close="!synthesisConfirmLoading"
+      append-to-body
     >
       <!-- 第 1 步: 选择符文石 -->
       <template v-if="synthesisStep === 'select'">
@@ -591,6 +592,7 @@
       title="选择符文石"
       align-center
       destroy-on-close
+      append-to-body
     >
       <RuneStoneSelectPanel
         :rune-stones="pickableRuneStones"

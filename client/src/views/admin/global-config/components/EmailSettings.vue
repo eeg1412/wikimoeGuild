@@ -71,6 +71,7 @@
       width="400px"
       :close-on-click-modal="!testing"
       destroy-on-close
+      append-to-body
     >
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
         将使用当前保存的邮件配置向指定邮箱发送一封测试邮件。

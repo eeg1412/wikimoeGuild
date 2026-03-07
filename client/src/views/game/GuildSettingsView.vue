@@ -203,6 +203,7 @@
       :close-on-click-modal="!logoSaving"
       :close-on-press-escape="!logoSaving"
       :show-close="!logoSaving"
+      append-to-body
     >
       <p class="text-sm text-gray-500 mb-3">
         消耗 {{ gameSettings.guildCustomLogoPrice ?? 5000 }} 金币
@@ -239,6 +240,7 @@
       :close-on-click-modal="!nameSaving"
       :close-on-press-escape="!nameSaving"
       :show-close="!nameSaving"
+      append-to-body
     >
       <p class="text-sm text-gray-500 mb-3">
         消耗 {{ gameSettings.guildChangeNamePrice ?? 1000 }} 金币
@@ -274,6 +276,7 @@
       :close-on-click-modal="!passwordSaving"
       :close-on-press-escape="!passwordSaving"
       :show-close="!passwordSaving"
+      append-to-body
     >
       <el-form
         ref="passwordFormRef"
@@ -332,6 +335,7 @@
       :close-on-click-modal="!bindEmailSaving"
       :close-on-press-escape="!bindEmailSaving"
       :show-close="!bindEmailSaving"
+      append-to-body
     >
       <p class="text-sm text-gray-500 mb-3">
         绑定正式邮箱后，游客标记将被移除，您将使用新邮箱登录。
