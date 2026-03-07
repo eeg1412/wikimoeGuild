@@ -4,7 +4,7 @@
     <div class="absolute inset-0 z-0" />
 
     <!-- 内容层 -->
-    <div class="relative z-10 py-6 px-4 max-w-lg mx-auto">
+    <div class="relative z-10 py-6 max-w-lg mx-auto">
       <!-- 标题 -->
       <div class="text-center mb-6">
         <h1
@@ -649,6 +649,7 @@ async function fetchDungeonInfo() {
 // 背景
 const dungeonBgStyle = computed(() => {
   const bgId = playerInfo.value?.dungeonsBackgroundId || null
+  if (!bgId) return {}
   return {
     backgroundImage: `url(/publicgame/dungeons/${bgId}.webp)`,
     backgroundSize: 'cover',
@@ -1048,8 +1049,8 @@ function buildExplorerStyle(idx, total) {
   const duration = 10 + Math.random() * 10
   // 随机起始位置，错开步调
   const delay = -(Math.random() * duration)
-  // 框高240px，头像36px，可用范围 0~204px
-  const maxTop = 240 - 36
+  // 框高200px，头像36px，可用范围 0~164px
+  const maxTop = 200 - 36
   const topPx = total <= 1 ? maxTop / 2 : (idx / (total - 1)) * maxTop
   // 走路弹跳速度
   const bounceSpeed = 0.3 + Math.random() * 0.2
@@ -1270,7 +1271,7 @@ onUnmounted(() => {
   border: 1px solid rgba(200, 160, 80, 0.3);
   backdrop-filter: blur(2px);
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.15);
-  height: 240px;
+  height: 200px;
   position: relative;
 }
 

@@ -18,6 +18,7 @@ declare module 'vue' {
     BattleAnimation: typeof import('./components/BattleAnimation.vue')['default']
     Cropper: typeof import('./components/Cropper.vue')['default']
     DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
+    DraggableList: typeof import('./components/DraggableList.vue')['default']
     FormationGrid: typeof import('./components/FormationGrid.vue')['default']
     GameAdventurerAvatar: typeof import('./components/GameAdventurerAvatar.vue')['default']
     GameGuildIcon: typeof import('./components/GameGuildIcon.vue')['default']

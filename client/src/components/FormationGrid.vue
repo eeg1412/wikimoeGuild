@@ -12,11 +12,11 @@
 
     <!-- 5×5 棋盘 -->
     <div class="fg-board mx-auto">
-      <VueDraggable
+      <DraggableList
         v-model="localFlatGrid"
         :disabled="!dragMode"
         :animation="200"
-        :invertSwap="true"
+        :swap="true"
         swap-class="fg-cell--swap"
         ghost-class="fg-cell--ghost"
         class="fg-board-inner"
@@ -158,14 +158,14 @@
             <span class="text-gray-400 text-lg">➕</span>
           </template>
         </div>
-      </VueDraggable>
+      </DraggableList>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
-import { VueDraggable } from 'vue-draggable-plus'
+import DraggableList from '@/components/DraggableList.vue'
 import {
   getPassiveIndicators,
   getElementColor
@@ -297,15 +297,11 @@ function handleCellLongPressEnd() {
 }
 
 function checkDragMove(evt) {
-  // 只有有冒险家的格子才可拖动，且目标格子也必须有冒险家才可交换
-  return !!(
-    evt.draggedContext.element?.adventurer &&
-    evt.relatedContext?.element?.adventurer
-  )
+  // 只有有冒险家的格子才可拖动
+  return !!evt.draggedContext.element?.adventurer
 }
 
-// swap 模式下 sortablejs 已直接交换数组中的两个元素
-// vue-draggable-plus 通过 v-model 同步了 localFlatGrid，直接 emit 结果即可
+// DraggableList 通过 v-model 同步了 localFlatGrid，直接 emit 结果即可
 function onDragEnd(evt) {
   if (evt.oldIndex !== evt.newIndex) {
     skipWatchOnce = true
