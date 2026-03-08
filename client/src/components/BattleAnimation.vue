@@ -2095,11 +2095,12 @@ onUnmounted(() => {
 .battle-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  grid-auto-columns: 1fr;
 }
 
-/* \u6a2a\u5c4f\u65f6\u68cb\u76d8\u65cb\u8f6c90\u00b0\uff0c\u884c\u53d8\u6210\u5217\uff0c\u4f7f\u524d\u6392\u6c34\u5e73\u9762\u5411\u5bf9\u65b9 */
+/* 横屏时棋盘旋转90°，行变成列，使前排水平面向对方 */
 .battle-sides--row .battle-grid {
-  grid-template-columns: none;
+  /* grid-template-columns: none; */
   grid-template-rows: repeat(5, 1fr);
   grid-auto-flow: column;
 }
