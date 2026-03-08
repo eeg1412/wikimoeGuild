@@ -13,7 +13,7 @@
       <el-alert type="warning" :closable="false" show-icon>
         <p>请牢记以下账号信息，关闭后将无法再次查看！</p>
       </el-alert>
-      <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
+      <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2 mt-2">
         <div class="flex items-center justify-between">
           <span class="text-sm text-gray-500">邮箱账号：</span>
           <div class="flex items-center gap-1">

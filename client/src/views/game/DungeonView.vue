@@ -49,6 +49,7 @@
 
       <!-- 冒险家探索动画框 -->
       <div
+        ref="explorerBoxRef"
         class="dungeon-explorer-box rounded-2xl mb-4"
         :style="dungeonBgStyle"
       >
@@ -59,9 +60,21 @@
             class="dungeon-explorer"
             :class="adv.direction"
             :style="adv.animStyle"
+            @animationend="handleAnimationEnd($event, adv)"
           >
             <div class="dungeon-explorer-body">
               <div class="dungeon-explorer-bounce">
+                <!-- 搬运水晶泡泡（walk-left冒险家，随头像同步晃动） -->
+                <div
+                  v-if="adv.direction === 'walk-left' && adv.carryEmoji"
+                  class="carry-bubble"
+                ></div>
+                <div
+                  v-if="adv.direction === 'walk-left' && adv.carryEmoji"
+                  class="carry-bubble-content"
+                >
+                  {{ adv.carryEmoji }}
+                </div>
                 <GameAdventurerAvatar
                   :adventurer="adv"
                   class="dungeon-explorer-avatar"
@@ -156,11 +169,17 @@
           </div>
           <div class="dungeon-info-row">
             <span class="text-gray-300 text-sm">当前产物数量</span>
-            <span
-              class="text-green-300 font-bold text-lg rpg-num counting-animation"
-            >
-              {{ currentOutput }}
-            </span>
+            <div class="relative inline-flex items-center justify-end">
+              <span class="text-green-300 font-bold text-lg rpg-num">
+                {{ currentOutput }}
+              </span>
+              <span
+                v-for="f in floatingNumbers"
+                :key="f.id"
+                class="output-float-num"
+                >+{{ f.value }}</span
+              >
+            </div>
           </div>
           <div class="dungeon-info-row">
             <span class="text-gray-300 text-sm">上次结算时间</span>
@@ -246,36 +265,45 @@
         append-to-body
       >
         <div v-if="settleResult" class="space-y-2 text-sm">
-          <div class="flex justify-between">
+          <div class="flex justify-between" style="color: #e05c4f">
             <span>⚔️ 攻击水晶</span>
-            <span class="text-red-400 font-bold"
+            <span class="font-bold"
               >+{{ settleResult.crystals?.attackCrystal || 0 }}</span
             >
           </div>
-          <div class="flex justify-between">
+          <div class="flex justify-between" style="color: #4fa3e0">
             <span>🛡️ 防御水晶</span>
-            <span class="text-blue-400 font-bold"
+            <span class="font-bold"
               >+{{ settleResult.crystals?.defenseCrystal || 0 }}</span
             >
           </div>
-          <div class="flex justify-between">
+          <div class="flex justify-between" style="color: #6abf69">
             <span>💨 速度水晶</span>
-            <span class="text-green-400 font-bold"
+            <span class="font-bold"
               >+{{ settleResult.crystals?.speedCrystal || 0 }}</span
             >
           </div>
-          <div class="flex justify-between">
+          <div class="flex justify-between" style="color: #c070e0">
             <span>❤️ SAN水晶</span>
-            <span class="text-purple-400 font-bold"
+            <span class="font-bold"
               >+{{ settleResult.crystals?.sanCrystal || 0 }}</span
             >
           </div>
           <el-divider />
           <div v-if="settleResult.runeStone" class="text-center">
-            <span class="text-yellow-400 font-bold text-lg"
+            <span
+              class="font-bold text-lg"
+              :style="{
+                color: getRuneStoneRarityColor(settleResult.runeStone.rarity)
+              }"
               >🎉 获得符文石！</span
             >
-            <p class="text-sm text-gray-400 mt-1">
+            <p
+              class="text-sm mt-1"
+              :style="{
+                color: getRuneStoneRarityColor(settleResult.runeStone.rarity)
+              }"
+            >
               {{ rarityName(settleResult.runeStone.rarity) }} 符文石 Lv.{{
                 settleResult.runeStone.level
               }}
@@ -579,6 +607,12 @@ function getElementColor(el) {
 function rarityName(r) {
   return { normal: '普通', rare: '稀有', legendary: '传说' }[r] || r
 }
+function getRuneStoneRarityColor(rarity) {
+  return (
+    { normal: '#9ca3af', rare: '#60a5fa', legendary: '#f59e0b' }[rarity] ||
+    '#ffffff'
+  )
+}
 
 // ── 迷宫信息 ──
 const dungeonInfo = ref({})
@@ -768,24 +802,41 @@ const lastSettleStr = computed(() => {
 
 // 当前产物数量
 const currentOutput = ref(0)
+const floatingNumbers = ref([])
+let floatingIdCounter = 0
+let outputPrevValue = null
 let outputTimer = null
+
+function triggerFloating(increment) {
+  const id = ++floatingIdCounter
+  floatingNumbers.value.push({ id, value: increment })
+  setTimeout(() => {
+    const idx = floatingNumbers.value.findIndex(f => f.id === id)
+    if (idx !== -1) floatingNumbers.value.splice(idx, 1)
+  }, 1200)
+}
 
 function calcOutput() {
   const settleAt =
     dungeonInfo.value?.lastDungeonSettleAt ||
     playerInfo.value?.lastDungeonSettleAt
-  if (!settleAt) {
-    currentOutput.value = 0
-    return
+  let newOutput = 0
+  if (settleAt) {
+    const ms = Date.now() - new Date(settleAt).getTime()
+    const secondsPassed = Math.max(Math.floor(ms / 1000), 0)
+    // 产物数量 = 秒数 × 总产出倍率 / 6000（基础每分钟1个），上限99999
+    const rate = totalProductionRateValue.value
+    newOutput = Math.min(Math.floor((secondsPassed * rate) / 6000), 99999)
   }
-  const ms = Date.now() - new Date(settleAt).getTime()
-  const secondsPassed = Math.max(Math.floor(ms / 1000), 0)
-  // 产物数量 = 秒数 × 总产出倍率 / 6000（基础每分钟1个），上限99999
-  const rate = totalProductionRateValue.value
-  currentOutput.value = Math.min(
-    Math.floor((secondsPassed * rate) / 6000),
-    99999
-  )
+  // 检测小幅增加才触发浮动动画（忽略初始化或结算后的大跳变）
+  if (outputPrevValue !== null && newOutput > outputPrevValue) {
+    const increment = newOutput - outputPrevValue
+    if (increment > 0 && increment <= 10) {
+      triggerFloating(increment)
+    }
+  }
+  outputPrevValue = newOutput
+  currentOutput.value = newOutput
 }
 
 // 距上次收取经过的时间（实时更新）
@@ -1043,11 +1094,11 @@ function handleGoToMine() {
 
 // ── 冒险家探索动画 ──
 const exploringAdventurers = ref([])
+const explorerBoxRef = ref(null)
+let resizeDebounceTimer = null
 
-function buildExplorerStyle(idx, total) {
-  // 横向穿越速度 10~20秒
-  const duration = 10 + Math.random() * 10
-  // 随机起始位置，错开步调
+function buildExplorerStyle(idx, total, duration) {
+  // 随机分布：用负delay让每个冒险家从动画的不同位置开始，避免挤在一侧
   const delay = -(Math.random() * duration)
   // 框高200px，头像36px，可用范围 0~164px
   const maxTop = 200 - 36
@@ -1063,27 +1114,11 @@ function buildExplorerStyle(idx, total) {
   }
 }
 
-async function fetchExplorers() {
-  try {
-    const res = await getMyAdventurersApi()
-    const all = res.data.data || []
-    // 取最多10个冒险家用于动画展示
-    const MAX_EXPLORERS = 10
-    const selected =
-      all.length <= MAX_EXPLORERS
-        ? all
-        : all.sort(() => Math.random() - 0.5).slice(0, MAX_EXPLORERS)
-    exploringAdventurers.value = selected.map((adv, idx) => ({
-      ...adv,
-      direction: idx % 2 === 0 ? 'walk-right' : 'walk-left',
-      animStyle: buildExplorerStyle(idx, selected.length),
-      showBubble: false,
-      bubbleEmoji: ''
-    }))
-    startBubbleTimer()
-  } catch {
-    // 获取失败不影响主流程
-  }
+// ── 搬运水晶泡泡 ──
+const CARRY_EMOJIS = ['⚔️', '🛡️', '💨', '❤️']
+
+function getCarryEmoji() {
+  return CARRY_EMOJIS[Math.floor(Math.random() * CARRY_EMOJIS.length)]
 }
 
 // ── 对话气泡 ──
@@ -1136,6 +1171,33 @@ const MOOD_EMOJIS = [
   '🗺️'
 ]
 
+function showAdvBubble(adv) {
+  if (!adv || adv.showBubble) return
+  adv.bubbleEmoji = MOOD_EMOJIS[Math.floor(Math.random() * MOOD_EMOJIS.length)]
+  adv.showBubble = true
+  setTimeout(
+    () => {
+      adv.showBubble = false
+    },
+    2000 + Math.random() * 1000
+  )
+}
+
+// 强制刷新气泡内容（即使正在显示也更新emoji）
+function refreshAdvBubble(adv) {
+  if (!adv) return
+  adv.bubbleEmoji = MOOD_EMOJIS[Math.floor(Math.random() * MOOD_EMOJIS.length)]
+  if (!adv.showBubble) {
+    adv.showBubble = true
+    setTimeout(
+      () => {
+        adv.showBubble = false
+      },
+      2000 + Math.random() * 1000
+    )
+  }
+}
+
 let bubbleTimer = null
 
 function startBubbleTimer() {
@@ -1144,23 +1206,98 @@ function startBubbleTimer() {
     () => {
       const advs = exploringAdventurers.value
       if (advs.length === 0) return
-      // 随机选一个冒险家显示气泡
       const idx = Math.floor(Math.random() * advs.length)
-      const adv = advs[idx]
-      if (adv.showBubble) return // 已在显示
-      adv.bubbleEmoji =
-        MOOD_EMOJIS[Math.floor(Math.random() * MOOD_EMOJIS.length)]
-      adv.showBubble = true
-      // 显示 2~3 秒后消失
-      setTimeout(
-        () => {
-          adv.showBubble = false
-        },
-        2000 + Math.random() * 1000
-      )
+      showAdvBubble(advs[idx])
     },
     3000 + Math.random() * 2000
-  ) // 每 3~5 秒出现一次
+  )
+}
+
+async function fetchExplorers() {
+  try {
+    const res = await getMyAdventurersApi()
+    const all = res.data.data || []
+    const MAX_EXPLORERS = 10
+    const selected =
+      all.length <= MAX_EXPLORERS
+        ? all
+        : all.sort(() => Math.random() - 0.5).slice(0, MAX_EXPLORERS)
+    exploringAdventurers.value = selected.map((adv, idx) => {
+      const duration = 10 + Math.random() * 10
+      return {
+        ...adv,
+        direction: 'walk-right',
+        animStyle: buildExplorerStyle(idx, selected.length, duration),
+        animDuration: duration,
+        showBubble: false,
+        bubbleEmoji: '',
+        carryEmoji: ''
+      }
+    })
+    // 初始全部显示对话气泡
+    exploringAdventurers.value.forEach(adv => {
+      adv.bubbleEmoji =
+        MOOD_EMOJIS[Math.floor(Math.random() * MOOD_EMOJIS.length)]
+
+      // 随机决定是否显示
+      adv.showBubble = Math.random() < 0.5
+
+      // 如果显示才设置自动消失
+      if (adv.showBubble) {
+        setTimeout(
+          () => {
+            adv.showBubble = false
+          },
+          2000 + Math.random() * 1000
+        )
+      }
+    })
+    startBubbleTimer()
+  } catch {
+    // 获取失败不影响主流程
+  }
+}
+
+function handleAnimationEnd(event, adv) {
+  // 只处理当前元素自身的动画结束事件，忽略子元素冒泡（如气泡动画）
+  if (event.target !== event.currentTarget) return
+  if (adv.direction === 'walk-right') {
+    // 到达右边，等1秒后：添加搬运泡泡、更新对话气泡、向左走
+    setTimeout(() => {
+      if (!exploringAdventurers.value.find(a => a._id === adv._id)) return
+      adv.carryEmoji = getCarryEmoji()
+      refreshAdvBubble(adv)
+      adv.animStyle.animationDelay = '0s'
+      adv.direction = 'walk-left'
+    }, 1000)
+  } else if (adv.direction === 'walk-left') {
+    // 到达左边，等1秒后：移除搬运泡泡、更新对话气泡、向右走
+    setTimeout(() => {
+      if (!exploringAdventurers.value.find(a => a._id === adv._id)) return
+      adv.carryEmoji = ''
+      refreshAdvBubble(adv)
+      adv.animStyle.animationDelay = '0s'
+      adv.direction = 'walk-right'
+    }, 1000)
+  }
+}
+
+// ── 窗口大小变化防抖处理 ──
+function onWindowResize() {
+  clearTimeout(resizeDebounceTimer)
+  resizeDebounceTimer = setTimeout(() => {
+    // 水平移动由CSS left百分比自动适配，仅需重新计算垂直位置
+    const box = explorerBoxRef.value
+    if (!box) return
+    const boxHeight = box.clientHeight
+    const avatarSize = 36
+    const maxTop = boxHeight - avatarSize
+    const total = exploringAdventurers.value.length
+    exploringAdventurers.value.forEach((adv, idx) => {
+      const topPx = total <= 1 ? maxTop / 2 : (idx / (total - 1)) * maxTop
+      adv.animStyle.top = `${Math.round(topPx)}px`
+    })
+  }, 200)
 }
 
 // ── 初始化 ──
@@ -1174,6 +1311,7 @@ onMounted(() => {
     calcOutput()
     calcElapsedTime()
   }, 1000)
+  window.addEventListener('resize', onWindowResize)
 })
 
 onUnmounted(() => {
@@ -1189,6 +1327,8 @@ onUnmounted(() => {
     clearInterval(bubbleTimer)
     bubbleTimer = null
   }
+  window.removeEventListener('resize', onWindowResize)
+  clearTimeout(resizeDebounceTimer)
 })
 </script>
 
@@ -1281,15 +1421,14 @@ onUnmounted(() => {
   height: 100%;
   overflow: hidden;
   border-radius: inherit;
-  container-type: inline-size;
 }
 
 .dungeon-explorer {
   position: absolute;
-  left: 0;
   width: 36px;
   animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
 }
 
 .dungeon-explorer-body {
@@ -1327,7 +1466,7 @@ onUnmounted(() => {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 1);
   border-radius: 10px;
   padding: 2px 6px;
   font-size: 16px;
@@ -1359,7 +1498,7 @@ onUnmounted(() => {
   height: 0;
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
-  border-right: 6px solid rgba(255, 255, 255, 0.95);
+  border-right: 6px solid rgba(255, 255, 255, 1);
 }
 
 /* 左侧气泡箭头（指向右侧头像） */
@@ -1373,7 +1512,7 @@ onUnmounted(() => {
   height: 0;
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
-  border-left: 6px solid rgba(255, 255, 255, 0.95);
+  border-left: 6px solid rgba(255, 255, 255, 1);
 }
 
 /* 气泡进入/离开动画 */
@@ -1395,44 +1534,119 @@ onUnmounted(() => {
   }
 }
 
-/* 走路上下弹跳 */
-.dungeon-explorer-bounce {
-  animation: explorerBounce var(--bounce-speed, 0.35s) ease-in-out infinite;
+/* 搬运水晶泡泡 */
+.carry-bubble,
+.carry-bubble-content {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.carry-bubble {
+  /* 泡泡主体 */
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.35) 40%,
+    rgba(255, 255, 255, 0.15) 70%
+  );
+
+  border: 1px solid rgba(255, 255, 255, 0.4);
+
+  /* 玻璃模糊 */
+  backdrop-filter: blur(0.5px);
+
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.7),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15),
+    0 3px 10px rgba(0, 0, 0, 0.25);
+
+  z-index: 5;
+}
+.carry-bubble-content {
+  z-index: 4;
 }
 
-/* 从左到右穿越框体 */
-@keyframes explorerMoveRight {
+/* 反光 */
+.carry-bubble::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  width: 8px;
+  height: 5px;
+  border-radius: 50%;
+
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.6),
+    rgba(255, 255, 255, 0.2) 70%,
+    transparent
+  );
+
+  transform: rotate(-20deg);
+}
+
+/* 产物数量浮动 +x 动画 */
+.output-float-num {
+  position: absolute;
+  right: 0;
+  top: -2px;
+  color: #4ade80;
+  font-size: 0.75em;
+  font-weight: bold;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: outputFloatUp 1.2s ease-out forwards;
+}
+@keyframes outputFloatUp {
   0% {
-    transform: translateX(-40px);
-    opacity: 0;
-  }
-  3% {
     opacity: 1;
+    transform: translateY(0);
   }
-  97% {
+  20% {
     opacity: 1;
   }
   100% {
-    transform: translateX(calc(100cqw + 4px));
     opacity: 0;
+    transform: translateY(-28px);
+  }
+}
+
+/* 走路上下弹跳 */
+.dungeon-explorer-bounce {
+  position: relative;
+  animation: explorerBounce var(--bounce-speed, 0.35s) ease-in-out infinite;
+}
+
+/* 从左到右穿越框体（使用 left 百分比兼容主流浏览器） */
+@keyframes explorerMoveRight {
+  0% {
+    left: -40px;
+  }
+  100% {
+    left: calc(100% + 4px);
   }
 }
 
 /* 从右到左穿越框体 */
 @keyframes explorerMoveLeft {
   0% {
-    transform: translateX(calc(100cqw + 4px));
-    opacity: 0;
-  }
-  3% {
-    opacity: 1;
-  }
-  97% {
-    opacity: 1;
+    left: calc(100% + 4px);
   }
   100% {
-    transform: translateX(-40px);
-    opacity: 0;
+    left: -40px;
   }
 }
 

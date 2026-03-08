@@ -78,18 +78,14 @@
             >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
           >
         </p>
-        <div class="flex gap-2">
+        <div class="flex">
           <el-button
             size="small"
             :loading="quickSellLoading"
             :disabled="quickSellLoading"
             @click="handleQuickSell(10)"
           >
-            出售 10 ({{
-              (
-                10 * (gameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
-            }}🪙)
+            出售 10
           </el-button>
           <el-button
             size="small"
@@ -97,11 +93,7 @@
             :disabled="quickSellLoading"
             @click="handleQuickSell(100)"
           >
-            出售 100 ({{
-              (
-                100 * (gameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
-            }}🪙)
+            出售 100
           </el-button>
           <el-button
             size="small"
@@ -109,11 +101,7 @@
             :disabled="quickSellLoading"
             @click="handleQuickSell(1000)"
           >
-            出售 1000 ({{
-              (
-                1000 * (gameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
-            }}🪙)
+            出售 1000
           </el-button>
         </div>
         <div class="flex items-center gap-2">

@@ -431,18 +431,14 @@
             >🪙 {{ backpackGameSettings?.officialCrystalBuyPrice ?? 100 }}</span
           >
         </p>
-        <div class="flex gap-2">
+        <div class="flex">
           <el-button
             size="small"
             :loading="backpackSellLoading"
             :disabled="backpackSellLoading"
             @click="handleBackpackSell(10)"
           >
-            出售 10 ({{
-              (
-                10 * (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
-            }}🪙)
+            出售 10
           </el-button>
           <el-button
             size="small"
@@ -450,11 +446,7 @@
             :disabled="backpackSellLoading"
             @click="handleBackpackSell(100)"
           >
-            出售 100 ({{
-              (
-                100 * (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
-            }}🪙)
+            出售 100
           </el-button>
           <el-button
             size="small"
@@ -462,11 +454,7 @@
             :disabled="backpackSellLoading"
             @click="handleBackpackSell(1000)"
           >
-            出售 1000 ({{
-              (
-                1000 * (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
-            }}🪙)
+            出售 1000
           </el-button>
         </div>
         <div class="flex items-center gap-2">
