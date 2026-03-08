@@ -1464,13 +1464,9 @@ export async function settleCurrentSeason() {
     const season = await GameArenaSeason.findOne({ status: 'active' })
     if (!season) return { message: '没有活跃赛季' }
 
-    // 检查是否到结算时间
+    // 检查赛季是否已结束，cron 本身保证在凌晨3点触发
     const now = new Date()
-    // 结算日凌晨3点
-    const settleTime = new Date(season.endTime)
-    settleTime.setHours(3, 0, 0, 0)
-
-    if (now < settleTime) return { message: '未到结算时间' }
+    if (now < new Date(season.endTime)) return { message: '赛季尚未结束' }
 
     // 标记为结算中
     season.status = 'settling'
