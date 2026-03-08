@@ -30,7 +30,6 @@ const gameAdventurerSchema = new mongoose.Schema(
     defaultAvatarId: {
       type: Number,
       min: 1,
-      max: 20,
       default: 1
     },
 
