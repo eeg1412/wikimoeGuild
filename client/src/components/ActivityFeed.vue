@@ -35,12 +35,19 @@
             typeIcon(item.type)
           }}</span>
           <div class="min-w-0 flex-1">
-            <p
-              class="text-sm font-semibold break-all"
-              :style="item.extra?.rarity ? { color: runeStoneRarityColor(item.extra.rarity) } : {}"
-              :class="item.extra?.rarity ? '' : 'text-gray-700 dark:text-gray-200'"
-            >
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 break-all">
               {{ item.title }}
+            </p>
+            <!-- 符文石稀有度展示（只有对应颜色的符文石名，不染整条标题） -->
+            <p v-if="item.extra?.rarity" class="text-xs mt-0.5 text-gray-500 dark:text-gray-400">
+              获得了
+              <span
+                class="font-semibold"
+                :class="runeStoneRarityTextClass(item.extra.rarity)"
+              >{{ runeStoneRarityName(item.extra.rarity) }}符文石</span>
+              <span v-if="item.extra?.mineLevel">
+                Lv.{{ item.extra.mineLevel }}
+              </span>
             </p>
             <!-- 击杀最高冒险家头像展示 -->
             <div
@@ -141,10 +148,18 @@ function typeIcon(type) {
   return icons[type] || '📌'
 }
 
-function runeStoneRarityColor(rarity) {
+function runeStoneRarityTextClass(rarity) {
   return (
-    { normal: '#9ca3af', rare: '#60a5fa', legendary: '#f59e0b' }[rarity] || null
+    {
+      normal: 'text-gray-500 dark:text-gray-400',
+      rare: 'text-blue-500',
+      legendary: 'text-yellow-500'
+    }[rarity] || 'text-gray-500 dark:text-gray-400'
   )
+}
+
+function runeStoneRarityName(rarity) {
+  return { normal: '普通', rare: '稀有', legendary: '传说' }[rarity] || rarity
 }
 
 function formatTime(t) {

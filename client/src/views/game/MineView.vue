@@ -387,37 +387,6 @@
           :rune-stones="[digResult.runeStone]"
         />
 
-        <!-- 全场最佳 -->
-        <div
-          v-if="digResult.topKillers && digResult.topKillers.length > 0"
-          class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-sm text-left"
-        >
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">全场最佳：</p>
-          <div class="flex flex-wrap gap-2">
-            <div
-              v-for="killer in digResult.topKillers"
-              :key="killer.adventurerId"
-              class="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700/60 rounded-lg px-2 py-1"
-            >
-              <GameAdventurerAvatar
-                :adventurer="{
-                  _id: killer.adventurerId,
-                  defaultAvatarId: killer.defaultAvatarId,
-                  hasCustomAvatar: killer.hasCustomAvatar,
-                  elements: killer.elements
-                }"
-                class="w-6 h-6 rounded-full object-cover shrink-0 border border-gray-300 dark:border-gray-500"
-              />
-              <span class="text-xs text-gray-700 dark:text-gray-200 font-medium truncate max-w-20">
-                {{ killer.name }}
-              </span>
-              <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                (击杀 {{ killer.kills }})
-              </span>
-            </div>
-          </div>
-        </div>
-
         <!-- 矿场废弃 -->
         <p v-if="digResult.mineDepleted" class="text-orange-400 text-sm">
           ⚠️ 矿场已被完全探索，即将废弃
