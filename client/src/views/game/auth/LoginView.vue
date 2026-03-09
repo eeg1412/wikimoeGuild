@@ -181,7 +181,12 @@ function handleGuestResultConfirm() {
     const { accessToken, refreshToken, playerInfo } = pendingGuestLogin
     setLogin(accessToken, refreshToken, playerInfo)
     pendingGuestLogin = null
-    ElMessage.success({ message: '欢迎来到游戏！', showClose: true })() {
+    ElMessage.success({ message: '欢迎来到游戏！', showClose: true })
+    router.replace({ name: 'GameHome' })
+  }
+}
+
+async function loadGuestConfig() {
   try {
     const res = await getGuestConfigApi()
     guestModeEnabled.value = res.data.data?.guestModeEnabled ?? false

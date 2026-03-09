@@ -804,7 +804,8 @@ async function handleUpgradeRuneStone() {
   runeStoneUpgradeLoading.value = true
   try {
     const res = await upgradeRuneStoneApi(adventurer.value.runeStone._id)
-    ElMessage.success({ message: '符文石升级成功！', showClose: true })    // 更新符文石数据
+    ElMessage.success({ message: '符文石升级成功！', showClose: true })
+    // 更新符文石数据
     adventurer.value.runeStone = res.data.data
     emit('updated', adventurer.value)
   } catch {

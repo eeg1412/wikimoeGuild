@@ -798,6 +798,10 @@ function calcProportionalAlloc(totalLevels, ratio) {
 function handleAutoDistributeDown(totalLevels) {
   if (ratioSum.value !== 100) {
     ElMessage.warning({ message: '请先设置正确的分配比例（合计 100%）', showClose: true })
+    return
+  }
+
+  const ratio = ratioForm.value
   const allocDown = calcProportionalAlloc(totalLevels, ratio)
 
   // 检查每个属性是否可以降级（确保不低于1）

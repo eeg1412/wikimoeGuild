@@ -30,6 +30,7 @@ function processQueue(error, accessToken = null) {
 /** 跳转到登录页并清除 token */
 function redirectToLogin(message = '登录已过期，请重新登录') {
   ElMessage.error({ message, showClose: true })
+  localStorage.removeItem('adminAccessToken')
   localStorage.removeItem('adminRefreshToken')
   router.push('/admin/login')
 }

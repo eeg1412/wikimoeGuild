@@ -27,6 +27,7 @@ function processQueue(error, accessToken = null) {
 
 function redirectToGameLogin(message = '登录已过期，请重新登录') {
   ElMessage.error({ message, showClose: true })
+  localStorage.removeItem('playerAccessToken')
   localStorage.removeItem('playerRefreshToken')
   window.location.href = '/game/login'
 }

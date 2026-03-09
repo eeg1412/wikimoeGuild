@@ -314,6 +314,7 @@ async function handleUnequip() {
   try {
     const res = await unequipRuneStoneApi(props.adventurer._id)
     ElMessage.success({ message: '卸下成功！', showClose: true })
+    emit('updated', res.data.data)
   } catch {
     // handled by interceptor
   } finally {
@@ -359,6 +360,7 @@ async function handleEquip(runeStoneId) {
   try {
     const res = await equipRuneStoneApi(props.adventurer._id, { runeStoneId })
     ElMessage.success({ message: '装备成功！', showClose: true })
+    equipDialogVisible.value = false
     emit('updated', res.data.data)
   } catch {
     // handled by interceptor
