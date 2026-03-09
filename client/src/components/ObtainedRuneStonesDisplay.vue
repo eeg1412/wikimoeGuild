@@ -1,9 +1,6 @@
 <template>
   <div v-if="runeStones && runeStones.length > 0" class="space-y-2">
-    <p
-      class="font-bold text-lg text-center"
-      :class="headerTextClass"
-    >
+    <p class="font-bold text-lg text-center" :class="headerTextClass">
       ✨ 获得符文石！
     </p>
     <div
@@ -27,7 +24,7 @@
             >
               {{ rarityName(rs.rarity) }}符文石
             </p>
-            <p class="text-sm text-gray-400">Lv.{{ rs.level }}</p>
+            <p class="text-sm text-gray-400 text-left">Lv.{{ rs.level }}</p>
           </div>
         </div>
         <span
@@ -38,7 +35,7 @@
         </span>
       </div>
       <!-- 可收缩的详细信息 -->
-      <div v-if="expandedIds.has(rs._id || idx)" class="mt-2">
+      <div v-if="expandedIds.has(rs._id || idx)" class="mt-2 text-left">
         <RuneStoneInfoCard :rune-stone="rs" />
       </div>
     </div>
