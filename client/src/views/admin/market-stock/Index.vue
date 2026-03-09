@@ -106,7 +106,7 @@ async function loadStock() {
       runeFragment: data.runeFragment ?? 0
     })
   } catch {
-    ElMessage.error('加载官方市场库存失败')
+    ElMessage.error({ message: '加载官方市场库存失败', showClose: true })
   }
 }
 

@@ -108,8 +108,7 @@ async function handleBuyRuneStone(listing) {
   buyRsLoading.value = listing._id
   try {
     await buyRuneStoneListingApi(listing._id)
-    ElMessage.success('购买成功！')
-    await fetchListings()
+    ElMessage.success({ message: '购买成功！', showClose: true })
     await fetchPlayerInfo()
   } catch {
   } finally {

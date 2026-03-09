@@ -800,9 +800,10 @@ async function handleBatchDecompose() {
       runeStoneIds: [...selectedIds.value]
     })
     const data = res.data.data
-    ElMessage.success(
-      `批量分解完成！分解 ${data.decomposedCount} 个，获得 ${data.totalFragments} 碎片`
-    )
+    ElMessage.success({
+      message: `批量分解完成！分解 ${data.decomposedCount} 个，获得 ${data.totalFragments} 碎片`,
+      showClose: true
+    })
     selectedIds.value = new Set()
     batchMode.value = false
     runeStonePageNum.value = 1
@@ -920,7 +921,7 @@ async function handleInlineDecompose(rs) {
   decomposeLoadingId.value = rs._id
   try {
     await decomposeRuneStoneApi(rs._id)
-    ElMessage.success(`分解成功！获得 ${fragments} 碎片`)
+    ElMessage.success({ message: `分解成功！获得 ${fragments} 碎片`, showClose: true })
     await fetchRuneStones()
     fetchInventory()
   } catch {
@@ -937,7 +938,7 @@ async function handleInlineUpgrade(rs) {
   upgradeLoadingId.value = rs._id
   try {
     const res = await upgradeRuneStoneApi(rs._id)
-    ElMessage.success('升级成功！')
+    ElMessage.success({ message: '升级成功！', showClose: true })
     // 同步列表中的数据
     const idx = runeStones.value.findIndex(r => r._id === rs._id)
     if (idx >= 0) runeStones.value[idx] = { ...res.data.data }
@@ -1148,7 +1149,7 @@ async function handlePreviewSynthesis() {
           clearInterval(previewTimer)
           synthesisVisible.value = false
           fetchRuneStones()
-          ElMessage.warning('合成预览已超时。素材已经被销毁。')
+          ElMessage.warning({ message: '合成预览已超时。素材已经被销毁。', showClose: true })
         }
       }
       updateCountdown()
@@ -1182,7 +1183,7 @@ async function handleConfirmSynthesis(accept) {
       previewToken: synthesisPreviewToken.value,
       accept
     })
-    ElMessage.success(accept ? '合成成功！' : '放弃成功。')
+    ElMessage.success({ message: accept ? '合成成功！' : '放弃成功。', showClose: true })
     clearInterval(previewTimer)
     synthesisVisible.value = false
     await fetchRuneStones()

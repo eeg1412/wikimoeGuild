@@ -216,7 +216,7 @@ async function handleQuickSell(amount) {
       quantity: amount
     })
     const { goldEarned } = res.data.data
-    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
+    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
     await Promise.all([fetchInventory(), fetchPlayerInfo()])
   } catch {
     // handled by interceptor

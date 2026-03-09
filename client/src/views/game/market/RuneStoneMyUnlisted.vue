@@ -124,7 +124,7 @@ async function loadOfficialPrices() {
 async function handleCreateListing(rs) {
   const price = listPriceMap[rs._id]
   if (!price || price <= 0) {
-    ElMessage.warning('请设置价格')
+    ElMessage.warning({ message: '请设置价格', showClose: true })
     return
   }
 
@@ -171,7 +171,7 @@ async function handleCreateListing(rs) {
       )
       await fetchPlayerInfo()
     } else {
-      ElMessage.success('符文石已上架！')
+      ElMessage.success({ message: '符文石已上架！', showClose: true })
     }
     delete listPriceMap[rs._id]
     await loadUnlistedRuneStones()

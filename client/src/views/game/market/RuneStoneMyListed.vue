@@ -139,8 +139,7 @@ async function handleCollectListing(listing) {
   collectRsLoading.value = listing._id
   try {
     await collectRuneStoneListingApi(listing._id)
-    ElMessage.success('收取成功！')
-    await fetchMyListings()
+    ElMessage.success({ message: '收取成功！', showClose: true })
     await fetchPlayerInfo()
   } catch {
   } finally {
@@ -162,7 +161,7 @@ async function handleCancelListing(listing) {
   cancelRsLoading.value = listing._id
   try {
     await cancelRuneStoneListingApi(listing._id)
-    ElMessage.success('已下架，符文石已退还')
+    ElMessage.success({ message: '已下架，符文石已退还', showClose: true })
     await fetchMyListings()
   } catch {
   } finally {
