@@ -140,6 +140,7 @@ async function handleCollectListing(listing) {
   try {
     await collectRuneStoneListingApi(listing._id)
     ElMessage.success({ message: '收取成功！', showClose: true })
+    await fetchMyListings()
     await fetchPlayerInfo()
   } catch {
   } finally {

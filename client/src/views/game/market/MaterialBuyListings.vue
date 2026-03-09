@@ -201,6 +201,7 @@ async function handleFulfillOrder() {
       quantity: fulfillQty.value
     })
     ElMessage.success({ message: '出售成功！', showClose: true })
+    fulfillDialogVisible.value = false
     await fetchOrders()
     await fetchPlayerInfo()
   } catch {

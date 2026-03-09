@@ -109,6 +109,7 @@ async function handleBuyRuneStone(listing) {
   try {
     await buyRuneStoneListingApi(listing._id)
     ElMessage.success({ message: '购买成功！', showClose: true })
+    await fetchListings()
     await fetchPlayerInfo()
   } catch {
   } finally {
