@@ -7,6 +7,7 @@
       v-for="(rs, idx) in runeStones"
       :key="rs._id || idx"
       class="rpg-card rounded-xl p-4"
+      @click="toggleExpand(rs._id || idx)"
     >
       <!-- 顶部：稀有度 + 等级 -->
       <div class="flex items-center justify-between mb-2">
@@ -27,10 +28,7 @@
             <p class="text-sm text-gray-400 text-left">Lv.{{ rs.level }}</p>
           </div>
         </div>
-        <span
-          class="text-gray-400 cursor-pointer select-none"
-          @click="toggleExpand(rs._id || idx)"
-        >
+        <span class="text-gray-400 cursor-pointer select-none">
           {{ expandedIds.has(rs._id || idx) ? '▲' : '▼' }}
         </span>
       </div>
