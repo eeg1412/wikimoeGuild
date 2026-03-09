@@ -410,7 +410,7 @@ function handleRestore() {
     grid.value = createEmptyGrid()
     formationName.value = ''
   }
-  ElMessage.info('已还原到上次保存状态')
+  ElMessage.info({ message: '已还原到上次保存状态', showClose: true })
 }
 
 // ── 棋盘交互 ──
@@ -465,7 +465,7 @@ function handleCellClick(row, col) {
   } else {
     // 空格子 → 检查冒险家数据是否已加载
     if (adventurersLoading.value) {
-      ElMessage.warning('冒险家数据加载中，请稍候')
+      ElMessage.warning({ message: '冒险家数据加载中，请稍候', showClose: true })
       return
     }
     pickRow.value = row
@@ -579,7 +579,7 @@ async function handleSave() {
       name: actualName,
       grid: gridData
     })
-    ElMessage.success('阵容保存成功！')
+    ElMessage.success({ message: '阵容保存成功！', showClose: true })
     // 写回实际使用的名称，保证输入框与保存结果同步
     formationName.value = actualName
     // 更新本地数据而不是重新加载，避免页面抖动
@@ -625,7 +625,7 @@ async function handleDelete() {
   deleting.value = true
   try {
     await deleteFormationApi(currentSlot.value)
-    ElMessage.success('阵容已删除')
+    ElMessage.success({ message: '阵容已删除', showClose: true })
     grid.value = createEmptyGrid()
     formationName.value = ''
     // 更新本地数据而不是重新加载，避免页面抖动

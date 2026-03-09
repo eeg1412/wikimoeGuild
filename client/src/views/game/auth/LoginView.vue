@@ -148,7 +148,7 @@ async function handleSubmit() {
     })
     const { accessToken, refreshToken, playerInfo } = res.data.data
     setLogin(accessToken, refreshToken, playerInfo)
-    ElMessage.success('登录成功')
+    ElMessage.success({ message: '登录成功', showClose: true })
     router.replace({ name: 'GameHome' })
   } catch {
     // 错误已由 request.js 拦截器处理
@@ -181,7 +181,7 @@ function handleGuestResultConfirm() {
     const { accessToken, refreshToken, playerInfo } = pendingGuestLogin
     setLogin(accessToken, refreshToken, playerInfo)
     pendingGuestLogin = null
-    ElMessage.success('欢迎来到游戏！')
+    ElMessage.success({ message: '欢迎来到游戏！', showClose: true })
     router.replace({ name: 'GameHome' })
   }
 }

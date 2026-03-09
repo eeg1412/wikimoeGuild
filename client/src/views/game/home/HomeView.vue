@@ -279,7 +279,7 @@ function handleGuestResultConfirm() {
     const { accessToken, refreshToken, playerInfo: pInfo } = pendingGuestLogin
     setLogin(accessToken, refreshToken, pInfo)
     pendingGuestLogin = null
-    ElMessage.success('欢迎来到游戏！')
+    ElMessage.success({ message: '欢迎来到游戏！', showClose: true })
     router.replace({ name: 'GameHome' })
   }
 }

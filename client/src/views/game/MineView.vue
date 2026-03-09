@@ -341,7 +341,9 @@
         <template v-else-if="digResult.type === 'reward'">
           <template v-if="!digResult.challengeFailed && digResult.battleResult">
             <div class="text-4xl mb-2">🎉</div>
-            <p class="text-green-500 font-bold text-lg">战斗胜利！</p>
+            <p class="text-green-500 font-bold text-lg">
+              攻破了 Lv.{{ digResult.mineLevel }} 矿场的守卫！
+            </p>
           </template>
           <template v-else-if="digResult.challengeFailed">
             <template v-if="digResult.partialVictory">
@@ -380,17 +382,10 @@
         </div>
 
         <!-- 获得符文石 -->
-        <div
+        <ObtainedRuneStonesDisplay
           v-if="digResult.runeStone"
-          class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-sm"
-        >
-          <p class="text-yellow-500 font-bold">✨ 获得符文石！</p>
-          <p class="text-sm text-gray-400">
-            {{ rarityLabel(digResult.runeStone.rarity) }} · Lv.{{
-              digResult.runeStone.level
-            }}
-          </p>
-        </div>
+          :rune-stones="[digResult.runeStone]"
+        />
 
         <!-- 矿场废弃 -->
         <p v-if="digResult.mineDepleted" class="text-orange-400 text-sm">
@@ -428,6 +423,8 @@ import {
 import { getMyFormationsApi } from '@/api/game/formation.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
+import ObtainedRuneStonesDisplay from '@/components/ObtainedRuneStonesDisplay.vue'
+import GameAdventurerAvatar from '@/components/GameAdventurerAvatar.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
@@ -566,7 +563,7 @@ async function handleDigCell(row, col, cell) {
   if (!cell.revealed || (cell.type === 'reward' && !cell.challengeDefeated)) {
     // 不知道类型的时候也需要准备阵容（可能是奖励区域）
     if (!selectedFormationSlot.value && !cell.revealed) {
-      ElMessage.warning('请先选择战斗阵容（可能遇到敌人）')
+      ElMessage.warning({ message: '请先选择战斗阵容（可能遇到敌人）', showClose: true })
       return
     }
   }
@@ -610,7 +607,7 @@ async function handleDigCell(row, col, cell) {
         currentMine.value = null
         activeTab.value = 'list'
         disconnectSSE()
-        ElMessage.warning('矿场已完全探索，已废弃')
+        ElMessage.warning({ message: '矿场已完全探索，已废弃', showClose: true })
         fetchMineList()
       }
     }
@@ -648,7 +645,7 @@ function connectSSE(mineId) {
             currentMine.value = null
             activeTab.value = 'list'
             disconnectSSE()
-            ElMessage.warning('矿场已被完全探索，已废弃')
+            ElMessage.warning({ message: '矿场已被完全探索，已废弃', showClose: true })
             fetchMineList()
           }
         }

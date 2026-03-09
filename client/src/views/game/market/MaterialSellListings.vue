@@ -200,7 +200,7 @@ async function handleFulfillOrder() {
     await fulfillMaterialSellOrderApi(order._id, {
       quantity: fulfillQty.value
     })
-    ElMessage.success('购买成功！')
+    ElMessage.success({ message: '购买成功！', showClose: true })
     fulfillDialogVisible.value = false
     await fetchOrders()
     await fetchPlayerInfo()

@@ -465,7 +465,7 @@ function startCountdown(exp) {
       countdown.value = 0
       clearInterval(_countdownTimer)
       previewVisible.value = false
-      ElMessage.warning('合成预览已超时，素材已被销毁')
+      ElMessage.warning({ message: '合成预览已超时，素材已被销毁', showClose: true })
       reloadAdventurer()
     }
   }
@@ -535,7 +535,7 @@ async function handleConfirm(accept) {
   confirmLoading.value = true
   try {
     await confirmSynthesisApi({ previewToken: previewToken.value, accept })
-    ElMessage.success(accept ? '合成成功！' : '已放弃合成')
+    ElMessage.success({ message: accept ? '合成成功！' : '已放弃合成', showClose: true })
     clearInterval(_countdownTimer)
     previewVisible.value = false
     await reloadAdventurer()

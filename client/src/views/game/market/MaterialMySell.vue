@@ -271,7 +271,7 @@ async function fetchOrders() {
 
 async function handleCreateSellOrder() {
   if (!sellForm.unitPrice || sellForm.unitPrice <= 0) {
-    ElMessage.warning('请设置单价')
+    ElMessage.warning({ message: '请设置单价', showClose: true })
     return
   }
   try {
@@ -291,7 +291,7 @@ async function handleCreateSellOrder() {
       quantity: sellForm.quantity,
       unitPrice: sellForm.unitPrice
     })
-    ElMessage.success('出售订单发布成功！')
+    ElMessage.success({ message: '出售订单发布成功！', showClose: true })
     await fetchOrders()
     await fetchPlayerInfo()
     await fetchInventory()
@@ -305,7 +305,7 @@ async function handleCollect(order) {
   collectLoading.value = order._id
   try {
     await collectMaterialOrderApi(order._id)
-    ElMessage.success('收取成功！')
+    ElMessage.success({ message: '收取成功！', showClose: true })
     await fetchOrders()
     await fetchPlayerInfo()
   } catch {
@@ -332,7 +332,7 @@ async function handleCancel(order) {
   cancelLoading.value = order._id
   try {
     await cancelMaterialOrderApi(order._id)
-    ElMessage.success('已下架，剩余素材已退还')
+    ElMessage.success({ message: '已下架，剩余素材已退还', showClose: true })
     await fetchOrders()
     await fetchPlayerInfo()
   } catch {

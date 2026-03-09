@@ -265,6 +265,64 @@ function recoverMiningUses(playerInfo) {
 }
 
 /**
+ * 找出击杀数最高的冒险家（矿场战斗用）
+ */
+function findTopKillers(battleResult, playerGrid) {
+  const killCount = new Map()
+  const nameMap = new Map()
+  const avatarMap = new Map()
+
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const adv = playerGrid[r]?.[c]
+      if (adv) {
+        const id = adv._id?.toString() || adv._id
+        nameMap.set(id, adv.name)
+        avatarMap.set(id, {
+          defaultAvatarId: adv.defaultAvatarId,
+          hasCustomAvatar: adv.hasCustomAvatar,
+          elements: adv.elements
+        })
+      }
+    }
+  }
+
+  if (battleResult.log) {
+    for (const entry of battleResult.log) {
+      if (entry.type === 'attack' && entry.defenderRemainSan === 0) {
+        const attackerId = entry.attacker
+        if (nameMap.has(attackerId)) {
+          killCount.set(attackerId, (killCount.get(attackerId) || 0) + 1)
+        }
+      }
+      if (entry.type === 'runeStoneSkill' && entry.effects) {
+        for (const effect of entry.effects) {
+          if (effect.targetRemainSan === 0 && nameMap.has(entry.caster)) {
+            killCount.set(entry.caster, (killCount.get(entry.caster) || 0) + 1)
+          }
+        }
+      }
+    }
+  }
+
+  const sorted = [...killCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+
+  if (sorted.length === 0) return []
+  const maxKills = sorted[0][1]
+
+  return sorted
+    .filter(([, kills]) => kills === maxKills)
+    .map(([id, kills]) => ({
+      adventurerId: id,
+      name: nameMap.get(id) || '未知',
+      kills,
+      ...avatarMap.get(id)
+    }))
+}
+
+/**
  * 挖矿（探索格子）
  */
 export async function digCell(accountId, mineId, row, col, formationSlot) {
@@ -338,9 +396,11 @@ export async function digCell(accountId, mineId, row, col, formationSlot) {
       row,
       col,
       type: cell.type,
+      mineLevel: mine.level,
       crystals: null,
       battleResult: null,
       runeStone: null,
+      topKillers: null,
       mineDepleted: false
     }
 
@@ -484,15 +544,19 @@ export async function digCell(accountId, mineId, row, col, formationSlot) {
           mine.level
         )
 
-        // 记录动态：矿场获得符文石
+        // 找出全场最佳
+        const topKillers = findTopKillers(battleResult, playerGrid)
+        result.topKillers = topKillers
+
+        // 记录动态：矿场击败守卫获得符文石
         const rarityLabels = { normal: '普通', rare: '稀有', legendary: '传说' }
         recordActivity({
           type: 'rune_stone_found',
           account: accountId,
           guildName: playerInfo.guildName,
-          title: `「${playerInfo.guildName}」在矿场获得了${rarityLabels[rarity]}符文石`,
-          content: `在 Lv.${mine.level} 矿场探索中获得了一颗${rarityLabels[rarity]}符文石！`,
-          extra: { rarity, mineLevel: mine.level }
+          title: `⛏️ 「${playerInfo.guildName}」攻破了 Lv.${mine.level} 矿场的守卫！`,
+          content: `在 Lv.${mine.level} 矿场击败守卫，获得了一颗${rarityLabels[rarity]}符文石！`,
+          extra: { rarity, mineLevel: mine.level, topKillers }
         })
 
         // 检查矿场是否废弃

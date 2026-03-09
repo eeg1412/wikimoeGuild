@@ -578,14 +578,14 @@ function performRuneStoneSkill(unit, allUnits, skillData, log, triggerTiming) {
       }
 
       case 'debuff': {
-        // 减益类符文石（敌方）- 每次技能独立重新计算存活敌方前排
+        // 减益类符文石（敌方）- 每次技能独立重新计算存活敌方，作用于整个棋盘
         const currentDebuffEnemyUnits = allUnits.filter(
           u => u.alive && u.side !== unit.side
         )
         const target =
           selectTarget(
             unit,
-            getFrontRow(currentDebuffEnemyUnits),
+            currentDebuffEnemyUnits,
             skill.preference,
             skill.order
           ) ||

@@ -1265,7 +1265,7 @@ function handleArenaDetailRemove() {
   const cell =
     arenaGrid.value[arenaAdvDetailRow.value]?.[arenaAdvDetailCol.value]
   if (cell && isAdventurerLocked(cell._id)) {
-    ElMessage.warning('已锁定的冒险家不能移除')
+    ElMessage.warning({ message: '已锁定的冒险家不能移除', showClose: true })
     return
   }
   arenaGrid.value[arenaAdvDetailRow.value][arenaAdvDetailCol.value] = null
@@ -1285,7 +1285,7 @@ function placeArenaAdventurer(adv) {
 function removeFromArenaCell() {
   const cell = arenaGrid.value[arenaPickRow.value][arenaPickCol.value]
   if (cell && isAdventurerLocked(cell._id)) {
-    ElMessage.warning('已锁定的冒险家不能移除')
+    ElMessage.warning({ message: '已锁定的冒险家不能移除', showClose: true })
     return
   }
   arenaGrid.value[arenaPickRow.value][arenaPickCol.value] = null
@@ -1296,7 +1296,7 @@ function handleClearArenaCell(row, col) {
   const cell = arenaGrid.value[row][col]
   if (!cell) return
   if (isAdventurerLocked(cell._id)) {
-    ElMessage.warning('已锁定的冒险家不能移除')
+    ElMessage.warning({ message: '已锁定的冒险家不能移除', showClose: true })
     return
   }
   arenaGrid.value[row][col] = null
@@ -1351,7 +1351,7 @@ async function handleSaveArenaFormation() {
       !currentIds.includes(lockedId) &&
       !currentIds.some(id => id.toString() === lockedId.toString())
     ) {
-      ElMessage.error('已锁定的冒险家不能移除')
+      ElMessage.error({ message: '已锁定的冒险家不能移除', showClose: true })
       return
     }
   }
@@ -1363,7 +1363,7 @@ async function handleSaveArenaFormation() {
   arenaFormationSaving.value = true
   try {
     await updateArenaFormationApi({ grid: gridData })
-    ElMessage.success('竞技场阵容保存成功！')
+    ElMessage.success({ message: '竞技场阵容保存成功！', showClose: true })
     // 重新加载阵容以更新锁定列表
     await fetchArenaFormation()
     // 刷新竞技场信息
@@ -1417,7 +1417,7 @@ async function handleSlotChange(slot) {
 
 async function handleRegister() {
   if (!registerSlot.value) {
-    ElMessage.warning('请选择阵容')
+    ElMessage.warning({ message: '请选择阵容', showClose: true })
     return
   }
 
@@ -1449,7 +1449,7 @@ async function handleRegister() {
   registerLoading.value = true
   try {
     await registerArenaApi({ formationSlot: registerSlot.value })
-    ElMessage.success('报名成功！')
+    ElMessage.success({ message: '报名成功！', showClose: true })
     await fetchArenaInfo()
     // 自动加载匹配
     fetchMatchList()

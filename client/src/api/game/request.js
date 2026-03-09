@@ -26,7 +26,7 @@ function processQueue(error, accessToken = null) {
 }
 
 function redirectToGameLogin(message = '登录已过期，请重新登录') {
-  ElMessage.error(message)
+  ElMessage.error({ message, showClose: true })
   localStorage.removeItem('playerAccessToken')
   localStorage.removeItem('playerRefreshToken')
   window.location.href = '/game/login'
@@ -100,7 +100,7 @@ gameRequest.interceptors.response.use(
         if (refreshStatus === 401 || refreshStatus === 403) {
           redirectToGameLogin('登录已过期，请重新登录')
         } else {
-          ElMessage.error('刷新登录状态失败，请稍后重试')
+          ElMessage.error({ message: '刷新登录状态失败，请稍后重试', showClose: true })
         }
         return Promise.reject(refreshError)
       } finally {
@@ -109,13 +109,13 @@ gameRequest.interceptors.response.use(
     }
 
     if (status === 403) {
-      ElMessage.error(message || '您的账号已被封禁，禁止访问')
+      ElMessage.error({ message: message || '您的账号已被封禁，禁止访问', showClose: true })
     } else if (status === 429) {
-      ElMessage.error(message || '操作过于频繁，请稍后再试')
+      ElMessage.error({ message: message || '操作过于频繁，请稍后再试', showClose: true })
     } else if (message) {
-      ElMessage.error(message)
+      ElMessage.error({ message, showClose: true })
     } else if (status) {
-      ElMessage.error('请求失败，请稍后重试')
+      ElMessage.error({ message: '请求失败，请稍后重试', showClose: true })
     }
 
     // 标记错误已由拦截器处理，避免调用方重复弹出

@@ -136,7 +136,7 @@ async function loadEmailSettings() {
       testReceiver.value = data.emailReceiver
     }
   } catch {
-    ElMessage.error('加载邮箱设置失败')
+    ElMessage.error({ message: '加载邮箱设置失败', showClose: true })
   }
 }
 
@@ -156,9 +156,9 @@ async function handleSubmit() {
       emailPassword: form.emailPassword,
       emailReceiver: form.emailReceiver
     })
-    ElMessage.success('邮箱设置已保存')
+    ElMessage.success({ message: '邮箱设置已保存', showClose: true })
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || '保存失败')
+    ElMessage.error({ message: e.response?.data?.message || '保存失败', showClose: true })
   } finally {
     submitting.value = false
   }
@@ -173,16 +173,16 @@ function openTestDialog() {
 
 async function handleTestEmail() {
   if (!testReceiver.value) {
-    ElMessage.warning('请输入收件邮箱')
+    ElMessage.warning({ message: '请输入收件邮箱', showClose: true })
     return
   }
   testing.value = true
   try {
     await testEmailConnectionApi({ to: testReceiver.value })
-    ElMessage.success('测试邮件发送成功，请查收邮件')
+    ElMessage.success({ message: '测试邮件发送成功，请查收邮件', showClose: true })
     testDialogVisible.value = false
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || '邮件发送失败，请检查邮件配置')
+    ElMessage.error({ message: e.response?.data?.message || '邮件发送失败，请检查邮件配置', showClose: true })
   } finally {
     testing.value = false
   }

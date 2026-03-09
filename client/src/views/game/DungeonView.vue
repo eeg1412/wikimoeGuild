@@ -290,25 +290,10 @@
             >
           </div>
           <el-divider />
-          <div v-if="settleResult.runeStone" class="text-center">
-            <span
-              class="font-bold text-lg"
-              :style="{
-                color: getRuneStoneRarityColor(settleResult.runeStone.rarity)
-              }"
-              >🎉 获得符文石！</span
-            >
-            <p
-              class="text-sm mt-1"
-              :style="{
-                color: getRuneStoneRarityColor(settleResult.runeStone.rarity)
-              }"
-            >
-              {{ rarityName(settleResult.runeStone.rarity) }} 符文石 Lv.{{
-                settleResult.runeStone.level
-              }}
-            </p>
-          </div>
+          <ObtainedRuneStonesDisplay
+            v-if="settleResult.runeStone"
+            :rune-stones="[settleResult.runeStone]"
+          />
         </div>
       </el-dialog>
 
@@ -473,12 +458,11 @@
           </p>
           <div v-if="battleResult.upgraded" class="text-sm text-green-400">
             <p>迷宫等级提升！</p>
-            <p
+            <ObtainedRuneStonesDisplay
               v-if="battleResult.droppedRuneStone"
-              class="text-yellow-400 mt-1"
-            >
-              🎁 获得传说符文石！
-            </p>
+              :rune-stones="[battleResult.droppedRuneStone]"
+              class="mt-2"
+            />
           </div>
           <div
             v-else-if="battleResultDisplay === 'win'"
@@ -566,6 +550,7 @@ import {
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
+import ObtainedRuneStonesDisplay from '@/components/ObtainedRuneStonesDisplay.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import {
   getCrystalProductionRateCap,
@@ -637,7 +622,7 @@ async function handleSelectLevel(level) {
   selectLevelLoading.value = true
   try {
     await selectDungeonLevelApi({ level })
-    ElMessage.success('产出等级已更新')
+    ElMessage.success({ message: '产出等级已更新', showClose: true })
   } catch {
     // 恢复为服务器值
     selectedLevel.value =
@@ -895,7 +880,7 @@ async function handleSettle() {
     const res = await settleCrystalsApi()
     settleResult.value = res.data.data
     settleResultVisible.value = true
-    ElMessage.success('收取成功！')
+    ElMessage.success({ message: '收取成功！', showClose: true })
     await fetchDungeonInfo()
     await fetchPlayerInfo()
     calcOutput()
@@ -925,7 +910,7 @@ async function handleSwitch() {
       }
     }
     const switchRes = await switchDungeonApi()
-    ElMessage.success('切换成功！')
+    ElMessage.success({ message: '切换成功！', showClose: true })
 
     // 检查是否发现矿场
     const resData = switchRes.data?.data
@@ -1074,7 +1059,7 @@ function onBattleAnimationDone() {
   showBattleAnimation.value = false
   battleResultVisible.value = true
   if (battleResult.value?.upgraded) {
-    ElMessage.success('胜利！迷宫等级提升！')
+    ElMessage.success({ message: '胜利！迷宫等级提升！', showClose: true })
     // 如果当前选择的符文石产出等级是升级前的最高等级，自动切换到新等级
     const newDungeonLevel = dungeonInfo.value?.dungeonsLevel || 1
     if (selectedLevel.value < newDungeonLevel) {
@@ -1083,7 +1068,7 @@ function onBattleAnimationDone() {
       handleSelectLevel(newDungeonLevel)
     }
   } else if (battleResult.value?.battleResult?.winner === 'attacker') {
-    ElMessage.warning('战斗获胜，但未能全歼敌方军团，迷宫等级未提升')
+    ElMessage.warning({ message: '战斗获胜，但未能全歼敌方军团，迷宫等级未提升', showClose: true })
   }
 }
 

@@ -266,7 +266,7 @@ async function handleRename() {
     await renameGameAdventurerApi(currentRow.value._id, {
       name: renameForm.name
     })
-    ElMessage.success('改名成功')
+    ElMessage.success({ message: '改名成功', showClose: true })
     renameDialogVisible.value = false
     fetchData()
   } catch {
@@ -293,7 +293,7 @@ async function handleResetAvatar(row) {
   actioningId.value = row._id
   try {
     await resetAdventurerAvatarApi(row._id)
-    ElMessage.success('头像已重置为默认')
+    ElMessage.success({ message: '头像已重置为默认', showClose: true })
     fetchData()
   } catch {
     // 错误已由拦截器处理

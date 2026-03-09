@@ -871,7 +871,7 @@ async function handleRecruit() {
   recruiting.value = true
   try {
     await recruitAdventurerApi()
-    ElMessage.success('招募成功！')
+    ElMessage.success({ message: '招募成功！', showClose: true })
     await fetchAdventurers()
     await fetchPlayerInfo()
   } catch {
@@ -985,7 +985,7 @@ async function handleBatchEquipBest() {
     })
     const { results } = res.data.data
     const equipped = results.filter(r => r.success).length
-    ElMessage.success(`批量装备完成，${equipped} 名冒险家已装备符文石`)
+    ElMessage.success({ message: `批量装备完成，${equipped} 名冒险家已装备符文石`, showClose: true })
     selectedIds.value = new Set()
     // batchMode.value = false // 仅取消选择，不退出批量模式
     await fetchAdventurers()
@@ -1051,7 +1051,7 @@ const batchReportHasError = ref(false)
 
 function handleOpenBatchRatioReport(direction, totalLevels) {
   if (selectedIds.value.size === 0) {
-    ElMessage.warning('请先选中冒险家')
+    ElMessage.warning({ message: '请先选中冒险家', showClose: true })
     return
   }
 
@@ -1255,7 +1255,7 @@ async function handleConfirmBatchRatio() {
     if (skippedCount > 0) {
       msg += `，${skippedCount} 名被跳过`
     }
-    ElMessage.success(msg)
+    ElMessage.success({ message: msg, showClose: true })
     batchReportVisible.value = false
     selectedIds.value = new Set()
     // batchMode.value = false // 仅取消选择，不退出批量模式
@@ -1390,7 +1390,7 @@ function handleToggleFormationAdv(id) {
 
 function handleFormationUpgradePreview() {
   if (formationSelectedAdvIds.value.size === 0) {
-    ElMessage.warning('请先选中冒险家')
+    ElMessage.warning({ message: '请先选中冒险家', showClose: true })
     return
   }
 

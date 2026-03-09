@@ -111,7 +111,7 @@ async function loadCurrentSeason() {
 
 async function handleSubmit() {
   if (!form.startTime || !form.endTime) {
-    ElMessage.warning('请先选择开始时间和结束时间')
+    ElMessage.warning({ message: '请先选择开始时间和结束时间', showClose: true })
     return
   }
 
@@ -119,12 +119,12 @@ async function handleSubmit() {
   const end = new Date(form.endTime)
 
   if (end <= start) {
-    ElMessage.warning('结束时间必须晚于开始时间')
+    ElMessage.warning({ message: '结束时间必须晚于开始时间', showClose: true })
     return
   }
 
   if (end.getTime() - start.getTime() < THREE_DAYS_MS) {
-    ElMessage.warning('开始时间和结束时间的时间区间必须大于等于三天')
+    ElMessage.warning({ message: '开始时间和结束时间的时间区间必须大于等于三天', showClose: true })
     return
   }
 
@@ -140,7 +140,7 @@ async function handleSubmit() {
     seasonInfo.value = data
     form.startTime = data?.startTime ? new Date(data.startTime) : form.startTime
     form.endTime = data?.endTime ? new Date(data.endTime) : form.endTime
-    ElMessage.success('赛季时间已更新')
+    ElMessage.success({ message: '赛季时间已更新', showClose: true })
   } catch {
     // 错误提示已由 adminRequest 响应拦截器统一处理，避免重复弹窗
   } finally {

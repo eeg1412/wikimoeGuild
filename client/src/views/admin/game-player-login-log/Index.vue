@@ -218,7 +218,7 @@ async function handleDelete(row) {
     })
     deletingId.value = row._id
     await deleteGamePlayerLoginLogApi(row._id)
-    ElMessage.success('删除成功')
+    ElMessage.success({ message: '删除成功', showClose: true })
     fetchData()
   } catch {
     // 取消或失败
@@ -229,7 +229,7 @@ async function handleDelete(row) {
 
 async function handleBatchDelete() {
   if (!batchForm.startTime && !batchForm.endTime) {
-    ElMessage.warning('请至少选择开始时间或结束时间')
+    ElMessage.warning({ message: '请至少选择开始时间或结束时间', showClose: true })
     return
   }
   try {
@@ -241,7 +241,7 @@ async function handleBatchDelete() {
     if (batchForm.startTime) data.startTime = batchForm.startTime
     if (batchForm.endTime) data.endTime = batchForm.endTime
     const res = await batchDeleteGamePlayerLoginLogsApi(data)
-    ElMessage.success(res.data.message || '批量删除成功')
+    ElMessage.success({ message: res.data.message || '批量删除成功', showClose: true })
     fetchData()
   } catch {
     // 取消或失败

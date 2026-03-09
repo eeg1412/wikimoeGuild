@@ -425,7 +425,7 @@ async function handleSellToOfficial() {
       crystalType: sellCrystalType.value,
       quantity: sellCrystalQty.value
     })
-    ElMessage.success('出售成功！')
+    ElMessage.success({ message: '出售成功！', showClose: true })
     await fetchOfficialInfo()
     await fetchPlayerInfo()
     await fetchPlayerInventory()
@@ -442,7 +442,7 @@ async function handleQuickSellToOfficial(qty) {
       crystalType: sellCrystalType.value,
       quantity: qty
     })
-    ElMessage.success('出售成功！')
+    ElMessage.success({ message: '出售成功！', showClose: true })
     await fetchOfficialInfo()
     await fetchPlayerInfo()
     await fetchPlayerInventory()
@@ -469,7 +469,7 @@ async function handleBuyFromOfficial() {
       crystalType: buyCrystalType.value,
       quantity: buyCrystalQty.value
     })
-    ElMessage.success('购买成功！')
+    ElMessage.success({ message: '购买成功！', showClose: true })
     await fetchOfficialInfo()
     await fetchPlayerInfo()
     await fetchPlayerInventory()
@@ -498,7 +498,7 @@ async function handleSellFragmentToOfficial() {
   sellFragmentLoading.value = true
   try {
     await sellRuneFragmentToOfficialApi({ quantity: sellFragmentQty.value })
-    ElMessage.success('出售成功！')
+    ElMessage.success({ message: '出售成功！', showClose: true })
     await fetchOfficialInfo()
     await fetchPlayerInfo()
     await fetchPlayerInventory()
@@ -512,7 +512,7 @@ async function handleQuickSellFragment(qty) {
   sellFragmentLoading.value = true
   try {
     await sellRuneFragmentToOfficialApi({ quantity: qty })
-    ElMessage.success('出售成功！')
+    ElMessage.success({ message: '出售成功！', showClose: true })
     await fetchOfficialInfo()
     await fetchPlayerInfo()
     await fetchPlayerInventory()
@@ -565,9 +565,10 @@ async function handleSellRuneStoneToOfficial(rs) {
   try {
     const res = await sellRuneStoneToOfficialApi({ runeStoneId: rs._id })
     const data = res.data.data
-    ElMessage.success(
-      `出售成功！获得 ${(data?.goldEarned || price).toLocaleString()} 金币`
-    )
+    ElMessage.success({
+      message: `出售成功！获得 ${(data?.goldEarned || price).toLocaleString()} 金币`,
+      showClose: true
+    })
     await loadOfficialRuneStones()
     await fetchPlayerInfo()
   } catch {

@@ -288,7 +288,7 @@ async function handleBan() {
   if (!banForm.banExpires || !currentRow.value) return
   const email = currentRow.value.accountInfo?.email
   if (!email) {
-    ElMessage.error('无法获取玩家邮箱')
+    ElMessage.error({ message: '无法获取玩家邮箱', showClose: true })
     return
   }
   try {
@@ -303,7 +303,7 @@ async function handleBan() {
     )
     actioningId.value = currentRow.value._id
     await banGamePlayerApi({ email, banExpires: banForm.banExpires })
-    ElMessage.success('封禁成功')
+    ElMessage.success({ message: '封禁成功', showClose: true })
     banDialogVisible.value = false
     fetchData()
   } catch {
@@ -326,7 +326,7 @@ async function handleChangePassword() {
     await changeGamePlayerPasswordApi(currentRow.value.account, {
       newPassword: passwordForm.newPassword
     })
-    ElMessage.success('密码修改成功')
+    ElMessage.success({ message: '密码修改成功', showClose: true })
     passwordDialogVisible.value = false
   } catch {
     // 取消或失败

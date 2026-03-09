@@ -153,7 +153,7 @@ async function handleDelete(row) {
     )
     deletingId.value = row._id
     await deleteGamePlayerBanLogApi(row._id)
-    ElMessage.success('封禁已解除')
+    ElMessage.success({ message: '封禁已解除', showClose: true })
     fetchData()
   } catch {
     // 取消或失败

@@ -182,13 +182,13 @@ onUnmounted(() => {
 
 async function handleSendCode() {
   if (!form.email) {
-    ElMessage.warning('请先填写邮箱')
+    ElMessage.warning({ message: '请先填写邮箱', showClose: true })
     return
   }
   sendingCode.value = true
   try {
     await sendCodeApi({ email: form.email, type: 'resetPassword' })
-    ElMessage.success('验证码已发送，请查收邮件')
+    ElMessage.success({ message: '验证码已发送，请查收邮件', showClose: true })
     startCountdown()
   } catch {
     // 错误已由拦截器处理
@@ -238,7 +238,7 @@ async function handleSubmit() {
       code: form.code,
       newPassword: form.newPassword
     })
-    ElMessage.success('密码重置成功，请登录')
+    ElMessage.success({ message: '密码重置成功，请登录', showClose: true })
     router.push({ name: 'GameLogin' })
   } catch {
     // 错误已由拦截器处理
