@@ -232,25 +232,6 @@ export async function sellRuneStoneToOfficial(accountId, runeStoneId) {
       { $inc: { gold: officialPrice } }
     )
 
-    // 记录动态
-    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
-      .select('guildName')
-      .lean()
-    const rarityLabels = { normal: '普通', rare: '稀有', legendary: '传说' }
-    recordActivity({
-      type: 'market_listing',
-      account: accountId,
-      guildName: playerInfo?.guildName,
-      title: `「${playerInfo?.guildName}」出售符文石给官方`,
-      content: `${rarityLabels[runeStone.rarity] || runeStone.rarity} Lv.${runeStone.level} 符文石以 ${officialPrice} 金币出售给官方市场`,
-      extra: {
-        orderType: 'rune_sell_official',
-        rarity: runeStone.rarity,
-        level: runeStone.level,
-        price: officialPrice
-      }
-    })
-
     return {
       goldEarned: officialPrice,
       rarity: runeStone.rarity,

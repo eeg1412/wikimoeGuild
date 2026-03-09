@@ -293,7 +293,7 @@ async function handleUpgradeRuneStone() {
   upgradeLoading.value = true
   try {
     const res = await upgradeRuneStoneApi(props.adventurer.runeStone._id)
-    ElMessage.success('符文石升级成功！')
+    ElMessage.success({ message: '符文石升级成功！', showClose: true })
     const updatedAdv = {
       ...props.adventurer,
       runeStone: res.data.data
@@ -313,8 +313,7 @@ async function handleUnequip() {
   unequipLoading.value = true
   try {
     const res = await unequipRuneStoneApi(props.adventurer._id)
-    ElMessage.success('卸下成功！')
-    emit('updated', res.data.data)
+    ElMessage.success({ message: '卸下成功！', showClose: true })
   } catch {
     // handled by interceptor
   } finally {
@@ -359,8 +358,7 @@ async function handleEquip(runeStoneId) {
   equipLoading.value = true
   try {
     const res = await equipRuneStoneApi(props.adventurer._id, { runeStoneId })
-    ElMessage.success('装备成功！')
-    equipDialogVisible.value = false
+    ElMessage.success({ message: '装备成功！', showClose: true })
     emit('updated', res.data.data)
   } catch {
     // handled by interceptor

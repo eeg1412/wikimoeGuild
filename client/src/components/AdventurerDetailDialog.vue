@@ -804,8 +804,7 @@ async function handleUpgradeRuneStone() {
   runeStoneUpgradeLoading.value = true
   try {
     const res = await upgradeRuneStoneApi(adventurer.value.runeStone._id)
-    ElMessage.success('符文石升级成功！')
-    // 更新符文石数据
+    ElMessage.success({ message: '符文石升级成功！', showClose: true })    // 更新符文石数据
     adventurer.value.runeStone = res.data.data
     emit('updated', adventurer.value)
   } catch {
@@ -845,7 +844,7 @@ async function handleReroll(rerollType) {
   rerollLoading.value = true
   try {
     const res = await rerollAttributeApi(adventurer.value._id, { rerollType })
-    ElMessage.success(`${label}已更换！`)
+    ElMessage.success({ message: `${label}已更换！`, showClose: true })
     adventurer.value = res.data.data
     emit('updated', adventurer.value)
     await fetchPlayerInfo()
@@ -880,7 +879,7 @@ async function handleSaveAvatar() {
     await customizeAvatarApi(adventurer.value._id, {
       avatar: avatarBase64.value
     })
-    ElMessage.success('头像修改成功！')
+    ElMessage.success({ message: '头像修改成功！', showClose: true })
     showAvatarDialog.value = false
     avatarBase64.value = ''
     avatarPreview.value = ''
@@ -907,7 +906,7 @@ async function handleSaveName() {
     const res = await customizeNameApi(adventurer.value._id, {
       name: newName.value
     })
-    ElMessage.success('名字修改成功！')
+    ElMessage.success({ message: '名字修改成功！', showClose: true })
     showNameDialog.value = false
     adventurer.value = res.data.data
     emit('updated', adventurer.value)
@@ -950,7 +949,7 @@ async function handleEquip(runeStoneId) {
   equipLoading.value = true
   try {
     const res = await equipRuneStoneApi(adventurer.value._id, { runeStoneId })
-    ElMessage.success('装备成功！')
+    ElMessage.success({ message: '装备成功！', showClose: true })
     showEquipDialog.value = false
     adventurer.value = res.data.data
     emit('updated', adventurer.value)
@@ -970,7 +969,7 @@ async function handleUnequip() {
   unequipLoading.value = true
   try {
     const res = await unequipRuneStoneApi(adventurer.value._id)
-    ElMessage.success('卸下成功！')
+    ElMessage.success({ message: '卸下成功！', showClose: true })
     adventurer.value = res.data.data
     emit('updated', adventurer.value)
   } catch {
@@ -1034,7 +1033,7 @@ async function handleQuickSell(amount) {
       quantity: amount
     })
     const { goldEarned } = res.data.data
-    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
+    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
     await Promise.all([
       getMyInventoryApi().then(r => {
         inventory.value = r.data.data

@@ -341,7 +341,9 @@
         <template v-else-if="digResult.type === 'reward'">
           <template v-if="!digResult.challengeFailed && digResult.battleResult">
             <div class="text-4xl mb-2">🎉</div>
-            <p class="text-green-500 font-bold text-lg">战斗胜利！</p>
+            <p class="text-green-500 font-bold text-lg">
+              攻破了 Lv.{{ digResult.mineLevel }} 矿场的守卫！
+            </p>
           </template>
           <template v-else-if="digResult.challengeFailed">
             <template v-if="digResult.partialVictory">
@@ -380,16 +382,40 @@
         </div>
 
         <!-- 获得符文石 -->
-        <div
+        <ObtainedRuneStonesDisplay
           v-if="digResult.runeStone"
-          class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-sm"
+          :rune-stones="[digResult.runeStone]"
+        />
+
+        <!-- 全场最佳 -->
+        <div
+          v-if="digResult.topKillers && digResult.topKillers.length > 0"
+          class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-sm text-left"
         >
-          <p class="text-yellow-500 font-bold">✨ 获得符文石！</p>
-          <p class="text-sm text-gray-400">
-            {{ rarityLabel(digResult.runeStone.rarity) }} · Lv.{{
-              digResult.runeStone.level
-            }}
-          </p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">全场最佳：</p>
+          <div class="flex flex-wrap gap-2">
+            <div
+              v-for="killer in digResult.topKillers"
+              :key="killer.adventurerId"
+              class="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700/60 rounded-lg px-2 py-1"
+            >
+              <GameAdventurerAvatar
+                :adventurer="{
+                  _id: killer.adventurerId,
+                  defaultAvatarId: killer.defaultAvatarId,
+                  hasCustomAvatar: killer.hasCustomAvatar,
+                  elements: killer.elements
+                }"
+                class="w-6 h-6 rounded-full object-cover shrink-0 border border-gray-300 dark:border-gray-500"
+              />
+              <span class="text-xs text-gray-700 dark:text-gray-200 font-medium truncate max-w-20">
+                {{ killer.name }}
+              </span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                (击杀 {{ killer.kills }})
+              </span>
+            </div>
+          </div>
         </div>
 
         <!-- 矿场废弃 -->
@@ -428,6 +454,8 @@ import {
 import { getMyFormationsApi } from '@/api/game/formation.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
+import ObtainedRuneStonesDisplay from '@/components/ObtainedRuneStonesDisplay.vue'
+import GameAdventurerAvatar from '@/components/GameAdventurerAvatar.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 
 const router = useRouter()
@@ -566,7 +594,7 @@ async function handleDigCell(row, col, cell) {
   if (!cell.revealed || (cell.type === 'reward' && !cell.challengeDefeated)) {
     // 不知道类型的时候也需要准备阵容（可能是奖励区域）
     if (!selectedFormationSlot.value && !cell.revealed) {
-      ElMessage.warning('请先选择战斗阵容（可能遇到敌人）')
+      ElMessage.warning({ message: '请先选择战斗阵容（可能遇到敌人）', showClose: true })
       return
     }
   }
@@ -610,7 +638,7 @@ async function handleDigCell(row, col, cell) {
         currentMine.value = null
         activeTab.value = 'list'
         disconnectSSE()
-        ElMessage.warning('矿场已完全探索，已废弃')
+        ElMessage.warning({ message: '矿场已完全探索，已废弃', showClose: true })
         fetchMineList()
       }
     }
@@ -648,7 +676,7 @@ function connectSSE(mineId) {
             currentMine.value = null
             activeTab.value = 'list'
             disconnectSSE()
-            ElMessage.warning('矿场已被完全探索，已废弃')
+            ElMessage.warning({ message: '矿场已被完全探索，已废弃', showClose: true })
             fetchMineList()
           }
         }

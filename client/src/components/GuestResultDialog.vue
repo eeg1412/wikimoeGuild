@@ -94,9 +94,9 @@ const visible = computed({
 async function handleCopy(text) {
   try {
     await navigator.clipboard.writeText(text)
-    ElMessage.success('已复制到剪贴板')
+    ElMessage.success({ message: '已复制到剪贴板', showClose: true })
   } catch {
-    ElMessage.warning('复制失败，请手动选择复制')
+    ElMessage.warning({ message: '复制失败，请手动选择复制', showClose: true })
   }
 }
 
@@ -127,7 +127,7 @@ function handleDownload() {
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
-  ElMessage.success('账号信息已下载')
+  ElMessage.success({ message: '账号信息已下载', showClose: true })
 }
 
 function handleConfirm() {

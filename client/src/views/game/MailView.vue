@@ -303,7 +303,7 @@ async function handleClaim() {
   claimLoading.value = true
   try {
     await claimMailAttachmentApi(detailMail.value._id)
-    ElMessage.success('附件领取成功！')
+    ElMessage.success({ message: '附件领取成功！', showClose: true })
     detailMail.value.claimed = true
     // 刷新玩家信息（金币等）
     await fetchPlayerInfo()
@@ -333,7 +333,7 @@ async function handleDelete() {
   deleteLoading.value = true
   try {
     await deleteMailApi(detailMail.value._id)
-    ElMessage.success('邮件已删除')
+    ElMessage.success({ message: '邮件已删除', showClose: true })
     detailVisible.value = false
     await fetchMails()
     await fetchUnread()

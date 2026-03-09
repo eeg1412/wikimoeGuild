@@ -262,7 +262,7 @@ async function handleSubmit() {
   if (!valid) return
 
   if (form.sendTo === 'specific' && form.playerIds.length === 0) {
-    ElMessage.warning('请至少选择一名玩家')
+    ElMessage.warning({ message: '请至少选择一名玩家', showClose: true })
     return
   }
 
@@ -293,10 +293,10 @@ async function handleSubmit() {
       attachGold: form.attachGold,
       attachItems: form.attachItems
     })
-    ElMessage.success(res.data?.message || '发送成功')
+    ElMessage.success({ message: res.data?.message || '发送成功', showClose: true })
     handleReset()
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || '发送失败')
+    ElMessage.error({ message: e.response?.data?.message || '发送失败', showClose: true })
   } finally {
     submitLoading.value = false
   }

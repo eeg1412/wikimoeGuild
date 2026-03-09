@@ -491,7 +491,7 @@ async function loadGameSettings() {
     const data = res.data?.data || {}
     Object.assign(form, data)
   } catch (e) {
-    ElMessage.error('加载游戏设置失败')
+    ElMessage.error({ message: '加载游戏设置失败', showClose: true })
   }
 }
 
@@ -502,15 +502,15 @@ onMounted(() => {
 async function handleSubmit() {
   if (submitting.value) return
   if (rateTotal.value > 10000) {
-    ElMessage.error('三种符文石概率加起来不得超过10000')
+    ElMessage.error({ message: '三种符文石概率加起来不得超过10000', showClose: true })
     return
   }
   submitting.value = true
   try {
     await updateGameSettingsApi({ ...form })
-    ElMessage.success('游戏设置已保存')
+    ElMessage.success({ message: '游戏设置已保存', showClose: true })
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || '保存失败')
+    ElMessage.error({ message: e.response?.data?.message || '保存失败', showClose: true })
   } finally {
     submitting.value = false
   }

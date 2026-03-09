@@ -83,7 +83,7 @@ async function loadAdSettings() {
     const data = res.data?.data || {}
     Object.assign(form, data)
   } catch (e) {
-    ElMessage.error('加载广告设置失败')
+    ElMessage.error({ message: '加载广告设置失败', showClose: true })
   }
 }
 
@@ -100,9 +100,9 @@ async function handleSubmit() {
       googleAdId: form.googleAdId,
       googleAdAdsTxt: form.googleAdAdsTxt
     })
-    ElMessage.success('广告设置已保存')
+    ElMessage.success({ message: '广告设置已保存', showClose: true })
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || '保存失败')
+    ElMessage.error({ message: e.response?.data?.message || '保存失败', showClose: true })
   } finally {
     submitting.value = false
   }

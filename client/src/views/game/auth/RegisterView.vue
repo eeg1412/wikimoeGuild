@@ -203,13 +203,13 @@ onUnmounted(() => {
 
 async function handleSendCode() {
   if (!form.email) {
-    ElMessage.warning('请先填写邮箱')
+    ElMessage.warning({ message: '请先填写邮箱', showClose: true })
     return
   }
   sendingCode.value = true
   try {
     await sendCodeApi({ email: form.email, type: 'register' })
-    ElMessage.success('验证码已发送，请查收邮件')
+    ElMessage.success({ message: '验证码已发送，请查收邮件', showClose: true })
     startCountdown()
   } catch {
     // 错误已由拦截器处理
@@ -264,7 +264,7 @@ async function handleSubmit() {
     })
     const { accessToken, refreshToken, playerInfo } = res.data.data
     setLogin(accessToken, refreshToken, playerInfo)
-    ElMessage.success('注册成功，欢迎加入公会！')
+    ElMessage.success({ message: '注册成功，欢迎加入公会！', showClose: true })
     router.push({ name: 'GameHome' })
   } catch {
     // 错误已由拦截器处理

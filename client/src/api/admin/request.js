@@ -29,8 +29,7 @@ function processQueue(error, accessToken = null) {
 
 /** 跳转到登录页并清除 token */
 function redirectToLogin(message = '登录已过期，请重新登录') {
-  ElMessage.error(message)
-  localStorage.removeItem('adminAccessToken')
+  ElMessage.error({ message, showClose: true })
   localStorage.removeItem('adminRefreshToken')
   router.push('/admin/login')
 }
@@ -109,7 +108,7 @@ adminRequest.interceptors.response.use(
         if (refreshStatus === 401 || refreshStatus === 403) {
           redirectToLogin('登录已过期，请重新登录')
         } else {
-          ElMessage.error('刷新登录状态失败，请稍后重试')
+          ElMessage.error({ message: '刷新登录状态失败，请稍后重试', showClose: true })
         }
         return Promise.reject(refreshError)
       } finally {
@@ -119,21 +118,19 @@ adminRequest.interceptors.response.use(
 
     // 403 禁止访问
     if (status === 403) {
-      ElMessage.error(message || '权限不足')
+      ElMessage.error({ message: message || '权限不足', showClose: true })
       return Promise.reject(error)
     }
 
-    // 429 频率限制
     if (status === 429) {
-      ElMessage.error(message || '操作过于频繁，请稍后再试')
+      ElMessage.error({ message: message || '操作过于频繁，请稍后再试', showClose: true })
       return Promise.reject(error)
     }
 
-    // 其他错误
     if (message) {
-      ElMessage.error(message)
+      ElMessage.error({ message, showClose: true })
     } else if (status) {
-      ElMessage.error(`请求失败，状态码 ${status}`)
+      ElMessage.error({ message: `请求失败，状态码 ${status}`, showClose: true })
     }
 
     return Promise.reject(error)

@@ -115,9 +115,9 @@ async function handleStockSubmit() {
   stockSubmitting.value = true
   try {
     await updateOfficialMarketStockApi({ ...stockForm })
-    ElMessage.success('官方市场库存已保存')
+    ElMessage.success({ message: '官方市场库存已保存', showClose: true })
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || '保存库存失败')
+    ElMessage.error({ message: e.response?.data?.message || '保存库存失败', showClose: true })
   } finally {
     stockSubmitting.value = false
   }

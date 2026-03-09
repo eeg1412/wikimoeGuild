@@ -125,7 +125,7 @@ async function loadSiteSettings() {
     Object.assign(form, data)
     checkFaviconAccessible()
   } catch (e) {
-    ElMessage.error('加载站点设置失败')
+    ElMessage.error({ message: '加载站点设置失败', showClose: true })
   }
 }
 
@@ -156,9 +156,9 @@ async function handleSubmit() {
       siteUrl: form.siteUrl,
       siteFavicon: form.siteFavicon
     })
-    ElMessage.success('站点设置已保存')
+    ElMessage.success({ message: '站点设置已保存', showClose: true })
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || '保存失败')
+    ElMessage.error({ message: e.response?.data?.message || '保存失败', showClose: true })
   } finally {
     submitting.value = false
   }

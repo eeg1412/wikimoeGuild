@@ -591,7 +591,7 @@ async function handleGuildLevelUp() {
   guildLevelUpLoading.value = true
   try {
     await upgradeGuildLevelApi()
-    ElMessage.success('公会升级成功！')
+    ElMessage.success({ message: '公会升级成功！', showClose: true })
     await fetchPlayerInfo()
     await handleGuildLevelPopoverShow()
   } catch {
@@ -687,7 +687,7 @@ async function handleBackpackSell(amount) {
       quantity: amount
     })
     const { goldEarned } = res.data.data
-    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
+    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
     // 刷新背包和玩家信息
     const [invRes] = await Promise.all([getMyInventoryApi(), fetchPlayerInfo()])
     backpackInventory.value = invRes.data.data

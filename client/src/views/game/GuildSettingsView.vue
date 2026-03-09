@@ -454,7 +454,7 @@ async function handleUpgradeGuild() {
   upgradeLoading.value = true
   try {
     await upgradeGuildLevelApi()
-    ElMessage.success('公会升级成功！')
+    ElMessage.success({ message: '公会升级成功！', showClose: true })
     await Promise.all([fetchPlayerInfo(), fetchGuildLevelInfo()])
   } catch {
     // 错误已由拦截器处理
@@ -491,7 +491,7 @@ async function handleSaveLogo() {
   logoSaving.value = true
   try {
     await changeGuildLogoApi({ logo: logoBase64.value })
-    ElMessage.success('公会标志修改成功！')
+    ElMessage.success({ message: '公会标志修改成功！', showClose: true })
     logoDialogVisible.value = false
     logoBase64.value = ''
     logoPreview.value = ''
@@ -519,7 +519,7 @@ async function handleSaveName() {
   nameSaving.value = true
   try {
     await changeGuildNameApi({ name })
-    ElMessage.success('公会名修改成功！')
+    ElMessage.success({ message: '公会名修改成功！', showClose: true })
     nameDialogVisible.value = false
     newGuildName.value = ''
     await fetchPlayerInfo()
@@ -592,7 +592,7 @@ async function handleSavePassword() {
       currentPassword: passwordForm.currentPassword,
       newPassword: passwordForm.newPassword
     })
-    ElMessage.success('密码修改成功，请重新登录')
+    ElMessage.success({ message: '密码修改成功，请重新登录', showClose: true })
     passwordDialogVisible.value = false
     logout()
     router.replace({ name: 'GameLogin' })
@@ -663,13 +663,13 @@ onUnmounted(() => {
 
 async function handleBindEmailSendCode() {
   if (!bindEmailForm.email) {
-    ElMessage.warning('请先填写邮箱')
+    ElMessage.warning({ message: '请先填写邮箱', showClose: true })
     return
   }
   bindEmailSendingCode.value = true
   try {
     await guestBindEmailSendCodeApi({ email: bindEmailForm.email })
-    ElMessage.success('验证码已发送，请查收邮件')
+    ElMessage.success({ message: '验证码已发送，请查收邮件', showClose: true })
     startBindEmailCountdown()
   } catch {
     // 错误已由拦截器处理
@@ -687,7 +687,7 @@ async function handleBindEmail() {
       code: bindEmailForm.code
     })
     const { accessToken, refreshToken } = res.data.data
-    ElMessage.success('邮箱绑定成功，请重新登录')
+    ElMessage.success({ message: '邮箱绑定成功，请重新登录', showClose: true })
     bindEmailDialogVisible.value = false
     logout()
     router.replace({ name: 'GameLogin' })

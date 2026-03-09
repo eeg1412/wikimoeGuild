@@ -88,7 +88,7 @@ async function loadSecuritySettings() {
     form.siteIPBlockList = data.siteIPBlockList || []
     form.siteBannedKeywordList = data.siteBannedKeywordList || []
   } catch (e) {
-    ElMessage.error('加载安全设置失败')
+    ElMessage.error({ message: '加载安全设置失败', showClose: true })
   }
 }
 
@@ -130,9 +130,9 @@ async function handleSubmit() {
       siteIPBlockList: form.siteIPBlockList,
       siteBannedKeywordList: form.siteBannedKeywordList
     })
-    ElMessage.success('安全设置已保存')
+    ElMessage.success({ message: '安全设置已保存', showClose: true })
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || '保存失败')
+    ElMessage.error({ message: e.response?.data?.message || '保存失败', showClose: true })
   } finally {
     submitting.value = false
   }

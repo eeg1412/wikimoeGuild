@@ -138,11 +138,11 @@ async function handleSubmit() {
       currentPassword: form.currentPassword,
       newPassword: form.newPassword
     })
-    ElMessage.success('密码修改成功，请重新登录')
+    ElMessage.success({ message: '密码修改成功，请重新登录', showClose: true })
     handleReset()
   } catch (e) {
     const msg = e.response?.data?.message || '修改失败，请重试'
-    ElMessage.error(msg)
+    ElMessage.error({ message: msg, showClose: true })
   } finally {
     loading.value = false
   }

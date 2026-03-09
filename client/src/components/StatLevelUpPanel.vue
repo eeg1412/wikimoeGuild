@@ -631,7 +631,7 @@ async function handleLevelDown(statType, times = 1) {
       times
     })
     const { adventurer: updated, levelsDropped, goldCost } = res.data.data
-    ElMessage.success(`成功降级 ${levelsDropped} 级，消耗 ${goldCost} 金币！`)
+    ElMessage.success({ message: `成功降级 ${levelsDropped} 级，消耗 ${goldCost} 金币！`, showClose: true })
     emit('updated', updated)
     await Promise.all([fetchPlayerInfo(), refreshInventory()])
   } catch {
@@ -693,9 +693,10 @@ async function handleLevelUp(statType, times = 1) {
   try {
     const res = await levelUpStatApi(props.adventurer._id, { statType, times })
     const { adventurer: updated, levelsUpgraded } = res.data.data
-    ElMessage.success(
-      levelsUpgraded > 1 ? `成功升级 ${levelsUpgraded} 级！` : '升级成功！'
-    )
+    ElMessage.success({
+      message: levelsUpgraded > 1 ? `成功升级 ${levelsUpgraded} 级！` : '升级成功！',
+      showClose: true
+    })
     emit('updated', updated)
     await Promise.all([fetchPlayerInfo(), refreshInventory()])
   } catch {
@@ -716,7 +717,7 @@ async function refreshInventory() {
 
 async function handleSaveRatio() {
   if (ratioSum.value !== 100) {
-    ElMessage.warning('四项比例之和必须为 100')
+    ElMessage.warning({ message: '四项比例之和必须为 100', showClose: true })
     return
   }
   ratioSaving.value = true
@@ -725,7 +726,7 @@ async function handleSaveRatio() {
       props.adventurer._id,
       ratioForm.value
     )
-    ElMessage.success('分配比例已保存')
+    ElMessage.success({ message: '分配比例已保存', showClose: true })
     emit('updated', res.data.data)
   } catch {
     // handled by interceptor
@@ -737,7 +738,7 @@ async function handleSaveRatio() {
 // ── 按比例自动分配升级 ──
 async function handleAutoDistribute(totalLevels) {
   if (ratioSum.value !== 100) {
-    ElMessage.warning('请先设置正确的分配比例（合计 100%）')
+    ElMessage.warning({ message: '请先设置正确的分配比例（合计 100%）', showClose: true })
     return
   }
 
@@ -758,7 +759,7 @@ async function handleAutoDistribute(totalLevels) {
     })
     const { adventurer: updated, levelsUpgraded, allocation } = res.data.data
     const allocStr = `攻击+${allocation.attack} 防御+${allocation.defense} 速度+${allocation.speed} SAN+${allocation.san}`
-    ElMessage.success(`成功升级 ${levelsUpgraded} 级！(${allocStr})`)
+    ElMessage.success({ message: `成功升级 ${levelsUpgraded} 级！(${allocStr})`, showClose: true })
     emit('updated', updated)
     await Promise.all([fetchPlayerInfo(), refreshInventory()])
   } catch {
@@ -796,11 +797,7 @@ function calcProportionalAlloc(totalLevels, ratio) {
 
 function handleAutoDistributeDown(totalLevels) {
   if (ratioSum.value !== 100) {
-    ElMessage.warning('请先设置正确的分配比例（合计 100%）')
-    return
-  }
-
-  const ratio = ratioForm.value
+    ElMessage.warning({ message: '请先设置正确的分配比例（合计 100%）', showClose: true })
   const allocDown = calcProportionalAlloc(totalLevels, ratio)
 
   // 检查每个属性是否可以降级（确保不低于1）
@@ -850,7 +847,7 @@ async function handleConfirmAutoDistributeDown() {
       latestAdv = res.data.data.adventurer
     }
     if (latestAdv) {
-      ElMessage.success(`成功降级 ${totalLevels} 级！(${allocStr})`)
+      ElMessage.success({ message: `成功降级 ${totalLevels} 级！(${allocStr})`, showClose: true })
       emit('updated', latestAdv)
     }
     downgradeReportVisible.value = false
@@ -891,7 +888,7 @@ async function handleQuickSell(amount) {
       quantity: amount
     })
     const { goldEarned } = res.data.data
-    ElMessage.success(`出售成功，获得 ${goldEarned} 金币`)
+    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
     await Promise.all([refreshInventory(), fetchPlayerInfo()])
   } catch {
     // handled by interceptor
@@ -900,7 +897,6 @@ async function handleQuickSell(amount) {
   }
 }
 </script>
-
 <style scoped>
 .stat-level-up-panel :deep(.el-button) {
   margin-left: 0 !important;

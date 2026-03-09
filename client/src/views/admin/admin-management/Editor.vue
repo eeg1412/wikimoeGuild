@@ -200,11 +200,11 @@ async function loadAdmin() {
     if (target) {
       form.username = target.username
     } else {
-      ElMessage.error('管理员不存在')
+      ElMessage.error({ message: '管理员不存在', showClose: true })
       router.replace({ name: 'AdminManagement' })
     }
   } catch {
-    ElMessage.error('加载管理员信息失败')
+    ElMessage.error({ message: '加载管理员信息失败', showClose: true })
     router.replace({ name: 'AdminManagement' })
   } finally {
     pageLoading.value = false
@@ -232,14 +232,14 @@ async function handleSubmit() {
       if (form.password) payload.password = form.password
 
       await updateAdminApi(editId.value, payload)
-      ElMessage.success('管理员信息更新成功')
+      ElMessage.success({ message: '管理员信息更新成功', showClose: true })
     } else {
       // 新增模式
       await createAdminApi({
         username: form.username,
         password: form.password
       })
-      ElMessage.success('管理员创建成功')
+      ElMessage.success({ message: '管理员创建成功', showClose: true })
     }
     handleBack()
   } catch (e) {

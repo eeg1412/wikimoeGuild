@@ -36,7 +36,9 @@
           }}</span>
           <div class="min-w-0 flex-1">
             <p
-              class="text-sm font-semibold text-gray-700 dark:text-gray-200 break-all"
+              class="text-sm font-semibold break-all"
+              :style="item.extra?.rarity ? { color: runeStoneRarityColor(item.extra.rarity) } : {}"
+              :class="item.extra?.rarity ? '' : 'text-gray-700 dark:text-gray-200'"
             >
               {{ item.title }}
             </p>
@@ -137,6 +139,12 @@ function typeIcon(type) {
     arena_victory: '⚔️'
   }
   return icons[type] || '📌'
+}
+
+function runeStoneRarityColor(rarity) {
+  return (
+    { normal: '#9ca3af', rare: '#60a5fa', legendary: '#f59e0b' }[rarity] || null
+  )
 }
 
 function formatTime(t) {
