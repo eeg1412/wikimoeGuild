@@ -249,22 +249,27 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     { upsert: true, returnDocument: 'after' }
   )
 
-  // 尝试掉落符文石（根据水晶总数随机）
-  let droppedRuneStone = null
+  // 尝试掉落符文石（根据水晶总数随机，支持多个）
+  const droppedRuneStones = []
   const totalCrystals =
     attackCrystals + defenseCrystals + speedCrystals + sanCrystals
   // 使用玩家选择的迷宫等级控制符文石产出等级
   const runeStoneLevel =
     playerInfo.selectedDungeonsLevel || playerInfo.dungeonsLevel
-  // 每个水晶都有一次掉落机会
+  // 每个水晶都有一次掉落机会，放置时间越长水晶越多，符文石总量期望越高
   for (let i = 0; i < totalCrystals; i++) {
-    const dropped = await runeStoneService.tryDropRuneStone(
-      accountId,
-      runeStoneLevel
-    )
-    if (dropped) {
-      droppedRuneStone = dropped
-      break // 一次结算最多掉一个
+    try {
+      const dropped = await runeStoneService.tryDropRuneStone(
+        accountId,
+        runeStoneLevel
+      )
+      if (dropped) {
+        droppedRuneStones.push(dropped)
+      }
+    } catch (e) {
+      // 符文石数量已达上限（见 runeStoneService.generateRuneStone），停止继续尝试掉落
+      if (e.code === 'RUNE_STONE_LIMIT_REACHED') break
+      throw e
     }
   }
 
@@ -275,7 +280,7 @@ async function settleCrystalsInternal(playerInfo, accountId) {
       speedCrystal: speedCrystals,
       sanCrystal: sanCrystals
     },
-    runeStone: droppedRuneStone
+    runeStones: droppedRuneStones
   }
 }
 

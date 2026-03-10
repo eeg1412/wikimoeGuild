@@ -24,6 +24,7 @@ export async function generateRuneStone(accountId, rarity, level = 1) {
       '符文石数量已达上限（500个），请先分解或出售多余的符文石'
     )
     err.statusCode = 400
+    err.code = 'RUNE_STONE_LIMIT_REACHED'
     err.expose = true
     throw err
   }

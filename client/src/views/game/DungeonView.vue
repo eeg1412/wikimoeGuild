@@ -291,8 +291,8 @@
           </div>
           <el-divider />
           <ObtainedRuneStonesDisplay
-            v-if="settleResult.runeStone"
-            :rune-stones="[settleResult.runeStone]"
+            v-if="settleResult.runeStones?.length > 0"
+            :rune-stones="settleResult.runeStones"
           />
         </div>
       </el-dialog>
