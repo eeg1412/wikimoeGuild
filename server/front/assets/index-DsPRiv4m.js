@@ -1,0 +1,1 @@
+const E={1:{emoji:"⚔️",label:"输出"},2:{emoji:"🛡️",label:"坦克"},3:{emoji:"🥷",label:"刺客"},4:{emoji:"⚖️",label:"平衡"}},_=["","1","2","3","4"],R=1,A=10,s=50,N=10,O=100,S=500;export{E as R,_ as V,s as a,A as b,R as c,S as d,O as e,N as f};
