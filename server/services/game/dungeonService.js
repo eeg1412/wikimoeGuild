@@ -14,6 +14,29 @@ import {
 const RUNE_RARITY_ORDER = { legendary: 3, rare: 2, normal: 1 }
 
 /**
+ * 使用几何分布法快速采样二项分布 Binomial(n, p) 的结果
+ * 时间复杂度 O(n*p) 而非 O(n)，避免大 n 时阻塞事件循环
+ */
+function sampleBinomial(n, p) {
+  if (p <= 0 || n <= 0) return 0
+  if (p >= 1) return n
+  let count = 0
+  const logQ = Math.log(1 - p)
+  let pos = 0
+  while (true) {
+    const u = Math.random()
+    if (u === 0) {
+      pos++
+      continue
+    }
+    pos += Math.floor(Math.log(u) / logQ) + 1
+    if (pos > n) break
+    count++
+  }
+  return count
+}
+
+/**
  * 计算实际产出率（冒险家产出率 + 迷宫等级增益，受公会等级限制）
  */
 function calcProductionRate(playerInfo) {
@@ -195,10 +218,20 @@ async function settleCrystalsInternal(playerInfo, accountId) {
   const lastSettle = new Date(playerInfo.lastDungeonSettleAt || now)
   const secondsPassed = Math.floor((now - lastSettle) / 1000)
 
-  if (secondsPassed < 1) return { crystals: {}, runeStones: [], discardedRuneStones: { normal: 0, rare: 0, legendary: 0 } }
+  if (secondsPassed < 1)
+    return {
+      crystals: {},
+      runeStones: [],
+      discardedRuneStones: { normal: 0, rare: 0, legendary: 0 }
+    }
 
   const cnt = playerInfo.adventurerCount || 0
-  if (cnt <= 0) return { crystals: {}, runeStones: [], discardedRuneStones: { normal: 0, rare: 0, legendary: 0 } }
+  if (cnt <= 0)
+    return {
+      crystals: {},
+      runeStones: [],
+      discardedRuneStones: { normal: 0, rare: 0, legendary: 0 }
+    }
 
   // 使用新的产出率计算（包含迷宫等级增益，受公会等级限制）
   const productionRate = calcProductionRate(playerInfo)
@@ -208,7 +241,12 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     99999
   )
 
-  if (totalOutput <= 0) return { crystals: {}, runeStones: [], discardedRuneStones: { normal: 0, rare: 0, legendary: 0 } }
+  if (totalOutput <= 0)
+    return {
+      crystals: {},
+      runeStones: [],
+      discardedRuneStones: { normal: 0, rare: 0, legendary: 0 }
+    }
 
   // 按爆率分配水晶
   const rates = playerInfo.dungeonsCryRates || {
@@ -253,17 +291,48 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     { upsert: true, returnDocument: 'after' }
   )
 
-  // 第一阶段：概率滚算（不写 DB），收集所有潜在掉落
+  // 第一阶段：概率滚算（统计学采样，O(drops) 复杂度，避免逐 crystal 循环阻塞事件循环）
   const totalCrystals =
     attackCrystals + defenseCrystals + speedCrystals + sanCrystals
   // 使用玩家选择的迷宫等级控制符文石产出等级
   const runeStoneLevel =
     playerInfo.selectedDungeonsLevel || playerInfo.dungeonsLevel
-  const potentialDrops = []
-  for (let i = 0; i < totalCrystals; i++) {
-    const drop = runeStoneService.tryDropRuneStoneData(runeStoneLevel)
-    if (drop) potentialDrops.push(drop)
-  }
+
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  const dropRate = gameSettings.runeStoneDropRate ?? 100
+  const normalRate = gameSettings.normalRuneStoneRate ?? 8000
+  const rareRate = gameSettings.rareRuneStoneRate ?? 1500
+  const legendaryRate = gameSettings.legendaryRuneStoneRate ?? 500
+  const totalRarityRate = normalRate + rareRate + legendaryRate
+
+  // 二项分布快速采样：几何跳跃法计算总掉落数，无需逐个循环
+  const totalDrops = sampleBinomial(totalCrystals, dropRate / 10000)
+  // 多项分布采样：条件二项法依次确定各稀有度数量
+  const legendaryCount = sampleBinomial(
+    totalDrops,
+    legendaryRate / totalRarityRate
+  )
+  const rareCount = sampleBinomial(
+    totalDrops - legendaryCount,
+    rareRate / (normalRate + rareRate)
+  )
+  const normalCount = totalDrops - legendaryCount - rareCount
+
+  // 按品质降序构建潜在掉落列表（传说 > 稀有 > 普通）
+  const potentialDrops = [
+    ...Array.from({ length: legendaryCount }, () => ({
+      rarity: 'legendary',
+      level: runeStoneLevel
+    })),
+    ...Array.from({ length: rareCount }, () => ({
+      rarity: 'rare',
+      level: runeStoneLevel
+    })),
+    ...Array.from({ length: normalCount }, () => ({
+      rarity: 'normal',
+      level: runeStoneLevel
+    }))
+  ]
 
   const droppedRuneStones = []
   const discardedRuneStones = { normal: 0, rare: 0, legendary: 0 }
@@ -275,25 +344,19 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     })
     const availableSlots = Math.max(0, 500 - currentCount)
 
-    // 按品质降序排列（传说 > 稀有 > 普通，同稀有度按等级降序）
-    potentialDrops.sort((a, b) => {
-      const rarityDiff =
-        (RUNE_RARITY_ORDER[b.rarity] || 0) - (RUNE_RARITY_ORDER[a.rarity] || 0)
-      if (rarityDiff !== 0) return rarityDiff
-      return b.level - a.level
-    })
+    // 单次结算符文石上限，避免长时间挂机后一次获取过多
+    const SETTLE_RUNE_STONE_CAP = 100
+    const keepCount = Math.min(availableSlots, SETTLE_RUNE_STONE_CAP)
+    const keptDrops = potentialDrops.slice(0, keepCount)
+    const discarded = potentialDrops.slice(keepCount)
 
-    const keptDrops = potentialDrops.slice(0, availableSlots)
-    const discarded = potentialDrops.slice(availableSlots)
-
-    // 第二阶段：保存保留的符文石
-    for (const drop of keptDrops) {
-      const stone = await runeStoneService.generateRuneStone(
+    // 第二阶段：批量保存保留的符文石（单次 insertMany，无重复 countDocuments）
+    if (keptDrops.length > 0) {
+      const stones = await runeStoneService.generateRuneStonesBulk(
         accountId,
-        drop.rarity,
-        drop.level
+        keptDrops
       )
-      droppedRuneStones.push(stone)
+      droppedRuneStones.push(...stones)
     }
 
     // 统计丢弃数量

@@ -496,15 +496,23 @@ export async function challengeLegion(accountId, formationSlot) {
       // 升级地牢
       playerInfo.dungeonsLevel += 1
 
-      // 必掉传说级符文石
-      const legendaryRuneStone = await runeStoneService.generateRuneStone(
-        accountId,
-        'legendary',
-        currentLevel
-      )
+      // 必掉传说级符文石（背包满时丢弃并记录）
+      const runeStoneCount = await runeStoneService.getRuneStoneCount(accountId)
+      let droppedRuneStone = null
+      let discardedRuneStone = null
+      if (runeStoneCount >= 500) {
+        discardedRuneStone = { rarity: 'legendary', level: currentLevel }
+      } else {
+        droppedRuneStone = await runeStoneService.generateRuneStone(
+          accountId,
+          'legendary',
+          currentLevel
+        )
+      }
 
       result.upgraded = true
-      result.droppedRuneStone = legendaryRuneStone
+      result.droppedRuneStone = droppedRuneStone
+      result.discardedRuneStone = discardedRuneStone
       result.newDungeonLevel = playerInfo.dungeonsLevel
 
       // 找出击杀数最高的冒险家

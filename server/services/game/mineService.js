@@ -538,11 +538,19 @@ export async function digCell(accountId, mineId, row, col, formationSlot) {
         if (rarityRoll < normalRate) rarity = 'normal'
         else if (rarityRoll < normalRate + rareRate) rarity = 'rare'
         else rarity = 'legendary'
-        result.runeStone = await runeStoneService.generateRuneStone(
-          accountId,
-          rarity,
-          mine.level
-        )
+        const runeStoneCount =
+          await runeStoneService.getRuneStoneCount(accountId)
+        if (runeStoneCount >= 500) {
+          result.runeStone = null
+          result.discardedRuneStone = { rarity, level: mine.level }
+        } else {
+          result.runeStone = await runeStoneService.generateRuneStone(
+            accountId,
+            rarity,
+            mine.level
+          )
+          result.discardedRuneStone = null
+        }
 
         // 找出全场最佳
         const topKillers = findTopKillers(battleResult, playerGrid)

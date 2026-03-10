@@ -51,7 +51,18 @@ export async function getGameSettings(req, res, next) {
         adventurerLevelUpGoldBase:
           gameSettings.adventurerLevelUpGoldBase ?? 500,
         dungeonLevelProductionBonusBase:
-          gameSettings.dungeonLevelProductionBonusBase ?? 100
+          gameSettings.dungeonLevelProductionBonusBase ?? 100,
+        runeStoneDecomposeNormalBase:
+          gameSettings.runeStoneDecomposeNormalBase ?? 10,
+        runeStoneDecomposeRareBase:
+          gameSettings.runeStoneDecomposeRareBase ?? 100,
+        runeStoneDecomposeLegendaryBase:
+          gameSettings.runeStoneDecomposeLegendaryBase ?? 500,
+        runeStoneUpgradeNormalBase:
+          gameSettings.runeStoneUpgradeNormalBase ?? 100,
+        runeStoneUpgradeRareBase: gameSettings.runeStoneUpgradeRareBase ?? 1000,
+        runeStoneUpgradeLegendaryBase:
+          gameSettings.runeStoneUpgradeLegendaryBase ?? 5000
       },
       '获取成功'
     )

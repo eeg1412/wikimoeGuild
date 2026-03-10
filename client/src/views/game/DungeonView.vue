@@ -495,6 +495,12 @@
               :rune-stones="[battleResult.droppedRuneStone]"
               class="mt-2"
             />
+            <div
+              v-else-if="battleResult.discardedRuneStone"
+              class="mt-2 bg-orange-900/30 rounded-lg p-2 text-xs text-orange-400"
+            >
+              ⚠️ 背包已满，传说符文石已丢弃
+            </div>
           </div>
           <div
             v-else-if="battleResultDisplay === 'win'"
@@ -581,6 +587,7 @@ import {
 } from '@/api/game/formation.js'
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
+import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
 import ObtainedRuneStonesDisplay from '@/components/ObtainedRuneStonesDisplay.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
@@ -1048,14 +1055,31 @@ const battleResultDisplay = computed(() => {
 async function handleOpenLegionDialog() {
   legionPreviewLoading.value = true
   try {
-    const [previewRes, formRes] = await Promise.all([
+    const [previewRes, formRes, runeStoneRes] = await Promise.all([
       previewLegionApi(),
-      getMyFormationsApi()
+      getMyFormationsApi(),
+      getMyRuneStonesApi({ page: 1, pageSize: 1 })
     ])
     legionPreview.value = previewRes.data.data
     myFormations.value = formRes.data.data || []
     if (myFormations.value.length > 0 && !selectedFormationSlot.value) {
       selectedFormationSlot.value = myFormations.value[0].slot
+    }
+    const runeStoneTotal = runeStoneRes.data.data?.total ?? 0
+    if (runeStoneTotal >= 500) {
+      try {
+        await ElMessageBox.confirm(
+          '符文石背包已满（500/500），胜利后必得的传说符文石将因空间不足而丢失。\n\n建议先前往「符文石」页面分解多余的符文石，再来挑战。\n\n是否仍要继续挑战？',
+          '⚠️ 符文石背包已满',
+          {
+            confirmButtonText: '继续挑战',
+            cancelButtonText: '暂不挑战',
+            type: 'warning'
+          }
+        )
+      } catch {
+        return
+      }
     }
     showLegionDialog.value = true
   } catch (e) {
@@ -1100,7 +1124,10 @@ function onBattleAnimationDone() {
       handleSelectLevel(newDungeonLevel)
     }
   } else if (battleResult.value?.battleResult?.winner === 'attacker') {
-    ElMessage.warning({ message: '战斗获胜，但未能全歼敌方军团，迷宫等级未提升', showClose: true })
+    ElMessage.warning({
+      message: '战斗获胜，但未能全歼敌方军团，迷宫等级未提升',
+      showClose: true
+    })
   }
 }
 

@@ -624,6 +624,7 @@ import {
   batchDecomposeRuneStonesApi
 } from '@/api/game/runeStone.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
+import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
@@ -641,6 +642,7 @@ if (!isLoggedIn.value) {
 // ── 列表 ──
 const loading = ref(false)
 const runeStones = ref([])
+const gameSettings = ref({})
 const sortMode = ref('newest')
 const rarityFilter = ref('')
 const equippedFilter = ref('')
@@ -891,17 +893,30 @@ function getSkillInfo(skillId) {
 }
 
 // ── 分解计算 ──
-const RARITY_DECOMPOSE = { normal: 10, rare: 100, legendary: 500 }
+const RARITY_DECOMPOSE = computed(() => ({
+  normal: gameSettings.value.runeStoneDecomposeNormalBase ?? 10,
+  rare: gameSettings.value.runeStoneDecomposeRareBase ?? 100,
+  legendary: gameSettings.value.runeStoneDecomposeLegendaryBase ?? 500
+}))
 
 function getDecomposeFragments(rs) {
-  return (RARITY_DECOMPOSE[rs.rarity] || 10) * rs.level
+  return (
+    (RARITY_DECOMPOSE.value[rs.rarity] || RARITY_DECOMPOSE.value.normal) *
+    rs.level
+  )
 }
 
 // ── 升级费用 ──
-const RARITY_UPGRADE = { normal: 100, rare: 1000, legendary: 5000 }
+const RARITY_UPGRADE = computed(() => ({
+  normal: gameSettings.value.runeStoneUpgradeNormalBase ?? 100,
+  rare: gameSettings.value.runeStoneUpgradeRareBase ?? 1000,
+  legendary: gameSettings.value.runeStoneUpgradeLegendaryBase ?? 5000
+}))
 
 function getUpgradeCost(rs) {
-  return (RARITY_UPGRADE[rs.rarity] || 100) * rs.level
+  return (
+    (RARITY_UPGRADE.value[rs.rarity] || RARITY_UPGRADE.value.normal) * rs.level
+  )
 }
 
 // ── 内联分解操作 ──
@@ -921,7 +936,10 @@ async function handleInlineDecompose(rs) {
   decomposeLoadingId.value = rs._id
   try {
     await decomposeRuneStoneApi(rs._id)
-    ElMessage.success({ message: `分解成功！获得 ${fragments} 碎片`, showClose: true })
+    ElMessage.success({
+      message: `分解成功！获得 ${fragments} 碎片`,
+      showClose: true
+    })
     await fetchRuneStones()
     fetchInventory()
   } catch {
@@ -1149,7 +1167,10 @@ async function handlePreviewSynthesis() {
           clearInterval(previewTimer)
           synthesisVisible.value = false
           fetchRuneStones()
-          ElMessage.warning({ message: '合成预览已超时。素材已经被销毁。', showClose: true })
+          ElMessage.warning({
+            message: '合成预览已超时。素材已经被销毁。',
+            showClose: true
+          })
         }
       }
       updateCountdown()
@@ -1183,7 +1204,10 @@ async function handleConfirmSynthesis(accept) {
       previewToken: synthesisPreviewToken.value,
       accept
     })
-    ElMessage.success({ message: accept ? '合成成功！' : '放弃成功。', showClose: true })
+    ElMessage.success({
+      message: accept ? '合成成功！' : '放弃成功。',
+      showClose: true
+    })
     clearInterval(previewTimer)
     synthesisVisible.value = false
     await fetchRuneStones()
@@ -1198,6 +1222,11 @@ async function handleConfirmSynthesis(accept) {
 onMounted(() => {
   fetchRuneStones()
   fetchInventory()
+  getGameSettingsApi()
+    .then(res => {
+      gameSettings.value = res.data?.data || {}
+    })
+    .catch(() => {})
 })
 onUnmounted(() => {
   if (previewTimer) clearInterval(previewTimer)

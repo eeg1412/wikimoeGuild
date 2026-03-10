@@ -258,7 +258,14 @@ export async function getGameSettings() {
     adventurerLevelUpGoldBase: config.adventurerLevelUpGoldBase ?? 500,
     adventurerLevelDownGoldPrice: config.adventurerLevelDownGoldPrice ?? 1000,
     dungeonLevelProductionBonusBase:
-      config.dungeonLevelProductionBonusBase ?? 100
+      config.dungeonLevelProductionBonusBase ?? 100,
+    runeStoneDecomposeNormalBase: config.runeStoneDecomposeNormalBase ?? 10,
+    runeStoneDecomposeRareBase: config.runeStoneDecomposeRareBase ?? 100,
+    runeStoneDecomposeLegendaryBase:
+      config.runeStoneDecomposeLegendaryBase ?? 500,
+    runeStoneUpgradeNormalBase: config.runeStoneUpgradeNormalBase ?? 100,
+    runeStoneUpgradeRareBase: config.runeStoneUpgradeRareBase ?? 1000,
+    runeStoneUpgradeLegendaryBase: config.runeStoneUpgradeLegendaryBase ?? 5000
   }
 }
 
@@ -298,7 +305,13 @@ export async function updateGameSettings(data) {
     'adventurerLevelUpCrystalBase',
     'adventurerLevelUpGoldBase',
     'adventurerLevelDownGoldPrice',
-    'dungeonLevelProductionBonusBase'
+    'dungeonLevelProductionBonusBase',
+    'runeStoneDecomposeNormalBase',
+    'runeStoneDecomposeRareBase',
+    'runeStoneDecomposeLegendaryBase',
+    'runeStoneUpgradeNormalBase',
+    'runeStoneUpgradeRareBase',
+    'runeStoneUpgradeLegendaryBase'
   ]
 
   const booleanKeys = ['guestModeEnabled']

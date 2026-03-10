@@ -122,7 +122,19 @@ const initGlobalConfig = async () => {
     // 冒险家降级金币价格
     adventurerLevelDownGoldPrice: 1000,
     // 迷宫等级产出增益计数（百分比）
-    dungeonLevelProductionBonusBase: 100
+    dungeonLevelProductionBonusBase: 100,
+    // 符文石分解碎片系数：普通
+    runeStoneDecomposeNormalBase: 10,
+    // 符文石分解碎片系数：稀有
+    runeStoneDecomposeRareBase: 100,
+    // 符文石分解碎片系数：传说
+    runeStoneDecomposeLegendaryBase: 500,
+    // 符文石升级消耗碎片系数：普通
+    runeStoneUpgradeNormalBase: 100,
+    // 符文石升级消耗碎片系数：稀有
+    runeStoneUpgradeRareBase: 1000,
+    // 符文石升级消耗碎片系数：传说
+    runeStoneUpgradeLegendaryBase: 5000
   }
 
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型

@@ -784,12 +784,15 @@ function onSynthesisUpdated(updatedAdventurer) {
 }
 
 // ── 符文石升级 ──
-const RARITY_UPGRADE_COST = { normal: 100, rare: 1000, legendary: 5000 }
-
 const runeStoneUpgradeCost = computed(() => {
   if (!adventurer.value?.runeStone) return 0
   const rs = adventurer.value.runeStone
-  return (RARITY_UPGRADE_COST[rs.rarity] || 100) * rs.level
+  const costCoeff = {
+    normal: gameSettings.value.runeStoneUpgradeNormalBase ?? 100,
+    rare: gameSettings.value.runeStoneUpgradeRareBase ?? 1000,
+    legendary: gameSettings.value.runeStoneUpgradeLegendaryBase ?? 5000
+  }
+  return (costCoeff[rs.rarity] || costCoeff.normal) * rs.level
 })
 
 const canUpgradeRuneStone = computed(() => {
@@ -1034,7 +1037,10 @@ async function handleQuickSell(amount) {
       quantity: amount
     })
     const { goldEarned } = res.data.data
-    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
+    ElMessage.success({
+      message: `出售成功，获得 ${goldEarned} 金币`,
+      showClose: true
+    })
     await Promise.all([
       getMyInventoryApi().then(r => {
         inventory.value = r.data.data
