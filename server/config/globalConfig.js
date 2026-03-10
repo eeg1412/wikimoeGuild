@@ -1,5 +1,13 @@
 import GlobalConfig from '../models/globalConfigs.js'
 import SensitiveFilter from '../utils/sensitiveFilter.js'
+import {
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 
 // 初始化
 const filter = new SensitiveFilter([], {
@@ -122,7 +130,19 @@ const initGlobalConfig = async () => {
     // 冒险家降级金币价格
     adventurerLevelDownGoldPrice: 1000,
     // 迷宫等级产出增益计数（百分比）
-    dungeonLevelProductionBonusBase: 100
+    dungeonLevelProductionBonusBase: 100,
+    // 符文石分解碎片系数：普通
+    runeStoneDecomposeNormalBase: RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+    // 符文石分解碎片系数：稀有
+    runeStoneDecomposeRareBase: RUNE_STONE_DECOMPOSE_RARE_BASE,
+    // 符文石分解碎片系数：传说
+    runeStoneDecomposeLegendaryBase: RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
+    // 符文石升级消耗碎片系数：普通
+    runeStoneUpgradeNormalBase: RUNE_STONE_UPGRADE_NORMAL_BASE,
+    // 符文石升级消耗碎片系数：稀有
+    runeStoneUpgradeRareBase: RUNE_STONE_UPGRADE_RARE_BASE,
+    // 符文石升级消耗碎片系数：传说
+    runeStoneUpgradeLegendaryBase: RUNE_STONE_UPGRADE_LEGENDARY_BASE
   }
 
   // 写一个函数，先判断原始类型，再将字符串转换为对应的类型

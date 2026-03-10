@@ -3,6 +3,14 @@ import GamePlayerInventory from '../../models/gamePlayerInventory.js'
 import GameAdventurer from '../../models/gameAdventurer.js'
 import { executeInLock } from '../../utils/utils.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
+import {
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import { jwtKeys } from '../../config/jwtKeys.js'
@@ -14,20 +22,11 @@ import { jwtKeys } from '../../config/jwtKeys.js'
  * @param {number} [level=1] - 初始等级
  * @returns {object} 生成的符文石
  */
-export async function generateRuneStone(accountId, rarity, level = 1) {
-  // 检查玩家符文石数量上限
-  const runeStoneCount = await GameRuneStone.countDocuments({
-    account: accountId
-  })
-  if (runeStoneCount >= 500) {
-    const err = new Error(
-      '符文石数量已达上限（500个），请先分解或出售多余的符文石'
-    )
-    err.statusCode = 400
-    err.expose = true
-    throw err
-  }
-
+/**
+ * 构建符文石文档数据（不写入数据库）
+ * 所有符文石生成逻辑的唯一出口，单条/批量写入均复用此函数
+ */
+function buildRuneStoneDoc(accountId, rarity, level) {
   const allSkills = runeStoneActiveSkillDataBase()
 
   let activeSkillCount, passiveBuffCount, buffLevelMin, buffLevelMax
@@ -71,13 +70,27 @@ export async function generateRuneStone(accountId, rarity, level = 1) {
     passiveBuffs.push({ buffType, buffLevel })
   }
 
-  const runeStone = await GameRuneStone.create({
-    account: accountId,
-    rarity,
-    level,
-    activeSkills,
-    passiveBuffs
+  return { account: accountId, rarity, level, activeSkills, passiveBuffs }
+}
+
+export async function generateRuneStone(accountId, rarity, level = 1) {
+  // 检查玩家符文石数量上限
+  const runeStoneCount = await GameRuneStone.countDocuments({
+    account: accountId
   })
+  if (runeStoneCount >= 500) {
+    const err = new Error(
+      '符文石数量已达上限（500个），请先分解或出售多余的符文石'
+    )
+    err.statusCode = 400
+    err.code = 'RUNE_STONE_LIMIT_REACHED'
+    err.expose = true
+    throw err
+  }
+
+  const runeStone = await GameRuneStone.create(
+    buildRuneStoneDoc(accountId, rarity, level)
+  )
 
   const result = runeStone.toJSON()
   delete result.account
@@ -85,11 +98,42 @@ export async function generateRuneStone(accountId, rarity, level = 1) {
 }
 
 /**
- * 根据掉率配置随机生成符文石
+ * 批量生成符文石（内部使用，调用方需自行确保不超出数量上限）
+ * 使用单次 insertMany 替代逐条 create，避免重复 countDocuments 查询
  * @param {string} accountId
- * @returns {object|null} 生成的符文石或null（未掉落）
+ * @param {{rarity: string, level: number}[]} drops
+ * @returns {object[]} 生成的符文石数组
  */
-export async function tryDropRuneStone(accountId, level = 1) {
+export async function generateRuneStonesBulk(accountId, drops) {
+  if (drops.length === 0) return []
+
+  const docs = drops.map(({ rarity, level }) =>
+    buildRuneStoneDoc(accountId, rarity, level)
+  )
+
+  const created = await GameRuneStone.insertMany(docs)
+  return created.map(stone => {
+    const result = stone.toJSON()
+    delete result.account
+    return result
+  })
+}
+
+/**
+ * 获取玩家当前符文石数量
+ * @param {string} accountId
+ * @returns {number}
+ */
+export function getRuneStoneCount(accountId) {
+  return GameRuneStone.countDocuments({ account: accountId })
+}
+
+/**
+ * 仅进行概率滚算，返回掉落的稀有度与等级数据（不写入数据库）
+ * @param {number} level - 符文石等级
+ * @returns {{rarity: string, level: number}|null}
+ */
+export function tryDropRuneStoneData(level = 1) {
   const gameSettings = global.$globalConfig?.gameSettings || {}
   const dropRate = gameSettings.runeStoneDropRate ?? 100
 
@@ -113,7 +157,18 @@ export async function tryDropRuneStone(accountId, level = 1) {
     rarity = 'legendary'
   }
 
-  return await generateRuneStone(accountId, rarity, level)
+  return { rarity, level }
+}
+
+/**
+ * 根据掉率配置随机生成符文石
+ * @param {string} accountId
+ * @returns {object|null} 生成的符文石或null（未掉落）
+ */
+export async function tryDropRuneStone(accountId, level = 1) {
+  const data = tryDropRuneStoneData(level)
+  if (!data) return null
+  return await generateRuneStone(accountId, data.rarity, data.level)
 }
 
 /**
@@ -253,8 +308,7 @@ export async function listMyRuneStones(
 
 /**
  * 分解符文石
- * 稀有度系数: normal=10, rare=100, legendary=500
- * 碎片 = 系数 × 等级
+ * 碎片 = 系数 × 等级，系数来自 globalConfig.gameSettings
  */
 export async function decomposeRuneStone(accountId, runeStoneId) {
   return await executeInLock(`decompose:${accountId}`, async () => {
@@ -285,7 +339,15 @@ export async function decomposeRuneStone(accountId, runeStoneId) {
       throw err
     }
 
-    const rarityCoeff = { normal: 10, rare: 100, legendary: 500 }
+    const gs = global.$globalConfig?.gameSettings || {}
+    const rarityCoeff = {
+      normal:
+        gs.runeStoneDecomposeNormalBase ?? RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+      rare: gs.runeStoneDecomposeRareBase ?? RUNE_STONE_DECOMPOSE_RARE_BASE,
+      legendary:
+        gs.runeStoneDecomposeLegendaryBase ??
+        RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
+    }
     const fragments = rarityCoeff[runeStone.rarity] * runeStone.level
 
     // 增加碎片
@@ -334,7 +396,15 @@ export async function batchDecomposeRuneStones(accountId, runeStoneIds) {
       throw err
     }
 
-    const rarityCoeff = { normal: 10, rare: 100, legendary: 500 }
+    const gs = global.$globalConfig?.gameSettings || {}
+    const rarityCoeff = {
+      normal:
+        gs.runeStoneDecomposeNormalBase ?? RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+      rare: gs.runeStoneDecomposeRareBase ?? RUNE_STONE_DECOMPOSE_RARE_BASE,
+      legendary:
+        gs.runeStoneDecomposeLegendaryBase ??
+        RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
+    }
     let totalFragments = 0
     const results = []
     const validIds = []
@@ -348,7 +418,8 @@ export async function batchDecomposeRuneStones(accountId, runeStoneIds) {
         results.push({ id: rs._id, success: false, reason: '上架中' })
         continue
       }
-      const fragments = (rarityCoeff[rs.rarity] || 10) * rs.level
+      const fragments =
+        (rarityCoeff[rs.rarity] || rarityCoeff.normal) * rs.level
       totalFragments += fragments
       validIds.push(rs._id)
       results.push({ id: rs._id, success: true, fragments })
@@ -373,9 +444,7 @@ export async function batchDecomposeRuneStones(accountId, runeStoneIds) {
 
 /**
  * 升级符文石
- * 普通: 100 × 当前等级
- * 稀有: 1000 × 当前等级
- * 传说: 5000 × 当前等级
+ * 消耗碎片 = 系数 × 当前等级，系数来自 globalConfig.gameSettings
  */
 export async function upgradeRuneStone(accountId, runeStoneId) {
   return await executeInLock(`upgrade:${accountId}`, async () => {
@@ -417,7 +486,13 @@ export async function upgradeRuneStone(accountId, runeStoneId) {
       }
     }
 
-    const costCoeff = { normal: 100, rare: 1000, legendary: 5000 }
+    const gs = global.$globalConfig?.gameSettings || {}
+    const costCoeff = {
+      normal: gs.runeStoneUpgradeNormalBase ?? RUNE_STONE_UPGRADE_NORMAL_BASE,
+      rare: gs.runeStoneUpgradeRareBase ?? RUNE_STONE_UPGRADE_RARE_BASE,
+      legendary:
+        gs.runeStoneUpgradeLegendaryBase ?? RUNE_STONE_UPGRADE_LEGENDARY_BASE
+    }
     const cost = costCoeff[runeStone.rarity] * runeStone.level
 
     // 检查碎片是否足够

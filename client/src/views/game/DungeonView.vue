@@ -291,9 +291,41 @@
           </div>
           <el-divider />
           <ObtainedRuneStonesDisplay
-            v-if="settleResult.runeStone"
-            :rune-stones="[settleResult.runeStone]"
+            v-if="settleResult.runeStones?.length > 0"
+            :rune-stones="settleResult.runeStones"
           />
+          <!-- 背包已满自动丢弃提示 -->
+          <div
+            v-if="
+              settleResult.discardedRuneStones &&
+              (settleResult.discardedRuneStones.normal > 0 ||
+                settleResult.discardedRuneStones.rare > 0 ||
+                settleResult.discardedRuneStones.legendary > 0)
+            "
+            class="mt-2 rounded p-2 text-xs bg-red-500/10 border border-red-500/30"
+          >
+            <p class="font-semibold text-red-400 mb-1">
+              ⚠️ 背包已满，自动丢弃了：
+            </p>
+            <p
+              v-if="settleResult.discardedRuneStones.normal > 0"
+              style="color: #9ca3af"
+            >
+              普通符文石 ×{{ settleResult.discardedRuneStones.normal }}
+            </p>
+            <p
+              v-if="settleResult.discardedRuneStones.rare > 0"
+              style="color: #60a5fa"
+            >
+              稀有符文石 ×{{ settleResult.discardedRuneStones.rare }}
+            </p>
+            <p
+              v-if="settleResult.discardedRuneStones.legendary > 0"
+              style="color: #f59e0b"
+            >
+              传说符文石 ×{{ settleResult.discardedRuneStones.legendary }}
+            </p>
+          </div>
         </div>
       </el-dialog>
 
@@ -463,6 +495,12 @@
               :rune-stones="[battleResult.droppedRuneStone]"
               class="mt-2"
             />
+            <div
+              v-else-if="battleResult.discardedRuneStone"
+              class="mt-2 bg-orange-900/30 rounded-lg p-2 text-xs text-orange-400"
+            >
+              ⚠️ 背包已满，传说符文石已丢弃
+            </div>
           </div>
           <div
             v-else-if="battleResultDisplay === 'win'"
@@ -549,6 +587,7 @@ import {
 } from '@/api/game/formation.js'
 import { getMyAdventurersApi } from '@/api/game/adventurer.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
+import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
 import ObtainedRuneStonesDisplay from '@/components/ObtainedRuneStonesDisplay.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
@@ -859,6 +898,33 @@ const settleLoading = ref(false)
 const { visible: settleResultVisible } = useDialogRoute('settleResult')
 const settleResult = ref(null)
 
+async function checkRuneStoneOverflow(crystalCount) {
+  const dropRate = gameSettings.value?.runeStoneDropRate ?? 100
+  const estimatedDrops = Math.min(
+    Math.ceil((crystalCount * dropRate) / 10000),
+    100
+  )
+  if (estimatedDrops <= 0) return true
+  const runeStoneRes = await getMyRuneStonesApi({ page: 1, pageSize: 1 })
+  const currentCount = runeStoneRes.data.data?.total ?? 0
+  if (currentCount + estimatedDrops > 500) {
+    try {
+      await ElMessageBox.confirm(
+        `当前符文石背包有 ${currentCount}/500 个，本次收取预计最多掉落 ${estimatedDrops} 个符文石，超出上限的部分将自动丢弃。\n\n是否继续？`,
+        '⚠️ 符文石背包可能溢出',
+        {
+          confirmButtonText: '继续收取',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+    } catch {
+      return false
+    }
+  }
+  return true
+}
+
 async function handleSettle() {
   // 如果符文石产出等级和当前迷宫等级不一致，提示用户确认
   if (selectedLevel.value !== (dungeonInfo.value?.dungeonsLevel || 1)) {
@@ -875,6 +941,8 @@ async function handleSettle() {
     ).catch(() => false)
     if (!confirm) return
   }
+  // 检查符文石背包是否可能溢出
+  if (!(await checkRuneStoneOverflow(currentOutput.value))) return
   settleLoading.value = true
   try {
     const res = await settleCrystalsApi()
@@ -897,6 +965,10 @@ const { visible: showMineDiscovery } = useDialogRoute('mineDiscovery')
 const discoveredMine = ref(null)
 
 async function handleSwitch() {
+  // 切换迷宫时自动收取水晶，先检查符文石背包是否可能溢出
+  if (currentOutput.value >= 1) {
+    if (!(await checkRuneStoneOverflow(currentOutput.value))) return
+  }
   switchLoading.value = true
   try {
     // 切换迷宫时自动收取水晶
@@ -1016,14 +1088,31 @@ const battleResultDisplay = computed(() => {
 async function handleOpenLegionDialog() {
   legionPreviewLoading.value = true
   try {
-    const [previewRes, formRes] = await Promise.all([
+    const [previewRes, formRes, runeStoneRes] = await Promise.all([
       previewLegionApi(),
-      getMyFormationsApi()
+      getMyFormationsApi(),
+      getMyRuneStonesApi({ page: 1, pageSize: 1 })
     ])
     legionPreview.value = previewRes.data.data
     myFormations.value = formRes.data.data || []
     if (myFormations.value.length > 0 && !selectedFormationSlot.value) {
       selectedFormationSlot.value = myFormations.value[0].slot
+    }
+    const runeStoneTotal = runeStoneRes.data.data?.total ?? 0
+    if (runeStoneTotal >= 500) {
+      try {
+        await ElMessageBox.confirm(
+          '符文石背包已满（500/500），胜利后必得的传说符文石将因空间不足而丢失。\n\n建议先前往「符文石」页面分解多余的符文石，再来挑战。\n\n是否仍要继续挑战？',
+          '⚠️ 符文石背包已满',
+          {
+            confirmButtonText: '继续挑战',
+            cancelButtonText: '暂不挑战',
+            type: 'warning'
+          }
+        )
+      } catch {
+        return
+      }
     }
     showLegionDialog.value = true
   } catch (e) {
@@ -1068,7 +1157,10 @@ function onBattleAnimationDone() {
       handleSelectLevel(newDungeonLevel)
     }
   } else if (battleResult.value?.battleResult?.winner === 'attacker') {
-    ElMessage.warning({ message: '战斗获胜，但未能全歼敌方军团，迷宫等级未提升', showClose: true })
+    ElMessage.warning({
+      message: '战斗获胜，但未能全歼敌方军团，迷宫等级未提升',
+      showClose: true
+    })
   }
 }
 

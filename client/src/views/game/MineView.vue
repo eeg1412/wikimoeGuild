@@ -387,6 +387,21 @@
           :rune-stones="[digResult.runeStone]"
         />
 
+        <!-- 符文石背包已满丢弃提示 -->
+        <div
+          v-if="digResult.discardedRuneStone"
+          class="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3 text-sm text-center"
+        >
+          <p class="text-orange-400 font-medium">⚠️ 符文石背包已满</p>
+          <p class="text-gray-400 text-xs mt-1">
+            获得的{{
+              { normal: '普通', rare: '稀有', legendary: '传说' }[
+                digResult.discardedRuneStone.rarity
+              ]
+            }}符文石因背包已满而丢失
+          </p>
+        </div>
+
         <!-- 矿场废弃 -->
         <p v-if="digResult.mineDepleted" class="text-orange-400 text-sm">
           ⚠️ 矿场已被完全探索，即将废弃
@@ -411,7 +426,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   listMinesApi,
   getMineDetailApi,
@@ -421,6 +436,7 @@ import {
   createMineSSE
 } from '@/api/game/mine.js'
 import { getMyFormationsApi } from '@/api/game/formation.js'
+import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import BattleAnimation from '@/components/BattleAnimation.vue'
 import ObtainedRuneStonesDisplay from '@/components/ObtainedRuneStonesDisplay.vue'
@@ -563,11 +579,37 @@ async function handleDigCell(row, col, cell) {
   if (!cell.revealed || (cell.type === 'reward' && !cell.challengeDefeated)) {
     // 不知道类型的时候也需要准备阵容（可能是奖励区域）
     if (!selectedFormationSlot.value && !cell.revealed) {
-      ElMessage.warning({ message: '请先选择战斗阵容（可能遇到敌人）', showClose: true })
+      ElMessage.warning({
+        message: '请先选择战斗阵容（可能遇到敌人）',
+        showClose: true
+      })
       return
     }
   }
-
+  // 已知是奖励区域且守卫未被击败时，检查符文石背包
+  if (cell.revealed && cell.type === 'reward' && !cell.challengeDefeated) {
+    try {
+      const runeStoneRes = await getMyRuneStonesApi({ page: 1, pageSize: 1 })
+      const total = runeStoneRes.data.data?.total ?? 0
+      if (total >= 500) {
+        try {
+          await ElMessageBox.confirm(
+            '符文石背包已满（500/500），胜利后获得的符文石将因空间不足而丢失。\n\n建议先前往「符文石」页面分解多余的符文石，再来挑战。\n\n是否仍要继续挑战？',
+            '⚠️ 符文石背包已满',
+            {
+              confirmButtonText: '继续挑战',
+              cancelButtonText: '暂不挑战',
+              type: 'warning'
+            }
+          )
+        } catch {
+          return
+        }
+      }
+    } catch {
+      // 检查失败则直接继续（不阻断主流程）
+    }
+  }
   digLoading.value = true
   digCellPos.value = { row, col }
   try {
@@ -607,7 +649,10 @@ async function handleDigCell(row, col, cell) {
         currentMine.value = null
         activeTab.value = 'list'
         disconnectSSE()
-        ElMessage.warning({ message: '矿场已完全探索，已废弃', showClose: true })
+        ElMessage.warning({
+          message: '矿场已完全探索，已废弃',
+          showClose: true
+        })
         fetchMineList()
       }
     }
@@ -645,7 +690,10 @@ function connectSSE(mineId) {
             currentMine.value = null
             activeTab.value = 'list'
             disconnectSSE()
-            ElMessage.warning({ message: '矿场已被完全探索，已废弃', showClose: true })
+            ElMessage.warning({
+              message: '矿场已被完全探索，已废弃',
+              showClose: true
+            })
             fetchMineList()
           }
         }

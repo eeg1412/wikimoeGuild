@@ -97,6 +97,93 @@
         </div>
       </el-form-item>
 
+      <el-divider content-position="left">💠 符文石碎片系数</el-divider>
+
+      <el-form-item
+        label="分解系数（普通）"
+        prop="runeStoneDecomposeNormalBase"
+      >
+        <el-input-number
+          v-model="form.runeStoneDecomposeNormalBase"
+          :min="1"
+          :max="2000000000"
+          :step="1"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm"
+          >碎片 = 系数 × 等级，默认1</span
+        >
+      </el-form-item>
+
+      <el-form-item label="分解系数（稀有）" prop="runeStoneDecomposeRareBase">
+        <el-input-number
+          v-model="form.runeStoneDecomposeRareBase"
+          :min="1"
+          :max="2000000000"
+          :step="10"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认10</span>
+      </el-form-item>
+
+      <el-form-item
+        label="分解系数（传说）"
+        prop="runeStoneDecomposeLegendaryBase"
+      >
+        <el-input-number
+          v-model="form.runeStoneDecomposeLegendaryBase"
+          :min="1"
+          :max="2000000000"
+          :step="10"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认50</span>
+      </el-form-item>
+
+      <el-form-item
+        label="升级消耗系数（普通）"
+        prop="runeStoneUpgradeNormalBase"
+      >
+        <el-input-number
+          v-model="form.runeStoneUpgradeNormalBase"
+          :min="1"
+          :max="2000000000"
+          :step="10"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm"
+          >消耗碎片 = 系数 × 当前等级，默认10</span
+        >
+      </el-form-item>
+
+      <el-form-item
+        label="升级消耗系数（稀有）"
+        prop="runeStoneUpgradeRareBase"
+      >
+        <el-input-number
+          v-model="form.runeStoneUpgradeRareBase"
+          :min="1"
+          :max="2000000000"
+          :step="100"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认100</span>
+      </el-form-item>
+
+      <el-form-item
+        label="升级消耗系数（传说）"
+        prop="runeStoneUpgradeLegendaryBase"
+      >
+        <el-input-number
+          v-model="form.runeStoneUpgradeLegendaryBase"
+          :min="1"
+          :max="2000000000"
+          :step="500"
+          controls-position="right"
+        />
+        <span class="ml-2 text-gray-400 text-sm">默认500</span>
+      </el-form-item>
+
       <el-divider content-position="left">🏪 交易市场</el-divider>
 
       <el-form-item label="官方水晶收购单价" prop="officialCrystalBuyPrice">
@@ -461,6 +548,12 @@ const form = reactive({
   adventurerLevelUpGoldBase: 500,
   adventurerLevelDownGoldPrice: 1000,
   dungeonLevelProductionBonusBase: 100,
+  runeStoneDecomposeNormalBase: 1,
+  runeStoneDecomposeRareBase: 10,
+  runeStoneDecomposeLegendaryBase: 50,
+  runeStoneUpgradeNormalBase: 10,
+  runeStoneUpgradeRareBase: 100,
+  runeStoneUpgradeLegendaryBase: 500,
   guestModeEnabled: true,
   guestMaxPerIpPerDay: 3,
   dailyEmailLimit: 500,
@@ -502,7 +595,10 @@ onMounted(() => {
 async function handleSubmit() {
   if (submitting.value) return
   if (rateTotal.value > 10000) {
-    ElMessage.error({ message: '三种符文石概率加起来不得超过10000', showClose: true })
+    ElMessage.error({
+      message: '三种符文石概率加起来不得超过10000',
+      showClose: true
+    })
     return
   }
   submitting.value = true
@@ -510,7 +606,10 @@ async function handleSubmit() {
     await updateGameSettingsApi({ ...form })
     ElMessage.success({ message: '游戏设置已保存', showClose: true })
   } catch (e) {
-    ElMessage.error({ message: e.response?.data?.message || '保存失败', showClose: true })
+    ElMessage.error({
+      message: e.response?.data?.message || '保存失败',
+      showClose: true
+    })
   } finally {
     submitting.value = false
   }

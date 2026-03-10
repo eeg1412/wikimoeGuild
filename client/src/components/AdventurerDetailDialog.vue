@@ -561,7 +561,12 @@ import {
   passiveBuffTypeDataBase,
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
-import { ROLE_TAG_MAP } from 'shared/constants/index.js'
+import {
+  ROLE_TAG_MAP,
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
 import RuneStoneSynthesisDialog from '@/components/RuneStoneSynthesisDialog.vue'
@@ -784,12 +789,21 @@ function onSynthesisUpdated(updatedAdventurer) {
 }
 
 // ── 符文石升级 ──
-const RARITY_UPGRADE_COST = { normal: 100, rare: 1000, legendary: 5000 }
-
 const runeStoneUpgradeCost = computed(() => {
   if (!adventurer.value?.runeStone) return 0
   const rs = adventurer.value.runeStone
-  return (RARITY_UPGRADE_COST[rs.rarity] || 100) * rs.level
+  const costCoeff = {
+    normal:
+      gameSettings.value.runeStoneUpgradeNormalBase ??
+      RUNE_STONE_UPGRADE_NORMAL_BASE,
+    rare:
+      gameSettings.value.runeStoneUpgradeRareBase ??
+      RUNE_STONE_UPGRADE_RARE_BASE,
+    legendary:
+      gameSettings.value.runeStoneUpgradeLegendaryBase ??
+      RUNE_STONE_UPGRADE_LEGENDARY_BASE
+  }
+  return (costCoeff[rs.rarity] || costCoeff.normal) * rs.level
 })
 
 const canUpgradeRuneStone = computed(() => {
@@ -1034,7 +1048,10 @@ async function handleQuickSell(amount) {
       quantity: amount
     })
     const { goldEarned } = res.data.data
-    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
+    ElMessage.success({
+      message: `出售成功，获得 ${goldEarned} 金币`,
+      showClose: true
+    })
     await Promise.all([
       getMyInventoryApi().then(r => {
         inventory.value = r.data.data
