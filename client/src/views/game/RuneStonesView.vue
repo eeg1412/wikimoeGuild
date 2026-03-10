@@ -627,6 +627,14 @@ import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
+import {
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
 import RuneStoneSkillBuffFilter from '@/components/RuneStoneSkillBuffFilter.vue'
@@ -894,9 +902,15 @@ function getSkillInfo(skillId) {
 
 // ── 分解计算 ──
 const RARITY_DECOMPOSE = computed(() => ({
-  normal: gameSettings.value.runeStoneDecomposeNormalBase ?? 10,
-  rare: gameSettings.value.runeStoneDecomposeRareBase ?? 100,
-  legendary: gameSettings.value.runeStoneDecomposeLegendaryBase ?? 500
+  normal:
+    gameSettings.value.runeStoneDecomposeNormalBase ??
+    RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  rare:
+    gameSettings.value.runeStoneDecomposeRareBase ??
+    RUNE_STONE_DECOMPOSE_RARE_BASE,
+  legendary:
+    gameSettings.value.runeStoneDecomposeLegendaryBase ??
+    RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
 }))
 
 function getDecomposeFragments(rs) {
@@ -908,9 +922,14 @@ function getDecomposeFragments(rs) {
 
 // ── 升级费用 ──
 const RARITY_UPGRADE = computed(() => ({
-  normal: gameSettings.value.runeStoneUpgradeNormalBase ?? 100,
-  rare: gameSettings.value.runeStoneUpgradeRareBase ?? 1000,
-  legendary: gameSettings.value.runeStoneUpgradeLegendaryBase ?? 5000
+  normal:
+    gameSettings.value.runeStoneUpgradeNormalBase ??
+    RUNE_STONE_UPGRADE_NORMAL_BASE,
+  rare:
+    gameSettings.value.runeStoneUpgradeRareBase ?? RUNE_STONE_UPGRADE_RARE_BASE,
+  legendary:
+    gameSettings.value.runeStoneUpgradeLegendaryBase ??
+    RUNE_STONE_UPGRADE_LEGENDARY_BASE
 }))
 
 function getUpgradeCost(rs) {

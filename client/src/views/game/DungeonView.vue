@@ -898,6 +898,33 @@ const settleLoading = ref(false)
 const { visible: settleResultVisible } = useDialogRoute('settleResult')
 const settleResult = ref(null)
 
+async function checkRuneStoneOverflow(crystalCount) {
+  const dropRate = gameSettings.value?.runeStoneDropRate ?? 100
+  const estimatedDrops = Math.min(
+    Math.ceil((crystalCount * dropRate) / 10000),
+    100
+  )
+  if (estimatedDrops <= 0) return true
+  const runeStoneRes = await getMyRuneStonesApi({ page: 1, pageSize: 1 })
+  const currentCount = runeStoneRes.data.data?.total ?? 0
+  if (currentCount + estimatedDrops > 500) {
+    try {
+      await ElMessageBox.confirm(
+        `当前符文石背包有 ${currentCount}/500 个，本次收取预计最多掉落 ${estimatedDrops} 个符文石，超出上限的部分将自动丢弃。\n\n是否继续？`,
+        '⚠️ 符文石背包可能溢出',
+        {
+          confirmButtonText: '继续收取',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+    } catch {
+      return false
+    }
+  }
+  return true
+}
+
 async function handleSettle() {
   // 如果符文石产出等级和当前迷宫等级不一致，提示用户确认
   if (selectedLevel.value !== (dungeonInfo.value?.dungeonsLevel || 1)) {
@@ -914,6 +941,8 @@ async function handleSettle() {
     ).catch(() => false)
     if (!confirm) return
   }
+  // 检查符文石背包是否可能溢出
+  if (!(await checkRuneStoneOverflow(currentOutput.value))) return
   settleLoading.value = true
   try {
     const res = await settleCrystalsApi()
@@ -936,6 +965,10 @@ const { visible: showMineDiscovery } = useDialogRoute('mineDiscovery')
 const discoveredMine = ref(null)
 
 async function handleSwitch() {
+  // 切换迷宫时自动收取水晶，先检查符文石背包是否可能溢出
+  if (currentOutput.value >= 1) {
+    if (!(await checkRuneStoneOverflow(currentOutput.value))) return
+  }
   switchLoading.value = true
   try {
     // 切换迷宫时自动收取水晶

@@ -561,7 +561,12 @@ import {
   passiveBuffTypeDataBase,
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
-import { ROLE_TAG_MAP } from 'shared/constants/index.js'
+import {
+  ROLE_TAG_MAP,
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
 import RuneStoneSynthesisDialog from '@/components/RuneStoneSynthesisDialog.vue'
@@ -788,9 +793,15 @@ const runeStoneUpgradeCost = computed(() => {
   if (!adventurer.value?.runeStone) return 0
   const rs = adventurer.value.runeStone
   const costCoeff = {
-    normal: gameSettings.value.runeStoneUpgradeNormalBase ?? 100,
-    rare: gameSettings.value.runeStoneUpgradeRareBase ?? 1000,
-    legendary: gameSettings.value.runeStoneUpgradeLegendaryBase ?? 5000
+    normal:
+      gameSettings.value.runeStoneUpgradeNormalBase ??
+      RUNE_STONE_UPGRADE_NORMAL_BASE,
+    rare:
+      gameSettings.value.runeStoneUpgradeRareBase ??
+      RUNE_STONE_UPGRADE_RARE_BASE,
+    legendary:
+      gameSettings.value.runeStoneUpgradeLegendaryBase ??
+      RUNE_STONE_UPGRADE_LEGENDARY_BASE
   }
   return (costCoeff[rs.rarity] || costCoeff.normal) * rs.level
 })

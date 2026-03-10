@@ -3,6 +3,14 @@ import GamePlayerInventory from '../../models/gamePlayerInventory.js'
 import GameAdventurer from '../../models/gameAdventurer.js'
 import { executeInLock } from '../../utils/utils.js'
 import { runeStoneActiveSkillDataBase } from 'shared/utils/gameDatabase.js'
+import {
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import { jwtKeys } from '../../config/jwtKeys.js'
@@ -333,9 +341,12 @@ export async function decomposeRuneStone(accountId, runeStoneId) {
 
     const gs = global.$globalConfig?.gameSettings || {}
     const rarityCoeff = {
-      normal: gs.runeStoneDecomposeNormalBase ?? 10,
-      rare: gs.runeStoneDecomposeRareBase ?? 100,
-      legendary: gs.runeStoneDecomposeLegendaryBase ?? 500
+      normal:
+        gs.runeStoneDecomposeNormalBase ?? RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+      rare: gs.runeStoneDecomposeRareBase ?? RUNE_STONE_DECOMPOSE_RARE_BASE,
+      legendary:
+        gs.runeStoneDecomposeLegendaryBase ??
+        RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
     }
     const fragments = rarityCoeff[runeStone.rarity] * runeStone.level
 
@@ -387,9 +398,12 @@ export async function batchDecomposeRuneStones(accountId, runeStoneIds) {
 
     const gs = global.$globalConfig?.gameSettings || {}
     const rarityCoeff = {
-      normal: gs.runeStoneDecomposeNormalBase ?? 10,
-      rare: gs.runeStoneDecomposeRareBase ?? 100,
-      legendary: gs.runeStoneDecomposeLegendaryBase ?? 500
+      normal:
+        gs.runeStoneDecomposeNormalBase ?? RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+      rare: gs.runeStoneDecomposeRareBase ?? RUNE_STONE_DECOMPOSE_RARE_BASE,
+      legendary:
+        gs.runeStoneDecomposeLegendaryBase ??
+        RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
     }
     let totalFragments = 0
     const results = []
@@ -474,9 +488,10 @@ export async function upgradeRuneStone(accountId, runeStoneId) {
 
     const gs = global.$globalConfig?.gameSettings || {}
     const costCoeff = {
-      normal: gs.runeStoneUpgradeNormalBase ?? 100,
-      rare: gs.runeStoneUpgradeRareBase ?? 1000,
-      legendary: gs.runeStoneUpgradeLegendaryBase ?? 5000
+      normal: gs.runeStoneUpgradeNormalBase ?? RUNE_STONE_UPGRADE_NORMAL_BASE,
+      rare: gs.runeStoneUpgradeRareBase ?? RUNE_STONE_UPGRADE_RARE_BASE,
+      legendary:
+        gs.runeStoneUpgradeLegendaryBase ?? RUNE_STONE_UPGRADE_LEGENDARY_BASE
     }
     const cost = costCoeff[runeStone.rarity] * runeStone.level
 

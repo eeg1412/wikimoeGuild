@@ -28,3 +28,16 @@ export const VALID_ROLE_TAGS = ['', '1', '2', '3', '4']
  * 数值越大，高难度NPC阵容的整体强度越低
  */
 export const NPC_FREE_ALLOC_COUNT = 5
+
+/**
+ * 符文石碎片系数默认值
+ * 分解: 获得碎片 = 系数 × 等级
+ * 升级: 消耗碎片 = 系数 × 当前等级
+ * 管理后台可覆盖这些默认值
+ */
+export const RUNE_STONE_DECOMPOSE_NORMAL_BASE = 1
+export const RUNE_STONE_DECOMPOSE_RARE_BASE = 10
+export const RUNE_STONE_DECOMPOSE_LEGENDARY_BASE = 50
+export const RUNE_STONE_UPGRADE_NORMAL_BASE = 10
+export const RUNE_STONE_UPGRADE_RARE_BASE = 100
+export const RUNE_STONE_UPGRADE_LEGENDARY_BASE = 500

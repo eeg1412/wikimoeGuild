@@ -111,7 +111,7 @@
           controls-position="right"
         />
         <span class="ml-2 text-gray-400 text-sm"
-          >碎片 = 系数 × 等级，默认10</span
+          >碎片 = 系数 × 等级，默认1</span
         >
       </el-form-item>
 
@@ -123,7 +123,7 @@
           :step="10"
           controls-position="right"
         />
-        <span class="ml-2 text-gray-400 text-sm">默认100</span>
+        <span class="ml-2 text-gray-400 text-sm">默认10</span>
       </el-form-item>
 
       <el-form-item
@@ -137,7 +137,7 @@
           :step="10"
           controls-position="right"
         />
-        <span class="ml-2 text-gray-400 text-sm">默认500</span>
+        <span class="ml-2 text-gray-400 text-sm">默认50</span>
       </el-form-item>
 
       <el-form-item
@@ -152,7 +152,7 @@
           controls-position="right"
         />
         <span class="ml-2 text-gray-400 text-sm"
-          >消耗碎片 = 系数 × 当前等级，默认100</span
+          >消耗碎片 = 系数 × 当前等级，默认10</span
         >
       </el-form-item>
 
@@ -167,7 +167,7 @@
           :step="100"
           controls-position="right"
         />
-        <span class="ml-2 text-gray-400 text-sm">默认1000</span>
+        <span class="ml-2 text-gray-400 text-sm">默认100</span>
       </el-form-item>
 
       <el-form-item
@@ -181,7 +181,7 @@
           :step="500"
           controls-position="right"
         />
-        <span class="ml-2 text-gray-400 text-sm">默认5000</span>
+        <span class="ml-2 text-gray-400 text-sm">默认500</span>
       </el-form-item>
 
       <el-divider content-position="left">🏪 交易市场</el-divider>
@@ -548,12 +548,12 @@ const form = reactive({
   adventurerLevelUpGoldBase: 500,
   adventurerLevelDownGoldPrice: 1000,
   dungeonLevelProductionBonusBase: 100,
-  runeStoneDecomposeNormalBase: 10,
-  runeStoneDecomposeRareBase: 100,
-  runeStoneDecomposeLegendaryBase: 500,
-  runeStoneUpgradeNormalBase: 100,
-  runeStoneUpgradeRareBase: 1000,
-  runeStoneUpgradeLegendaryBase: 5000,
+  runeStoneDecomposeNormalBase: 1,
+  runeStoneDecomposeRareBase: 10,
+  runeStoneDecomposeLegendaryBase: 50,
+  runeStoneUpgradeNormalBase: 10,
+  runeStoneUpgradeRareBase: 100,
+  runeStoneUpgradeLegendaryBase: 500,
   guestModeEnabled: true,
   guestMaxPerIpPerDay: 3,
   dailyEmailLimit: 500,

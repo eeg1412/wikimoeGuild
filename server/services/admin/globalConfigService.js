@@ -1,6 +1,14 @@
 import GlobalConfig from '../../models/globalConfigs.js'
 import { initGlobalConfig } from '../../config/globalConfig.js'
 import { saveBase64Image } from '../../utils/imageUpload.js'
+import {
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 
 /**
  * 配置列表
@@ -259,13 +267,19 @@ export async function getGameSettings() {
     adventurerLevelDownGoldPrice: config.adventurerLevelDownGoldPrice ?? 1000,
     dungeonLevelProductionBonusBase:
       config.dungeonLevelProductionBonusBase ?? 100,
-    runeStoneDecomposeNormalBase: config.runeStoneDecomposeNormalBase ?? 10,
-    runeStoneDecomposeRareBase: config.runeStoneDecomposeRareBase ?? 100,
+    runeStoneDecomposeNormalBase:
+      config.runeStoneDecomposeNormalBase ?? RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+    runeStoneDecomposeRareBase:
+      config.runeStoneDecomposeRareBase ?? RUNE_STONE_DECOMPOSE_RARE_BASE,
     runeStoneDecomposeLegendaryBase:
-      config.runeStoneDecomposeLegendaryBase ?? 500,
-    runeStoneUpgradeNormalBase: config.runeStoneUpgradeNormalBase ?? 100,
-    runeStoneUpgradeRareBase: config.runeStoneUpgradeRareBase ?? 1000,
-    runeStoneUpgradeLegendaryBase: config.runeStoneUpgradeLegendaryBase ?? 5000
+      config.runeStoneDecomposeLegendaryBase ??
+      RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
+    runeStoneUpgradeNormalBase:
+      config.runeStoneUpgradeNormalBase ?? RUNE_STONE_UPGRADE_NORMAL_BASE,
+    runeStoneUpgradeRareBase:
+      config.runeStoneUpgradeRareBase ?? RUNE_STONE_UPGRADE_RARE_BASE,
+    runeStoneUpgradeLegendaryBase:
+      config.runeStoneUpgradeLegendaryBase ?? RUNE_STONE_UPGRADE_LEGENDARY_BASE
   }
 }
 

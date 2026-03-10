@@ -1,3 +1,12 @@
+import {
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
+
 /**
  * 获取游戏前端所需的全局配置（siteSettings）
  */
@@ -53,16 +62,22 @@ export async function getGameSettings(req, res, next) {
         dungeonLevelProductionBonusBase:
           gameSettings.dungeonLevelProductionBonusBase ?? 100,
         runeStoneDecomposeNormalBase:
-          gameSettings.runeStoneDecomposeNormalBase ?? 10,
+          gameSettings.runeStoneDecomposeNormalBase ??
+          RUNE_STONE_DECOMPOSE_NORMAL_BASE,
         runeStoneDecomposeRareBase:
-          gameSettings.runeStoneDecomposeRareBase ?? 100,
+          gameSettings.runeStoneDecomposeRareBase ??
+          RUNE_STONE_DECOMPOSE_RARE_BASE,
         runeStoneDecomposeLegendaryBase:
-          gameSettings.runeStoneDecomposeLegendaryBase ?? 500,
+          gameSettings.runeStoneDecomposeLegendaryBase ??
+          RUNE_STONE_DECOMPOSE_LEGENDARY_BASE,
         runeStoneUpgradeNormalBase:
-          gameSettings.runeStoneUpgradeNormalBase ?? 100,
-        runeStoneUpgradeRareBase: gameSettings.runeStoneUpgradeRareBase ?? 1000,
+          gameSettings.runeStoneUpgradeNormalBase ??
+          RUNE_STONE_UPGRADE_NORMAL_BASE,
+        runeStoneUpgradeRareBase:
+          gameSettings.runeStoneUpgradeRareBase ?? RUNE_STONE_UPGRADE_RARE_BASE,
         runeStoneUpgradeLegendaryBase:
-          gameSettings.runeStoneUpgradeLegendaryBase ?? 5000
+          gameSettings.runeStoneUpgradeLegendaryBase ??
+          RUNE_STONE_UPGRADE_LEGENDARY_BASE
       },
       '获取成功'
     )
