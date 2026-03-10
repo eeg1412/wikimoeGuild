@@ -86,11 +86,11 @@ export async function generateRuneStone(accountId, rarity, level = 1) {
 }
 
 /**
- * 根据掉率配置随机生成符文石
- * @param {string} accountId
- * @returns {object|null} 生成的符文石或null（未掉落）
+ * 仅进行概率滚算，返回掉落的稀有度与等级数据（不写入数据库）
+ * @param {number} level - 符文石等级
+ * @returns {{rarity: string, level: number}|null}
  */
-export async function tryDropRuneStone(accountId, level = 1) {
+export function tryDropRuneStoneData(level = 1) {
   const gameSettings = global.$globalConfig?.gameSettings || {}
   const dropRate = gameSettings.runeStoneDropRate ?? 100
 
@@ -114,7 +114,18 @@ export async function tryDropRuneStone(accountId, level = 1) {
     rarity = 'legendary'
   }
 
-  return await generateRuneStone(accountId, rarity, level)
+  return { rarity, level }
+}
+
+/**
+ * 根据掉率配置随机生成符文石
+ * @param {string} accountId
+ * @returns {object|null} 生成的符文石或null（未掉落）
+ */
+export async function tryDropRuneStone(accountId, level = 1) {
+  const data = tryDropRuneStoneData(level)
+  if (!data) return null
+  return await generateRuneStone(accountId, data.rarity, data.level)
 }
 
 /**

@@ -1,5 +1,6 @@
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GamePlayerInventory from '../../models/gamePlayerInventory.js'
+import GameRuneStone from '../../models/gameRuneStone.js'
 import { executeInLock } from '../../utils/utils.js'
 import * as runeStoneService from './runeStoneService.js'
 import * as mineService from './mineService.js'
@@ -8,6 +9,9 @@ import {
   getDungeonLevelBonus,
   getDungeonLevelBonusCap
 } from 'shared/utils/guildLevelUtils.js'
+
+// 符文石稀有度排序权重（用于品质比较，值越大越好）
+const RUNE_RARITY_ORDER = { legendary: 3, rare: 2, normal: 1 }
 
 /**
  * 计算实际产出率（冒险家产出率 + 迷宫等级增益，受公会等级限制）
@@ -191,10 +195,10 @@ async function settleCrystalsInternal(playerInfo, accountId) {
   const lastSettle = new Date(playerInfo.lastDungeonSettleAt || now)
   const secondsPassed = Math.floor((now - lastSettle) / 1000)
 
-  if (secondsPassed < 1) return { crystals: {}, runeStone: null }
+  if (secondsPassed < 1) return { crystals: {}, runeStones: [], discardedRuneStones: { normal: 0, rare: 0, legendary: 0 } }
 
   const cnt = playerInfo.adventurerCount || 0
-  if (cnt <= 0) return { crystals: {}, runeStone: null }
+  if (cnt <= 0) return { crystals: {}, runeStones: [], discardedRuneStones: { normal: 0, rare: 0, legendary: 0 } }
 
   // 使用新的产出率计算（包含迷宫等级增益，受公会等级限制）
   const productionRate = calcProductionRate(playerInfo)
@@ -204,7 +208,7 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     99999
   )
 
-  if (totalOutput <= 0) return { crystals: {}, runeStone: null }
+  if (totalOutput <= 0) return { crystals: {}, runeStones: [], discardedRuneStones: { normal: 0, rare: 0, legendary: 0 } }
 
   // 按爆率分配水晶
   const rates = playerInfo.dungeonsCryRates || {
@@ -249,27 +253,52 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     { upsert: true, returnDocument: 'after' }
   )
 
-  // 尝试掉落符文石（根据水晶总数随机，支持多个）
-  const droppedRuneStones = []
+  // 第一阶段：概率滚算（不写 DB），收集所有潜在掉落
   const totalCrystals =
     attackCrystals + defenseCrystals + speedCrystals + sanCrystals
   // 使用玩家选择的迷宫等级控制符文石产出等级
   const runeStoneLevel =
     playerInfo.selectedDungeonsLevel || playerInfo.dungeonsLevel
-  // 每个水晶都有一次掉落机会，放置时间越长水晶越多，符文石总量期望越高
+  const potentialDrops = []
   for (let i = 0; i < totalCrystals; i++) {
-    try {
-      const dropped = await runeStoneService.tryDropRuneStone(
+    const drop = runeStoneService.tryDropRuneStoneData(runeStoneLevel)
+    if (drop) potentialDrops.push(drop)
+  }
+
+  const droppedRuneStones = []
+  const discardedRuneStones = { normal: 0, rare: 0, legendary: 0 }
+
+  if (potentialDrops.length > 0) {
+    // 查询当前持有数量，计算可用槽位
+    const currentCount = await GameRuneStone.countDocuments({
+      account: accountId
+    })
+    const availableSlots = Math.max(0, 500 - currentCount)
+
+    // 按品质降序排列（传说 > 稀有 > 普通，同稀有度按等级降序）
+    potentialDrops.sort((a, b) => {
+      const rarityDiff =
+        (RUNE_RARITY_ORDER[b.rarity] || 0) - (RUNE_RARITY_ORDER[a.rarity] || 0)
+      if (rarityDiff !== 0) return rarityDiff
+      return b.level - a.level
+    })
+
+    const keptDrops = potentialDrops.slice(0, availableSlots)
+    const discarded = potentialDrops.slice(availableSlots)
+
+    // 第二阶段：保存保留的符文石
+    for (const drop of keptDrops) {
+      const stone = await runeStoneService.generateRuneStone(
         accountId,
-        runeStoneLevel
+        drop.rarity,
+        drop.level
       )
-      if (dropped) {
-        droppedRuneStones.push(dropped)
-      }
-    } catch (e) {
-      // 符文石数量已达上限（见 runeStoneService.generateRuneStone），停止继续尝试掉落
-      if (e.code === 'RUNE_STONE_LIMIT_REACHED') break
-      throw e
+      droppedRuneStones.push(stone)
+    }
+
+    // 统计丢弃数量
+    for (const d of discarded) {
+      discardedRuneStones[d.rarity] = (discardedRuneStones[d.rarity] || 0) + 1
     }
   }
 
@@ -280,7 +309,8 @@ async function settleCrystalsInternal(playerInfo, accountId) {
       speedCrystal: speedCrystals,
       sanCrystal: sanCrystals
     },
-    runeStones: droppedRuneStones
+    runeStones: droppedRuneStones,
+    discardedRuneStones
   }
 }
 

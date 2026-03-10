@@ -294,6 +294,38 @@
             v-if="settleResult.runeStones?.length > 0"
             :rune-stones="settleResult.runeStones"
           />
+          <!-- 背包已满自动丢弃提示 -->
+          <div
+            v-if="
+              settleResult.discardedRuneStones &&
+              (settleResult.discardedRuneStones.normal > 0 ||
+                settleResult.discardedRuneStones.rare > 0 ||
+                settleResult.discardedRuneStones.legendary > 0)
+            "
+            class="mt-2 rounded p-2 text-xs bg-red-500/10 border border-red-500/30"
+          >
+            <p class="font-semibold text-red-400 mb-1">
+              ⚠️ 背包已满，自动丢弃了：
+            </p>
+            <p
+              v-if="settleResult.discardedRuneStones.normal > 0"
+              style="color: #9ca3af"
+            >
+              普通符文石 ×{{ settleResult.discardedRuneStones.normal }}
+            </p>
+            <p
+              v-if="settleResult.discardedRuneStones.rare > 0"
+              style="color: #60a5fa"
+            >
+              稀有符文石 ×{{ settleResult.discardedRuneStones.rare }}
+            </p>
+            <p
+              v-if="settleResult.discardedRuneStones.legendary > 0"
+              style="color: #f59e0b"
+            >
+              传说符文石 ×{{ settleResult.discardedRuneStones.legendary }}
+            </p>
+          </div>
         </div>
       </el-dialog>
 
