@@ -13,6 +13,7 @@ import {
   getRandomDemonAvatarId,
   generateRandomDemonName
 } from 'shared/utils/utils.js'
+import { BATTLE_COOLDOWN_SECONDS } from 'shared/constants/index.js'
 import {
   runeStoneActiveSkillDataBase,
   passiveBuffTypeDataBase,
@@ -362,13 +363,13 @@ export async function digCell(accountId, mineId, row, col, formationSlot) {
       throw err
     }
 
-    // 奖励区域挑战冷却（10秒）
+    // 奖励区域挑战冷却
     if (cell.type === 'reward') {
       if (playerInfo.lastBattleAt) {
-        const cooldownMs =
-          Date.now() - new Date(playerInfo.lastBattleAt).getTime()
-        if (cooldownMs < 10000) {
-          const remainSec = Math.ceil((10000 - cooldownMs) / 1000)
+        const elapsed = Date.now() - new Date(playerInfo.lastBattleAt).getTime()
+        const cooldownLimit = BATTLE_COOLDOWN_SECONDS * 1000
+        if (elapsed < cooldownLimit) {
+          const remainSec = Math.ceil((cooldownLimit - elapsed) / 1000)
           const err = new Error(`对战冷却中，请等待 ${remainSec} 秒`)
           err.statusCode = 429
           err.expose = true

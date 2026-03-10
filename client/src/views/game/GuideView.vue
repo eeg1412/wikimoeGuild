@@ -719,7 +719,7 @@
             <li>每 <strong>1 小时</strong>恢复 1 次</li>
             <li>最多储存 <strong>24 次</strong></li>
             <li>挑战已暴露的奖励区域<strong>无需消耗</strong>机会</li>
-            <li>挑战军团冷却时间 <strong>10 秒</strong></li>
+            <li>挑战军团冷却时间 <strong>3 秒</strong></li>
           </ul>
         </div>
 

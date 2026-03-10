@@ -597,6 +597,7 @@ import {
   getDungeonLevelBonusCap
 } from 'shared/utils/guildLevelUtils.js'
 import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
+import { BATTLE_COOLDOWN_SECONDS } from 'shared/constants/index.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
@@ -683,7 +684,7 @@ async function fetchDungeonInfo() {
     // 初始化战斗冷却（若服务器有 lastBattleAt）
     if (dungeonInfo.value.lastBattleAt && battleCooldown.value <= 0) {
       const remain = Math.ceil(
-        10 -
+        BATTLE_COOLDOWN_SECONDS -
           (Date.now() - new Date(dungeonInfo.value.lastBattleAt).getTime()) /
             1000
       )
@@ -1065,7 +1066,7 @@ const battleCooldown = ref(0)
 let cooldownTimer = null
 
 function startBattleCooldown() {
-  battleCooldown.value = 10
+  battleCooldown.value = BATTLE_COOLDOWN_SECONDS
   if (cooldownTimer) clearInterval(cooldownTimer)
   cooldownTimer = setInterval(() => {
     battleCooldown.value--

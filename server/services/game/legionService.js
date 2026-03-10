@@ -14,7 +14,10 @@ import {
   attackPreferenceDataBase
 } from 'shared/utils/gameDatabase.js'
 import { recordActivity } from './activityService.js'
-import { NPC_FREE_ALLOC_COUNT } from 'shared/constants/index.js'
+import {
+  NPC_FREE_ALLOC_COUNT,
+  BATTLE_COOLDOWN_SECONDS
+} from 'shared/constants/index.js'
 
 /**
  * 简易种子随机数生成器 (mulberry32)
@@ -419,12 +422,12 @@ export async function challengeLegion(accountId, formationSlot) {
 
     const currentLevel = playerInfo.dungeonsLevel
 
-    // 对战冷却检查（10秒）
+    // 对战冷却检查
     if (playerInfo.lastBattleAt) {
-      const cooldownMs =
-        Date.now() - new Date(playerInfo.lastBattleAt).getTime()
-      if (cooldownMs < 10000) {
-        const remainSec = Math.ceil((10000 - cooldownMs) / 1000)
+      const elapsed = Date.now() - new Date(playerInfo.lastBattleAt).getTime()
+      const cooldownLimit = BATTLE_COOLDOWN_SECONDS * 1000
+      if (elapsed < cooldownLimit) {
+        const remainSec = Math.ceil((cooldownLimit - elapsed) / 1000)
         const err = new Error(`对战冷却中，请等待 ${remainSec} 秒`)
         err.statusCode = 429
         err.expose = true

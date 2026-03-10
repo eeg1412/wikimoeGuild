@@ -443,6 +443,7 @@ import {
   nextTick,
   triggerRef
 } from 'vue'
+import { BATTLE_COOLDOWN_SECONDS } from 'shared/constants/index.js'
 
 const ELEMENT_COLORS = {
   1: '#a0855b',
@@ -1988,11 +1989,11 @@ function handleContinue() {
 
 // 10秒跳过倒计时
 const canSkip = ref(false)
-const skipCountdown = ref(10)
+const skipCountdown = ref(BATTLE_COOLDOWN_SECONDS)
 let skipTimer = null
 
 function startSkipCountdown() {
-  skipCountdown.value = 10
+  skipCountdown.value = BATTLE_COOLDOWN_SECONDS
   canSkip.value = false
   skipTimer = setInterval(() => {
     skipCountdown.value--

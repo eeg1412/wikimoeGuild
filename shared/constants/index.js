@@ -8,6 +8,12 @@ export { HTTP_CODE, BIZ_CODE } from './httpCode.js'
 export const BATTLE_VERSION = 1
 
 /**
+ * 战斗冷却时间（秒）
+ * 玩家每次战斗后需等待该时间才能再次发起战斗
+ */
+export const BATTLE_COOLDOWN_SECONDS = 3
+
+/**
  * 冒险家角色标记映射
  * key 为存储在数据库中的字符串编号，value 为前端展示用的 emoji 和标签
  */
