@@ -17,6 +17,8 @@ declare module 'vue' {
     AdventurerRuneStoneDialog: typeof import('./components/AdventurerRuneStoneDialog.vue')['default']
     BattleAnimation: typeof import('./components/BattleAnimation.vue')['default']
     Cropper: typeof import('./components/Cropper.vue')['default']
+    CrystalQuickBuyDialog: typeof import('./components/CrystalQuickBuyDialog.vue')['default']
+    CrystalQuickSellDialog: typeof import('./components/CrystalQuickSellDialog.vue')['default']
     DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
     DraggableList: typeof import('./components/DraggableList.vue')['default']
     FormationGrid: typeof import('./components/FormationGrid.vue')['default']

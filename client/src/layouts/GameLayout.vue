@@ -432,223 +432,18 @@
     </transition>
 
     <!-- ===== 背包快速出售水晶弹窗 ===== -->
-    <el-dialog
+    <CrystalQuickSellDialog
       v-model="backpackSellVisible"
-      :title="`快速出售 ${backpackSellCrystalLabel}`"
-      width="320px"
-      align-center
-      destroy-on-close
-      v-bind="backpackSellLockProps"
-      append-to-body
-    >
-      <div class="space-y-3">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          当前持有:
-          <span class="font-bold text-yellow-500">
-            {{ backpackInventory?.[backpackSellCrystalType] ?? 0 }}
-          </span>
-        </p>
-        <p class="text-xs text-gray-400">
-          官方收购单价:
-          <span class="text-yellow-500 font-semibold"
-            >🪙
-            {{
-              formatNumberWithCommas(
-                backpackGameSettings?.officialCrystalBuyPrice ?? 100
-              )
-            }}</span
-          >
-        </p>
-        <div
-          v-if="backpackPriceRange && backpackPriceRange.hasOrders"
-          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
-        >
-          <p>
-            📊 收购单价区间:
-            <span class="text-yellow-500 font-semibold">
-              🪙 {{ formatNumberWithCommas(backpackPriceRange.minPrice)
-              }}<template
-                v-if="backpackPriceRange.maxPrice > backpackPriceRange.minPrice"
-              >
-                ~
-                {{
-                  formatNumberWithCommas(backpackPriceRange.maxPrice)
-                }}</template
-              >
-            </span>
-          </p>
-          <p class="text-xs text-gray-400 mt-1">
-            💡 出售时会优先匹配市场高价求购单
-          </p>
-        </div>
-        <div class="flex">
-          <el-button
-            size="small"
-            :loading="backpackSellLoading"
-            :disabled="backpackSellLoading"
-            @click="handleBackpackSell(10)"
-          >
-            出售 10
-          </el-button>
-          <el-button
-            size="small"
-            :loading="backpackSellLoading"
-            :disabled="backpackSellLoading"
-            @click="handleBackpackSell(100)"
-          >
-            出售 100
-          </el-button>
-          <el-button
-            size="small"
-            :loading="backpackSellLoading"
-            :disabled="backpackSellLoading"
-            @click="handleBackpackSell(1000)"
-          >
-            出售 1000
-          </el-button>
-        </div>
-        <div class="flex items-center gap-2">
-          <el-input-number
-            v-model="backpackSellCustomAmount"
-            :min="1"
-            :max="99999"
-            size="small"
-            class="flex-1"
-          />
-          <el-button
-            type="primary"
-            size="small"
-            :loading="backpackSellLoading"
-            :disabled="backpackSellLoading"
-            @click="handleBackpackSell(backpackSellCustomAmount)"
-          >
-            出售
-          </el-button>
-        </div>
-        <div class="text-sm text-gray-400">
-          预计获得<span class="text-xs">(按官方收购价计算)</span>:
-          <span class="text-yellow-500 font-semibold"
-            >🪙
-            {{
-              formatNumberWithCommas(
-                backpackSellCustomAmount *
-                  (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
-              )
-            }}</span
-          >
-        </div>
-      </div>
-    </el-dialog>
+      :crystal-type="backpackSellCrystalType"
+      @sold="handleBackpackCrystalTraded"
+    />
 
     <!-- ===== 背包快速求购水晶弹窗 ===== -->
-    <el-dialog
+    <CrystalQuickBuyDialog
       v-model="backpackBuyVisible"
-      :title="`快速求购 ${backpackBuyCrystalLabel}`"
-      width="320px"
-      align-center
-      destroy-on-close
-      v-bind="backpackBuyLockProps"
-      append-to-body
-    >
-      <div class="space-y-3">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          当前金币:
-          <span class="font-bold text-yellow-500">
-            🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }}
-          </span>
-        </p>
-        <div
-          v-if="backpackBuyPriceRange && backpackBuyPriceRange.hasOrders"
-          class="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
-        >
-          <p>
-            📊 当前市场求购价区间:
-            <span class="text-yellow-500 font-semibold">
-              🪙 {{ formatNumberWithCommas(backpackBuyPriceRange.minPrice)
-              }}<template
-                v-if="
-                  backpackBuyPriceRange.maxPrice >
-                  backpackBuyPriceRange.minPrice
-                "
-              >
-                ~
-                {{
-                  formatNumberWithCommas(backpackBuyPriceRange.maxPrice)
-                }}</template
-              >
-            </span>
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-500 shrink-0">单价:</span>
-          <el-input-number
-            v-model="backpackBuyUnitPrice"
-            :min="1"
-            :max="2000000000"
-            :step="100"
-            size="small"
-            class="flex-1"
-          />
-        </div>
-        <div
-          v-if="backpackBuyQuickPrices.length > 0"
-          class="flex gap-1 flex-wrap"
-        >
-          <el-button
-            v-for="price in backpackBuyQuickPrices"
-            :key="price.value"
-            size="small"
-            @click="setBackpackBuyPrice(price.value)"
-          >
-            {{ price.label }}
-          </el-button>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-500 shrink-0">数量:</span>
-          <el-input-number
-            v-model="backpackBuyQuantity"
-            :min="1"
-            :max="99999"
-            size="small"
-            class="flex-1"
-          />
-        </div>
-        <div class="flex gap-1">
-          <el-button size="small" @click="setBackpackBuyQuantity(10)">
-            10
-          </el-button>
-          <el-button size="small" @click="setBackpackBuyQuantity(100)">
-            100
-          </el-button>
-          <el-button size="small" @click="setBackpackBuyQuantity(1000)">
-            1000
-          </el-button>
-        </div>
-        <div class="text-sm text-gray-400">
-          需冻结金币:
-          <span class="text-yellow-500 font-semibold">
-            🪙
-            {{
-              backpackBuyUnitPrice
-                ? formatNumberWithCommas(
-                    backpackBuyQuantity * backpackBuyUnitPrice
-                  )
-                : '--'
-            }}
-          </span>
-        </div>
-        <el-button
-          type="warning"
-          class="w-full"
-          size="small"
-          :loading="backpackBuyLoading"
-          :disabled="backpackBuyLoading || !backpackBuyUnitPrice"
-          @click="handleBackpackBuy"
-        >
-          发布求购
-        </el-button>
-      </div>
-    </el-dialog>
+      :crystal-type="backpackBuyCrystalType"
+      @bought="handleBackpackCrystalTraded"
+    />
   </div>
 </template>
 
@@ -660,18 +455,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useTheme } from '@/composables/useTheme.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
-import { useDialogLock } from '@/composables/useDialogLock.js'
 import { getGuildLevelInfoApi, upgradeGuildLevelApi } from '@/api/game/guild.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
-import {
-  sellCrystalToOfficialApi,
-  smartSellCrystalApi,
-  getCrystalBuyPriceRangeApi,
-  createMaterialBuyOrderApi
-} from '@/api/game/market.js'
-import { getGameSettingsApi } from '@/api/game/config.js'
 import { getUnreadCountApi } from '@/api/game/mail.js'
 import { formatNumberWithCommas } from 'shared/utils/utils.js'
+import CrystalQuickSellDialog from '@/components/CrystalQuickSellDialog.vue'
+import CrystalQuickBuyDialog from '@/components/CrystalQuickBuyDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -811,7 +600,7 @@ function handleBackpackPopoverAfterLeave() {
   backpackInventory.value = null
 }
 
-// ── 背包快速出售 ──
+// ── 背包快速出售/求购（使用统一组件） ──
 const backpackCrystalList = [
   {
     key: 'attackCrystal',
@@ -841,155 +630,28 @@ const backpackCrystalList = [
 
 const backpackSellVisible = ref(false)
 const backpackSellCrystalType = ref('attackCrystal')
-const backpackSellCustomAmount = ref(10)
-const backpackSellLoading = ref(false)
-const { dialogLockProps: backpackSellLockProps } = useDialogLock(
-  () => backpackSellLoading.value
-)
-const backpackGameSettings = ref({})
-const backpackPriceRange = ref(null)
+const backpackBuyVisible = ref(false)
+const backpackBuyCrystalType = ref('attackCrystal')
 
-const backpackSellCrystalLabel = computed(() => {
-  return (
-    backpackCrystalList.find(c => c.key === backpackSellCrystalType.value)
-      ?.name || '水晶'
-  )
-})
-
-async function openBackpackSellDialog(crystalType) {
+function openBackpackSellDialog(crystalType) {
   backpackSellCrystalType.value = crystalType
-  backpackSellCustomAmount.value = 10
-  backpackPriceRange.value = null
-  try {
-    const [settingsRes, priceRes] = await Promise.all([
-      getGameSettingsApi(),
-      getCrystalBuyPriceRangeApi()
-    ])
-    backpackGameSettings.value = settingsRes.data.data || {}
-    const responseData = priceRes.data.data || {}
-    const ranges = responseData.priceMap || {}
-    backpackPriceRange.value = ranges[crystalType] || null
-  } catch {
-    // ignore
-  }
   backpackSellVisible.value = true
 }
 
-async function handleBackpackSell(amount) {
-  if (!amount || amount <= 0) return
-  backpackSellLoading.value = true
-  try {
-    const res = await smartSellCrystalApi({
-      crystalType: backpackSellCrystalType.value,
-      quantity: amount
-    })
-    const data = res.data.data
-    let msg = `出售成功，获得 ${data.goldEarned} 金币`
-    if (data.soldToBuyers > 0) {
-      msg += `（市场求购 ${data.soldToBuyers} 个 +${data.goldFromBuyers}🪙, 官方 ${data.soldToOfficial} 个 +${data.goldFromOfficial}🪙）`
-    }
-    ElMessage.success({ message: msg, showClose: true })
-    // 刷新背包和玩家信息
-    const [invRes] = await Promise.all([getMyInventoryApi(), fetchPlayerInfo()])
-    backpackInventory.value = invRes.data.data
-  } catch {
-    // handled by interceptor
-  } finally {
-    backpackSellLoading.value = false
-  }
-}
-
-// ── 背包快速求购 ──
-const backpackBuyVisible = ref(false)
-const backpackBuyCrystalType = ref('attackCrystal')
-const backpackBuyUnitPrice = ref(null)
-const backpackBuyQuantity = ref(10)
-const backpackBuyLoading = ref(false)
-const backpackBuyPriceRange = ref(null)
-const { dialogLockProps: backpackBuyLockProps } = useDialogLock(
-  () => backpackBuyLoading.value
-)
-
-const backpackBuyCrystalLabel = computed(() => {
-  return (
-    backpackCrystalList.find(c => c.key === backpackBuyCrystalType.value)
-      ?.name || '水晶'
-  )
-})
-
-function setBackpackBuyPrice(price) {
-  backpackBuyUnitPrice.value = price
-}
-
-const backpackBuyQuickPrices = computed(() => {
-  const range = backpackBuyPriceRange.value
-  const officialPrice =
-    backpackGameSettings.value?.officialCrystalBuyPrice ?? 100
-  if (!range || !range.hasOrders) {
-    const fallback = officialPrice + 10
-    return [{ value: fallback, label: formatNumberWithCommas(fallback) }]
-  }
-  const min = range.minPrice
-  const max = range.maxPrice
-  const mid = Math.floor((min + max) / 2)
-  const prices = [...new Set([min, mid, max])]
-  return prices.map(p => ({ value: p, label: formatNumberWithCommas(p) }))
-})
-
-function setBackpackBuyQuantity(qty) {
-  backpackBuyQuantity.value = qty
-}
-
-async function openBackpackBuyDialog(crystalType) {
+function openBackpackBuyDialog(crystalType) {
   backpackBuyCrystalType.value = crystalType
-  backpackBuyUnitPrice.value = null
-  backpackBuyQuantity.value = 10
-  backpackBuyPriceRange.value = null
-  try {
-    const [priceRes, settingsRes] = await Promise.all([
-      getCrystalBuyPriceRangeApi(),
-      backpackGameSettings.value?.officialCrystalBuyPrice != null
-        ? Promise.resolve(null)
-        : getGameSettingsApi()
-    ])
-    if (settingsRes) {
-      backpackGameSettings.value = settingsRes.data.data || {}
-    }
-    const responseData = priceRes.data.data || {}
-    const ranges = responseData.priceMap || {}
-    backpackBuyPriceRange.value = ranges[crystalType] || null
-    // 如果没有市场求购单，默认单价为官方收购价+10
-    const range = backpackBuyPriceRange.value
-    if (!range || !range.hasOrders) {
-      const officialPrice =
-        backpackGameSettings.value?.officialCrystalBuyPrice ??
-        responseData.officialBuyPrice ??
-        100
-      backpackBuyUnitPrice.value = officialPrice + 10
-    }
-  } catch {
-    // ignore
-  }
   backpackBuyVisible.value = true
 }
 
-async function handleBackpackBuy() {
-  if (!backpackBuyUnitPrice.value || backpackBuyUnitPrice.value <= 0) return
-  backpackBuyLoading.value = true
-  try {
-    await createMaterialBuyOrderApi({
-      materialType: backpackBuyCrystalType.value,
-      quantity: backpackBuyQuantity.value,
-      unitPrice: backpackBuyUnitPrice.value
-    })
-    ElMessage.success({ message: '求购订单发布成功！', showClose: true })
-    backpackBuyVisible.value = false
-    const [invRes] = await Promise.all([getMyInventoryApi(), fetchPlayerInfo()])
-    backpackInventory.value = invRes.data.data
-  } catch {
-    // handled by interceptor
-  } finally {
-    backpackBuyLoading.value = false
+async function handleBackpackCrystalTraded() {
+  // 如果背包面板当前打开，刷新其数据
+  if (backpackInventory.value !== null) {
+    try {
+      const res = await getMyInventoryApi()
+      backpackInventory.value = res.data.data
+    } catch {
+      // ignore
+    }
   }
 }
 

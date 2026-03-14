@@ -387,217 +387,18 @@
     </el-dialog>
 
     <!-- ===== 快速出售水晶弹窗 ===== -->
-    <el-dialog
+    <CrystalQuickSellDialog
       v-model="quickSellVisible"
-      :title="`快速出售 ${quickSellCrystalLabel}`"
-      width="320px"
-      align-center
-      destroy-on-close
-      v-bind="statQuickSellLockProps"
-      append-to-body
-    >
-      <div class="space-y-3">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          当前持有:
-          <span class="font-bold text-yellow-500">
-            {{ formatNumberWithCommas(inventory?.[quickSellCrystalType] ?? 0) }}
-          </span>
-        </p>
-        <p class="text-xs text-gray-400">
-          官方收购单价:
-          <span class="text-yellow-500 font-semibold"
-            >🪙
-            {{
-              formatNumberWithCommas(
-                gameSettings?.officialCrystalBuyPrice ?? 100
-              )
-            }}</span
-          >
-        </p>
-        <div
-          v-if="quickSellPriceRange && quickSellPriceRange.hasOrders"
-          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
-        >
-          <p>
-            📊 收购单价区间:
-            <span class="text-yellow-500 font-semibold">
-              🪙 {{ formatNumberWithCommas(quickSellPriceRange.minPrice)
-              }}<template
-                v-if="
-                  quickSellPriceRange.maxPrice > quickSellPriceRange.minPrice
-                "
-              >
-                ~
-                {{
-                  formatNumberWithCommas(quickSellPriceRange.maxPrice)
-                }}</template
-              >
-            </span>
-          </p>
-          <p class="text-xs text-gray-400 mt-1">
-            💡 出售时会优先匹配市场高价求购单
-          </p>
-        </div>
-        <div class="flex">
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(10)"
-          >
-            出售 10
-          </el-button>
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(100)"
-          >
-            出售 100
-          </el-button>
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(1000)"
-          >
-            出售 1000
-          </el-button>
-        </div>
-        <div class="flex items-center gap-2">
-          <el-input-number
-            v-model="quickSellCustomAmount"
-            :min="1"
-            :max="99999"
-            size="small"
-            class="flex-1"
-          />
-          <el-button
-            type="primary"
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(quickSellCustomAmount)"
-          >
-            出售
-          </el-button>
-        </div>
-        <div class="text-sm text-gray-400">
-          预计获得<span class="text-xs">(按官方收购价计算)</span>:
-          <span class="text-yellow-500 font-semibold"
-            >🪙
-            {{
-              formatNumberWithCommas(
-                quickSellCustomAmount *
-                  (gameSettings?.officialCrystalBuyPrice ?? 100)
-              )
-            }}</span
-          >
-        </div>
-      </div>
-    </el-dialog>
+      :crystal-type="quickSellCrystalType"
+      @sold="handleCrystalSold"
+    />
 
     <!-- ===== 快速求购水晶弹窗 ===== -->
-    <el-dialog
+    <CrystalQuickBuyDialog
       v-model="quickBuyVisible"
-      :title="`快速求购 ${quickBuyCrystalLabel}`"
-      width="320px"
-      align-center
-      destroy-on-close
-      v-bind="statQuickBuyLockProps"
-      append-to-body
-    >
-      <div class="space-y-3">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          当前金币:
-          <span class="font-bold text-yellow-500">
-            🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }}
-          </span>
-        </p>
-        <div
-          v-if="quickBuyPriceRange && quickBuyPriceRange.hasOrders"
-          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
-        >
-          <p>
-            📊 当前求购单价区间:
-            <span class="text-yellow-500 font-semibold">
-              🪙 {{ formatNumberWithCommas(quickBuyPriceRange.minPrice)
-              }}<template
-                v-if="quickBuyPriceRange.maxPrice > quickBuyPriceRange.minPrice"
-              >
-                ~
-                {{
-                  formatNumberWithCommas(quickBuyPriceRange.maxPrice)
-                }}</template
-              >
-            </span>
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <span
-            class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap"
-            >单价</span
-          >
-          <el-input-number
-            v-model="quickBuyUnitPrice"
-            :min="1"
-            :max="999999"
-            size="small"
-            class="flex-1"
-          />
-        </div>
-        <div v-if="quickBuyQuickPrices.length > 0" class="flex gap-1 flex-wrap">
-          <el-button
-            v-for="price in quickBuyQuickPrices"
-            :key="price.value"
-            size="small"
-            @click="setQuickBuyPrice(price.value)"
-          >
-            {{ price.label }}
-          </el-button>
-        </div>
-        <div class="flex items-center gap-2">
-          <span
-            class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap"
-            >数量</span
-          >
-          <el-input-number
-            v-model="quickBuyQuantity"
-            :min="1"
-            :max="99999"
-            size="small"
-            class="flex-1"
-          />
-        </div>
-        <div class="flex gap-1">
-          <el-button size="small" @click="setQuickBuyQuantity(10)"
-            >10</el-button
-          >
-          <el-button size="small" @click="setQuickBuyQuantity(100)"
-            >100</el-button
-          >
-          <el-button size="small" @click="setQuickBuyQuantity(1000)"
-            >1000</el-button
-          >
-        </div>
-        <div class="text-sm text-gray-400">
-          总花费:
-          <span class="text-yellow-500 font-semibold">
-            🪙 {{ formatNumberWithCommas(quickBuyTotalCost) }}
-          </span>
-        </div>
-        <el-button
-          type="primary"
-          size="small"
-          :loading="quickBuyLoading"
-          :disabled="quickBuyLoading"
-          @click="handleQuickBuy"
-          class="w-full"
-        >
-          发布求购
-        </el-button>
-      </div>
-    </el-dialog>
+      :crystal-type="quickBuyCrystalType"
+      @bought="handleCrystalBought"
+    />
   </div>
 </template>
 
@@ -612,12 +413,6 @@ import {
 } from '@/api/game/adventurer.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
-import {
-  sellCrystalToOfficialApi,
-  smartSellCrystalApi,
-  getCrystalBuyPriceRangeApi,
-  createMaterialBuyOrderApi
-} from '@/api/game/market.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogLock } from '@/composables/useDialogLock.js'
 import {
@@ -626,6 +421,8 @@ import {
   getMaxComprehensiveLevel
 } from 'shared/utils/guildLevelUtils.js'
 import { formatNumberWithCommas } from 'shared/utils/utils.js'
+import CrystalQuickSellDialog from '@/components/CrystalQuickSellDialog.vue'
+import CrystalQuickBuyDialog from '@/components/CrystalQuickBuyDialog.vue'
 
 const STORAGE_KEY_MANUAL_MODE = 'guild_stat_manual_mode'
 const STORAGE_KEY_SKIP_CONFIRM_DATE = 'guild_skip_upgrade_confirm_date'
@@ -749,16 +546,12 @@ const anyLoading = computed(
   () =>
     levelUpLoading.value ||
     levelDownLoading.value ||
-    autoDistributeLoading.value ||
-    quickSellLoading.value
+    autoDistributeLoading.value
 )
 
 defineExpose({ anyLoading })
 const { dialogLockProps: autoDistributeLockProps } = useDialogLock(
   () => autoDistributeLoading.value
-)
-const { dialogLockProps: statQuickSellLockProps } = useDialogLock(
-  () => quickSellLoading.value
 )
 
 // ── 精细加点操作 ──
@@ -1036,144 +829,28 @@ async function handleConfirmAutoDistributeDown() {
   }
 }
 
-// ── 快速出售水晶 ──
-const { dialogLockProps: statQuickBuyLockProps } = useDialogLock(
-  () => quickBuyLoading.value
-)
-
+// ── 快速出售/求购水晶（使用统一组件） ──
 const quickSellVisible = ref(false)
 const quickSellCrystalType = ref('attackCrystal')
-const quickSellCustomAmount = ref(10)
-const quickSellLoading = ref(false)
-const quickSellPriceRange = ref(null)
-
-const quickSellCrystalLabel = computed(() => {
-  return (
-    CRYSTAL_TYPES.find(c => c.key === quickSellCrystalType.value)?.label ||
-    '水晶'
-  )
-})
+const quickBuyVisible = ref(false)
+const quickBuyCrystalType = ref('attackCrystal')
 
 function openQuickSellDialog(crystalType) {
   quickSellCrystalType.value = crystalType
-  quickSellCustomAmount.value = 10
-  quickSellPriceRange.value = null
-  getCrystalBuyPriceRangeApi()
-    .then(res => {
-      const responseData = res.data.data || {}
-      const ranges = responseData.priceMap || {}
-      quickSellPriceRange.value = ranges[crystalType] || null
-    })
-    .catch(() => {})
   quickSellVisible.value = true
 }
 
-async function handleQuickSell(amount) {
-  if (!amount || amount <= 0) return
-  quickSellLoading.value = true
-  try {
-    const res = await smartSellCrystalApi({
-      crystalType: quickSellCrystalType.value,
-      quantity: amount
-    })
-    const data = res.data.data
-    let msg = `出售成功，获得 ${data.goldEarned} 金币`
-    if (data.soldToBuyers > 0) {
-      msg += `（市场求购 ${data.soldToBuyers} 个 +${data.goldFromBuyers}🪙, 官方 ${data.soldToOfficial} 个 +${data.goldFromOfficial}🪙）`
-    }
-    ElMessage.success({ message: msg, showClose: true })
-    await Promise.all([refreshInventory(), fetchPlayerInfo()])
-  } catch {
-    // handled by interceptor
-  } finally {
-    quickSellLoading.value = false
-  }
-}
-
-// ===== 快速求购 =====
-const quickBuyVisible = ref(false)
-const quickBuyCrystalType = ref('attackCrystal')
-const quickBuyQuantity = ref(10)
-const quickBuyUnitPrice = ref(100)
-const quickBuyLoading = ref(false)
-const quickBuyPriceRange = ref(null)
-
-const quickBuyCrystalLabel = computed(() => {
-  return (
-    CRYSTAL_TYPES.find(c => c.key === quickBuyCrystalType.value)?.label ||
-    '水晶'
-  )
-})
-
-const quickBuyTotalCost = computed(() => {
-  return (quickBuyQuantity.value || 0) * (quickBuyUnitPrice.value || 0)
-})
-
-function setQuickBuyPrice(price) {
-  quickBuyUnitPrice.value = price
-}
-
-const quickBuyQuickPrices = computed(() => {
-  const range = quickBuyPriceRange.value
-  const officialPrice = gameSettings.value?.officialCrystalBuyPrice ?? 100
-  if (!range || !range.hasOrders) {
-    const fallback = officialPrice + 10
-    return [{ value: fallback, label: formatNumberWithCommas(fallback) }]
-  }
-  const min = range.minPrice
-  const max = range.maxPrice
-  const mid = Math.floor((min + max) / 2)
-  const prices = [...new Set([min, mid, max])]
-  return prices.map(p => ({ value: p, label: formatNumberWithCommas(p) }))
-})
-
-function setQuickBuyQuantity(qty) {
-  quickBuyQuantity.value = qty
-}
-
-async function openQuickBuyDialog(crystalType) {
+function openQuickBuyDialog(crystalType) {
   quickBuyCrystalType.value = crystalType
-  quickBuyQuantity.value = 10
-  quickBuyUnitPrice.value = 100
-  quickBuyPriceRange.value = null
-  try {
-    const res = await getCrystalBuyPriceRangeApi()
-    const responseData = res.data.data || {}
-    const ranges = responseData.priceMap || {}
-    quickBuyPriceRange.value = ranges[crystalType] || null
-    // 如果没有市场求购单，默认单价为官方收购价+10
-    const range = quickBuyPriceRange.value
-    if (!range || !range.hasOrders) {
-      const officialPrice =
-        gameSettings.value?.officialCrystalBuyPrice ??
-        responseData.officialBuyPrice ??
-        100
-      quickBuyUnitPrice.value = officialPrice + 10
-    }
-  } catch {
-    // ignore
-  }
   quickBuyVisible.value = true
 }
 
-async function handleQuickBuy() {
-  if (!quickBuyQuantity.value || quickBuyQuantity.value <= 0) return
-  if (!quickBuyUnitPrice.value || quickBuyUnitPrice.value <= 0) return
-  quickBuyLoading.value = true
-  try {
-    await createMaterialBuyOrderApi({
-      materialType: quickBuyCrystalType.value,
-      quantity: quickBuyQuantity.value,
-      unitPrice: quickBuyUnitPrice.value
-    })
-    ElMessage.success({ message: '求购订单发布成功', showClose: true })
-    quickBuyVisible.value = false
-    await fetchPlayerInfo()
-  } catch {
-    // handled by interceptor
-  } finally {
-    quickBuyLoading.value = false
-  }
+async function handleCrystalSold() {
+  await refreshInventory()
+}
+
+async function handleCrystalBought() {
+  await refreshInventory()
 }
 </script>
 <style scoped>
