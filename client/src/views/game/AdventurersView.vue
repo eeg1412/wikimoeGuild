@@ -425,7 +425,7 @@
             <span
               >💨 速度水晶: {{ batchReportTotalCrystals.speedCrystal }}</span
             >
-            <span>🧠 SAN水晶: {{ batchReportTotalCrystals.sanCrystal }}</span>
+            <span>❤️ SAN水晶: {{ batchReportTotalCrystals.sanCrystal }}</span>
           </p>
         </div>
 
@@ -454,7 +454,7 @@
                 }}</span
               >
               <span
-                >🧠 Lv.{{ item.currentLevels.san }} → Lv.{{
+                >❤️ Lv.{{ item.currentLevels.san }} → Lv.{{
                   item.newLevels.san
                 }}</span
               >
@@ -985,7 +985,10 @@ async function handleBatchEquipBest() {
     })
     const { results } = res.data.data
     const equipped = results.filter(r => r.success).length
-    ElMessage.success({ message: `批量装备完成，${equipped} 名冒险家已装备符文石`, showClose: true })
+    ElMessage.success({
+      message: `批量装备完成，${equipped} 名冒险家已装备符文石`,
+      showClose: true
+    })
     selectedIds.value = new Set()
     // batchMode.value = false // 仅取消选择，不退出批量模式
     await fetchAdventurers()

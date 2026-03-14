@@ -122,7 +122,7 @@
                   <td>实际速度 = 基础值 × 速度等级</td>
                 </tr>
                 <tr>
-                  <td>🧠 SAN</td>
+                  <td>❤️ SAN</td>
                   <td>150</td>
                   <td>实际SAN = 基础值 × SAN等级，归0则无法战斗</td>
                 </tr>
@@ -201,7 +201,7 @@
                   <td>金币 × 公式</td>
                 </tr>
                 <tr>
-                  <td>🧠 SAN等级</td>
+                  <td>❤️ SAN等级</td>
                   <td>SAN水晶 × 公式</td>
                   <td>金币 × 公式</td>
                 </tr>
