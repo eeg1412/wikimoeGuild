@@ -26,6 +26,31 @@ export async function sellCrystalToOfficial(req, res, next) {
   }
 }
 
+export async function smartSellCrystal(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { crystalType, quantity } = req.body
+    const result = await marketService.smartSellCrystal(
+      accountId,
+      crystalType,
+      parseInt(quantity)
+    )
+    res.success(result, '出售成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function getCrystalBuyPriceRange(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const result = await marketService.getCrystalBuyPriceRange(accountId)
+    res.success(result, '获取价格区间成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
 export async function buyCrystalFromOfficial(req, res, next) {
   try {
     const accountId = req.player.id
@@ -55,6 +80,20 @@ export async function sellRuneStoneToOfficial(req, res, next) {
   }
 }
 
+export async function batchSellRuneStonesToOfficial(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { runeStoneIds } = req.body
+    const result = await marketService.batchSellRuneStonesToOfficial(
+      accountId,
+      runeStoneIds
+    )
+    res.success(result, '批量出售成功')
+  } catch (error) {
+    next(error)
+  }
+}
+
 export async function sellRuneFragmentToOfficial(req, res, next) {
   try {
     const accountId = req.player.id
@@ -79,7 +118,7 @@ export async function listMaterialSellOrders(req, res, next) {
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
       materialType,
-      excludeAccountId: accountId
+      currentAccountId: accountId
     })
     res.success(result, '获取出售列表成功')
   } catch (error) {
@@ -95,7 +134,7 @@ export async function listMaterialBuyOrders(req, res, next) {
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
       materialType,
-      excludeAccountId: accountId
+      currentAccountId: accountId
     })
     res.success(result, '获取求购列表成功')
   } catch (error) {
@@ -204,7 +243,7 @@ export async function listRuneStoneListings(req, res, next) {
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
       rarity,
-      excludeAccountId: accountId
+      currentAccountId: accountId
     })
     res.success(result, '获取符文石列表成功')
   } catch (error) {

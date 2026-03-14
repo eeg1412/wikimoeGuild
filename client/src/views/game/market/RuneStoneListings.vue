@@ -9,19 +9,22 @@
         :loading="false"
         mode="nested"
         empty-text="暂无符文石上架"
+        :item-class="item => (item.isMine ? 'opacity-70' : '')"
       >
         <template #extra="{ item }">
           <div class="text-right mr-1">
             <p class="text-sm text-yellow-500 font-semibold whitespace-nowrap">
               🪙 {{ item.price?.toLocaleString() }}
             </p>
-            <p v-if="item.guildName" class="text-xs text-gray-400">
+            <p v-if="item.isMine" class="text-xs text-yellow-500">（我的）</p>
+            <p v-else-if="item.guildName" class="text-xs text-gray-400">
               {{ item.guildName }}
             </p>
           </div>
         </template>
         <template #action="{ item }">
           <el-button
+            v-if="!item.isMine"
             type="primary"
             size="small"
             :loading="buyRsLoading === item._id"
@@ -30,6 +33,7 @@
           >
             购买
           </el-button>
+          <span v-else class="text-xs text-gray-400">我的上架</span>
         </template>
       </RuneStoneMarketList>
 
@@ -82,10 +86,7 @@ async function fetchListings() {
       params.rarity = rarityFilter.value
     }
     const res = await listRuneStoneListingsApi(params)
-    listings.value = (res.data.data?.list || []).map(l => ({
-      ...l,
-      isMine: false
-    }))
+    listings.value = res.data.data?.list || []
     listingsTotal.value = res.data.data?.total || 0
   } catch {
     listings.value = []

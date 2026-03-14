@@ -56,6 +56,24 @@ export const officialSellRuneStoneSchema = Joi.object({
 })
 
 /**
+ * 官方市场批量出售符文石
+ */
+export const officialBatchSellRuneStoneSchema = Joi.object({
+  runeStoneIds: Joi.array()
+    .items(objectId.required())
+    .min(1)
+    .max(50)
+    .unique()
+    .required()
+    .messages({
+      'array.min': '请至少选择1个符文石',
+      'array.max': '最多选择50个符文石',
+      'array.unique': '符文石ID不能重复',
+      'any.required': '请选择符文石'
+    })
+})
+
+/**
  * 官方市场出售符文石碎片
  */
 export const officialSellRuneFragmentSchema = Joi.object({

@@ -6,7 +6,10 @@ import * as mineService from '../../services/game/mineService.js'
 export async function listMines(req, res, next) {
   try {
     const { page, pageSize, minLevel, maxLevel } = req.query
+    const accountId = req.player.id
+
     const result = await mineService.listMines({
+      accountId,
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20,
       minLevel: minLevel ? parseInt(minLevel) : undefined,
@@ -54,7 +57,13 @@ export async function digCell(req, res, next) {
   try {
     const accountId = req.player.id
     const { mineId } = req.params
-    const { row, col, formationSlot } = req.body
+    const {
+      row,
+      col,
+      formationSlot,
+      autoDecomposeNormal = false,
+      autoDecomposeRare = false
+    } = req.body
 
     if (!mineId || !/^[0-9a-fA-F]{24}$/.test(mineId)) {
       return res.paramError('无效的矿场ID')
@@ -86,7 +95,9 @@ export async function digCell(req, res, next) {
       mineId,
       parsedRow,
       parsedCol,
-      parsedSlot
+      parsedSlot,
+      !!autoDecomposeNormal,
+      !!autoDecomposeRare
     )
     res.success(result, '挖矿完成')
   } catch (error) {

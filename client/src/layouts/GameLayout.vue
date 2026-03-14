@@ -426,11 +426,30 @@
           </span>
         </p>
         <p class="text-xs text-gray-400">
-          收购单价:
+          官方收购单价:
           <span class="text-yellow-500 font-semibold"
             >🪙 {{ backpackGameSettings?.officialCrystalBuyPrice ?? 100 }}</span
           >
         </p>
+        <div
+          v-if="backpackPriceRange"
+          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
+        >
+          <p>
+            📊 收购单价区间:
+            <span class="text-yellow-500 font-semibold">
+              🪙 {{ backpackPriceRange.minPrice
+              }}<template
+                v-if="backpackPriceRange.maxPrice > backpackPriceRange.minPrice"
+              >
+                ~ {{ backpackPriceRange.maxPrice }}</template
+              >
+            </span>
+          </p>
+          <p class="text-xs text-gray-400 mt-1">
+            💡 出售时会优先匹配市场高价求购单
+          </p>
+        </div>
         <div class="flex">
           <el-button
             size="small"
@@ -476,7 +495,7 @@
           </el-button>
         </div>
         <div class="text-sm text-gray-400">
-          预计获得:
+          预计获得<span class="text-xs">(按官方收购价计算)</span>:
           <span class="text-yellow-500 font-semibold"
             >🪙
             {{
@@ -503,7 +522,11 @@ import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
 import { useDialogLock } from '@/composables/useDialogLock.js'
 import { getGuildLevelInfoApi, upgradeGuildLevelApi } from '@/api/game/guild.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
-import { sellCrystalToOfficialApi } from '@/api/game/market.js'
+import {
+  sellCrystalToOfficialApi,
+  smartSellCrystalApi,
+  getCrystalBuyPriceRangeApi
+} from '@/api/game/market.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { getUnreadCountApi } from '@/api/game/mail.js'
 
@@ -658,6 +681,7 @@ const { dialogLockProps: backpackSellLockProps } = useDialogLock(
   () => backpackSellLoading.value
 )
 const backpackGameSettings = ref({})
+const backpackPriceRange = ref(null)
 
 const backpackSellCrystalLabel = computed(() => {
   return (
@@ -669,9 +693,15 @@ const backpackSellCrystalLabel = computed(() => {
 async function openBackpackSellDialog(crystalType) {
   backpackSellCrystalType.value = crystalType
   backpackSellCustomAmount.value = 10
+  backpackPriceRange.value = null
   try {
-    const res = await getGameSettingsApi()
-    backpackGameSettings.value = res.data.data || {}
+    const [settingsRes, priceRes] = await Promise.all([
+      getGameSettingsApi(),
+      getCrystalBuyPriceRangeApi()
+    ])
+    backpackGameSettings.value = settingsRes.data.data || {}
+    const ranges = priceRes.data.data || {}
+    backpackPriceRange.value = ranges[crystalType] || null
   } catch {
     // ignore
   }
@@ -682,12 +712,16 @@ async function handleBackpackSell(amount) {
   if (!amount || amount <= 0) return
   backpackSellLoading.value = true
   try {
-    const res = await sellCrystalToOfficialApi({
+    const res = await smartSellCrystalApi({
       crystalType: backpackSellCrystalType.value,
       quantity: amount
     })
-    const { goldEarned } = res.data.data
-    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
+    const data = res.data.data
+    let msg = `出售成功，获得 ${data.goldEarned} 金币`
+    if (data.soldToBuyers > 0) {
+      msg += `（市场求购 ${data.soldToBuyers} 个 +${data.goldFromBuyers}🪙, 官方 ${data.soldToOfficial} 个 +${data.goldFromOfficial}🪙）`
+    }
+    ElMessage.success({ message: msg, showClose: true })
     // 刷新背包和玩家信息
     const [invRes] = await Promise.all([getMyInventoryApi(), fetchPlayerInfo()])
     backpackInventory.value = invRes.data.data

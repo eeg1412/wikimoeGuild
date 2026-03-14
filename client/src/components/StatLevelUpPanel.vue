@@ -61,8 +61,8 @@
             Lv.{{ adventurer[stat.levelKey] }}
           </p>
           <p class="text-[10px] text-gray-400 text-center leading-tight">
-            升级: {{ getStatLevelUpCrystalCost(stat.levelKey) }}💎 +
-            {{ getStatLevelUpGoldCost(stat.levelKey) }}🪙
+            升级: {{ getStatLevelUpCrystalCost(stat.levelKey)
+            }}{{ stat.icon }} + {{ getStatLevelUpGoldCost(stat.levelKey) }}🪙
           </p>
           <p class="text-[10px] text-red-400 text-center leading-tight">
             降级: {{ gameSettings?.adventurerLevelDownGoldPrice ?? 1000 }}🪙/级
@@ -385,11 +385,32 @@
           </span>
         </p>
         <p class="text-xs text-gray-400">
-          收购单价:
+          官方收购单价:
           <span class="text-yellow-500 font-semibold"
             >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
           >
         </p>
+        <div
+          v-if="quickSellPriceRange"
+          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
+        >
+          <p>
+            📊 收购单价区间:
+            <span class="text-yellow-500 font-semibold">
+              🪙 {{ quickSellPriceRange.minPrice
+              }}<template
+                v-if="
+                  quickSellPriceRange.maxPrice > quickSellPriceRange.minPrice
+                "
+              >
+                ~ {{ quickSellPriceRange.maxPrice }}</template
+              >
+            </span>
+          </p>
+          <p class="text-xs text-gray-400 mt-1">
+            💡 出售时会优先匹配市场高价求购单
+          </p>
+        </div>
         <div class="flex">
           <el-button
             size="small"
@@ -435,7 +456,7 @@
           </el-button>
         </div>
         <div class="text-sm text-gray-400">
-          预计获得:
+          预计获得<span class="text-xs">(按官方收购价计算)</span>:
           <span class="text-yellow-500 font-semibold"
             >🪙
             {{
@@ -462,7 +483,11 @@ import {
 } from '@/api/game/adventurer.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
-import { sellCrystalToOfficialApi } from '@/api/game/market.js'
+import {
+  sellCrystalToOfficialApi,
+  smartSellCrystalApi,
+  getCrystalBuyPriceRangeApi
+} from '@/api/game/market.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogLock } from '@/composables/useDialogLock.js'
 import {
@@ -631,7 +656,10 @@ async function handleLevelDown(statType, times = 1) {
       times
     })
     const { adventurer: updated, levelsDropped, goldCost } = res.data.data
-    ElMessage.success({ message: `成功降级 ${levelsDropped} 级，消耗 ${goldCost} 金币！`, showClose: true })
+    ElMessage.success({
+      message: `成功降级 ${levelsDropped} 级，消耗 ${goldCost} 金币！`,
+      showClose: true
+    })
     emit('updated', updated)
     await Promise.all([fetchPlayerInfo(), refreshInventory()])
   } catch {
@@ -694,7 +722,8 @@ async function handleLevelUp(statType, times = 1) {
     const res = await levelUpStatApi(props.adventurer._id, { statType, times })
     const { adventurer: updated, levelsUpgraded } = res.data.data
     ElMessage.success({
-      message: levelsUpgraded > 1 ? `成功升级 ${levelsUpgraded} 级！` : '升级成功！',
+      message:
+        levelsUpgraded > 1 ? `成功升级 ${levelsUpgraded} 级！` : '升级成功！',
       showClose: true
     })
     emit('updated', updated)
@@ -738,7 +767,10 @@ async function handleSaveRatio() {
 // ── 按比例自动分配升级 ──
 async function handleAutoDistribute(totalLevels) {
   if (ratioSum.value !== 100) {
-    ElMessage.warning({ message: '请先设置正确的分配比例（合计 100%）', showClose: true })
+    ElMessage.warning({
+      message: '请先设置正确的分配比例（合计 100%）',
+      showClose: true
+    })
     return
   }
 
@@ -759,7 +791,10 @@ async function handleAutoDistribute(totalLevels) {
     })
     const { adventurer: updated, levelsUpgraded, allocation } = res.data.data
     const allocStr = `攻击+${allocation.attack} 防御+${allocation.defense} 速度+${allocation.speed} SAN+${allocation.san}`
-    ElMessage.success({ message: `成功升级 ${levelsUpgraded} 级！(${allocStr})`, showClose: true })
+    ElMessage.success({
+      message: `成功升级 ${levelsUpgraded} 级！(${allocStr})`,
+      showClose: true
+    })
     emit('updated', updated)
     await Promise.all([fetchPlayerInfo(), refreshInventory()])
   } catch {
@@ -797,7 +832,10 @@ function calcProportionalAlloc(totalLevels, ratio) {
 
 function handleAutoDistributeDown(totalLevels) {
   if (ratioSum.value !== 100) {
-    ElMessage.warning({ message: '请先设置正确的分配比例（合计 100%）', showClose: true })
+    ElMessage.warning({
+      message: '请先设置正确的分配比例（合计 100%）',
+      showClose: true
+    })
     return
   }
 
@@ -851,7 +889,10 @@ async function handleConfirmAutoDistributeDown() {
       latestAdv = res.data.data.adventurer
     }
     if (latestAdv) {
-      ElMessage.success({ message: `成功降级 ${totalLevels} 级！(${allocStr})`, showClose: true })
+      ElMessage.success({
+        message: `成功降级 ${totalLevels} 级！(${allocStr})`,
+        showClose: true
+      })
       emit('updated', latestAdv)
     }
     downgradeReportVisible.value = false
@@ -869,6 +910,7 @@ const quickSellVisible = ref(false)
 const quickSellCrystalType = ref('attackCrystal')
 const quickSellCustomAmount = ref(10)
 const quickSellLoading = ref(false)
+const quickSellPriceRange = ref(null)
 
 const quickSellCrystalLabel = computed(() => {
   return (
@@ -880,6 +922,13 @@ const quickSellCrystalLabel = computed(() => {
 function openQuickSellDialog(crystalType) {
   quickSellCrystalType.value = crystalType
   quickSellCustomAmount.value = 10
+  quickSellPriceRange.value = null
+  getCrystalBuyPriceRangeApi()
+    .then(res => {
+      const ranges = res.data.data || {}
+      quickSellPriceRange.value = ranges[crystalType] || null
+    })
+    .catch(() => {})
   quickSellVisible.value = true
 }
 
@@ -887,12 +936,16 @@ async function handleQuickSell(amount) {
   if (!amount || amount <= 0) return
   quickSellLoading.value = true
   try {
-    const res = await sellCrystalToOfficialApi({
+    const res = await smartSellCrystalApi({
       crystalType: quickSellCrystalType.value,
       quantity: amount
     })
-    const { goldEarned } = res.data.data
-    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
+    const data = res.data.data
+    let msg = `出售成功，获得 ${data.goldEarned} 金币`
+    if (data.soldToBuyers > 0) {
+      msg += `（市场求购 ${data.soldToBuyers} 个 +${data.goldFromBuyers}🪙, 官方 ${data.soldToOfficial} 个 +${data.goldFromOfficial}🪙）`
+    }
+    ElMessage.success({ message: msg, showClose: true })
     await Promise.all([refreshInventory(), fetchPlayerInfo()])
   } catch {
     // handled by interceptor

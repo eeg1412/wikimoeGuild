@@ -3,6 +3,7 @@ import GameMine from '../../models/gameMine.js'
 import GameMineRevenue from '../../models/gameMineRevenue.js'
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GamePlayerInventory from '../../models/gamePlayerInventory.js'
+import GameRuneStone from '../../models/gameRuneStone.js'
 import GameFormation from '../../models/gameFormation.js'
 import GameAdventurer from '../../models/gameAdventurer.js'
 import { executeInLock } from '../../utils/utils.js'
@@ -13,7 +14,12 @@ import {
   getRandomDemonAvatarId,
   generateRandomDemonName
 } from 'shared/utils/utils.js'
-import { BATTLE_COOLDOWN_SECONDS } from 'shared/constants/index.js'
+import {
+  BATTLE_COOLDOWN_SECONDS,
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 import {
   runeStoneActiveSkillDataBase,
   passiveBuffTypeDataBase,
@@ -177,6 +183,7 @@ export async function tryDiscoverMine(accountId, dungeonLevel, crystalRates) {
  * 获取矿场列表（支持按等级筛选）
  */
 export async function listMines({
+  accountId,
   page = 1,
   pageSize = 20,
   minLevel,
@@ -193,10 +200,39 @@ export async function listMines({
     .sort({ level: 1, createdAt: -1 })
     .skip((page - 1) * pageSize)
     .limit(pageSize)
-    .select('ownerGuildName level totalRewards exploredRewards createdAt')
+    .select('owner ownerGuildName level totalRewards exploredRewards createdAt')
     .lean()
 
-  return { list, total }
+  // 获取玩家迷宫等级用于推荐矿场
+  let recommended = []
+  if (accountId) {
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+      .select('dungeonsLevel')
+      .lean()
+    const dungeonLevel = playerInfo?.dungeonsLevel
+    if (dungeonLevel) {
+      const dl = parseInt(dungeonLevel)
+      const selectFields =
+        'owner ownerGuildName level totalRewards exploredRewards createdAt'
+      const [above, below] = await Promise.all([
+        GameMine.find({ depleted: false, level: { $gte: dl } })
+          .sort({ level: 1 })
+          .limit(3)
+          .select(selectFields)
+          .lean(),
+        GameMine.find({ depleted: false, level: { $lt: dl } })
+          .sort({ level: -1 })
+          .limit(3)
+          .select(selectFields)
+          .lean()
+      ])
+      const combined = [...above, ...below]
+      combined.sort((a, b) => Math.abs(a.level - dl) - Math.abs(b.level - dl))
+      recommended = combined.slice(0, 5)
+    }
+  }
+
+  return { list, total, recommended }
 }
 
 /**
@@ -326,7 +362,15 @@ function findTopKillers(battleResult, playerGrid) {
 /**
  * 挖矿（探索格子）
  */
-export async function digCell(accountId, mineId, row, col, formationSlot) {
+export async function digCell(
+  accountId,
+  mineId,
+  row,
+  col,
+  formationSlot,
+  autoDecomposeNormal = false,
+  autoDecomposeRare = false
+) {
   // 参数验证
   if (row < 0 || row > 9 || col < 0 || col > 9) {
     const err = new Error('无效的坐标')
@@ -539,18 +583,58 @@ export async function digCell(accountId, mineId, row, col, formationSlot) {
         if (rarityRoll < normalRate) rarity = 'normal'
         else if (rarityRoll < normalRate + rareRate) rarity = 'rare'
         else rarity = 'legendary'
+
+        const gs = global.$globalConfig?.gameSettings || {}
+        const rarityCoeff = {
+          normal:
+            gs.runeStoneDecomposeNormalBase ?? RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+          rare: gs.runeStoneDecomposeRareBase ?? RUNE_STONE_DECOMPOSE_RARE_BASE,
+          legendary:
+            gs.runeStoneDecomposeLegendaryBase ??
+            RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
+        }
+
         const runeStoneCount =
           await runeStoneService.getRuneStoneCount(accountId)
         if (runeStoneCount >= 500) {
+          // 背包满：不入库，直接转碎片
           result.runeStone = null
-          result.discardedRuneStone = { rarity, level: mine.level }
-        } else {
-          result.runeStone = await runeStoneService.generateRuneStone(
-            accountId,
-            rarity,
-            mine.level
+          const discardFragments = rarityCoeff[rarity] * mine.level
+          await GamePlayerInventory.findOneAndUpdate(
+            { account: accountId },
+            { $inc: { runeFragment: discardFragments } },
+            { upsert: true }
           )
-          result.discardedRuneStone = null
+          result.discardedRuneStone = {
+            rarity,
+            level: mine.level,
+            convertedFragments: discardFragments
+          }
+        } else {
+          const shouldAutoDecompose =
+            (rarity === 'normal' && autoDecomposeNormal) ||
+            (rarity === 'rare' && autoDecomposeRare)
+
+          if (shouldAutoDecompose) {
+            // 自动分解：不入库，直接转碎片
+            result.runeStone = null
+            result.discardedRuneStone = null
+            const autoFragments = rarityCoeff[rarity] * mine.level
+            await GamePlayerInventory.findOneAndUpdate(
+              { account: accountId },
+              { $inc: { runeFragment: autoFragments } },
+              { upsert: true }
+            )
+            result.autoDecomposed = true
+            result.autoDecomposedFragments = autoFragments
+          } else {
+            result.runeStone = await runeStoneService.generateRuneStone(
+              accountId,
+              rarity,
+              mine.level
+            )
+            result.discardedRuneStone = null
+          }
         }
 
         // 找出全场最佳

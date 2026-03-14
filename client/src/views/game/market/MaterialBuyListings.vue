@@ -15,6 +15,7 @@
           v-for="order in orders"
           :key="order._id"
           class="rpg-card rounded-xl p-3"
+          :class="order.isMine ? 'opacity-70' : ''"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -26,6 +27,11 @@
                   {{ getMaterialName(order.materialType) }}
                   <span class="text-xs text-gray-400 font-normal ml-1"
                     >x{{ order.quantity }}</span
+                  >
+                  <span
+                    v-if="order.isMine"
+                    class="text-xs text-yellow-500 font-normal ml-1"
+                    >（我的）</span
                   >
                 </p>
                 <p class="text-sm text-gray-400">
@@ -39,6 +45,7 @@
             </div>
             <div class="flex flex-col items-end gap-1">
               <el-button
+                v-if="!order.isMine"
                 type="primary"
                 size="small"
                 :loading="fulfillLoading === order._id"
@@ -47,6 +54,7 @@
               >
                 出售
               </el-button>
+              <span v-else class="text-xs text-gray-400">我的订单</span>
             </div>
           </div>
         </div>

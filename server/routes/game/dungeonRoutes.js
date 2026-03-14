@@ -5,14 +5,20 @@ import { authPlayer } from '../../middlewares/auth.js'
 import { validate } from '../../middlewares/validate.js'
 import {
   dungeonLegionChallengeSchema,
-  dungeonSelectLevelSchema
+  dungeonSelectLevelSchema,
+  dungeonSettleSchema
 } from '../../../shared/validators/index.js'
 
 const router = Router()
 
 router.get('/info', authPlayer, dungeonController.getDungeonInfo)
 router.post('/switch', authPlayer, dungeonController.switchDungeon)
-router.post('/settle', authPlayer, dungeonController.settleCrystals)
+router.post(
+  '/settle',
+  authPlayer,
+  validate(dungeonSettleSchema),
+  dungeonController.settleCrystals
+)
 router.post(
   '/select-level',
   authPlayer,

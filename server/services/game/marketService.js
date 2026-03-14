@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GamePlayerInventory from '../../models/gamePlayerInventory.js'
 import GameOfficialMarketStock from '../../models/gameOfficialMarketStock.js'
@@ -40,6 +41,60 @@ export async function getOfficialMarketInfo() {
     runeFragmentBuyPrice: gameSettings.officialRuneFragmentBuyPrice ?? 10,
     runeFragmentStock: stock.runeFragment ?? 0
   }
+}
+
+/**
+ * 获取各水晶类型的求购价格区间（用于快捷出售面板显示）
+ */
+export async function getCrystalBuyPriceRange(accountId) {
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  const officialBuyPrice = gameSettings.officialCrystalBuyPrice ?? 100
+  const crystalTypes = [
+    'attackCrystal',
+    'defenseCrystal',
+    'speedCrystal',
+    'sanCrystal'
+  ]
+
+  // 聚合查询每种水晶的最高/最低求购价（排除自己的求购单）
+  const matchFilter = {
+    orderType: 'buy',
+    status: 'active',
+    materialType: { $in: crystalTypes }
+  }
+  if (accountId) {
+    matchFilter.account = { $ne: new mongoose.Types.ObjectId(accountId) }
+  }
+  const pipeline = [
+    {
+      $match: matchFilter
+    },
+    {
+      $group: {
+        _id: '$materialType',
+        minPrice: { $min: '$unitPrice' },
+        maxPrice: { $max: '$unitPrice' }
+      }
+    }
+  ]
+  const aggregated = await GameMarketListing.aggregate(pipeline)
+  const priceMap = {}
+  for (const item of aggregated) {
+    priceMap[item._id] = {
+      minPrice: Math.min(item.minPrice, officialBuyPrice),
+      maxPrice: Math.max(item.maxPrice, officialBuyPrice)
+    }
+  }
+  // 对没有求购单的类型，区间就是官方价
+  for (const type of crystalTypes) {
+    if (!priceMap[type]) {
+      priceMap[type] = {
+        minPrice: officialBuyPrice,
+        maxPrice: officialBuyPrice
+      }
+    }
+  }
+  return priceMap
 }
 
 /**
@@ -107,6 +162,139 @@ export async function sellCrystalToOfficial(accountId, crystalType, quantity) {
     }
 
     return { goldEarned: totalGold, quantity }
+  })
+}
+
+/**
+ * 智能出售水晶：优先卖给素材市场求购者，剩余卖给官方
+ */
+export async function smartSellCrystal(accountId, crystalType, quantity) {
+  const validTypes = [
+    'attackCrystal',
+    'defenseCrystal',
+    'speedCrystal',
+    'sanCrystal'
+  ]
+  if (!validTypes.includes(crystalType)) {
+    const err = new Error('无效的水晶类型')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+  if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 99999) {
+    const err = new Error('数量必须为1-99999的正整数')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  // 使用全局水晶市场锁，防止smartSell和fulfillBuyOrder同时操作同一求购单
+  return await executeInLock(`crystal-market:${crystalType}`, async () => {
+    // 检查玩家库存
+    const inventory = await GamePlayerInventory.findOne({ account: accountId })
+    if (!inventory || inventory[crystalType] < quantity) {
+      const err = new Error('水晶不足')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const officialBuyPrice = gameSettings.officialCrystalBuyPrice ?? 100
+
+    // 查找所有活跃的该水晶类型的求购订单（不包括自己的），按单价从高到低
+    const buyOrders = await GameMarketListing.find({
+      orderType: 'buy',
+      materialType: crystalType,
+      status: 'active',
+      account: { $ne: accountId }
+    }).sort({ unitPrice: -1, createdAt: 1 })
+
+    let remaining = quantity
+    let totalGoldFromBuyers = 0
+    let soldToBuyersCount = 0
+    const bulkOps = []
+
+    // 逐个匹配求购单
+    for (const order of buyOrders) {
+      if (remaining <= 0) break
+      // 只匹配价格 >= 官方收购价的求购单（否则不如卖给官方）
+      if (order.unitPrice < officialBuyPrice) break
+
+      const sellQty = Math.min(remaining, order.quantity)
+      const gold = order.unitPrice * sellQty
+
+      totalGoldFromBuyers += gold
+      soldToBuyersCount += sellQty
+      remaining -= sellQty
+
+      // 使用原子操作批量更新求购单
+      const updateFields = {
+        $inc: { pendingQuantity: sellQty, quantity: -sellQty }
+      }
+      if (sellQty >= order.quantity) {
+        updateFields.$set = { status: 'completed', quantity: 0 }
+        delete updateFields.$inc.quantity
+      }
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: order._id },
+          update: updateFields
+        }
+      })
+    }
+
+    // 批量执行所有求购单更新
+    if (bulkOps.length > 0) {
+      await GameMarketListing.bulkWrite(bulkOps)
+    }
+
+    // 扣除玩家水晶（一次性扣除全部出售数量）
+    const totalSold = soldToBuyersCount + remaining
+    await GamePlayerInventory.updateOne(
+      { account: accountId },
+      { $inc: { [crystalType]: -totalSold } }
+    )
+
+    // 计算金币
+    let totalGoldFromOfficial = 0
+    if (remaining > 0) {
+      totalGoldFromOfficial = officialBuyPrice * remaining
+    }
+
+    // 一次性给卖家所有金币（来自求购者 + 官方）
+    const totalGold = totalGoldFromBuyers + totalGoldFromOfficial
+    if (totalGold > 0) {
+      await GamePlayerInfo.updateOne(
+        { account: accountId },
+        { $inc: { gold: totalGold } }
+      )
+    }
+
+    // 剩余卖给官方：增加官方库存
+    if (remaining > 0) {
+      // 增加官方库存
+      const MAX_STOCK = 99999999
+      const stock = await GameOfficialMarketStock.findOneAndUpdate(
+        { key: 'global' },
+        { $inc: { [crystalType]: remaining } },
+        { upsert: true, new: true }
+      )
+      if (stock[crystalType] > MAX_STOCK) {
+        await GameOfficialMarketStock.updateOne(
+          { key: 'global' },
+          { $set: { [crystalType]: MAX_STOCK } }
+        )
+      }
+    }
+
+    return {
+      goldEarned: totalGoldFromBuyers + totalGoldFromOfficial,
+      soldToBuyers: soldToBuyersCount,
+      soldToOfficial: remaining,
+      goldFromBuyers: totalGoldFromBuyers,
+      goldFromOfficial: totalGoldFromOfficial
+    }
   })
 }
 
@@ -240,6 +428,77 @@ export async function sellRuneStoneToOfficial(accountId, runeStoneId) {
   })
 }
 
+/**
+ * 批量出售符文石给官方市场
+ */
+export async function batchSellRuneStonesToOfficial(accountId, runeStoneIds) {
+  if (
+    !Array.isArray(runeStoneIds) ||
+    runeStoneIds.length === 0 ||
+    runeStoneIds.length > 50
+  ) {
+    const err = new Error('请选择1-50个符文石')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  return await executeInLock(`official-rune-sell:${accountId}`, async () => {
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const officialPriceMap = {
+      normal: gameSettings.officialNormalRuneStoneBuyPrice ?? 100,
+      rare: gameSettings.officialRareRuneStoneBuyPrice ?? 400,
+      legendary: gameSettings.officialLegendaryRuneStoneBuyPrice ?? 2000
+    }
+
+    // 批量查询符文石
+    const runeStones = await GameRuneStone.find({
+      _id: { $in: runeStoneIds },
+      account: accountId,
+      equippedBy: null,
+      listedOnMarket: { $ne: true }
+    })
+
+    if (runeStones.length === 0) {
+      const err = new Error('没有可出售的符文石')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    let totalGold = 0
+    const soldIds = []
+    for (const rs of runeStones) {
+      const price = officialPriceMap[rs.rarity]
+      if (price) {
+        totalGold += price
+        soldIds.push(rs._id)
+      }
+    }
+
+    if (soldIds.length === 0) {
+      const err = new Error('没有可出售的符文石')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    // 批量删除符文石
+    await GameRuneStone.deleteMany({ _id: { $in: soldIds } })
+
+    // 给玩家金币
+    await GamePlayerInfo.updateOne(
+      { account: accountId },
+      { $inc: { gold: totalGold } }
+    )
+
+    return {
+      goldEarned: totalGold,
+      soldCount: soldIds.length
+    }
+  })
+}
+
 // ==================== 自由市场 - 素材交易 ====================
 
 /**
@@ -249,7 +508,7 @@ export async function listMaterialSellOrders({
   page = 1,
   pageSize = 20,
   materialType,
-  excludeAccountId
+  currentAccountId
 } = {}) {
   pageSize = Math.min(Math.max(pageSize, 1), 50)
   const validMaterialTypes = [
@@ -262,7 +521,6 @@ export async function listMaterialSellOrders({
   const filter = { orderType: 'sell', status: 'active' }
   if (materialType && validMaterialTypes.includes(materialType))
     filter.materialType = materialType
-  if (excludeAccountId) filter.account = { $ne: excludeAccountId }
   const total = await GameMarketListing.countDocuments(filter)
   const list = await GameMarketListing.find(filter)
     .sort({ unitPrice: 1, createdAt: 1 })
@@ -284,6 +542,7 @@ export async function listMaterialSellOrders({
   for (const item of list) {
     const accId = item.account?.toString()
     item.guildName = infoMap.get(accId) || '未知'
+    item.isMine = currentAccountId && accId === currentAccountId
     // 禁止返回 account
     delete item.account
   }
@@ -298,7 +557,7 @@ export async function listMaterialBuyOrders({
   page = 1,
   pageSize = 20,
   materialType,
-  excludeAccountId
+  currentAccountId
 } = {}) {
   pageSize = Math.min(Math.max(pageSize, 1), 50)
   const validMaterialTypes = [
@@ -311,7 +570,6 @@ export async function listMaterialBuyOrders({
   const filter = { orderType: 'buy', status: 'active' }
   if (materialType && validMaterialTypes.includes(materialType))
     filter.materialType = materialType
-  if (excludeAccountId) filter.account = { $ne: excludeAccountId }
   const total = await GameMarketListing.countDocuments(filter)
   const list = await GameMarketListing.find(filter)
     .sort({ unitPrice: -1, createdAt: 1 })
@@ -330,7 +588,9 @@ export async function listMaterialBuyOrders({
     infoMap.set(info.account.toString(), info.guildName)
   }
   for (const item of list) {
-    item.guildName = infoMap.get(item.account.toString()) || '未知'
+    const accId = item.account.toString()
+    item.guildName = infoMap.get(accId) || '未知'
+    item.isMine = currentAccountId && accId === currentAccountId
     delete item.account
   }
 
@@ -614,7 +874,33 @@ export async function fulfillMaterialBuyOrder(
   orderId,
   quantity
 ) {
-  return await executeInLock(`market-fulfill:${orderId}`, async () => {
+  const crystalTypes = [
+    'attackCrystal',
+    'defenseCrystal',
+    'speedCrystal',
+    'sanCrystal'
+  ]
+
+  // 先读取订单确定素材类型
+  const orderCheck = await GameMarketListing.findOne({
+    _id: orderId,
+    orderType: 'buy',
+    status: 'active'
+  })
+  if (!orderCheck) {
+    const err = new Error('求购订单不存在或已完成')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  // 如果是水晶类型，使用全局水晶市场锁（与smartSellCrystal共享），否则用订单锁
+  const lockKey = crystalTypes.includes(orderCheck.materialType)
+    ? `crystal-market:${orderCheck.materialType}`
+    : `market-fulfill:${orderId}`
+
+  return await executeInLock(lockKey, async () => {
+    // 重新读取订单（锁内再次确认状态）
     const order = await GameMarketListing.findOne({
       _id: orderId,
       orderType: 'buy',
@@ -765,13 +1051,12 @@ export async function listRuneStoneListings({
   page = 1,
   pageSize = 20,
   rarity,
-  excludeAccountId
+  currentAccountId
 } = {}) {
   pageSize = Math.min(Math.max(pageSize, 1), 50)
   const validRarities = ['normal', 'rare', 'legendary']
   if (rarity && !validRarities.includes(rarity)) rarity = undefined
   const filter = { status: 'active' }
-  if (excludeAccountId) filter.account = { $ne: excludeAccountId }
   const total = await GameRuneStoneListing.countDocuments(filter)
   let query = GameRuneStoneListing.find(filter)
     .sort({ price: 1, createdAt: 1 })
@@ -802,7 +1087,9 @@ export async function listRuneStoneListings({
     infoMap.set(info.account.toString(), info.guildName)
   }
   for (const item of list) {
-    item.guildName = infoMap.get(item.account.toString()) || '未知'
+    const accId = item.account.toString()
+    item.guildName = infoMap.get(accId) || '未知'
+    item.isMine = currentAccountId && accId === currentAccountId
     delete item.account
   }
 

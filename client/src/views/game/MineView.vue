@@ -78,37 +78,111 @@
         <span class="animate-spin inline-block text-2xl">⏳</span>
       </div>
       <template v-else>
+        <!-- 推荐矿场 -->
+        <div
+          v-if="
+            recommendedMines.length > 0 && !filterMinLevel && !filterMaxLevel
+          "
+          class="mb-4"
+        >
+          <div class="flex items-center gap-2 mb-2 px-1">
+            <span class="text-yellow-500 text-sm">⭐</span>
+            <span
+              class="text-sm font-semibold text-yellow-600 dark:text-yellow-400"
+              >推荐矿场</span
+            >
+            <span class="text-xs text-gray-400"
+              >（接近你的迷宫等级，共 {{ recommendedMines.length }} 个）</span
+            >
+          </div>
+          <div class="space-y-2">
+            <div
+              v-for="mine in recommendedMines"
+              :key="'rec-' + mine._id"
+              class="rpg-card rounded-xl p-3 cursor-pointer border-l-4 border-yellow-400"
+              @click="handleEnterMine(mine._id)"
+            >
+              <div class="flex items-center justify-between">
+                <div class="min-w-0">
+                  <p
+                    class="text-sm font-semibold text-gray-700 dark:text-gray-200"
+                  >
+                    ⛰️ Lv.{{ mine.level }} 矿场
+                    <span class="text-xs text-yellow-500 ml-1">⭐</span>
+                    <span
+                      v-if="mine.owner === playerId"
+                      class="text-xs text-yellow-500 ml-1"
+                      >👑 我的</span
+                    >
+                  </p>
+                  <p class="text-sm text-gray-400 mt-0.5">
+                    矿主: {{ mine.ownerGuildName }} · 奖励进度:
+                    {{ mine.exploredRewards }}/{{ mine.totalRewards }}
+                  </p>
+                </div>
+                <span class="text-gray-400 text-sm">▶</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 推荐与全部矿场之间的分隔线 -->
+        <el-divider
+          v-if="
+            recommendedMines.length > 0 &&
+            mineList.length > 0 &&
+            !filterMinLevel &&
+            !filterMaxLevel
+          "
+          class="my-3!"
+        />
+
+        <!-- 全部矿场 -->
         <div
           v-if="mineList.length === 0"
           class="text-center py-8 text-gray-400 text-sm"
         >
           暂无矿场
         </div>
-        <div v-else class="space-y-2">
+        <div v-else>
           <div
-            v-for="mine in mineList"
-            :key="mine._id"
-            class="rpg-card rounded-xl p-3 cursor-pointer"
-            @click="handleEnterMine(mine._id)"
+            v-if="
+              recommendedMines.length > 0 && !filterMinLevel && !filterMaxLevel
+            "
+            class="flex items-center gap-2 mb-2 px-1"
           >
-            <div class="flex items-center justify-between">
-              <div class="min-w-0">
-                <p
-                  class="text-sm font-semibold text-gray-700 dark:text-gray-200"
-                >
-                  ⛰️ Lv.{{ mine.level }} 矿场
-                  <span
-                    v-if="mine.owner === playerId"
-                    class="text-xs text-yellow-500 ml-1"
-                    >👑 我的</span
+            <span class="text-blue-500 text-sm">📋</span>
+            <span class="text-sm font-semibold text-blue-600 dark:text-blue-400"
+              >全部矿场</span
+            >
+            <span class="text-xs text-gray-400">（按等级排序）</span>
+          </div>
+          <div class="space-y-2">
+            <div
+              v-for="mine in mineList"
+              :key="mine._id"
+              class="rpg-card rounded-xl p-3 cursor-pointer"
+              @click="handleEnterMine(mine._id)"
+            >
+              <div class="flex items-center justify-between">
+                <div class="min-w-0">
+                  <p
+                    class="text-sm font-semibold text-gray-700 dark:text-gray-200"
                   >
-                </p>
-                <p class="text-sm text-gray-400 mt-0.5">
-                  矿主: {{ mine.ownerGuildName }} · 奖励进度:
-                  {{ mine.exploredRewards }}/{{ mine.totalRewards }}
-                </p>
+                    ⛰️ Lv.{{ mine.level }} 矿场
+                    <span
+                      v-if="mine.owner === playerId"
+                      class="text-xs text-yellow-500 ml-1"
+                      >👑 我的</span
+                    >
+                  </p>
+                  <p class="text-sm text-gray-400 mt-0.5">
+                    矿主: {{ mine.ownerGuildName }} · 奖励进度:
+                    {{ mine.exploredRewards }}/{{ mine.totalRewards }}
+                  </p>
+                </div>
+                <span class="text-gray-400 text-sm">▶</span>
               </div>
-              <span class="text-gray-400 text-sm">▶</span>
             </div>
           </div>
         </div>
@@ -169,6 +243,31 @@
                 :value="f.slot"
               />
             </el-select>
+          </div>
+        </div>
+
+        <!-- 自动分解设置 -->
+        <div class="rpg-card rounded-xl p-3 mb-3">
+          <p class="text-xs text-gray-400 mb-2">⚙️ 自动分解设置</p>
+          <div class="flex flex-wrap gap-1">
+            <el-checkbox
+              :model-value="autoDecomposeNormal"
+              size="small"
+              @change="handleAutoDecomposeNormalChange"
+            >
+              <span class="text-xs text-gray-600 dark:text-gray-300"
+                >自动分解普通符文石</span
+              >
+            </el-checkbox>
+            <el-checkbox
+              :model-value="autoDecomposeRare"
+              size="small"
+              @change="handleAutoDecomposeRareChange"
+            >
+              <span class="text-xs text-gray-600 dark:text-gray-300"
+                >自动分解稀有符文石</span
+              >
+            </el-checkbox>
           </div>
         </div>
 
@@ -387,18 +486,31 @@
           :rune-stones="[digResult.runeStone]"
         />
 
+        <!-- 自动分解结果 -->
+        <div
+          v-if="digResult.autoDecomposed"
+          class="bg-purple-50 dark:bg-purple-900/20 border border-purple-400/30 rounded-lg p-3 text-sm"
+        >
+          <p class="text-purple-400 font-medium">🔮 已自动分解</p>
+          <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
+            获得
+            {{ digResult.autoDecomposedFragments ?? 0 }} 个符文石碎片
+          </p>
+        </div>
+
         <!-- 符文石背包已满丢弃提示 -->
         <div
           v-if="digResult.discardedRuneStone"
           class="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3 text-sm text-center"
         >
           <p class="text-orange-400 font-medium">⚠️ 符文石背包已满</p>
-          <p class="text-gray-400 text-xs mt-1">
+          <p class="text-orange-300 text-xs mt-1">
             获得的{{
               { normal: '普通', rare: '稀有', legendary: '传说' }[
                 digResult.discardedRuneStone.rarity
               ]
-            }}符文石因背包已满而丢失
+            }}符文石已自动转换为
+            {{ digResult.discardedRuneStone.convertedFragments ?? 0 }} 个碎片
           </p>
         </div>
 
@@ -424,7 +536,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -457,6 +569,7 @@ const activeTab = ref('list')
 
 // 矿场列表
 const mineList = ref([])
+const recommendedMines = ref([])
 const listLoading = ref(false)
 const listPage = ref(1)
 const listPageSize = 20
@@ -480,6 +593,24 @@ const sseConnected = ref(false)
 const { visible: digResultVisible } = useDialogRoute('digResult')
 const digResult = ref(null)
 const showBattleAnimation = ref(false)
+
+// 自动分解偏好 (localStorage)
+const autoDecomposeNormal = ref(
+  localStorage.getItem('mine_auto_decompose_normal') === 'true'
+)
+const autoDecomposeRare = ref(
+  localStorage.getItem('mine_auto_decompose_rare') === 'true'
+)
+
+function handleAutoDecomposeNormalChange(val) {
+  autoDecomposeNormal.value = val
+  localStorage.setItem('mine_auto_decompose_normal', String(val))
+}
+
+function handleAutoDecomposeRareChange(val) {
+  autoDecomposeRare.value = val
+  localStorage.setItem('mine_auto_decompose_rare', String(val))
+}
 
 // 矿主收益
 const revenueList = ref([])
@@ -507,6 +638,7 @@ async function fetchMineList() {
     })
     mineList.value = res.data.data?.list || []
     listTotal.value = res.data.data?.total || 0
+    recommendedMines.value = res.data.data?.recommended || []
   } catch {
     mineList.value = []
   } finally {
@@ -616,7 +748,9 @@ async function handleDigCell(row, col, cell) {
     const res = await digCellApi(currentMine.value._id, {
       row,
       col,
-      formationSlot: selectedFormationSlot.value
+      formationSlot: selectedFormationSlot.value,
+      autoDecomposeNormal: autoDecomposeNormal.value,
+      autoDecomposeRare: autoDecomposeRare.value
     })
     const result = res.data.data
     digResult.value = result
@@ -625,6 +759,7 @@ async function handleDigCell(row, col, cell) {
     if (result.type === 'reward' && result.battleResult) {
       showBattleAnimation.value = true
     } else {
+      // 非战斗结果直接显示弹窗
       digResultVisible.value = true
     }
 

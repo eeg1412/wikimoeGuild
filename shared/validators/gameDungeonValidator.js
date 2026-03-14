@@ -21,3 +21,11 @@ export const dungeonSelectLevelSchema = Joi.object({
     'any.required': '请选择迷宫等级'
   })
 })
+
+/**
+ * 结算收取水晶
+ */
+export const dungeonSettleSchema = Joi.object({
+  autoDecomposeNormal: Joi.boolean().optional(),
+  autoDecomposeRare: Joi.boolean().optional()
+})

@@ -73,11 +73,32 @@
           </span>
         </p>
         <p class="text-xs text-gray-400">
-          收购单价:
+          官方收购单价:
           <span class="text-yellow-500 font-semibold"
             >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
           >
         </p>
+        <div
+          v-if="quickSellPriceRange"
+          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
+        >
+          <p>
+            📊 收购单价区间:
+            <span class="text-yellow-500 font-semibold">
+              🪙 {{ quickSellPriceRange.minPrice
+              }}<template
+                v-if="
+                  quickSellPriceRange.maxPrice > quickSellPriceRange.minPrice
+                "
+              >
+                ~ {{ quickSellPriceRange.maxPrice }}</template
+              >
+            </span>
+          </p>
+          <p class="text-xs text-gray-400 mt-1">
+            💡 出售时会优先匹配市场高价求购单
+          </p>
+        </div>
         <div class="flex">
           <el-button
             size="small"
@@ -123,7 +144,7 @@
           </el-button>
         </div>
         <div class="text-sm text-gray-400">
-          预计获得:
+          预计获得<span class="text-xs">(按官方收购价计算)</span>:
           <span class="text-yellow-500 font-semibold"
             >🪙
             {{
@@ -144,7 +165,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
-import { sellCrystalToOfficialApi } from '@/api/game/market.js'
+import {
+  sellCrystalToOfficialApi,
+  smartSellCrystalApi,
+  getCrystalBuyPriceRangeApi
+} from '@/api/game/market.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogLock } from '@/composables/useDialogLock.js'
@@ -190,6 +215,7 @@ const quickSellVisible = ref(false)
 const quickSellCrystalType = ref('attackCrystal')
 const quickSellCustomAmount = ref(10)
 const quickSellLoading = ref(false)
+const quickSellPriceRange = ref(null)
 const { dialogLockProps: inventoryQuickSellLockProps } = useDialogLock(
   () => quickSellLoading.value
 )
@@ -204,6 +230,13 @@ const quickSellCrystalLabel = computed(() => {
 function openQuickSellDialog(crystalType) {
   quickSellCrystalType.value = crystalType
   quickSellCustomAmount.value = 10
+  quickSellPriceRange.value = null
+  getCrystalBuyPriceRangeApi()
+    .then(res => {
+      const ranges = res.data.data || {}
+      quickSellPriceRange.value = ranges[crystalType] || null
+    })
+    .catch(() => {})
   quickSellVisible.value = true
 }
 
@@ -211,12 +244,16 @@ async function handleQuickSell(amount) {
   if (!amount || amount <= 0) return
   quickSellLoading.value = true
   try {
-    const res = await sellCrystalToOfficialApi({
+    const res = await smartSellCrystalApi({
       crystalType: quickSellCrystalType.value,
       quantity: amount
     })
-    const { goldEarned } = res.data.data
-    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
+    const data = res.data.data
+    let msg = `出售成功，获得 ${data.goldEarned} 金币`
+    if (data.soldToBuyers > 0) {
+      msg += `（市场求购 ${data.soldToBuyers} 个 +${data.goldFromBuyers}🪙, 官方 ${data.soldToOfficial} 个 +${data.goldFromOfficial}🪙）`
+    }
+    ElMessage.success({ message: msg, showClose: true })
     await Promise.all([fetchInventory(), fetchPlayerInfo()])
   } catch {
     // handled by interceptor

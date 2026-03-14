@@ -9,6 +9,14 @@ export function sellCrystalToOfficialApi(data) {
   return gameRequest.post('/market/official/sell', data)
 }
 
+export function smartSellCrystalApi(data) {
+  return gameRequest.post('/market/official/smart-sell', data)
+}
+
+export function getCrystalBuyPriceRangeApi() {
+  return gameRequest.get('/market/official/crystal-price-range')
+}
+
 export function buyCrystalFromOfficialApi(data) {
   return gameRequest.post('/market/official/buy', data)
 }
@@ -16,6 +24,11 @@ export function buyCrystalFromOfficialApi(data) {
 // 官方市场 - 出售符文石
 export function sellRuneStoneToOfficialApi(data) {
   return gameRequest.post('/market/official/sell-rune-stone', data)
+}
+
+// 官方市场 - 批量出售符文石
+export function batchSellRuneStonesToOfficialApi(data) {
+  return gameRequest.post('/market/official/batch-sell-rune-stone', data)
 }
 
 // 素材交易 - 出售列表
