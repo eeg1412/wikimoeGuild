@@ -518,3 +518,19 @@ export function generateRandomDemonName() {
     DEMON_NAME_SUFFIXES[Math.floor(Math.random() * DEMON_NAME_SUFFIXES.length)]
   return prefix + suffix
 }
+
+// 转换数字格式，分k、m, b
+export function formatNumberWithUnits(num) {
+  if (num < 10000) {
+    return num
+  } else if (num < 100000000) {
+    return (num / 10000).toFixed(1) + '万'
+  } else {
+    return (num / 100000000).toFixed(1) + '亿'
+  }
+}
+
+// 转换数字为,分隔的格式
+export function formatNumberWithCommas(num) {
+  return Number(num).toLocaleString('en-US')
+}

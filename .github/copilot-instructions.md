@@ -42,3 +42,4 @@
 - element-plus的button组件如果是连续使用的情况，第二个按钮开始会自带margin-left，设计时需要注意这个问题，避免出现不必要的间距。
 - ElMessage必须要有关闭按钮，showClose属性必须设置为true。
 - 禁止简化用户的需求！
+- 所有战斗力相关的数字使用 formatNumberWithUnits 来格式化数字，其他数字使用formatNumberWithCommas来格式化数字
