@@ -1307,8 +1307,10 @@ export async function batchRatioDistribute(accountId, operations) {
       throw err
     }
 
-    // 第 3 阶段：执行操作
+    // 第 3 阶段：在内存中计算所有变更，然后批量写入
     const results = []
+    const bulkOps = []
+
     for (const plan of executablePlans) {
       const { adv, alloc, direction } = plan
 
@@ -1346,9 +1348,23 @@ export async function batchRatioDistribute(accountId, operations) {
       }
 
       // 重算综合等级
-      adv.comprehensiveLevel =
+      const newCompLevel =
         adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
-      await adv.save()
+
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: adv._id },
+          update: {
+            $set: {
+              attackLevel: adv.attackLevel,
+              defenseLevel: adv.defenseLevel,
+              speedLevel: adv.speedLevel,
+              SANLevel: adv.SANLevel,
+              comprehensiveLevel: newCompLevel
+            }
+          }
+        }
+      })
 
       results.push({
         adventurerId: adv._id,
@@ -1360,13 +1376,19 @@ export async function batchRatioDistribute(accountId, operations) {
           defenseLevel: adv.defenseLevel,
           speedLevel: adv.speedLevel,
           SANLevel: adv.SANLevel,
-          comprehensiveLevel: adv.comprehensiveLevel
+          comprehensiveLevel: newCompLevel
         }
       })
     }
 
-    await playerInfo.save()
-    await inventory.save()
+    // 批量更新冒险家、玩家信息、背包，减少数据库往返
+    await Promise.all([
+      bulkOps.length > 0
+        ? GameAdventurer.bulkWrite(bulkOps)
+        : Promise.resolve(),
+      playerInfo.save(),
+      inventory.save()
+    ])
 
     return { results, skipped: skippedResults }
   })

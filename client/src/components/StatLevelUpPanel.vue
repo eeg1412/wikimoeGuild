@@ -7,7 +7,7 @@
       >
         <p class="text-xs text-gray-400">🪙 金币</p>
         <p class="text-sm font-bold text-yellow-500">
-          {{ (playerInfo?.gold ?? 0).toLocaleString() }}
+          {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }}
         </p>
       </div>
     </div>
@@ -19,16 +19,26 @@
       >
         <p class="text-xs text-gray-400">{{ cType.icon }}</p>
         <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
-          {{ inventory?.[cType.key] ?? 0 }}
+          {{ formatNumberWithCommas(inventory?.[cType.key] ?? 0) }}
         </p>
-        <el-button
-          type="warning"
-          size="small"
-          class="mt-1"
-          @click="openQuickSellDialog(cType.key)"
-        >
-          出售
-        </el-button>
+        <div class="flex gap-1 justify-center">
+          <el-button
+            type="warning"
+            size="small"
+            class="mt-1"
+            @click="openQuickSellDialog(cType.key)"
+          >
+            出售
+          </el-button>
+          <el-button
+            type="primary"
+            size="small"
+            class="mt-1"
+            @click="openQuickBuyDialog(cType.key)"
+          >
+            求购
+          </el-button>
+        </div>
       </div>
     </div>
 
@@ -61,11 +71,20 @@
             Lv.{{ adventurer[stat.levelKey] }}
           </p>
           <p class="text-[10px] text-gray-400 text-center leading-tight">
-            升级: {{ getStatLevelUpCrystalCost(stat.levelKey)
-            }}{{ stat.icon }} + {{ getStatLevelUpGoldCost(stat.levelKey) }}🪙
+            升级:
+            {{ formatNumberWithCommas(getStatLevelUpCrystalCost(stat.levelKey))
+            }}{{ stat.icon }} +
+            {{
+              formatNumberWithCommas(getStatLevelUpGoldCost(stat.levelKey))
+            }}🪙
           </p>
           <p class="text-[10px] text-red-400 text-center leading-tight">
-            降级: {{ gameSettings?.adventurerLevelDownGoldPrice ?? 1000 }}🪙/级
+            降级:
+            {{
+              formatNumberWithCommas(
+                gameSettings?.adventurerLevelDownGoldPrice ?? 1000
+              )
+            }}🪙/级
           </p>
           <!-- 降级按钮组 -->
           <div class="flex gap-0.5 w-full">
@@ -309,14 +328,14 @@
           <p class="mt-1">
             💰 预计消耗:
             <span class="text-yellow-500 font-bold">{{
-              downgradeReportData.totalGoldCost.toLocaleString()
+              formatNumberWithCommas(downgradeReportData.totalGoldCost)
             }}</span>
             金币
             <span class="text-xs text-gray-400 ml-1">
               ({{
-                (
+                formatNumberWithCommas(
                   gameSettings?.adventurerLevelDownGoldPrice ?? 1000
-                ).toLocaleString()
+                )
               }}🪙/级)
             </span>
           </p>
@@ -381,29 +400,37 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">
           当前持有:
           <span class="font-bold text-yellow-500">
-            {{ inventory?.[quickSellCrystalType] ?? 0 }}
+            {{ formatNumberWithCommas(inventory?.[quickSellCrystalType] ?? 0) }}
           </span>
         </p>
         <p class="text-xs text-gray-400">
           官方收购单价:
           <span class="text-yellow-500 font-semibold"
-            >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
+            >🪙
+            {{
+              formatNumberWithCommas(
+                gameSettings?.officialCrystalBuyPrice ?? 100
+              )
+            }}</span
           >
         </p>
         <div
-          v-if="quickSellPriceRange"
+          v-if="quickSellPriceRange && quickSellPriceRange.hasOrders"
           class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
         >
           <p>
             📊 收购单价区间:
             <span class="text-yellow-500 font-semibold">
-              🪙 {{ quickSellPriceRange.minPrice
+              🪙 {{ formatNumberWithCommas(quickSellPriceRange.minPrice)
               }}<template
                 v-if="
                   quickSellPriceRange.maxPrice > quickSellPriceRange.minPrice
                 "
               >
-                ~ {{ quickSellPriceRange.maxPrice }}</template
+                ~
+                {{
+                  formatNumberWithCommas(quickSellPriceRange.maxPrice)
+                }}</template
               >
             </span>
           </p>
@@ -460,13 +487,115 @@
           <span class="text-yellow-500 font-semibold"
             >🪙
             {{
-              (
+              formatNumberWithCommas(
                 quickSellCustomAmount *
-                (gameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
+                  (gameSettings?.officialCrystalBuyPrice ?? 100)
+              )
             }}</span
           >
         </div>
+      </div>
+    </el-dialog>
+
+    <!-- ===== 快速求购水晶弹窗 ===== -->
+    <el-dialog
+      v-model="quickBuyVisible"
+      :title="`快速求购 ${quickBuyCrystalLabel}`"
+      width="320px"
+      align-center
+      destroy-on-close
+      v-bind="statQuickBuyLockProps"
+      append-to-body
+    >
+      <div class="space-y-3">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          当前金币:
+          <span class="font-bold text-yellow-500">
+            🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }}
+          </span>
+        </p>
+        <div
+          v-if="quickBuyPriceRange && quickBuyPriceRange.hasOrders"
+          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
+        >
+          <p>
+            📊 当前求购单价区间:
+            <span class="text-yellow-500 font-semibold">
+              🪙 {{ formatNumberWithCommas(quickBuyPriceRange.minPrice)
+              }}<template
+                v-if="quickBuyPriceRange.maxPrice > quickBuyPriceRange.minPrice"
+              >
+                ~
+                {{
+                  formatNumberWithCommas(quickBuyPriceRange.maxPrice)
+                }}</template
+              >
+            </span>
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span
+            class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap"
+            >单价</span
+          >
+          <el-input-number
+            v-model="quickBuyUnitPrice"
+            :min="1"
+            :max="999999"
+            size="small"
+            class="flex-1"
+          />
+        </div>
+        <div v-if="quickBuyQuickPrices.length > 0" class="flex gap-1 flex-wrap">
+          <el-button
+            v-for="price in quickBuyQuickPrices"
+            :key="price.value"
+            size="small"
+            @click="setQuickBuyPrice(price.value)"
+          >
+            {{ price.label }}
+          </el-button>
+        </div>
+        <div class="flex items-center gap-2">
+          <span
+            class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap"
+            >数量</span
+          >
+          <el-input-number
+            v-model="quickBuyQuantity"
+            :min="1"
+            :max="99999"
+            size="small"
+            class="flex-1"
+          />
+        </div>
+        <div class="flex gap-1">
+          <el-button size="small" @click="setQuickBuyQuantity(10)"
+            >10</el-button
+          >
+          <el-button size="small" @click="setQuickBuyQuantity(100)"
+            >100</el-button
+          >
+          <el-button size="small" @click="setQuickBuyQuantity(1000)"
+            >1000</el-button
+          >
+        </div>
+        <div class="text-sm text-gray-400">
+          总花费:
+          <span class="text-yellow-500 font-semibold">
+            🪙 {{ formatNumberWithCommas(quickBuyTotalCost) }}
+          </span>
+        </div>
+        <el-button
+          type="primary"
+          size="small"
+          :loading="quickBuyLoading"
+          :disabled="quickBuyLoading"
+          @click="handleQuickBuy"
+          class="w-full"
+        >
+          发布求购
+        </el-button>
       </div>
     </el-dialog>
   </div>
@@ -486,7 +615,8 @@ import { getGameSettingsApi } from '@/api/game/config.js'
 import {
   sellCrystalToOfficialApi,
   smartSellCrystalApi,
-  getCrystalBuyPriceRangeApi
+  getCrystalBuyPriceRangeApi,
+  createMaterialBuyOrderApi
 } from '@/api/game/market.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogLock } from '@/composables/useDialogLock.js'
@@ -495,6 +625,7 @@ import {
   getAdventurerLevelUpGoldCost,
   getMaxComprehensiveLevel
 } from 'shared/utils/guildLevelUtils.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const STORAGE_KEY_MANUAL_MODE = 'guild_stat_manual_mode'
 const STORAGE_KEY_SKIP_CONFIRM_DATE = 'guild_skip_upgrade_confirm_date'
@@ -906,6 +1037,10 @@ async function handleConfirmAutoDistributeDown() {
 }
 
 // ── 快速出售水晶 ──
+const { dialogLockProps: statQuickBuyLockProps } = useDialogLock(
+  () => quickBuyLoading.value
+)
+
 const quickSellVisible = ref(false)
 const quickSellCrystalType = ref('attackCrystal')
 const quickSellCustomAmount = ref(10)
@@ -925,7 +1060,8 @@ function openQuickSellDialog(crystalType) {
   quickSellPriceRange.value = null
   getCrystalBuyPriceRangeApi()
     .then(res => {
-      const ranges = res.data.data || {}
+      const responseData = res.data.data || {}
+      const ranges = responseData.priceMap || {}
       quickSellPriceRange.value = ranges[crystalType] || null
     })
     .catch(() => {})
@@ -951,6 +1087,92 @@ async function handleQuickSell(amount) {
     // handled by interceptor
   } finally {
     quickSellLoading.value = false
+  }
+}
+
+// ===== 快速求购 =====
+const quickBuyVisible = ref(false)
+const quickBuyCrystalType = ref('attackCrystal')
+const quickBuyQuantity = ref(10)
+const quickBuyUnitPrice = ref(100)
+const quickBuyLoading = ref(false)
+const quickBuyPriceRange = ref(null)
+
+const quickBuyCrystalLabel = computed(() => {
+  return (
+    CRYSTAL_TYPES.find(c => c.key === quickBuyCrystalType.value)?.label ||
+    '水晶'
+  )
+})
+
+const quickBuyTotalCost = computed(() => {
+  return (quickBuyQuantity.value || 0) * (quickBuyUnitPrice.value || 0)
+})
+
+function setQuickBuyPrice(price) {
+  quickBuyUnitPrice.value = price
+}
+
+const quickBuyQuickPrices = computed(() => {
+  const range = quickBuyPriceRange.value
+  const officialPrice = gameSettings.value?.officialCrystalBuyPrice ?? 100
+  if (!range || !range.hasOrders) {
+    const fallback = officialPrice + 10
+    return [{ value: fallback, label: formatNumberWithCommas(fallback) }]
+  }
+  const min = range.minPrice
+  const max = range.maxPrice
+  const mid = Math.floor((min + max) / 2)
+  const prices = [...new Set([min, mid, max])]
+  return prices.map(p => ({ value: p, label: formatNumberWithCommas(p) }))
+})
+
+function setQuickBuyQuantity(qty) {
+  quickBuyQuantity.value = qty
+}
+
+async function openQuickBuyDialog(crystalType) {
+  quickBuyCrystalType.value = crystalType
+  quickBuyQuantity.value = 10
+  quickBuyUnitPrice.value = 100
+  quickBuyPriceRange.value = null
+  try {
+    const res = await getCrystalBuyPriceRangeApi()
+    const responseData = res.data.data || {}
+    const ranges = responseData.priceMap || {}
+    quickBuyPriceRange.value = ranges[crystalType] || null
+    // 如果没有市场求购单，默认单价为官方收购价+10
+    const range = quickBuyPriceRange.value
+    if (!range || !range.hasOrders) {
+      const officialPrice =
+        gameSettings.value?.officialCrystalBuyPrice ??
+        responseData.officialBuyPrice ??
+        100
+      quickBuyUnitPrice.value = officialPrice + 10
+    }
+  } catch {
+    // ignore
+  }
+  quickBuyVisible.value = true
+}
+
+async function handleQuickBuy() {
+  if (!quickBuyQuantity.value || quickBuyQuantity.value <= 0) return
+  if (!quickBuyUnitPrice.value || quickBuyUnitPrice.value <= 0) return
+  quickBuyLoading.value = true
+  try {
+    await createMaterialBuyOrderApi({
+      materialType: quickBuyCrystalType.value,
+      quantity: quickBuyQuantity.value,
+      unitPrice: quickBuyUnitPrice.value
+    })
+    ElMessage.success({ message: '求购订单发布成功', showClose: true })
+    quickBuyVisible.value = false
+    await fetchPlayerInfo()
+  } catch {
+    // handled by interceptor
+  } finally {
+    quickBuyLoading.value = false
   }
 }
 </script>

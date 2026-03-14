@@ -17,7 +17,7 @@
           >
             <p class="text-sm text-gray-400 mb-1">收购单价</p>
             <p class="text-lg font-bold text-green-500">
-              🪙 {{ officialInfo.buyPrice }}
+              🪙 {{ formatNumberWithCommas(officialInfo.buyPrice) }}
             </p>
             <p class="text-xs text-gray-400">官方从你手中收购</p>
           </div>
@@ -26,7 +26,7 @@
           >
             <p class="text-sm text-gray-400 mb-1">出售单价</p>
             <p class="text-lg font-bold text-blue-500">
-              🪙 {{ officialInfo.sellPrice }}
+              🪙 {{ formatNumberWithCommas(officialInfo.sellPrice) }}
             </p>
             <p class="text-xs text-gray-400">从官方购买</p>
           </div>
@@ -104,25 +104,30 @@
             <span class="text-yellow-500 font-semibold"
               >🪙
               {{
-                (sellCrystalQty * officialInfo.buyPrice).toLocaleString()
+                formatNumberWithCommas(sellCrystalQty * officialInfo.buyPrice)
               }}</span
             >
           </div>
           <div
-            v-if="currentCrystalPriceRange"
+            v-if="
+              currentCrystalPriceRange && currentCrystalPriceRange.hasOrders
+            "
             class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400 mb-2"
           >
             <p>
               📊 收购单价区间:
               <span class="text-yellow-500 font-semibold">
-                🪙 {{ currentCrystalPriceRange.minPrice
+                🪙 {{ formatNumberWithCommas(currentCrystalPriceRange.minPrice)
                 }}<template
                   v-if="
                     currentCrystalPriceRange.maxPrice >
                     currentCrystalPriceRange.minPrice
                   "
                 >
-                  ~ {{ currentCrystalPriceRange.maxPrice }}</template
+                  ~
+                  {{
+                    formatNumberWithCommas(currentCrystalPriceRange.maxPrice)
+                  }}</template
                 >
               </span>
             </p>
@@ -188,7 +193,7 @@
             <span class="text-yellow-500 font-semibold"
               >🪙
               {{
-                (buyCrystalQty * officialInfo.sellPrice).toLocaleString()
+                formatNumberWithCommas(buyCrystalQty * officialInfo.sellPrice)
               }}</span
             >
           </div>
@@ -217,7 +222,10 @@
           >
             <p class="text-sm text-gray-400 mb-1">收购单价</p>
             <p class="text-lg font-bold text-green-500">
-              🪙 {{ officialInfo.runeFragmentBuyPrice ?? 0 }}
+              🪙
+              {{
+                formatNumberWithCommas(officialInfo.runeFragmentBuyPrice ?? 0)
+              }}
             </p>
           </div>
           <div
@@ -226,7 +234,7 @@
             <span>🔮</span>
             <span class="text-gray-600 dark:text-gray-300">符文石碎片</span>
             <span class="ml-auto font-mono text-purple-500">{{
-              playerInventory.runeFragment ?? 0
+              formatNumberWithCommas(playerInventory.runeFragment ?? 0)
             }}</span>
           </div>
           <div class="flex items-center gap-2 mb-3">
@@ -266,9 +274,9 @@
             <span class="text-yellow-500 font-semibold"
               >🪙
               {{
-                (
+                formatNumberWithCommas(
                   sellFragmentQty * (officialInfo.runeFragmentBuyPrice ?? 0)
-                ).toLocaleString()
+                )
               }}</span
             >
           </div>
@@ -313,14 +321,27 @@
             <div class="flex flex-wrap gap-2 text-xs">
               <span class="text-gray-600 dark:text-gray-300"
                 >普通: 🪙
-                {{ officialInfo.runeStoneOfficialPrices.normal }}</span
+                {{
+                  formatNumberWithCommas(
+                    officialInfo.runeStoneOfficialPrices.normal
+                  )
+                }}</span
               >
               <span class="text-blue-500"
-                >稀有: 🪙 {{ officialInfo.runeStoneOfficialPrices.rare }}</span
+                >稀有: 🪙
+                {{
+                  formatNumberWithCommas(
+                    officialInfo.runeStoneOfficialPrices.rare
+                  )
+                }}</span
               >
               <span class="text-yellow-500"
                 >传说: 🪙
-                {{ officialInfo.runeStoneOfficialPrices.legendary }}</span
+                {{
+                  formatNumberWithCommas(
+                    officialInfo.runeStoneOfficialPrices.legendary
+                  )
+                }}</span
               >
             </div>
           </div>
@@ -362,7 +383,7 @@
               <template v-if="selectedRuneStoneIds.size > 0">
                 · 预计获得
                 <b class="text-yellow-500"
-                  >🪙 {{ batchSellTotalGold.toLocaleString() }}</b
+                  >🪙 {{ formatNumberWithCommas(batchSellTotalGold) }}</b
                 >
               </template>
             </span>
@@ -433,9 +454,9 @@
                     >
                       🪙
                       {{
-                        officialInfo.runeStoneOfficialPrices?.[
-                          rs.rarity
-                        ]?.toLocaleString()
+                        formatNumberWithCommas(
+                          officialInfo.runeStoneOfficialPrices?.[rs.rarity]
+                        )
                       }}
                     </p>
                   </div>
@@ -506,6 +527,7 @@ import {
   rarityBgClass
 } from '@/composables/useMarketUtils.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
 
@@ -523,7 +545,8 @@ const crystalPriceRange = ref(null)
 async function fetchCrystalPriceRange() {
   try {
     const res = await getCrystalBuyPriceRangeApi()
-    crystalPriceRange.value = res.data.data || null
+    const responseData = res.data.data || {}
+    crystalPriceRange.value = responseData.priceMap || null
   } catch {}
 }
 
@@ -560,7 +583,7 @@ async function fetchOfficialInfo() {
 async function handleSellToOfficial() {
   try {
     await ElMessageBox.confirm(
-      `确定出售 ${sellCrystalQty.value} 个${getMaterialName(sellCrystalType.value)}？预计获得 ${(sellCrystalQty.value * officialInfo.value.buyPrice).toLocaleString()} 金币`,
+      `确定出售 ${sellCrystalQty.value} 个${getMaterialName(sellCrystalType.value)}？预计获得 ${formatNumberWithCommas(sellCrystalQty.value * officialInfo.value.buyPrice)} 金币`,
       '确认出售',
       { confirmButtonText: '出售', cancelButtonText: '取消' }
     )
@@ -604,7 +627,7 @@ async function handleQuickSellToOfficial(qty) {
 async function handleBuyFromOfficial() {
   try {
     await ElMessageBox.confirm(
-      `确定购买 ${buyCrystalQty.value} 个${getMaterialName(buyCrystalType.value)}？需花费 ${(buyCrystalQty.value * officialInfo.value.sellPrice).toLocaleString()} 金币`,
+      `确定购买 ${buyCrystalQty.value} 个${getMaterialName(buyCrystalType.value)}？需花费 ${formatNumberWithCommas(buyCrystalQty.value * officialInfo.value.sellPrice)} 金币`,
       '确认购买',
       { confirmButtonText: '购买', cancelButtonText: '取消' }
     )
@@ -636,7 +659,7 @@ async function handleSellFragmentToOfficial() {
   const price = officialInfo.value.runeFragmentBuyPrice ?? 0
   try {
     await ElMessageBox.confirm(
-      `确定出售 ${sellFragmentQty.value} 个符文石碎片？预计获得 ${(sellFragmentQty.value * price).toLocaleString()} 金币`,
+      `确定出售 ${sellFragmentQty.value} 个符文石碎片？预计获得 ${formatNumberWithCommas(sellFragmentQty.value * price)} 金币`,
       '确认出售',
       { confirmButtonText: '出售', cancelButtonText: '取消' }
     )
@@ -762,7 +785,7 @@ async function handleSellRuneStoneToOfficial(rs) {
   const price = officialPrices[rs.rarity] || 0
   try {
     await ElMessageBox.confirm(
-      `确定将这块 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石出售给官方？\n获得: ${price.toLocaleString()} 金币`,
+      `确定将这块 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石出售给官方？\n获得: ${formatNumberWithCommas(price)} 金币`,
       '确认出售给官方',
       { confirmButtonText: '确认出售', cancelButtonText: '取消' }
     )
@@ -775,7 +798,7 @@ async function handleSellRuneStoneToOfficial(rs) {
     const res = await sellRuneStoneToOfficialApi({ runeStoneId: rs._id })
     const data = res.data.data
     ElMessage.success({
-      message: `出售成功！获得 ${(data?.goldEarned || price).toLocaleString()} 金币`,
+      message: `出售成功！获得 ${formatNumberWithCommas(data?.goldEarned || price)} 金币`,
       showClose: true
     })
     await loadOfficialRuneStones()
@@ -792,7 +815,7 @@ async function handleBatchSellRuneStones() {
 
   try {
     await ElMessageBox.confirm(
-      `确定将 ${ids.length} 个符文石批量出售给官方？\n预计获得: ${batchSellTotalGold.value.toLocaleString()} 金币`,
+      `确定将 ${ids.length} 个符文石批量出售给官方？\n预计获得: ${formatNumberWithCommas(batchSellTotalGold.value)} 金币`,
       '批量出售确认',
       { confirmButtonText: '确认出售', cancelButtonText: '取消' }
     )
@@ -805,7 +828,7 @@ async function handleBatchSellRuneStones() {
     const res = await batchSellRuneStonesToOfficialApi({ runeStoneIds: ids })
     const data = res.data.data
     ElMessage.success({
-      message: `批量出售成功！出售 ${data.soldCount} 个，获得 ${data.goldEarned.toLocaleString()} 金币`,
+      message: `批量出售成功！出售 ${data.soldCount} 个，获得 ${formatNumberWithCommas(data.goldEarned)} 金币`,
       showClose: true
     })
     await loadOfficialRuneStones()

@@ -345,25 +345,25 @@
             <div class="bg-red-50 dark:bg-red-900/20 rounded p-2">
               <p class="text-xs text-gray-400">⚔️ 攻击水晶</p>
               <p class="font-bold text-red-500">
-                {{ revenueSummary.attackCrystal || 0 }}
+                {{ formatNumberWithCommas(revenueSummary.attackCrystal || 0) }}
               </p>
             </div>
             <div class="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
               <p class="text-xs text-gray-400">🛡️ 防御水晶</p>
               <p class="font-bold text-blue-500">
-                {{ revenueSummary.defenseCrystal || 0 }}
+                {{ formatNumberWithCommas(revenueSummary.defenseCrystal || 0) }}
               </p>
             </div>
             <div class="bg-green-50 dark:bg-green-900/20 rounded p-2">
               <p class="text-xs text-gray-400">💨 速度水晶</p>
               <p class="font-bold text-green-500">
-                {{ revenueSummary.speedCrystal || 0 }}
+                {{ formatNumberWithCommas(revenueSummary.speedCrystal || 0) }}
               </p>
             </div>
             <div class="bg-purple-50 dark:bg-purple-900/20 rounded p-2">
               <p class="text-xs text-gray-400">❤️ SAN水晶</p>
               <p class="font-bold text-purple-500">
-                {{ revenueSummary.sanCrystal || 0 }}
+                {{ formatNumberWithCommas(revenueSummary.sanCrystal || 0) }}
               </p>
             </div>
           </div>
@@ -389,7 +389,8 @@
                 <span class="text-gray-400 ml-1">挖矿触发</span>
               </div>
               <div class="font-semibold">
-                +{{ rev.crystalAmount }} {{ crystalLabel(rev.crystalType) }}
+                +{{ formatNumberWithCommas(rev.crystalAmount) }}
+                {{ crystalLabel(rev.crystalType) }}
               </div>
             </div>
             <p class="text-gray-400 mt-0.5">{{ formatTime(rev.createdAt) }}</p>
@@ -466,16 +467,16 @@
           <p class="text-gray-400 mb-1">获得水晶:</p>
           <div class="grid grid-cols-2 gap-1">
             <p v-if="digResult.crystals.attackCrystal > 0">
-              ⚔️ {{ digResult.crystals.attackCrystal }}
+              ⚔️ {{ formatNumberWithCommas(digResult.crystals.attackCrystal) }}
             </p>
             <p v-if="digResult.crystals.defenseCrystal > 0">
-              🛡️ {{ digResult.crystals.defenseCrystal }}
+              🛡️ {{ formatNumberWithCommas(digResult.crystals.defenseCrystal) }}
             </p>
             <p v-if="digResult.crystals.speedCrystal > 0">
-              💨 {{ digResult.crystals.speedCrystal }}
+              💨 {{ formatNumberWithCommas(digResult.crystals.speedCrystal) }}
             </p>
             <p v-if="digResult.crystals.sanCrystal > 0">
-              ❤️ {{ digResult.crystals.sanCrystal }}
+              ❤️ {{ formatNumberWithCommas(digResult.crystals.sanCrystal) }}
             </p>
           </div>
         </div>
@@ -554,6 +555,7 @@ import BattleAnimation from '@/components/BattleAnimation.vue'
 import ObtainedRuneStonesDisplay from '@/components/ObtainedRuneStonesDisplay.vue'
 import GameAdventurerAvatar from '@/components/GameAdventurerAvatar.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()

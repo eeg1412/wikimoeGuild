@@ -291,25 +291,37 @@
           <div class="flex justify-between" style="color: #e05c4f">
             <span>⚔️ 攻击水晶</span>
             <span class="font-bold"
-              >+{{ settleResult.crystals?.attackCrystal || 0 }}</span
+              >+{{
+                formatNumberWithCommas(
+                  settleResult.crystals?.attackCrystal || 0
+                )
+              }}</span
             >
           </div>
           <div class="flex justify-between" style="color: #4fa3e0">
             <span>🛡️ 防御水晶</span>
             <span class="font-bold"
-              >+{{ settleResult.crystals?.defenseCrystal || 0 }}</span
+              >+{{
+                formatNumberWithCommas(
+                  settleResult.crystals?.defenseCrystal || 0
+                )
+              }}</span
             >
           </div>
           <div class="flex justify-between" style="color: #6abf69">
             <span>💨 速度水晶</span>
             <span class="font-bold"
-              >+{{ settleResult.crystals?.speedCrystal || 0 }}</span
+              >+{{
+                formatNumberWithCommas(settleResult.crystals?.speedCrystal || 0)
+              }}</span
             >
           </div>
           <div class="flex justify-between" style="color: #c070e0">
             <span>❤️ SAN水晶</span>
             <span class="font-bold"
-              >+{{ settleResult.crystals?.sanCrystal || 0 }}</span
+              >+{{
+                formatNumberWithCommas(settleResult.crystals?.sanCrystal || 0)
+              }}</span
             >
           </div>
           <el-divider />
@@ -325,7 +337,11 @@
             <p class="text-purple-400 font-medium">🔮 已自动分解</p>
             <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
               获得
-              {{ settleResult.autoDecomposedFragments ?? 0 }}
+              {{
+                formatNumberWithCommas(
+                  settleResult.autoDecomposedFragments ?? 0
+                )
+              }}
               个符文石碎片
             </p>
           </div>
@@ -361,7 +377,11 @@
               传说符文石 ×{{ settleResult.discardedRuneStones.legendary }}
             </p>
             <p class="text-orange-300 font-semibold mt-1">
-              共获得 {{ settleResult.convertedFragments ?? 0 }} 个符文石碎片
+              共获得
+              {{
+                formatNumberWithCommas(settleResult.convertedFragments ?? 0)
+              }}
+              个符文石碎片
             </p>
           </div>
         </div>
@@ -443,10 +463,12 @@
               <template v-else-if="myFormationCombatPower > 0">
                 <div class="flex justify-between items-center px-1">
                   <span class="text-blue-500 font-mono font-bold"
-                    >🏰 我方: {{ myFormationCombatPower }}</span
+                    >🏰 我方:
+                    {{ formatNumberWithUnits(myFormationCombatPower) }}</span
                   >
                   <span class="text-orange-500 font-mono font-bold"
-                    >😈 敌方: {{ legionCombatPower }}</span
+                    >😈 敌方:
+                    {{ formatNumberWithUnits(legionCombatPower) }}</span
                   >
                 </div>
                 <div class="mt-1 text-center">
@@ -455,7 +477,9 @@
                     class="text-green-500 text-sm font-semibold"
                   >
                     ✅ 我方战斗力领先 +{{
-                      myFormationCombatPower - legionCombatPower
+                      formatNumberWithUnits(
+                        myFormationCombatPower - legionCombatPower
+                      )
                     }}
                   </span>
                   <span
@@ -463,7 +487,9 @@
                     class="text-red-400 text-sm font-semibold"
                   >
                     ⚠️ 敌方战斗力领先 +{{
-                      legionCombatPower - myFormationCombatPower
+                      formatNumberWithUnits(
+                        legionCombatPower - myFormationCombatPower
+                      )
                     }}
                   </span>
                   <span v-else class="text-gray-400 text-sm font-semibold"
@@ -551,7 +577,11 @@
             <p class="text-purple-400 font-medium">🔮 已自动分解</p>
             <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
               获得
-              {{ battleResult.autoDecomposedFragments ?? 0 }}
+              {{
+                formatNumberWithCommas(
+                  battleResult.autoDecomposedFragments ?? 0
+                )
+              }}
               个符文石碎片
             </p>
           </div>
@@ -561,7 +591,12 @@
             class="bg-orange-900/30 rounded-lg p-2 text-xs text-orange-400"
           >
             ⚠️ 背包已满，符文石已自动转换为
-            {{ battleResult.discardedRuneStone.convertedFragments ?? 0 }} 个碎片
+            {{
+              formatNumberWithCommas(
+                battleResult.discardedRuneStone.convertedFragments ?? 0
+              )
+            }}
+            个碎片
           </div>
         </div>
       </el-dialog>
@@ -649,6 +684,10 @@ import {
   getDungeonLevelBonusCap
 } from 'shared/utils/guildLevelUtils.js'
 import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
+import {
+  formatNumberWithUnits,
+  formatNumberWithCommas
+} from 'shared/utils/utils.js'
 import { BATTLE_COOLDOWN_SECONDS } from 'shared/constants/index.js'
 
 const router = useRouter()

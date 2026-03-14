@@ -56,14 +56,11 @@ export async function getCrystalBuyPriceRange(accountId) {
     'sanCrystal'
   ]
 
-  // 聚合查询每种水晶的最高/最低求购价（排除自己的求购单）
+  // 聚合查询每种水晶的最高/最低求购价（包含所有求购单）
   const matchFilter = {
     orderType: 'buy',
     status: 'active',
     materialType: { $in: crystalTypes }
-  }
-  if (accountId) {
-    matchFilter.account = { $ne: new mongoose.Types.ObjectId(accountId) }
   }
   const pipeline = [
     {
@@ -81,20 +78,22 @@ export async function getCrystalBuyPriceRange(accountId) {
   const priceMap = {}
   for (const item of aggregated) {
     priceMap[item._id] = {
-      minPrice: Math.min(item.minPrice, officialBuyPrice),
-      maxPrice: Math.max(item.maxPrice, officialBuyPrice)
+      minPrice: item.minPrice,
+      maxPrice: item.maxPrice,
+      hasOrders: true
     }
   }
-  // 对没有求购单的类型，区间就是官方价
+  // 对没有求购单的类型，标记无订单
   for (const type of crystalTypes) {
     if (!priceMap[type]) {
       priceMap[type] = {
         minPrice: officialBuyPrice,
-        maxPrice: officialBuyPrice
+        maxPrice: officialBuyPrice,
+        hasOrders: false
       }
     }
   }
-  return priceMap
+  return { priceMap, officialBuyPrice }
 }
 
 /**

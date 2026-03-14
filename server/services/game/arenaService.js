@@ -482,10 +482,51 @@ export async function getMatchList(accountId, forceRefresh = false) {
     myReg.cachedOpponents.length > 0 &&
     myReg.lastMatchRefreshAt
   ) {
+    // 查询自上次刷新以来已挑战过的对手
+    const challengedLogs = await GameArenaBattleLog.find({
+      season: season._id,
+      attacker: accountId,
+      createdAt: { $gte: myReg.lastMatchRefreshAt }
+    })
+      .select('defender isNPC')
+      .lean()
+    // 收集已挑战对手的registrationId
+    const challengedIds = []
+    for (const log of challengedLogs) {
+      if (log.isNPC) continue
+      // 找到cachedOpponents中对应的registrationId
+      const matched = myReg.cachedOpponents.find(
+        op => !op.isNpc && op.accountId === log.defender?.toString()
+      )
+      if (matched)
+        challengedIds.push(matched._id?.toString() || matched.registrationId)
+    }
+    // NPC挑战记录：通过battleLog中的defenderGuildName匹配
+    const npcLogs = challengedLogs.filter(l => l.isNPC)
+    if (npcLogs.length > 0) {
+      // NPC对手的_id格式为 npc_X，直接从cachedOpponents中标记所有已挑战的NPC
+      const npcBattleLogsFull = await GameArenaBattleLog.find({
+        season: season._id,
+        attacker: accountId,
+        isNPC: true,
+        createdAt: { $gte: myReg.lastMatchRefreshAt }
+      })
+        .select('defenderGuildName')
+        .lean()
+      const challengedNpcNames = new Set(
+        npcBattleLogsFull.map(l => l.defenderGuildName)
+      )
+      for (const op of myReg.cachedOpponents) {
+        if (op.isNpc && challengedNpcNames.has(op.guildName)) {
+          challengedIds.push(op._id?.toString() || op.registrationId)
+        }
+      }
+    }
     return {
       myPoints: myReg.points,
       opponents: myReg.cachedOpponents,
-      refreshedAt: myReg.lastMatchRefreshAt
+      refreshedAt: myReg.lastMatchRefreshAt,
+      challengedIds
     }
   }
 
@@ -632,7 +673,7 @@ export async function getMatchList(accountId, forceRefresh = false) {
   myReg.lastMatchRefreshAt = now
   await myReg.save()
 
-  return { myPoints, opponents: result, refreshedAt: now }
+  return { myPoints, opponents: result, refreshedAt: now, challengedIds: [] }
 }
 
 /**
@@ -709,7 +750,15 @@ export async function challengeOpponent(accountId, registrationId) {
       // 生成NPC阵容
       const npcResult = generateNPCFormation(myGrid, myReg.points)
       opponentGrid = npcResult.grid
-      opponentGuildName = generateRandomAdventurerName() + '公会'
+      // 使用缓存中的公会名，确保战斗日志能匹配已挑战状态
+      const cachedNpc = myReg.cachedOpponents?.find(
+        op =>
+          op.isNpc &&
+          (op._id?.toString() === registrationId ||
+            op.registrationId === registrationId)
+      )
+      opponentGuildName =
+        cachedNpc?.guildName || generateRandomAdventurerName() + '公会'
 
       if (myReg.points >= 2000) {
         // 竞技点>=2000时检查排名

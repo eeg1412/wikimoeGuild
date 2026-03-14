@@ -66,7 +66,7 @@
           >🪙
           {{
             buyForm.unitPrice
-              ? (buyForm.quantity * buyForm.unitPrice).toLocaleString()
+              ? formatNumberWithCommas(buyForm.quantity * buyForm.unitPrice)
               : '--'
           }}</span
         >
@@ -119,7 +119,7 @@
                   >
                 </p>
                 <p class="text-sm text-gray-400">
-                  单价 🪙 {{ order.unitPrice?.toLocaleString() }}
+                  单价 🪙 {{ formatNumberWithCommas(order.unitPrice) }}
                 </p>
                 <!-- 状态显示 -->
                 <p class="text-xs mt-0.5">
@@ -216,6 +216,7 @@ import {
   getMaterialIcon,
   getMaterialName
 } from '@/composables/useMarketUtils.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
 
@@ -275,7 +276,7 @@ async function handleCreateBuyOrder() {
   const totalCost = buyForm.quantity * buyForm.unitPrice
   try {
     await ElMessageBox.confirm(
-      `确定发布求购 ${buyForm.quantity} 个 ${getMaterialName(buyForm.materialType)}？\n单价: ${buyForm.unitPrice.toLocaleString()} 金币\n将冻结: ${totalCost.toLocaleString()} 金币`,
+      `确定发布求购 ${buyForm.quantity} 个 ${getMaterialName(buyForm.materialType)}？\n单价: ${formatNumberWithCommas(buyForm.unitPrice)} 金币\n将冻结: ${formatNumberWithCommas(totalCost)} 金币`,
       '确认发布求购',
       { confirmButtonText: '确认发布', cancelButtonText: '取消' }
     )

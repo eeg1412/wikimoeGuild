@@ -14,7 +14,7 @@
         <template #extra="{ item }">
           <div class="text-right mr-1">
             <p class="text-sm text-yellow-500 font-semibold whitespace-nowrap">
-              🪙 {{ item.price?.toLocaleString() }}
+              🪙 {{ formatNumberWithCommas(item.price) }}
             </p>
             <p v-if="item.isMine" class="text-xs text-yellow-500">（我的）</p>
             <p v-else-if="item.guildName" class="text-xs text-gray-400">
@@ -62,6 +62,7 @@ import {
 import { useGameUser } from '@/composables/useGameUser.js'
 import RuneStoneMarketList from '@/components/RuneStoneMarketList.vue'
 import { rarityName } from '@/composables/useMarketUtils.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
 const rarityFilter = inject('runeStoneRarityFilter')
@@ -98,7 +99,7 @@ async function fetchListings() {
 async function handleBuyRuneStone(listing) {
   try {
     await ElMessageBox.confirm(
-      `确定购买这个${rarityName(listing.runeStone?.rarity)}符文石？花费 ${listing.price?.toLocaleString()} 金币`,
+      `确定购买这个${rarityName(listing.runeStone?.rarity)}符文石？花费 ${formatNumberWithCommas(listing.price)} 金币`,
       '确认购买',
       { confirmButtonText: '购买', cancelButtonText: '取消' }
     )

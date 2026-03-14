@@ -45,7 +45,7 @@
               🏰 公会等级 Lv.{{ playerInfo?.guildLevel ?? 1 }}
             </p>
             <p class="text-sm text-gray-400">
-              🪙 {{ (playerInfo?.gold ?? 0).toLocaleString() }} 金币
+              🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
             </p>
             <p
               v-if="playerInfo?.createdAt"
@@ -79,7 +79,7 @@
             <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
               <p class="text-xs text-gray-400">升级费用</p>
               <p class="text-sm font-bold text-yellow-500">
-                🪙 {{ levelInfo.fee?.toLocaleString() }}
+                🪙 {{ formatNumberWithCommas(levelInfo.fee) }}
               </p>
             </div>
             <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
@@ -119,7 +119,7 @@
               "
               @click="handleUpgradeGuild"
             >
-              ⬆️ 升级公会 (🪙 {{ levelInfo.fee?.toLocaleString() }})
+              ⬆️ 升级公会 (🪙 {{ formatNumberWithCommas(levelInfo.fee) }})
             </el-button>
           </div>
         </template>
@@ -133,7 +133,13 @@
               🎨 修改公会标志
             </p>
             <p class="text-sm text-gray-400 mt-0.5">
-              消耗 {{ gameSettings.guildCustomLogoPrice ?? 5000 }} 金币
+              消耗
+              {{
+                formatNumberWithCommas(
+                  gameSettings.guildCustomLogoPrice ?? 5000
+                )
+              }}
+              金币
             </p>
           </div>
           <el-button type="primary" size="small" @click="handleOpenLogoDialog">
@@ -147,7 +153,13 @@
               📝 修改公会名字
             </p>
             <p class="text-sm text-gray-400 mt-0.5">
-              消耗 {{ gameSettings.guildChangeNamePrice ?? 1000 }} 金币
+              消耗
+              {{
+                formatNumberWithCommas(
+                  gameSettings.guildChangeNamePrice ?? 1000
+                )
+              }}
+              金币
             </p>
           </div>
           <el-button type="primary" size="small" @click="handleOpenNameDialog">
@@ -206,7 +218,11 @@
       append-to-body
     >
       <p class="text-sm text-gray-500 mb-3">
-        消耗 {{ gameSettings.guildCustomLogoPrice ?? 5000 }} 金币
+        消耗
+        {{
+          formatNumberWithCommas(gameSettings.guildCustomLogoPrice ?? 5000)
+        }}
+        金币
       </p>
       <Cropper
         :src="logoPreview"
@@ -243,7 +259,11 @@
       append-to-body
     >
       <p class="text-sm text-gray-500 mb-3">
-        消耗 {{ gameSettings.guildChangeNamePrice ?? 1000 }} 金币
+        消耗
+        {{
+          formatNumberWithCommas(gameSettings.guildChangeNamePrice ?? 1000)
+        }}
+        金币
       </p>
       <el-input
         v-model="newGuildName"
@@ -409,6 +429,7 @@ import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import Cropper from '@/components/Cropper.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const router = useRouter()
 const { isLoggedIn, playerInfo, fetchPlayerInfo, logout } = useGameUser()
@@ -440,7 +461,7 @@ async function fetchGuildLevelInfo() {
 async function handleUpgradeGuild() {
   try {
     await ElMessageBox.confirm(
-      `确定花费 ${levelInfo.value.fee?.toLocaleString()} 金币升级公会？`,
+      `确定花费 ${formatNumberWithCommas(levelInfo.value.fee)} 金币升级公会？`,
       '确认升级',
       {
         confirmButtonText: '确定',

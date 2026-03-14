@@ -87,8 +87,10 @@
             <li>注册时自动获取 <strong>1 名</strong>冒险家</li>
             <li>
               可通过支付
-              <strong>{{ gameSettings.adventurerRecruitPrice }}</strong> 🪙
-              招募更多冒险家
+              <strong>{{
+                formatNumberWithCommas(gameSettings.adventurerRecruitPrice)
+              }}</strong>
+              🪙 招募更多冒险家
             </li>
             <li>每个账号最多可招募 <strong>50 名</strong>冒险家</li>
           </ul>
@@ -176,11 +178,19 @@
                   <th>升级项</th>
                   <th>
                     所需水晶（基础
-                    {{ gameSettings.adventurerLevelUpCrystalBase ?? 100 }}）
+                    {{
+                      formatNumberWithCommas(
+                        gameSettings.adventurerLevelUpCrystalBase ?? 100
+                      )
+                    }}）
                   </th>
                   <th>
                     所需金币（基础
-                    {{ gameSettings.adventurerLevelUpGoldBase ?? 500 }}）
+                    {{
+                      formatNumberWithCommas(
+                        gameSettings.adventurerLevelUpGoldBase ?? 500
+                      )
+                    }}）
                   </th>
                 </tr>
               </thead>
@@ -218,7 +228,11 @@
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
             可以使用金币降低某个属性的等级：<br />
             降级费用 = 降级层数 × 每级固定消耗（默认
-            {{ gameSettings.adventurerLevelDownGoldPrice ?? 1000 }}
+            {{
+              formatNumberWithCommas(
+                gameSettings.adventurerLevelDownGoldPrice ?? 1000
+              )
+            }}
             金币）。<br />
             属性最低降至 1 级。属性降级不退还升级时消耗的水晶与金币。
           </p>
@@ -229,13 +243,17 @@
           <ul class="guide-list">
             <li>
               可消耗
-              <strong>{{ gameSettings.adventurerCustomAvatarPrice }}</strong> 🪙
-              自定义冒险家<strong>头像</strong>
+              <strong>{{
+                formatNumberWithCommas(gameSettings.adventurerCustomAvatarPrice)
+              }}</strong>
+              🪙 自定义冒险家<strong>头像</strong>
             </li>
             <li>
               可消耗
-              <strong>{{ gameSettings.adventurerCustomNamePrice }}</strong> 🪙
-              自定义冒险家<strong>名字</strong>
+              <strong>{{
+                formatNumberWithCommas(gameSettings.adventurerCustomNamePrice)
+              }}</strong>
+              🪙 自定义冒险家<strong>名字</strong>
             </li>
           </ul>
         </div>
@@ -563,13 +581,17 @@
           <ul class="guide-list">
             <li>
               <strong>水晶收购</strong>：官方以
-              <strong>{{ gameSettings.officialCrystalBuyPrice }}</strong> 🪙/个
-              收购玩家的各种水晶
+              <strong>{{
+                formatNumberWithCommas(gameSettings.officialCrystalBuyPrice)
+              }}</strong>
+              🪙/个 收购玩家的各种水晶
             </li>
             <li>
               <strong>水晶贩卖</strong>：官方以
-              <strong>{{ gameSettings.officialCrystalSellPrice }}</strong> 🪙/个
-              出售水晶
+              <strong>{{
+                formatNumberWithCommas(gameSettings.officialCrystalSellPrice)
+              }}</strong>
+              🪙/个 出售水晶
             </li>
             <li>收购和售卖价格由后台设定</li>
           </ul>
@@ -586,7 +608,10 @@
             <li>可随时下架并赎回素材或金币</li>
             <li>
               价格不得低于系统设定的最低价格（当前
-              <strong>{{ gameSettings.freeMarketMinPrice }}</strong> 🪙）
+              <strong>{{
+                formatNumberWithCommas(gameSettings.freeMarketMinPrice)
+              }}</strong>
+              🪙）
             </li>
           </ul>
         </div>
@@ -599,7 +624,9 @@
             <li>可随时下架赎回符文石</li>
             <li>
               价格不得低于系统设定的最低价格（当前
-              <strong>{{ gameSettings.freeMarketRuneStoneMinPrice }}</strong>
+              <strong>{{
+                formatNumberWithCommas(gameSettings.freeMarketRuneStoneMinPrice)
+              }}</strong>
               🪙）
             </li>
           </ul>
@@ -631,7 +658,10 @@
             <li>不足时系统自动补充 <strong>NPC</strong></li>
             <li>
               每次对战可获得
-              <strong>{{ gameSettings.arenaBattleGold }}</strong> 🪙 奖励
+              <strong>{{
+                formatNumberWithCommas(gameSettings.arenaBattleGold)
+              }}</strong>
+              🪙 奖励
             </li>
             <li>报名时有 <strong>24 次</strong>挑战机会</li>
             <li>之后每 <strong>1 小时</strong>恢复 1 次，最多 24 次</li>
@@ -667,9 +697,14 @@
           <p class="guide-note mt-2">
             💡 赛季（<strong>{{ gameSettings.seasonDays }}</strong> 天）期间完成
             24 次主动战斗可获得
-            <strong>{{ gameSettings.arenaParticipationReward }}</strong> 🪙
-            参与奖。奖池总额
-            <strong>{{ gameSettings.arenaPoolAmount }}</strong> 🪙
+            <strong>{{
+              formatNumberWithCommas(gameSettings.arenaParticipationReward)
+            }}</strong>
+            🪙 参与奖。奖池总额
+            <strong>{{
+              formatNumberWithCommas(gameSettings.arenaPoolAmount)
+            }}</strong>
+            🪙
           </p>
         </div>
 
@@ -754,12 +789,18 @@
           <h4 class="guide-subtitle">⚙️ 公会设置</h4>
           <ul class="guide-list">
             <li>
-              可消耗 <strong>{{ gameSettings.guildCustomLogoPrice }}</strong> 🪙
-              修改<strong>公会标志</strong>
+              可消耗
+              <strong>{{
+                formatNumberWithCommas(gameSettings.guildCustomLogoPrice)
+              }}</strong>
+              🪙 修改<strong>公会标志</strong>
             </li>
             <li>
-              可消耗 <strong>{{ gameSettings.guildChangeNamePrice }}</strong> 🪙
-              修改<strong>公会名字</strong>
+              可消耗
+              <strong>{{
+                formatNumberWithCommas(gameSettings.guildChangeNamePrice)
+              }}</strong>
+              🪙 修改<strong>公会名字</strong>
             </li>
           </ul>
         </div>
@@ -772,6 +813,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getGameSettingsApi } from '@/api/game/config'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const route = useRoute()
 const router = useRouter()

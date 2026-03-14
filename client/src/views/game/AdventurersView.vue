@@ -17,7 +17,7 @@
     <!-- 招募按钮 -->
     <div class="text-center mb-4">
       <p class="text-sm text-yellow-500 font-semibold mb-1">
-        🪙 {{ (playerInfo?.gold ?? 0).toLocaleString() }} 金币
+        🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
       </p>
       <el-button
         type="warning"
@@ -26,7 +26,10 @@
         :disabled="recruiting || adventurers.length >= maxAdventurerCap"
         @click="handleRecruit"
       >
-        🪙 招募冒险家（{{ gameSettings.adventurerRecruitPrice ?? 10000 }} 金币）
+        🪙 招募冒险家（{{
+          formatNumberWithCommas(gameSettings.adventurerRecruitPrice ?? 10000)
+        }}
+        金币）
       </el-button>
     </div>
 
@@ -293,7 +296,12 @@
 
         <!-- 战斗力 -->
         <p class="text-xs text-orange-400 mt-0.5 font-mono">
-          ⚔️ {{ calculateCombatPower(adv, adv.runeStone || null) }}
+          ⚔️
+          {{
+            formatNumberWithUnits(
+              calculateCombatPower(adv, adv.runeStone || null)
+            )
+          }}
         </p>
 
         <!-- 装备状态标签 -->
@@ -402,30 +410,44 @@
           <p class="mt-1">
             💰 总金币:
             <span class="text-yellow-500 font-bold">{{
-              batchReportTotalGold.toLocaleString()
+              formatNumberWithCommas(batchReportTotalGold)
             }}</span>
             <span
               v-if="batchReportDirection === 'down'"
               class="text-xs text-gray-400 ml-1"
             >
               ({{
-                (
+                formatNumberWithCommas(
                   gameSettings?.adventurerLevelDownGoldPrice ?? 1000
-                ).toLocaleString()
+                )
               }}🪙/级)
             </span>
           </p>
           <p v-if="batchReportDirection === 'up'" class="mt-1 space-x-2">
             <span
-              >⚔️ 攻击水晶: {{ batchReportTotalCrystals.attackCrystal }}</span
+              >⚔️ 攻击水晶:
+              {{
+                formatNumberWithCommas(batchReportTotalCrystals.attackCrystal)
+              }}</span
             >
             <span
-              >🛡️ 防御水晶: {{ batchReportTotalCrystals.defenseCrystal }}</span
+              >🛡️ 防御水晶:
+              {{
+                formatNumberWithCommas(batchReportTotalCrystals.defenseCrystal)
+              }}</span
             >
             <span
-              >💨 速度水晶: {{ batchReportTotalCrystals.speedCrystal }}</span
+              >💨 速度水晶:
+              {{
+                formatNumberWithCommas(batchReportTotalCrystals.speedCrystal)
+              }}</span
             >
-            <span>❤️ SAN水晶: {{ batchReportTotalCrystals.sanCrystal }}</span>
+            <span
+              >❤️ SAN水晶:
+              {{
+                formatNumberWithCommas(batchReportTotalCrystals.sanCrystal)
+              }}</span
+            >
           </p>
         </div>
 
@@ -462,12 +484,15 @@
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               综合 {{ item.currentLevels.comprehensive }} →
               {{ item.newLevels.comprehensive }} | 金币:
-              {{ item.goldCost.toLocaleString() }}
+              {{ formatNumberWithCommas(item.goldCost) }}
               <template v-if="batchReportDirection === 'up'">
-                | 水晶: 攻{{ item.crystalCost.attack }} 防{{
-                  item.crystalCost.defense
+                | 水晶: 攻{{
+                  formatNumberWithCommas(item.crystalCost.attack)
                 }}
-                速{{ item.crystalCost.speed }} SAN{{ item.crystalCost.san }}
+                防{{ formatNumberWithCommas(item.crystalCost.defense) }} 速{{
+                  formatNumberWithCommas(item.crystalCost.speed)
+                }}
+                SAN{{ formatNumberWithCommas(item.crystalCost.san) }}
               </template>
             </p>
             <p v-if="item.error" class="text-xs text-red-500 mt-1">
@@ -600,7 +625,12 @@
 
               <!-- 战斗力 -->
               <p class="text-xs text-orange-400 mt-0.5 font-mono">
-                ⚔️ {{ calculateCombatPower(adv, adv.runeStone || null) }}
+                ⚔️
+                {{
+                  formatNumberWithUnits(
+                    calculateCombatPower(adv, adv.runeStone || null)
+                  )
+                }}
               </p>
             </div>
           </div>
@@ -661,6 +691,10 @@ import AdventurerRuneStoneDialog from '@/components/AdventurerRuneStoneDialog.vu
 import StatLevelUpPanel from '@/components/StatLevelUpPanel.vue'
 import GameAdventurerAvatar from '@/components/GameAdventurerAvatar.vue'
 import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
+import {
+  formatNumberWithUnits,
+  formatNumberWithCommas
+} from 'shared/utils/utils.js'
 import { getMyFormationsApi } from '@/api/game/formation.js'
 import { getArenaFormationApi } from '@/api/game/arena.js'
 
