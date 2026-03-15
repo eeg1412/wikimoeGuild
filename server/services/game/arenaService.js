@@ -760,8 +760,11 @@ export async function challengeOpponent(accountId, registrationId) {
       opponentGuildName =
         cachedNpc?.guildName || generateRandomAdventurerName() + '公会'
 
-      if (myReg.points >= 2000) {
-        // 竞技点>=2000时检查排名
+      // 优先使用缓存中的NPC竞技点，与对手列表展示保持一致
+      if (cachedNpc?.points !== undefined) {
+        opponentPoints = cachedNpc.points
+      } else if (myReg.points >= 2000) {
+        // 竞技点>=2000时检查排名（无缓存时的兜底逻辑）
         const higherCount = await GameArenaRegistration.countDocuments({
           season: season._id,
           points: { $gt: myReg.points }
@@ -1618,6 +1621,12 @@ export async function settleCurrentSeason() {
 
     season.status = 'ended'
     await season.save()
+
+    // 清空所有玩家的对手缓存，避免旧赛季数据占用数据库空间
+    await GameArenaRegistration.updateMany(
+      { season: season._id },
+      { $set: { cachedOpponents: [], lastMatchRefreshAt: null } }
+    )
 
     // 创建新赛季
     await createNewSeason()

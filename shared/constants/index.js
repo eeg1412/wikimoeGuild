@@ -33,7 +33,7 @@ export const VALID_ROLE_TAGS = ['', '1', '2', '3', '4']
  * 后4排（索引5-24）中使用自由均衡分配的NPC角色数量
  * 数值越大，高难度NPC阵容的整体强度越低
  */
-export const NPC_FREE_ALLOC_COUNT = 5
+export const NPC_FREE_ALLOC_COUNT = 0
 
 /**
  * 符文石碎片系数默认值
