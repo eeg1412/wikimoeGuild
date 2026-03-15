@@ -52,7 +52,7 @@
         <span class="text-xs text-gray-400">
           升级消耗：{{ formatNumberWithCommas(upgradeCost) }} 碎片
           <span class="ml-1 text-purple-400">
-            (持有 {{ inventory?.runeFragment ?? 0 }})
+            (持有 {{ formatNumberWithCommas(inventory?.runeFragment ?? 0) }})
           </span>
         </span>
         <el-button

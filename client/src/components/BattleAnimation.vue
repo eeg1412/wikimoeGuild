@@ -2604,6 +2604,7 @@ onUnmounted(() => {
   justify-content: center;
   overflow: hidden;
   background: rgba(4, 0, 18, 0.6);
+  pointer-events: none;
 }
 
 /* .rune-cutin-overlay--ally {

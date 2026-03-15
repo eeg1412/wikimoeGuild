@@ -51,6 +51,7 @@
       <div
         ref="explorerBoxRef"
         class="dungeon-explorer-box rounded-2xl mb-4"
+        :class="{ paused: isAnimationPaused }"
         :style="dungeonBgStyle"
       >
         <div class="dungeon-explorer-inner">
@@ -378,9 +379,7 @@
             </p>
             <p class="text-orange-300 font-semibold mt-1">
               共获得
-              {{
-                formatNumberWithCommas(settleResult.convertedFragments ?? 0)
-              }}
+              {{ formatNumberWithCommas(settleResult.convertedFragments ?? 0) }}
               个符文石碎片
             </p>
           </div>
@@ -1295,6 +1294,19 @@ function handleGoToMine() {
 const exploringAdventurers = ref([])
 const explorerBoxRef = ref(null)
 let resizeDebounceTimer = null
+const isAnimationPaused = ref(false)
+let explorerObserver = null
+let isTabVisible = true
+let isBoxVisible = true
+
+function updateAnimationPauseState() {
+  isAnimationPaused.value = !isTabVisible || !isBoxVisible
+}
+
+function onVisibilityChange() {
+  isTabVisible = document.visibilityState === 'visible'
+  updateAnimationPauseState()
+}
 
 function buildExplorerStyle(idx, total, duration) {
   // 随机分布：用负delay让每个冒险家从动画的不同位置开始，避免挤在一侧
@@ -1511,6 +1523,22 @@ onMounted(() => {
     calcElapsedTime()
   }, 1000)
   window.addEventListener('resize', onWindowResize)
+
+  // 标签页可见性变化时暂停/恢复动画
+  isTabVisible = document.visibilityState === 'visible'
+  document.addEventListener('visibilitychange', onVisibilityChange)
+
+  // 元素进出视口时暂停/恢复动画
+  explorerObserver = new IntersectionObserver(
+    entries => {
+      isBoxVisible = entries[0].isIntersecting
+      updateAnimationPauseState()
+    },
+    { threshold: 0 }
+  )
+  if (explorerBoxRef.value) {
+    explorerObserver.observe(explorerBoxRef.value)
+  }
 })
 
 onUnmounted(() => {
@@ -1528,6 +1556,11 @@ onUnmounted(() => {
   }
   window.removeEventListener('resize', onWindowResize)
   clearTimeout(resizeDebounceTimer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  if (explorerObserver) {
+    explorerObserver.disconnect()
+    explorerObserver = null
+  }
 })
 </script>
 
@@ -1605,6 +1638,10 @@ onUnmounted(() => {
 }
 
 /* ── 冒险家探索动画 ── */
+.dungeon-explorer-box.paused * {
+  animation-play-state: paused !important;
+}
+
 .dungeon-explorer-box {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(200, 160, 80, 0.3);

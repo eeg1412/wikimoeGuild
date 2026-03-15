@@ -25,7 +25,7 @@
           <el-button
             type="warning"
             size="small"
-            class="mt-1"
+            class="mt-1 w-[50%]"
             @click="openQuickSellDialog(cType.key)"
           >
             出售
@@ -33,7 +33,7 @@
           <el-button
             type="primary"
             size="small"
-            class="mt-1"
+            class="mt-1 w-[50%]"
             @click="openQuickBuyDialog(cType.key)"
           >
             求购

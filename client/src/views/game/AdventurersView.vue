@@ -336,7 +336,7 @@
 
     <!-- 空状态 -->
     <div v-else class="text-center py-16 text-gray-400 dark:text-gray-600">
-      <span class="text-5xl mb-3 block">🧑‍⚔️</span>
+      <span class="text-5xl mb-3 block">⚔️</span>
       <p>暂无冒险家，快去招募吧！</p>
     </div>
 
