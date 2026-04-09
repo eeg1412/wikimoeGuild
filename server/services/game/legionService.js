@@ -1,6 +1,8 @@
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
 import GameAdventurer from '../../models/gameAdventurer.js'
 import GameFormation from '../../models/gameFormation.js'
+import GamePlayerInventory from '../../models/gamePlayerInventory.js'
+import GameRuneStone from '../../models/gameRuneStone.js'
 import { executeInLock } from '../../utils/utils.js'
 import {
   getRandomDemonAvatarId,
@@ -16,7 +18,10 @@ import {
 import { recordActivity } from './activityService.js'
 import {
   NPC_FREE_ALLOC_COUNT,
-  BATTLE_COOLDOWN_SECONDS
+  BATTLE_COOLDOWN_SECONDS,
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
 } from 'shared/constants/index.js'
 
 /**
@@ -504,7 +509,26 @@ export async function challengeLegion(accountId, formationSlot) {
       let droppedRuneStone = null
       let discardedRuneStone = null
       if (runeStoneCount >= 500) {
-        discardedRuneStone = { rarity: 'legendary', level: currentLevel }
+        const gs = global.$globalConfig?.gameSettings || {}
+        const rarityCoeff = {
+          normal:
+            gs.runeStoneDecomposeNormalBase ?? RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+          rare: gs.runeStoneDecomposeRareBase ?? RUNE_STONE_DECOMPOSE_RARE_BASE,
+          legendary:
+            gs.runeStoneDecomposeLegendaryBase ??
+            RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
+        }
+        const convertedFragments = rarityCoeff['legendary'] * currentLevel
+        await GamePlayerInventory.findOneAndUpdate(
+          { account: accountId },
+          { $inc: { runeFragment: convertedFragments } },
+          { upsert: true }
+        )
+        discardedRuneStone = {
+          rarity: 'legendary',
+          level: currentLevel,
+          convertedFragments
+        }
       } else {
         droppedRuneStone = await runeStoneService.generateRuneStone(
           accountId,

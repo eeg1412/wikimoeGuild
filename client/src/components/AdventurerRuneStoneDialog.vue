@@ -50,9 +50,9 @@
       <!-- 升级区域 -->
       <div class="flex items-center justify-between">
         <span class="text-xs text-gray-400">
-          升级消耗：{{ upgradeCost }} 碎片
+          升级消耗：{{ formatNumberWithCommas(upgradeCost) }} 碎片
           <span class="ml-1 text-purple-400">
-            (持有 {{ inventory?.runeFragment ?? 0 }})
+            (持有 {{ formatNumberWithCommas(inventory?.runeFragment ?? 0) }})
           </span>
         </span>
         <el-button
@@ -184,6 +184,7 @@ import RuneStoneSynthesisDialog from '@/components/RuneStoneSynthesisDialog.vue'
 import GameAdventurerAvatar from '@/components/GameAdventurerAvatar.vue'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import { useDialogLock } from '@/composables/useDialogLock.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const ELEMENT_MAP = {
   1: { name: '地', color: '#a0855b' },

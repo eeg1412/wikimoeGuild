@@ -26,11 +26,14 @@
         </p>
         <div class="flex flex-wrap gap-2 text-xs">
           <span class="text-gray-600 dark:text-gray-300"
-            >普通: 🪙 {{ officialPrices.normal }}</span
+            >普通: 🪙 {{ formatNumberWithCommas(officialPrices.normal) }}</span
           >
-          <span class="text-blue-500">稀有: 🪙 {{ officialPrices.rare }}</span>
+          <span class="text-blue-500"
+            >稀有: 🪙 {{ formatNumberWithCommas(officialPrices.rare) }}</span
+          >
           <span class="text-yellow-500"
-            >传说: 🪙 {{ officialPrices.legendary }}</span
+            >传说: 🪙
+            {{ formatNumberWithCommas(officialPrices.legendary) }}</span
           >
         </div>
       </div>
@@ -82,6 +85,7 @@ import { getMyRuneStonesApi } from '@/api/game/runeStone.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import RuneStoneMarketList from '@/components/RuneStoneMarketList.vue'
 import { rarityName } from '@/composables/useMarketUtils.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
 const rarityFilter = inject('runeStoneRarityFilter')
@@ -133,7 +137,7 @@ async function handleCreateListing(rs) {
   if (officialPrice && price <= officialPrice) {
     try {
       await ElMessageBox.confirm(
-        `你设置的价格 ${price.toLocaleString()} 金币低于或等于官方收购价 ${officialPrice.toLocaleString()} 金币，该符文石将被官方立即收购，你将获得 ${officialPrice.toLocaleString()} 金币。是否继续？`,
+        `你设置的价格 ${formatNumberWithCommas(price)} 金币低于或等于官方收购价 ${formatNumberWithCommas(officialPrice)} 金币，该符文石将被官方立即收购，你将获得 ${formatNumberWithCommas(officialPrice)} 金币。是否继续？`,
         '⚠️ 官方收购提示',
         {
           confirmButtonText: '确认出售给官方',
@@ -147,7 +151,7 @@ async function handleCreateListing(rs) {
   } else {
     try {
       await ElMessageBox.confirm(
-        `确定以 ${price.toLocaleString()} 金币的价格上架该 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石？`,
+        `确定以 ${formatNumberWithCommas(price)} 金币的价格上架该 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石？`,
         '确认上架',
         { confirmButtonText: '确认上架', cancelButtonText: '取消' }
       )
@@ -165,7 +169,7 @@ async function handleCreateListing(rs) {
     const result = res.data.data
     if (result?.officialPurchased) {
       await ElMessageBox.alert(
-        `你的 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石已被官方市场以 ${result.goldEarned.toLocaleString()} 金币收购！`,
+        `你的 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石已被官方市场以 ${formatNumberWithCommas(result.goldEarned)} 金币收购！`,
         '🏛️ 官方收购完成',
         { confirmButtonText: '确定', type: 'success' }
       )

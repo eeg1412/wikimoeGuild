@@ -47,7 +47,7 @@
           >
             <p class="text-xs text-gray-400">奖池总额</p>
             <p class="text-sm font-bold text-yellow-500">
-              🪙 {{ arenaInfo.season.poolAmount?.toLocaleString() }}
+              🪙 {{ formatNumberWithCommas(arenaInfo.season.poolAmount ?? 0) }}
             </p>
           </div>
           <div
@@ -55,7 +55,7 @@
           >
             <p class="text-xs text-gray-400">每战奖金</p>
             <p class="text-sm font-bold text-blue-500">
-              🪙 {{ arenaInfo.season.battleGold }}
+              🪙 {{ formatNumberWithCommas(arenaInfo.season.battleGold) }}
             </p>
           </div>
         </div>
@@ -93,7 +93,7 @@
             <div>
               <p class="text-xs text-gray-400">最终竞技点</p>
               <p class="text-lg font-bold text-yellow-500">
-                {{ arenaInfo.registration.points ?? 0 }}
+                {{ formatNumberWithCommas(arenaInfo.registration.points ?? 0) }}
               </p>
             </div>
             <div>
@@ -186,7 +186,11 @@
               <div>
                 <p class="text-xs text-gray-400">竞技点</p>
                 <p class="text-lg font-bold text-yellow-500">
-                  {{ arenaInfo.registration?.points ?? 500 }}
+                  {{
+                    formatNumberWithCommas(
+                      arenaInfo.registration?.points ?? 500
+                    )
+                  }}
                 </p>
               </div>
               <div>
@@ -257,7 +261,7 @@
                   >🏰 我方竞技场战斗力</span
                 >
                 <span class="font-mono font-bold text-blue-500">{{
-                  arenaCombatPower
+                  formatNumberWithUnits(arenaCombatPower)
                 }}</span>
               </div>
               <div
@@ -300,20 +304,26 @@
                         >
                           {{ opponent.guildName }}
                         </p>
-                        <p class="text-sm text-gray-400">
-                          竞技点: {{ opponent.points }}
+                        <p
+                          class="text-sm font-semibold text-amber-500 dark:text-amber-400"
+                        >
+                          🏆 竞技点:
+                          {{ formatNumberWithCommas(opponent.points) }}
                         </p>
                         <p
                           v-if="opponent.combatPower != null"
                           class="text-xs text-orange-400 font-mono"
                         >
-                          ⚔️ 战斗力: {{ opponent.combatPower }}
+                          ⚔️ 战斗力:
+                          {{ formatNumberWithUnits(opponent.combatPower) }}
                           <template v-if="arenaCombatPower > 0">
                             <span
                               v-if="arenaCombatPower > opponent.combatPower"
                               class="text-green-500 ml-1"
                               >↑+{{
-                                arenaCombatPower - opponent.combatPower
+                                formatNumberWithUnits(
+                                  arenaCombatPower - opponent.combatPower
+                                )
                               }}</span
                             >
                             <span
@@ -322,7 +332,9 @@
                               "
                               class="text-red-400 ml-1"
                               >↓{{
-                                arenaCombatPower - opponent.combatPower
+                                formatNumberWithUnits(
+                                  arenaCombatPower - opponent.combatPower
+                                )
                               }}</span
                             >
                             <span v-else class="text-gray-400 ml-1">持平</span>
@@ -399,7 +411,7 @@
                 已放置 {{ arenaPlacedCount }} 名冒险家
               </p>
               <p class="text-center text-sm text-orange-400 font-mono mb-4">
-                ⚔️ 综合战斗力: {{ arenaCombatPower }}
+                ⚔️ 综合战斗力: {{ formatNumberWithUnits(arenaCombatPower) }}
               </p>
 
               <div class="flex justify-center gap-3 mb-4">
@@ -463,7 +475,7 @@
                       </div>
                     </div>
                     <span class="text-sm font-bold text-yellow-500"
-                      >{{ player.points }} pt</span
+                      >{{ formatNumberWithCommas(player.points) }} pt</span
                     >
                   </div>
                 </div>
@@ -507,7 +519,7 @@
                         <span
                           v-if="log.goldEarned > 0"
                           class="text-yellow-500 ml-1"
-                          >+🪙{{ log.goldEarned }}</span
+                          >+🪙{{ formatNumberWithCommas(log.goldEarned) }}</span
                         >
                       </p>
                     </div>
@@ -536,7 +548,7 @@
                           "
                         >
                           {{ log.pointsChange >= 0 ? '+' : ''
-                          }}{{ log.pointsChange }} pt
+                          }}{{ formatNumberWithCommas(log.pointsChange) }} pt
                         </p>
                       </div>
                       <span class="text-gray-400 text-sm">▶</span>
@@ -718,13 +730,13 @@
               "
             >
               {{ battleResult.pointsChange >= 0 ? '+' : ''
-              }}{{ battleResult.pointsChange }}
+              }}{{ formatNumberWithCommas(battleResult.pointsChange) }}
             </span>
           </p>
           <p v-if="battleResult.goldEarned > 0">
             <span class="text-gray-400">获得金币:</span>
             <span class="ml-2 text-yellow-500 font-bold"
-              >🪙 {{ battleResult.goldEarned }}</span
+              >🪙 {{ formatNumberWithCommas(battleResult.goldEarned) }}</span
             >
           </p>
         </div>
@@ -811,7 +823,7 @@
             <span
               v-if="logDetail.goldEarned > 0"
               class="text-yellow-500 text-sm ml-2"
-              >+🪙{{ logDetail.goldEarned }}</span
+              >+🪙{{ formatNumberWithCommas(logDetail.goldEarned) }}</span
             >
           </div>
 
@@ -1044,6 +1056,10 @@ const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(([value, info]) => ({
 }))
 import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
 import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
+import {
+  formatNumberWithUnits,
+  formatNumberWithCommas
+} from 'shared/utils/utils.js'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()
@@ -1485,9 +1501,15 @@ async function fetchMatchList(forceRefresh = false) {
     const res = await getMatchListApi(params)
     const data = res.data.data
     matchList.value = data?.opponents || []
+    // 按竞技点从高到低排序
+    matchList.value.sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
     if (data?.refreshedAt) {
       matchRefreshedAt.value = new Date(data.refreshedAt)
       startRefreshCooldown()
+    }
+    // 从服务端返回的 challengedIds 恢复已挑战状态
+    if (!forceRefresh && data?.challengedIds?.length > 0) {
+      challengedOpponents.value = new Set(data.challengedIds)
     }
   } catch {
     if (forceRefresh) {

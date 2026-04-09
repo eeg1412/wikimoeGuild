@@ -39,6 +39,12 @@
               >
                 Lv.{{ playerInfo.guildLevel ?? 1 }}
               </span>
+              <span
+                v-if="guildUpgradeReady"
+                class="text-sm"
+                title="可以升级公会"
+                >⬆️</span
+              >
             </button>
           </template>
           <!-- 公会等级升级面板 -->
@@ -99,13 +105,13 @@
                 <div class="flex justify-between">
                   <span class="text-gray-500 dark:text-gray-400">升级费用</span>
                   <span class="font-semibold text-yellow-500"
-                    >🪙 {{ guildLevelInfo.fee?.toLocaleString() }}</span
+                    >🪙 {{ formatNumberWithCommas(guildLevelInfo.fee) }}</span
                   >
                 </div>
                 <div class="flex justify-between">
                   <span class="text-gray-500 dark:text-gray-400">当前金币</span>
                   <span class="font-semibold text-yellow-500"
-                    >🪙 {{ guildLevelInfo.gold?.toLocaleString() }}</span
+                    >🪙 {{ formatNumberWithCommas(guildLevelInfo.gold) }}</span
                   >
                 </div>
                 <div class="flex justify-between">
@@ -167,7 +173,7 @@
                 >🪙 金币</span
               >
               <span class="font-bold text-yellow-500 tabular-nums">{{
-                playerInfo.gold?.toLocaleString() ?? 0
+                formatNumberWithCommas(playerInfo.gold ?? 0)
               }}</span>
             </div>
             <div v-if="backpackLoading" class="text-center py-2">
@@ -178,23 +184,38 @@
                 <div
                   v-for="cry in backpackCrystalList"
                   :key="cry.key"
-                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
+                  class="bg-gray-50 dark:bg-gray-800 rounded p-1.5"
                 >
-                  <span class="text-xs text-gray-500"
-                    >{{ cry.icon }} {{ cry.name }}</span
-                  >
-                  <span class="flex items-center gap-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-500"
+                      >{{ cry.icon }} {{ cry.name }}</span
+                    >
                     <span
                       class="text-sm font-semibold tabular-nums"
                       :class="cry.colorClass"
-                      >{{ backpackInventory[cry.key] ?? 0 }}</span
+                      >{{
+                        formatNumberWithCommas(backpackInventory[cry.key] ?? 0)
+                      }}</span
                     >
-                    <span
-                      class="text-xs text-yellow-500 cursor-pointer hover:underline"
+                  </div>
+                  <div class="flex gap-1 mt-1">
+                    <el-button
+                      type="warning"
+                      size="small"
+                      class="flex-1"
                       @click="openBackpackSellDialog(cry.key)"
-                      >出售</span
                     >
-                  </span>
+                      出售
+                    </el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      class="flex-1 ml-0!"
+                      @click="openBackpackBuyDialog(cry.key)"
+                    >
+                      求购
+                    </el-button>
+                  </div>
                 </div>
               </div>
               <div
@@ -203,7 +224,9 @@
                 <span class="text-xs text-gray-500">💎 符文碎片</span>
                 <span
                   class="text-sm font-semibold text-cyan-400 tabular-nums"
-                  >{{ backpackInventory.runeFragment ?? 0 }}</span
+                  >{{
+                    formatNumberWithCommas(backpackInventory.runeFragment ?? 0)
+                  }}</span
                 >
               </div>
             </template>
@@ -409,103 +432,35 @@
     </transition>
 
     <!-- ===== 背包快速出售水晶弹窗 ===== -->
-    <el-dialog
+    <CrystalQuickSellDialog
       v-model="backpackSellVisible"
-      :title="`快速出售 ${backpackSellCrystalLabel}`"
-      width="320px"
-      align-center
-      destroy-on-close
-      v-bind="backpackSellLockProps"
-      append-to-body
-    >
-      <div class="space-y-3">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          当前持有:
-          <span class="font-bold text-yellow-500">
-            {{ backpackInventory?.[backpackSellCrystalType] ?? 0 }}
-          </span>
-        </p>
-        <p class="text-xs text-gray-400">
-          收购单价:
-          <span class="text-yellow-500 font-semibold"
-            >🪙 {{ backpackGameSettings?.officialCrystalBuyPrice ?? 100 }}</span
-          >
-        </p>
-        <div class="flex">
-          <el-button
-            size="small"
-            :loading="backpackSellLoading"
-            :disabled="backpackSellLoading"
-            @click="handleBackpackSell(10)"
-          >
-            出售 10
-          </el-button>
-          <el-button
-            size="small"
-            :loading="backpackSellLoading"
-            :disabled="backpackSellLoading"
-            @click="handleBackpackSell(100)"
-          >
-            出售 100
-          </el-button>
-          <el-button
-            size="small"
-            :loading="backpackSellLoading"
-            :disabled="backpackSellLoading"
-            @click="handleBackpackSell(1000)"
-          >
-            出售 1000
-          </el-button>
-        </div>
-        <div class="flex items-center gap-2">
-          <el-input-number
-            v-model="backpackSellCustomAmount"
-            :min="1"
-            :max="99999"
-            size="small"
-            class="flex-1"
-          />
-          <el-button
-            type="primary"
-            size="small"
-            :loading="backpackSellLoading"
-            :disabled="backpackSellLoading"
-            @click="handleBackpackSell(backpackSellCustomAmount)"
-          >
-            出售
-          </el-button>
-        </div>
-        <div class="text-sm text-gray-400">
-          预计获得:
-          <span class="text-yellow-500 font-semibold"
-            >🪙
-            {{
-              (
-                backpackSellCustomAmount *
-                (backpackGameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
-            }}</span
-          >
-        </div>
-      </div>
-    </el-dialog>
+      :crystal-type="backpackSellCrystalType"
+      @sold="handleBackpackCrystalTraded"
+    />
+
+    <!-- ===== 背包快速求购水晶弹窗 ===== -->
+    <CrystalQuickBuyDialog
+      v-model="backpackBuyVisible"
+      :crystal-type="backpackBuyCrystalType"
+      @bought="handleBackpackCrystalTraded"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { useTheme } from '@/composables/useTheme.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
-import { useDialogLock } from '@/composables/useDialogLock.js'
 import { getGuildLevelInfoApi, upgradeGuildLevelApi } from '@/api/game/guild.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
-import { sellCrystalToOfficialApi } from '@/api/game/market.js'
-import { getGameSettingsApi } from '@/api/game/config.js'
 import { getUnreadCountApi } from '@/api/game/mail.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
+import CrystalQuickSellDialog from '@/components/CrystalQuickSellDialog.vue'
+import CrystalQuickBuyDialog from '@/components/CrystalQuickBuyDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -549,6 +504,28 @@ watch(
 const guildLevelLoading = ref(false)
 const guildLevelInfo = ref(null)
 const guildLevelUpLoading = ref(false)
+const guildUpgradeReady = ref(false)
+
+async function checkGuildUpgradeStatus() {
+  if (!isLoggedIn.value) {
+    guildUpgradeReady.value = false
+    return
+  }
+  try {
+    const res = await getGuildLevelInfoApi()
+    const info = res.data.data
+    if (!info || !info.fee) {
+      guildUpgradeReady.value = false
+      return
+    }
+    guildUpgradeReady.value =
+      info.gold >= info.fee &&
+      info.qualifiedCount >= info.requiredCount &&
+      (playerInfo.value?.guildLevel ?? 1) < info.maxGuildLevel
+  } catch {
+    guildUpgradeReady.value = false
+  }
+}
 
 // 是否可升级公会
 const canUpgradeGuild = computed(() => {
@@ -581,7 +558,7 @@ function handleGuildLevelPopoverAfterLeave() {
 async function handleGuildLevelUp() {
   try {
     await ElMessageBox.confirm(
-      `确定花费 ${guildLevelInfo.value?.fee?.toLocaleString()} 金币升级公会？`,
+      `确定花费 ${formatNumberWithCommas(guildLevelInfo.value?.fee)} 金币升级公会？`,
       '公会升级',
       { confirmButtonText: '确定升级', cancelButtonText: '取消', type: 'info' }
     )
@@ -594,6 +571,7 @@ async function handleGuildLevelUp() {
     ElMessage.success({ message: '公会升级成功！', showClose: true })
     await fetchPlayerInfo()
     await handleGuildLevelPopoverShow()
+    await checkGuildUpgradeStatus()
   } catch {
     // handled by interceptor
   } finally {
@@ -622,7 +600,7 @@ function handleBackpackPopoverAfterLeave() {
   backpackInventory.value = null
 }
 
-// ── 背包快速出售 ──
+// ── 背包快速出售/求购（使用统一组件） ──
 const backpackCrystalList = [
   {
     key: 'attackCrystal',
@@ -652,49 +630,28 @@ const backpackCrystalList = [
 
 const backpackSellVisible = ref(false)
 const backpackSellCrystalType = ref('attackCrystal')
-const backpackSellCustomAmount = ref(10)
-const backpackSellLoading = ref(false)
-const { dialogLockProps: backpackSellLockProps } = useDialogLock(
-  () => backpackSellLoading.value
-)
-const backpackGameSettings = ref({})
+const backpackBuyVisible = ref(false)
+const backpackBuyCrystalType = ref('attackCrystal')
 
-const backpackSellCrystalLabel = computed(() => {
-  return (
-    backpackCrystalList.find(c => c.key === backpackSellCrystalType.value)
-      ?.name || '水晶'
-  )
-})
-
-async function openBackpackSellDialog(crystalType) {
+function openBackpackSellDialog(crystalType) {
   backpackSellCrystalType.value = crystalType
-  backpackSellCustomAmount.value = 10
-  try {
-    const res = await getGameSettingsApi()
-    backpackGameSettings.value = res.data.data || {}
-  } catch {
-    // ignore
-  }
   backpackSellVisible.value = true
 }
 
-async function handleBackpackSell(amount) {
-  if (!amount || amount <= 0) return
-  backpackSellLoading.value = true
-  try {
-    const res = await sellCrystalToOfficialApi({
-      crystalType: backpackSellCrystalType.value,
-      quantity: amount
-    })
-    const { goldEarned } = res.data.data
-    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
-    // 刷新背包和玩家信息
-    const [invRes] = await Promise.all([getMyInventoryApi(), fetchPlayerInfo()])
-    backpackInventory.value = invRes.data.data
-  } catch {
-    // handled by interceptor
-  } finally {
-    backpackSellLoading.value = false
+function openBackpackBuyDialog(crystalType) {
+  backpackBuyCrystalType.value = crystalType
+  backpackBuyVisible.value = true
+}
+
+async function handleBackpackCrystalTraded() {
+  // 如果背包面板当前打开，刷新其数据
+  if (backpackInventory.value !== null) {
+    try {
+      const res = await getMyInventoryApi()
+      backpackInventory.value = res.data.data
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -744,8 +701,29 @@ onMounted(async () => {
   if (isLoggedIn.value) {
     await fetchPlayerInfo()
     fetchUnreadMailCount()
+    checkGuildUpgradeStatus()
   }
 })
+
+// 防抖检测公会升级条件
+let guildUpgradeCheckTimer = null
+function debouncedCheckGuildUpgrade() {
+  if (guildUpgradeCheckTimer) clearTimeout(guildUpgradeCheckTimer)
+  guildUpgradeCheckTimer = setTimeout(() => {
+    if (isLoggedIn.value) checkGuildUpgradeStatus()
+  }, 500)
+}
+
+onUnmounted(() => {
+  if (guildUpgradeCheckTimer) clearTimeout(guildUpgradeCheckTimer)
+})
+
+watch(
+  () => [playerInfo.value?.guildLevel, playerInfo.value?.gold],
+  () => {
+    debouncedCheckGuildUpgrade()
+  }
+)
 
 function handleLogout() {
   logout()

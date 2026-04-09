@@ -25,6 +25,7 @@ export {
   officialSellCrystalSchema,
   officialBuyCrystalSchema,
   officialSellRuneStoneSchema,
+  officialBatchSellRuneStoneSchema,
   officialSellRuneFragmentSchema,
   createMaterialSellOrderSchema,
   createMaterialBuyOrderSchema,
@@ -57,7 +58,8 @@ export {
 } from './gameAdventurerValidator.js'
 export {
   dungeonLegionChallengeSchema,
-  dungeonSelectLevelSchema
+  dungeonSelectLevelSchema,
+  dungeonSettleSchema
 } from './gameDungeonValidator.js'
 export {
   changeGuildLogoSchema,

@@ -17,8 +17,8 @@ export function switchDungeonApi() {
 /**
  * 结算收取水晶
  */
-export function settleCrystalsApi() {
-  return gameRequest.post('/dungeon/settle')
+export function settleCrystalsApi(data = {}) {
+  return gameRequest.post('/dungeon/settle', data)
 }
 
 /**

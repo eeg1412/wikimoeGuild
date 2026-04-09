@@ -9,6 +9,11 @@ import {
   getDungeonLevelBonus,
   getDungeonLevelBonusCap
 } from 'shared/utils/guildLevelUtils.js'
+import {
+  RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+  RUNE_STONE_DECOMPOSE_RARE_BASE,
+  RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 
 // 符文石稀有度排序权重（用于品质比较，值越大越好）
 const RUNE_RARITY_ORDER = { legendary: 3, rare: 2, normal: 1 }
@@ -213,7 +218,12 @@ function randomCryRates() {
 /**
  * 结算水晶（内部函数，不加锁）
  */
-async function settleCrystalsInternal(playerInfo, accountId) {
+async function settleCrystalsInternal(
+  playerInfo,
+  accountId,
+  autoDecomposeNormal = false,
+  autoDecomposeRare = false
+) {
   const now = new Date()
   const lastSettle = new Date(playerInfo.lastDungeonSettleAt || now)
   const secondsPassed = Math.floor((now - lastSettle) / 1000)
@@ -336,6 +346,9 @@ async function settleCrystalsInternal(playerInfo, accountId) {
 
   const droppedRuneStones = []
   const discardedRuneStones = { normal: 0, rare: 0, legendary: 0 }
+  let convertedFragments = 0
+  let autoDecomposed = false
+  let autoDecomposedFragments = 0
 
   if (potentialDrops.length > 0) {
     // 查询当前持有数量，计算可用槽位
@@ -350,18 +363,66 @@ async function settleCrystalsInternal(playerInfo, accountId) {
     const keptDrops = potentialDrops.slice(0, keepCount)
     const discarded = potentialDrops.slice(keepCount)
 
-    // 第二阶段：批量保存保留的符文石（单次 insertMany，无重复 countDocuments）
-    if (keptDrops.length > 0) {
-      const stones = await runeStoneService.generateRuneStonesBulk(
-        accountId,
-        keptDrops
-      )
-      droppedRuneStones.push(...stones)
+    const gs = global.$globalConfig?.gameSettings || {}
+    const rarityCoeff = {
+      normal:
+        gs.runeStoneDecomposeNormalBase ?? RUNE_STONE_DECOMPOSE_NORMAL_BASE,
+      rare: gs.runeStoneDecomposeRareBase ?? RUNE_STONE_DECOMPOSE_RARE_BASE,
+      legendary:
+        gs.runeStoneDecomposeLegendaryBase ??
+        RUNE_STONE_DECOMPOSE_LEGENDARY_BASE
     }
 
-    // 统计丢弃数量
-    for (const d of discarded) {
-      discardedRuneStones[d.rarity] = (discardedRuneStones[d.rarity] || 0) + 1
+    // 背包满，溢出的符文石直接转碎片（不入库）
+    if (discarded.length > 0) {
+      for (const d of discarded) {
+        discardedRuneStones[d.rarity] = (discardedRuneStones[d.rarity] || 0) + 1
+        convertedFragments += rarityCoeff[d.rarity] * d.level
+      }
+    }
+
+    // 将 keptDrops 按自动分解条件分流：需要入库的 vs 直接转碎片的
+    if (keptDrops.length > 0) {
+      const toInsert = []
+      const toAutoDecompose = []
+      for (const drop of keptDrops) {
+        if (
+          (drop.rarity === 'normal' && autoDecomposeNormal) ||
+          (drop.rarity === 'rare' && autoDecomposeRare)
+        ) {
+          toAutoDecompose.push(drop)
+        } else {
+          toInsert.push(drop)
+        }
+      }
+
+      // 只有需要保留的石头才写入 DB
+      if (toInsert.length > 0) {
+        const stones = await runeStoneService.generateRuneStonesBulk(
+          accountId,
+          toInsert
+        )
+        droppedRuneStones.push(...stones)
+      }
+
+      // 自动分解的石头直接计算碎片，不入库
+      if (toAutoDecompose.length > 0) {
+        autoDecomposedFragments = toAutoDecompose.reduce(
+          (sum, s) => sum + rarityCoeff[s.rarity] * s.level,
+          0
+        )
+        autoDecomposed = true
+      }
+    }
+
+    // 统一一次性写入碎片（convertedFragments + autoDecomposedFragments 合并）
+    const totalFragmentInc = convertedFragments + autoDecomposedFragments
+    if (totalFragmentInc > 0) {
+      await GamePlayerInventory.findOneAndUpdate(
+        { account: accountId },
+        { $inc: { runeFragment: totalFragmentInc } },
+        { upsert: true }
+      )
     }
   }
 
@@ -373,14 +434,21 @@ async function settleCrystalsInternal(playerInfo, accountId) {
       sanCrystal: sanCrystals
     },
     runeStones: droppedRuneStones,
-    discardedRuneStones
+    discardedRuneStones,
+    convertedFragments,
+    autoDecomposed,
+    autoDecomposedFragments
   }
 }
 
 /**
  * 结算收取水晶（外部接口）
  */
-export async function settleCrystals(accountId) {
+export async function settleCrystals(
+  accountId,
+  autoDecomposeNormal = false,
+  autoDecomposeRare = false
+) {
   return await executeInLock(`dungeon:${accountId}`, async () => {
     const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
     if (!playerInfo) {
@@ -401,7 +469,12 @@ export async function settleCrystals(accountId) {
       throw err
     }
 
-    const result = await settleCrystalsInternal(playerInfo, accountId)
+    const result = await settleCrystalsInternal(
+      playerInfo,
+      accountId,
+      autoDecomposeNormal,
+      autoDecomposeRare
+    )
 
     // 更新结算时间
     playerInfo.lastDungeonSettleAt = now

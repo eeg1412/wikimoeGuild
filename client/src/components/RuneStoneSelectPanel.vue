@@ -100,7 +100,8 @@
                 class="text-xs font-semibold mt-0.5"
                 :class="getCombatPowerDiffClass(rs)"
               >
-                ⚔️ {{ getCombatPowerAfter(rs) }} (<span>{{
+                ⚔️
+                {{ formatNumberWithUnits(getCombatPowerAfter(rs)) }} (<span>{{
                   getCombatPowerDiffText(rs)
                 }}</span
                 >)
@@ -135,6 +136,7 @@ import {
   runeStoneActiveSkillDataBase,
   calculateCombatPower
 } from 'shared/utils/gameDatabase.js'
+import { formatNumberWithUnits } from 'shared/utils/utils.js'
 
 const props = defineProps({
   runeStones: { type: Array, default: () => [] },
@@ -321,8 +323,8 @@ function getCombatPowerAfter(rs) {
 function getCombatPowerDiffText(rs) {
   const after = getCombatPowerAfter(rs)
   const diff = after - currentCombatPower.value
-  if (diff > 0) return `+${diff}`
-  if (diff < 0) return `${diff}`
+  if (diff > 0) return `+${formatNumberWithUnits(diff)}`
+  if (diff < 0) return `${formatNumberWithUnits(diff)}`
   return '±0'
 }
 

@@ -17,6 +17,7 @@
         v-for="item in displayList"
         :key="getItemId(item)"
         class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border border-gray-300 dark:border-gray-600"
+        :class="itemClass ? itemClass(item) : ''"
         @click="handleToggleExpand(getItemId(item))"
       >
         <!-- 摘要行 -->
@@ -100,6 +101,11 @@ const props = defineProps({
     type: String,
     default: 'direct',
     validator: v => ['direct', 'nested'].includes(v)
+  },
+  /** 每个条目的额外 CSS class（接收 item 返回 string/object/array） */
+  itemClass: {
+    type: Function,
+    default: null
   }
 })
 

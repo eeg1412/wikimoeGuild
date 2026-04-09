@@ -31,16 +31,26 @@
             class="text-2xl font-bold mt-1 tabular-nums"
             :style="{ color: cry.color }"
           >
-            {{ (inventory[cry.key] || 0).toLocaleString() }}
+            {{ formatNumberWithCommas(inventory[cry.key] || 0) }}
           </span>
-          <el-button
-            type="warning"
-            size="small"
-            class="mt-2"
-            @click="openQuickSellDialog(cry.key)"
-          >
-            出售
-          </el-button>
+          <div class="flex gap-2 mt-2 w-full">
+            <el-button
+              type="warning"
+              size="small"
+              class="flex-1"
+              @click="openQuickSellDialog(cry.key)"
+            >
+              出售
+            </el-button>
+            <el-button
+              type="primary"
+              size="small"
+              class="flex-1 ml-0!"
+              @click="openQuickBuyDialog(cry.key)"
+            >
+              求购
+            </el-button>
+          </div>
         </div>
       </div>
 
@@ -49,108 +59,39 @@
         <span class="text-3xl mb-2">💠</span>
         <span class="text-sm text-gray-500 dark:text-gray-400">符文石碎片</span>
         <span class="text-2xl font-bold text-purple-400 mt-1 tabular-nums">
-          {{ (inventory.runeFragment || 0).toLocaleString() }}
+          {{ formatNumberWithCommas(inventory.runeFragment || 0) }}
         </span>
         <p class="text-sm text-gray-400 mt-2">可用于升级符文石</p>
       </div>
     </template>
 
     <!-- ===== 快速出售水晶弹窗 ===== -->
-    <el-dialog
+    <CrystalQuickSellDialog
       v-model="quickSellVisible"
-      :title="`快速出售 ${quickSellCrystalLabel}`"
-      width="320px"
-      align-center
-      destroy-on-close
-      v-bind="inventoryQuickSellLockProps"
-      append-to-body
-    >
-      <div class="space-y-3">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          当前持有:
-          <span class="font-bold text-yellow-500">
-            {{ inventory?.[quickSellCrystalType] ?? 0 }}
-          </span>
-        </p>
-        <p class="text-xs text-gray-400">
-          收购单价:
-          <span class="text-yellow-500 font-semibold"
-            >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
-          >
-        </p>
-        <div class="flex">
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(10)"
-          >
-            出售 10
-          </el-button>
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(100)"
-          >
-            出售 100
-          </el-button>
-          <el-button
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(1000)"
-          >
-            出售 1000
-          </el-button>
-        </div>
-        <div class="flex items-center gap-2">
-          <el-input-number
-            v-model="quickSellCustomAmount"
-            :min="1"
-            :max="99999"
-            size="small"
-            class="flex-1"
-          />
-          <el-button
-            type="primary"
-            size="small"
-            :loading="quickSellLoading"
-            :disabled="quickSellLoading"
-            @click="handleQuickSell(quickSellCustomAmount)"
-          >
-            出售
-          </el-button>
-        </div>
-        <div class="text-sm text-gray-400">
-          预计获得:
-          <span class="text-yellow-500 font-semibold"
-            >🪙
-            {{
-              (
-                quickSellCustomAmount *
-                (gameSettings?.officialCrystalBuyPrice ?? 100)
-              ).toLocaleString()
-            }}</span
-          >
-        </div>
-      </div>
-    </el-dialog>
+      :crystal-type="quickSellCrystalType"
+      @sold="handleCrystalTraded"
+    />
+
+    <!-- ===== 快速求购水晶弹窗 ===== -->
+    <CrystalQuickBuyDialog
+      v-model="quickBuyVisible"
+      :crystal-type="quickBuyCrystalType"
+      @bought="handleCrystalTraded"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
-import { sellCrystalToOfficialApi } from '@/api/game/market.js'
-import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
-import { useDialogLock } from '@/composables/useDialogLock.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
+import CrystalQuickSellDialog from '@/components/CrystalQuickSellDialog.vue'
+import CrystalQuickBuyDialog from '@/components/CrystalQuickBuyDialog.vue'
 
 const router = useRouter()
-const { isLoggedIn, fetchPlayerInfo } = useGameUser()
+const { isLoggedIn } = useGameUser()
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
@@ -158,7 +99,6 @@ if (!isLoggedIn.value) {
 
 const loading = ref(false)
 const inventory = ref({})
-const gameSettings = ref({})
 
 const crystalList = [
   { key: 'attackCrystal', name: '攻击', icon: '⚔️', color: '#e05c4f' },
@@ -170,59 +110,44 @@ const crystalList = [
 async function fetchInventory() {
   loading.value = true
   try {
-    const [invRes, settingsRes] = await Promise.all([
-      getMyInventoryApi(),
-      getGameSettingsApi()
-    ])
-    inventory.value = invRes.data.data || {}
-    gameSettings.value = settingsRes.data.data || {}
+    const res = await getMyInventoryApi()
+    inventory.value = res.data.data || {}
   } catch {
-    inventory.value = {}
+    // 加载失败时不重置 inventory，保留已有数据
   } finally {
     loading.value = false
   }
 }
 
+async function refreshInventoryData() {
+  try {
+    const res = await getMyInventoryApi()
+    inventory.value = res.data.data || {}
+  } catch {
+    // ignore
+  }
+}
+
 onMounted(fetchInventory)
 
-// ── 快速出售水晶 ──
+// ── 快速出售/求购 ──
 const quickSellVisible = ref(false)
 const quickSellCrystalType = ref('attackCrystal')
-const quickSellCustomAmount = ref(10)
-const quickSellLoading = ref(false)
-const { dialogLockProps: inventoryQuickSellLockProps } = useDialogLock(
-  () => quickSellLoading.value
-)
-
-const quickSellCrystalLabel = computed(() => {
-  return (
-    crystalList.find(c => c.key === quickSellCrystalType.value)?.name +
-      '水晶' || '水晶'
-  )
-})
+const quickBuyVisible = ref(false)
+const quickBuyCrystalType = ref('attackCrystal')
 
 function openQuickSellDialog(crystalType) {
   quickSellCrystalType.value = crystalType
-  quickSellCustomAmount.value = 10
   quickSellVisible.value = true
 }
 
-async function handleQuickSell(amount) {
-  if (!amount || amount <= 0) return
-  quickSellLoading.value = true
-  try {
-    const res = await sellCrystalToOfficialApi({
-      crystalType: quickSellCrystalType.value,
-      quantity: amount
-    })
-    const { goldEarned } = res.data.data
-    ElMessage.success({ message: `出售成功，获得 ${goldEarned} 金币`, showClose: true })
-    await Promise.all([fetchInventory(), fetchPlayerInfo()])
-  } catch {
-    // handled by interceptor
-  } finally {
-    quickSellLoading.value = false
-  }
+function openQuickBuyDialog(crystalType) {
+  quickBuyCrystalType.value = crystalType
+  quickBuyVisible.value = true
+}
+
+async function handleCrystalTraded() {
+  await refreshInventoryData()
 }
 </script>
 

@@ -367,6 +367,42 @@ function gainSpFromDamage(unit) {
 }
 
 /**
+ * 计算伤害（共通函数）
+ * 使用统一公式: damage = floor((攻击 * 攻击) / (攻击 + 防御 * 1.5))
+ * 防御权重提升50%，增强坦克作用
+ * @param {number} attackValue - 最终攻击值
+ * @param {number} defenseValue - 最终防御值
+ * @param {string} attackerElement - 攻击者元素
+ * @param {string} targetElement - 防御者元素
+ * @returns {number} 伤害值
+ */
+function calculateDamage(
+  attackValue,
+  defenseValue,
+  attackerElement,
+  targetElement
+) {
+  const finalAttackValue = Math.max(1, attackValue)
+  const finalDefenseValue = Math.max(0, defenseValue)
+
+  // (攻击 * 攻击) / (攻击 + 防御 * 系数)
+  let damage = Math.floor(
+    (finalAttackValue * finalAttackValue) /
+      (finalAttackValue + finalDefenseValue * 1.3)
+  )
+
+  // 元素克制
+  if (isElementCounter(attackerElement, targetElement)) {
+    damage = Math.floor((damage * COUNTER_DAMAGE_RATE) / 10000)
+  }
+
+  // 伤害最小为1
+  damage = Math.max(damage, 1)
+
+  return damage
+}
+
+/**
  * 执行普通攻击
  */
 function performAttack(attacker, defender, log) {
@@ -385,18 +421,12 @@ function performAttack(attacker, defender, log) {
     Math.floor(rawDefense * suppression.defenseMultiplier)
   )
 
-  // (攻击 * 攻击) / (攻击 + 防御)
-  let damage = Math.floor(
-    (finalAttack * finalAttack) / (finalAttack + finalDefense)
+  const damage = calculateDamage(
+    finalAttack,
+    finalDefense,
+    attacker.element,
+    defender.element
   )
-
-  // 元素克制
-  if (isElementCounter(attacker.element, defender.element)) {
-    damage = Math.floor((damage * COUNTER_DAMAGE_RATE) / 10000)
-  }
-
-  // 伤害最小为1
-  damage = Math.max(damage, 1)
 
   defender.currentSan -= damage
   if (defender.currentSan <= 0) {
@@ -489,12 +519,12 @@ function performRuneStoneSkill(unit, allUnits, skillData, log, triggerTiming) {
           )
         )
 
-        let damage = runeAttackValue - targetDefenseValue
-        // 元素克制
-        if (skill.element && isElementCounter(skill.element, target.element)) {
-          damage = Math.floor((damage * COUNTER_DAMAGE_RATE) / 10000)
-        }
-        damage = Math.max(damage, 1)
+        const damage = calculateDamage(
+          runeAttackValue,
+          targetDefenseValue,
+          skill.element,
+          target.element
+        )
 
         target.currentSan -= damage
         if (target.currentSan <= 0) {

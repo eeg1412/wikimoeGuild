@@ -16,7 +16,7 @@
       <div
         class="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-700 ml-1"
       >
-        💠 碎片：{{ (inventory?.runeFragment ?? 0).toLocaleString() }}
+        💠 碎片：{{ formatNumberWithCommas(inventory?.runeFragment ?? 0) }}
       </div>
     </div>
 
@@ -218,7 +218,7 @@
               :disabled="!!upgradeLoadingId || !!decomposeLoadingId"
               @click.stop="handleInlineUpgrade(rs)"
             >
-              升级 ({{ getUpgradeCost(rs) }}碎片)
+              升级 ({{ formatNumberWithCommas(getUpgradeCost(rs)) }}碎片)
             </el-button>
           </div>
           <p
@@ -623,6 +623,7 @@ import {
   confirmSynthesisApi,
   batchDecomposeRuneStonesApi
 } from '@/api/game/runeStone.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'

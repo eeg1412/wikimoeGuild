@@ -6,6 +6,7 @@ import {
   officialSellCrystalSchema,
   officialBuyCrystalSchema,
   officialSellRuneStoneSchema,
+  officialBatchSellRuneStoneSchema,
   officialSellRuneFragmentSchema,
   createMaterialSellOrderSchema,
   createMaterialBuyOrderSchema,
@@ -17,11 +18,22 @@ const router = Router()
 
 // 官方市场
 router.get('/official/info', authPlayer, marketController.getOfficialMarketInfo)
+router.get(
+  '/official/crystal-price-range',
+  authPlayer,
+  marketController.getCrystalBuyPriceRange
+)
 router.post(
   '/official/sell',
   authPlayer,
   validate(officialSellCrystalSchema),
   marketController.sellCrystalToOfficial
+)
+router.post(
+  '/official/smart-sell',
+  authPlayer,
+  validate(officialSellCrystalSchema),
+  marketController.smartSellCrystal
 )
 router.post(
   '/official/buy',
@@ -34,6 +46,12 @@ router.post(
   authPlayer,
   validate(officialSellRuneStoneSchema),
   marketController.sellRuneStoneToOfficial
+)
+router.post(
+  '/official/batch-sell-rune-stone',
+  authPlayer,
+  validate(officialBatchSellRuneStoneSchema),
+  marketController.batchSellRuneStonesToOfficial
 )
 router.post(
   '/official/sell-rune-fragment',

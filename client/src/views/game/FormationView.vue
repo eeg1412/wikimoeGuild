@@ -88,7 +88,7 @@
         已放置 {{ placedCount }} / 25 名冒险家
       </p>
       <p class="text-center text-sm text-orange-400 font-mono mb-4">
-        ⚔️ 综合战斗力: {{ formationCombatPower }}
+        ⚔️ 综合战斗力: {{ formatNumberWithUnits(formationCombatPower) }}
       </p>
     </template>
 
@@ -239,6 +239,7 @@ import {
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
 import AdventurerDetailDialog from '@/components/AdventurerDetailDialog.vue'
 import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
+import { formatNumberWithUnits } from 'shared/utils/utils.js'
 
 const router = useRouter()
 
@@ -465,7 +466,10 @@ function handleCellClick(row, col) {
   } else {
     // 空格子 → 检查冒险家数据是否已加载
     if (adventurersLoading.value) {
-      ElMessage.warning({ message: '冒险家数据加载中，请稍候', showClose: true })
+      ElMessage.warning({
+        message: '冒险家数据加载中，请稍候',
+        showClose: true
+      })
       return
     }
     pickRow.value = row

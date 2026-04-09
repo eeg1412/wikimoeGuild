@@ -32,7 +32,12 @@ export async function switchDungeon(req, res, next) {
 export async function settleCrystals(req, res, next) {
   try {
     const accountId = req.player.id
-    const result = await dungeonService.settleCrystals(accountId)
+    const { autoDecomposeNormal = false, autoDecomposeRare = false } = req.body
+    const result = await dungeonService.settleCrystals(
+      accountId,
+      !!autoDecomposeNormal,
+      !!autoDecomposeRare
+    )
     res.success(result, '收取成功')
   } catch (error) {
     next(error)

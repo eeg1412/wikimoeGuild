@@ -170,7 +170,7 @@
         <div class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5">
           <span class="info-label">战斗力</span>
           <span class="info-value rpg-number text-orange-500">
-            {{ combatPower }}
+            {{ formatNumberWithUnits(combatPower) }}
           </span>
         </div>
 
@@ -199,14 +199,14 @@
         <el-divider class="my-1.5!" />
 
         <!-- 资源信息（管理模式） -->
-        <template v-if="showManage">
+        <!-- <template v-if="showManage">
           <div class="w-full grid grid-cols-1 gap-2 text-sm">
             <div
               class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2 text-center"
             >
               <p class="text-xs text-gray-400">🪙 金币</p>
               <p class="text-sm font-bold text-yellow-500">
-                {{ (playerInfo?.gold ?? 0).toLocaleString() }}
+                {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }}
               </p>
             </div>
           </div>
@@ -218,7 +218,7 @@
             >
               <p class="text-xs text-gray-400">{{ cType.icon }}水晶</p>
               <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
-                {{ inventory?.[cType.key] ?? 0 }}
+                {{ formatNumberWithCommas(inventory?.[cType.key] ?? 0) }}
               </p>
               <el-button
                 type="warning"
@@ -227,10 +227,17 @@
               >
                 出售
               </el-button>
+              <el-button
+                type="primary"
+                size="small"
+                @click.stop="openQuickBuyDialog(cType.key)"
+              >
+                求购
+              </el-button>
             </div>
           </div>
           <el-divider class="my-1.5!" />
-        </template>
+        </template> -->
 
         <!-- 最终属性计算 -->
         <AdventurerFinalStats :adventurer="adventurer" />
@@ -314,9 +321,10 @@
           <!-- 符文石升级按钮 -->
           <div class="flex items-center justify-between">
             <span class="text-xs text-gray-400">
-              升级消耗：{{ runeStoneUpgradeCost }} 碎片
+              升级消耗：{{ formatNumberWithCommas(runeStoneUpgradeCost) }} 碎片
               <span class="ml-1 text-purple-400">
-                (持有 {{ inventory?.runeFragment ?? 0 }})
+                (持有
+                {{ formatNumberWithCommas(inventory?.runeFragment ?? 0) }})
               </span>
             </span>
             <el-button
@@ -357,7 +365,11 @@
     append-to-body
   >
     <p class="text-sm text-gray-500 mb-3">
-      消耗 {{ gameSettings.adventurerCustomAvatarPrice ?? 5000 }} 金币
+      消耗
+      {{
+        formatNumberWithCommas(gameSettings.adventurerCustomAvatarPrice ?? 5000)
+      }}
+      金币
     </p>
     <Cropper
       :src="avatarPreview"
@@ -393,7 +405,11 @@
     append-to-body
   >
     <p class="text-sm text-gray-500 mb-3">
-      消耗 {{ gameSettings.adventurerCustomNamePrice ?? 1000 }} 金币
+      消耗
+      {{
+        formatNumberWithCommas(gameSettings.adventurerCustomNamePrice ?? 1000)
+      }}
+      金币
     </p>
     <el-input
       v-model="newName"
@@ -451,89 +467,6 @@
     :adventurer-id="adventurer._id"
     @updated="onSynthesisUpdated"
   />
-
-  <!-- ===== 快速出售水晶弹窗 ===== -->
-  <el-dialog
-    v-if="showManage"
-    v-model="quickSellVisible"
-    :title="`快速出售 ${quickSellCrystalLabel}`"
-    width="320px"
-    align-center
-    destroy-on-close
-    v-bind="detailQuickSellLockProps"
-    append-to-body
-  >
-    <div class="space-y-3">
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        当前持有:
-        <span class="font-bold text-yellow-500">
-          {{ inventory?.[quickSellCrystalType] ?? 0 }}
-        </span>
-      </p>
-      <p class="text-xs text-gray-400">
-        收购单价:
-        <span class="text-yellow-500 font-semibold"
-          >🪙 {{ gameSettings?.officialCrystalBuyPrice ?? 100 }}</span
-        >
-      </p>
-      <div class="flex">
-        <el-button
-          size="small"
-          :loading="quickSellLoading"
-          :disabled="quickSellLoading"
-          @click="handleQuickSell(10)"
-        >
-          出售 10
-        </el-button>
-        <el-button
-          size="small"
-          :loading="quickSellLoading"
-          :disabled="quickSellLoading"
-          @click="handleQuickSell(100)"
-        >
-          出售 100
-        </el-button>
-        <el-button
-          size="small"
-          :loading="quickSellLoading"
-          :disabled="quickSellLoading"
-          @click="handleQuickSell(1000)"
-        >
-          出售 1000
-        </el-button>
-      </div>
-      <div class="flex items-center gap-2">
-        <el-input-number
-          v-model="quickSellCustomAmount"
-          :min="1"
-          :max="99999"
-          size="small"
-          class="flex-1"
-        />
-        <el-button
-          type="primary"
-          size="small"
-          :loading="quickSellLoading"
-          :disabled="quickSellLoading"
-          @click="handleQuickSell(quickSellCustomAmount)"
-        >
-          出售
-        </el-button>
-      </div>
-      <div class="text-sm text-gray-400">
-        预计获得:
-        <span class="text-yellow-500 font-semibold"
-          >🪙
-          {{
-            (
-              quickSellCustomAmount *
-              (gameSettings?.officialCrystalBuyPrice ?? 100)
-            ).toLocaleString()
-          }}</span
-        >
-      </div>
-    </div>
-  </el-dialog>
 </template>
 
 <script setup>
@@ -555,7 +488,6 @@ import {
 } from '@/api/game/runeStone.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
-import { sellCrystalToOfficialApi } from '@/api/game/market.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import {
   passiveBuffTypeDataBase,
@@ -575,6 +507,10 @@ import StatLevelUpPanel from '@/components/StatLevelUpPanel.vue'
 import Cropper from '@/components/Cropper.vue'
 import { getMaxComprehensiveLevel } from 'shared/utils/guildLevelUtils.js'
 import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
+import {
+  formatNumberWithUnits,
+  formatNumberWithCommas
+} from 'shared/utils/utils.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
 import { useDialogLock } from '@/composables/useDialogLock.js'
 
@@ -623,13 +559,6 @@ const gameSettings = ref({})
 const inventory = ref(null)
 
 // ── 常量 ──
-
-const CRYSTAL_TYPES = [
-  { key: 'attackCrystal', icon: '⚔️', label: '攻击水晶' },
-  { key: 'defenseCrystal', icon: '🛡️', label: '防御水晶' },
-  { key: 'speedCrystal', icon: '💨', label: '速度水晶' },
-  { key: 'sanCrystal', icon: '❤️', label: 'SAN水晶' }
-]
 
 const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(
   ([value, { emoji, label }]) => ({
@@ -994,12 +923,6 @@ async function handleUnequip() {
   }
 }
 
-// ── 快速出售水晶（管理模式） ──
-const { visible: quickSellVisible } = useDialogRoute('quickSell')
-const quickSellCrystalType = ref('attackCrystal')
-const quickSellCustomAmount = ref(10)
-const quickSellLoading = ref(false)
-
 // 合并所有操作 loading 状态
 const detailAnyLoading = computed(
   () =>
@@ -1009,8 +932,7 @@ const detailAnyLoading = computed(
     equipLoading.value ||
     unequipLoading.value ||
     avatarSaving.value ||
-    nameSaving.value ||
-    quickSellLoading.value
+    nameSaving.value
 )
 const { dialogLockProps: detailLockProps } = useDialogLock(
   () => detailAnyLoading.value
@@ -1022,48 +944,6 @@ const { dialogLockProps: nameLockProps } = useDialogLock(() => nameSaving.value)
 const { dialogLockProps: equipLockProps } = useDialogLock(
   () => equipLoading.value
 )
-const { dialogLockProps: detailQuickSellLockProps } = useDialogLock(
-  () => quickSellLoading.value
-)
-
-const quickSellCrystalLabel = computed(() => {
-  return (
-    CRYSTAL_TYPES.find(c => c.key === quickSellCrystalType.value)?.label ||
-    '水晶'
-  )
-})
-
-function openQuickSellDialog(crystalType) {
-  quickSellCrystalType.value = crystalType
-  quickSellCustomAmount.value = 10
-  quickSellVisible.value = true
-}
-
-async function handleQuickSell(amount) {
-  if (!amount || amount <= 0) return
-  quickSellLoading.value = true
-  try {
-    const res = await sellCrystalToOfficialApi({
-      crystalType: quickSellCrystalType.value,
-      quantity: amount
-    })
-    const { goldEarned } = res.data.data
-    ElMessage.success({
-      message: `出售成功，获得 ${goldEarned} 金币`,
-      showClose: true
-    })
-    await Promise.all([
-      getMyInventoryApi().then(r => {
-        inventory.value = r.data.data
-      }),
-      fetchPlayerInfo()
-    ])
-  } catch {
-    // handled by interceptor
-  } finally {
-    quickSellLoading.value = false
-  }
-}
 </script>
 
 <style scoped>

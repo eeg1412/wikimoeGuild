@@ -139,7 +139,7 @@
               <span>🪙</span>
               <span class="text-gray-700 dark:text-gray-300">金币</span>
               <span class="ml-auto font-mono text-yellow-500"
-                >+{{ detailMail.attachGold.toLocaleString() }}</span
+                >+{{ formatNumberWithCommas(detailMail.attachGold) }}</span
               >
             </div>
             <template v-for="cry in crystalList" :key="cry.key">
@@ -226,6 +226,7 @@ import {
 } from '@/api/game/mail.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { useDialogRoute } from '@/composables/useDialogRoute.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const router = useRouter()
 const { isLoggedIn, fetchPlayerInfo } = useGameUser()

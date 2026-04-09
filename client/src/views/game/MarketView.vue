@@ -9,7 +9,7 @@
         官方市场 & 自由市场
       </p>
       <p class="text-sm text-yellow-500 font-semibold mt-1">
-        🪙 {{ (playerInfo?.gold ?? 0).toLocaleString() }} 金币
+        🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
       </p>
     </div>
 
@@ -28,6 +28,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameUser } from '@/composables/useGameUser.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const route = useRoute()
 const router = useRouter()

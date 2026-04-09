@@ -70,7 +70,7 @@
           <span class="text-yellow-500 font-semibold"
             >🪙
             {{
-              (sellForm.quantity * sellForm.unitPrice).toLocaleString()
+              formatNumberWithCommas(sellForm.quantity * sellForm.unitPrice)
             }}</span
           >
         </template>
@@ -123,7 +123,7 @@
                   >
                 </p>
                 <p class="text-sm text-gray-400">
-                  单价 🪙 {{ order.unitPrice?.toLocaleString() }}
+                  单价 🪙 {{ formatNumberWithCommas(order.unitPrice) }}
                 </p>
                 <!-- 状态显示 -->
                 <p class="text-xs mt-0.5">
@@ -154,7 +154,7 @@
                   v-if="order.pendingGold > 0"
                   class="text-xs text-yellow-500 mt-0.5"
                 >
-                  💰 待收取: 🪙 {{ order.pendingGold.toLocaleString() }}
+                  💰 待收取: 🪙 {{ formatNumberWithCommas(order.pendingGold) }}
                 </p>
               </div>
             </div>
@@ -218,6 +218,7 @@ import {
   getMaterialIcon,
   getMaterialName
 } from '@/composables/useMarketUtils.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
 
@@ -276,7 +277,7 @@ async function handleCreateSellOrder() {
   }
   try {
     await ElMessageBox.confirm(
-      `确定发布出售 ${sellForm.quantity} 个 ${getMaterialName(sellForm.materialType)}？\n单价: ${sellForm.unitPrice.toLocaleString()} 金币`,
+      `确定发布出售 ${sellForm.quantity} 个 ${getMaterialName(sellForm.materialType)}？\n单价: ${formatNumberWithCommas(sellForm.unitPrice)} 金币`,
       '确认发布出售',
       { confirmButtonText: '确认发布', cancelButtonText: '取消' }
     )

@@ -15,6 +15,7 @@
           v-for="order in orders"
           :key="order._id"
           class="rpg-card rounded-xl p-3"
+          :class="order.isMine ? 'opacity-70' : ''"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -27,10 +28,16 @@
                   <span class="text-xs text-gray-400 font-normal ml-1"
                     >x{{ order.quantity }}</span
                   >
+                  <span
+                    v-if="order.isMine"
+                    class="text-xs text-yellow-500 font-normal ml-1"
+                    >（我的）</span
+                  >
                 </p>
                 <p class="text-sm text-gray-400">
-                  单价 🪙 {{ order.unitPrice?.toLocaleString() }} · 总价 🪙
-                  {{ (order.quantity * order.unitPrice).toLocaleString() }}
+                  单价 🪙 {{ formatNumberWithCommas(order.unitPrice) }} · 总价
+                  🪙
+                  {{ formatNumberWithCommas(order.quantity * order.unitPrice) }}
                 </p>
                 <p v-if="order.guildName" class="text-xs text-gray-400 mt-0.5">
                   {{ order.guildName }}
@@ -39,6 +46,7 @@
             </div>
             <div class="flex flex-col items-end gap-1">
               <el-button
+                v-if="!order.isMine"
                 type="primary"
                 size="small"
                 :loading="fulfillLoading === order._id"
@@ -47,6 +55,7 @@
               >
                 购买
               </el-button>
+              <span v-else class="text-xs text-gray-400">我的订单</span>
             </div>
           </div>
         </div>
@@ -80,8 +89,8 @@
       <div v-if="fulfillDialogOrder" class="space-y-3">
         <div class="text-sm text-gray-600 dark:text-gray-300">
           {{ getMaterialName(fulfillDialogOrder.materialType) }}
-          · 单价 🪙 {{ fulfillDialogOrder.unitPrice?.toLocaleString() }} · 剩余
-          x{{ fulfillDialogOrder.quantity }}
+          单价 🪙 {{ formatNumberWithCommas(fulfillDialogOrder.unitPrice) }} ·
+          剩余 x{{ fulfillDialogOrder.quantity }}
         </div>
         <div class="flex items-center gap-2">
           <span class="text-sm text-gray-500">数量:</span>
@@ -101,7 +110,7 @@
           <span class="text-yellow-500 font-semibold"
             >🪙
             {{
-              (fulfillQty * fulfillDialogOrder.unitPrice).toLocaleString()
+              formatNumberWithCommas(fulfillQty * fulfillDialogOrder.unitPrice)
             }}</span
           >
         </div>
@@ -137,6 +146,7 @@ import {
   getMaterialIcon,
   getMaterialName
 } from '@/composables/useMarketUtils.js'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
 const materialFilter = inject('materialFilter')

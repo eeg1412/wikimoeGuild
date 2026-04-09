@@ -51,6 +51,7 @@
       <div
         ref="explorerBoxRef"
         class="dungeon-explorer-box rounded-2xl mb-4"
+        :class="{ paused: isAnimationPaused }"
         :style="dungeonBgStyle"
       >
         <div class="dungeon-explorer-inner">
@@ -204,9 +205,32 @@
           </div>
         </div>
       </div>
-
+      <!-- 自动分解设置 -->
+      <div class="rpg-card rounded-xl p-1 mt-1">
+        <!-- <p class="text-xs text-gray-400 mb-2">⚙️ 自动分解设置</p> -->
+        <div class="flex flex-wrap items-center justify-center gap-1">
+          <el-checkbox
+            :model-value="autoDecomposeNormal"
+            size="small"
+            @change="handleAutoDecomposeNormalChange"
+          >
+            <span class="text-xs text-gray-600 dark:text-gray-300"
+              >自动分解普通符文石</span
+            >
+          </el-checkbox>
+          <el-checkbox
+            :model-value="autoDecomposeRare"
+            size="small"
+            @change="handleAutoDecomposeRareChange"
+          >
+            <span class="text-xs text-gray-600 dark:text-gray-300"
+              >自动分解稀有符文石</span
+            >
+          </el-checkbox>
+        </div>
+      </div>
       <!-- 操作按钮 -->
-      <div class="flex flex-col gap-3 mt-6">
+      <div class="flex flex-col gap-3">
         <!-- 收取水晶 -->
         <el-button
           type="warning"
@@ -268,25 +292,37 @@
           <div class="flex justify-between" style="color: #e05c4f">
             <span>⚔️ 攻击水晶</span>
             <span class="font-bold"
-              >+{{ settleResult.crystals?.attackCrystal || 0 }}</span
+              >+{{
+                formatNumberWithCommas(
+                  settleResult.crystals?.attackCrystal || 0
+                )
+              }}</span
             >
           </div>
           <div class="flex justify-between" style="color: #4fa3e0">
             <span>🛡️ 防御水晶</span>
             <span class="font-bold"
-              >+{{ settleResult.crystals?.defenseCrystal || 0 }}</span
+              >+{{
+                formatNumberWithCommas(
+                  settleResult.crystals?.defenseCrystal || 0
+                )
+              }}</span
             >
           </div>
           <div class="flex justify-between" style="color: #6abf69">
             <span>💨 速度水晶</span>
             <span class="font-bold"
-              >+{{ settleResult.crystals?.speedCrystal || 0 }}</span
+              >+{{
+                formatNumberWithCommas(settleResult.crystals?.speedCrystal || 0)
+              }}</span
             >
           </div>
           <div class="flex justify-between" style="color: #c070e0">
             <span>❤️ SAN水晶</span>
             <span class="font-bold"
-              >+{{ settleResult.crystals?.sanCrystal || 0 }}</span
+              >+{{
+                formatNumberWithCommas(settleResult.crystals?.sanCrystal || 0)
+              }}</span
             >
           </div>
           <el-divider />
@@ -294,6 +330,22 @@
             v-if="settleResult.runeStones?.length > 0"
             :rune-stones="settleResult.runeStones"
           />
+          <!-- 自动分解结果 -->
+          <div
+            v-if="settleResult.autoDecomposed"
+            class="bg-purple-50 dark:bg-purple-900/20 border border-purple-400/30 rounded-lg p-3 text-sm"
+          >
+            <p class="text-purple-400 font-medium">🔮 已自动分解</p>
+            <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
+              获得
+              {{
+                formatNumberWithCommas(
+                  settleResult.autoDecomposedFragments ?? 0
+                )
+              }}
+              个符文石碎片
+            </p>
+          </div>
           <!-- 背包已满自动丢弃提示 -->
           <div
             v-if="
@@ -302,10 +354,10 @@
                 settleResult.discardedRuneStones.rare > 0 ||
                 settleResult.discardedRuneStones.legendary > 0)
             "
-            class="mt-2 rounded p-2 text-xs bg-red-500/10 border border-red-500/30"
+            class="mt-2 rounded p-2 text-xs bg-orange-500/10 border border-orange-500/30"
           >
-            <p class="font-semibold text-red-400 mb-1">
-              ⚠️ 背包已满，自动丢弃了：
+            <p class="font-semibold text-orange-400 mb-1">
+              ⚠️ 背包已满，已自动转换为符文石碎片：
             </p>
             <p
               v-if="settleResult.discardedRuneStones.normal > 0"
@@ -324,6 +376,11 @@
               style="color: #f59e0b"
             >
               传说符文石 ×{{ settleResult.discardedRuneStones.legendary }}
+            </p>
+            <p class="text-orange-300 font-semibold mt-1">
+              共获得
+              {{ formatNumberWithCommas(settleResult.convertedFragments ?? 0) }}
+              个符文石碎片
             </p>
           </div>
         </div>
@@ -405,10 +462,12 @@
               <template v-else-if="myFormationCombatPower > 0">
                 <div class="flex justify-between items-center px-1">
                   <span class="text-blue-500 font-mono font-bold"
-                    >🏰 我方: {{ myFormationCombatPower }}</span
+                    >🏰 我方:
+                    {{ formatNumberWithUnits(myFormationCombatPower) }}</span
                   >
                   <span class="text-orange-500 font-mono font-bold"
-                    >😈 敌方: {{ legionCombatPower }}</span
+                    >😈 敌方:
+                    {{ formatNumberWithUnits(legionCombatPower) }}</span
                   >
                 </div>
                 <div class="mt-1 text-center">
@@ -417,7 +476,9 @@
                     class="text-green-500 text-sm font-semibold"
                   >
                     ✅ 我方战斗力领先 +{{
-                      myFormationCombatPower - legionCombatPower
+                      formatNumberWithUnits(
+                        myFormationCombatPower - legionCombatPower
+                      )
                     }}
                   </span>
                   <span
@@ -425,7 +486,9 @@
                     class="text-red-400 text-sm font-semibold"
                   >
                     ⚠️ 敌方战斗力领先 +{{
-                      legionCombatPower - myFormationCombatPower
+                      formatNumberWithUnits(
+                        legionCombatPower - myFormationCombatPower
+                      )
                     }}
                   </span>
                   <span v-else class="text-gray-400 text-sm font-semibold"
@@ -490,17 +553,6 @@
           </p>
           <div v-if="battleResult.upgraded" class="text-sm text-green-400">
             <p>迷宫等级提升！</p>
-            <ObtainedRuneStonesDisplay
-              v-if="battleResult.droppedRuneStone"
-              :rune-stones="[battleResult.droppedRuneStone]"
-              class="mt-2"
-            />
-            <div
-              v-else-if="battleResult.discardedRuneStone"
-              class="mt-2 bg-orange-900/30 rounded-lg p-2 text-xs text-orange-400"
-            >
-              ⚠️ 背包已满，传说符文石已丢弃
-            </div>
           </div>
           <div
             v-else-if="battleResultDisplay === 'win'"
@@ -510,6 +562,40 @@
             <p class="text-xs text-gray-400 mt-1">
               需要将所有恶魔全部消灭才能升级迷宫
             </p>
+          </div>
+          <!-- 获得符文石 -->
+          <ObtainedRuneStonesDisplay
+            v-if="battleResult.droppedRuneStone"
+            :rune-stones="[battleResult.droppedRuneStone]"
+          />
+          <!-- 自动分解结果 -->
+          <div
+            v-if="battleResult.autoDecomposed"
+            class="bg-purple-50 dark:bg-purple-900/20 border border-purple-400/30 rounded-lg p-3 text-sm"
+          >
+            <p class="text-purple-400 font-medium">🔮 已自动分解</p>
+            <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
+              获得
+              {{
+                formatNumberWithCommas(
+                  battleResult.autoDecomposedFragments ?? 0
+                )
+              }}
+              个符文石碎片
+            </p>
+          </div>
+          <!-- 背包已满转换碎片提示 -->
+          <div
+            v-if="battleResult.discardedRuneStone"
+            class="bg-orange-900/30 rounded-lg p-2 text-xs text-orange-400"
+          >
+            ⚠️ 背包已满，符文石已自动转换为
+            {{
+              formatNumberWithCommas(
+                battleResult.discardedRuneStone.convertedFragments ?? 0
+              )
+            }}
+            个碎片
           </div>
         </div>
       </el-dialog>
@@ -597,6 +683,10 @@ import {
   getDungeonLevelBonusCap
 } from 'shared/utils/guildLevelUtils.js'
 import { calculateCombatPower } from 'shared/utils/gameDatabase.js'
+import {
+  formatNumberWithUnits,
+  formatNumberWithCommas
+} from 'shared/utils/utils.js'
 import { BATTLE_COOLDOWN_SECONDS } from 'shared/constants/index.js'
 
 const router = useRouter()
@@ -899,6 +989,27 @@ const settleLoading = ref(false)
 const { visible: settleResultVisible } = useDialogRoute('settleResult')
 const settleResult = ref(null)
 
+// ── 自动分解偏好（与矿场共享 localStorage） ──
+const autoDecomposeNormal = ref(
+  localStorage.getItem('mine_auto_decompose_normal') === 'true'
+)
+const autoDecomposeRare = ref(
+  localStorage.getItem('mine_auto_decompose_rare') === 'true'
+)
+
+function handleAutoDecomposeNormalChange(val) {
+  autoDecomposeNormal.value = val
+  localStorage.setItem('mine_auto_decompose_normal', String(val))
+}
+
+function handleAutoDecomposeRareChange(val) {
+  autoDecomposeRare.value = val
+  localStorage.setItem('mine_auto_decompose_rare', String(val))
+}
+
+/**
+ * 检查符文石背包是否可能溢出，溢出时提示用户确认
+ */
 async function checkRuneStoneOverflow(crystalCount) {
   const dropRate = gameSettings.value?.runeStoneDropRate ?? 100
   const estimatedDrops = Math.min(
@@ -926,6 +1037,9 @@ async function checkRuneStoneOverflow(crystalCount) {
   return true
 }
 
+/**
+ * 结算收取水晶
+ */
 async function handleSettle() {
   // 如果符文石产出等级和当前迷宫等级不一致，提示用户确认
   if (selectedLevel.value !== (dungeonInfo.value?.dungeonsLevel || 1)) {
@@ -946,7 +1060,10 @@ async function handleSettle() {
   if (!(await checkRuneStoneOverflow(currentOutput.value))) return
   settleLoading.value = true
   try {
-    const res = await settleCrystalsApi()
+    const res = await settleCrystalsApi({
+      autoDecomposeNormal: autoDecomposeNormal.value,
+      autoDecomposeRare: autoDecomposeRare.value
+    })
     settleResult.value = res.data.data
     settleResultVisible.value = true
     ElMessage.success({ message: '收取成功！', showClose: true })
@@ -975,7 +1092,10 @@ async function handleSwitch() {
     // 切换迷宫时自动收取水晶
     if (currentOutput.value >= 1) {
       try {
-        const settleRes = await settleCrystalsApi()
+        const settleRes = await settleCrystalsApi({
+          autoDecomposeNormal: autoDecomposeNormal.value,
+          autoDecomposeRare: autoDecomposeRare.value
+        })
         settleResult.value = settleRes.data.data
         settleResultVisible.value = true
       } catch {
@@ -1174,6 +1294,19 @@ function handleGoToMine() {
 const exploringAdventurers = ref([])
 const explorerBoxRef = ref(null)
 let resizeDebounceTimer = null
+const isAnimationPaused = ref(false)
+let explorerObserver = null
+let isTabVisible = true
+let isBoxVisible = true
+
+function updateAnimationPauseState() {
+  isAnimationPaused.value = !isTabVisible || !isBoxVisible
+}
+
+function onVisibilityChange() {
+  isTabVisible = document.visibilityState === 'visible'
+  updateAnimationPauseState()
+}
 
 function buildExplorerStyle(idx, total, duration) {
   // 随机分布：用负delay让每个冒险家从动画的不同位置开始，避免挤在一侧
@@ -1390,6 +1523,22 @@ onMounted(() => {
     calcElapsedTime()
   }, 1000)
   window.addEventListener('resize', onWindowResize)
+
+  // 标签页可见性变化时暂停/恢复动画
+  isTabVisible = document.visibilityState === 'visible'
+  document.addEventListener('visibilitychange', onVisibilityChange)
+
+  // 元素进出视口时暂停/恢复动画
+  explorerObserver = new IntersectionObserver(
+    entries => {
+      isBoxVisible = entries[0].isIntersecting
+      updateAnimationPauseState()
+    },
+    { threshold: 0 }
+  )
+  if (explorerBoxRef.value) {
+    explorerObserver.observe(explorerBoxRef.value)
+  }
 })
 
 onUnmounted(() => {
@@ -1407,6 +1556,11 @@ onUnmounted(() => {
   }
   window.removeEventListener('resize', onWindowResize)
   clearTimeout(resizeDebounceTimer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  if (explorerObserver) {
+    explorerObserver.disconnect()
+    explorerObserver = null
+  }
 })
 </script>
 
@@ -1484,6 +1638,10 @@ onUnmounted(() => {
 }
 
 /* ── 冒险家探索动画 ── */
+.dungeon-explorer-box.paused * {
+  animation-play-state: paused !important;
+}
+
 .dungeon-explorer-box {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(200, 160, 80, 0.3);

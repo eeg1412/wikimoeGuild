@@ -13,7 +13,7 @@
         <template #extra="{ item }">
           <div class="text-right mr-1">
             <p class="text-sm text-yellow-500 font-semibold whitespace-nowrap">
-              🪙 {{ item.price?.toLocaleString() }}
+              🪙 {{ formatNumberWithCommas(item.price) }}
             </p>
             <!-- 状态显示 -->
             <p class="text-xs mt-0.5">
@@ -29,7 +29,7 @@
               v-if="item.pendingGold > 0"
               class="text-xs text-yellow-500 mt-0.5 whitespace-nowrap"
             >
-              💰 待收取: 🪙 {{ item.pendingGold.toLocaleString() }}
+              💰 待收取: 🪙 {{ formatNumberWithCommas(item.pendingGold) }}
             </p>
           </div>
         </template>
@@ -85,6 +85,7 @@ import {
 } from '@/api/game/market.js'
 import { useGameUser } from '@/composables/useGameUser.js'
 import RuneStoneMarketList from '@/components/RuneStoneMarketList.vue'
+import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
 const rarityFilter = inject('runeStoneRarityFilter')

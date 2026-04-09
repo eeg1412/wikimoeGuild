@@ -61,11 +61,11 @@
           >
             <GameAdventurerAvatar
               :adventurer="adv"
-              class="w-10 h-10 rounded-full border"
+              class="w-full h-auto aspect-square max-w-[56px] rounded-full border"
               :style="{ borderColor: getElementColor(adv.elements) }"
             />
             <p
-              class="text-[10px] text-gray-500 truncate w-full text-center mt-0.5"
+              class="text-[12px] text-gray-200 truncate w-full text-center mt-0.5"
             >
               {{ adv.name }}
             </p>
