@@ -690,11 +690,28 @@ export async function setRoleTag(accountId, adventurerId, roleTag) {
  */
 export async function batchEquipBestRuneStones(accountId, adventurerIds) {
   return await executeInLock(`batchEquip:${accountId}`, async () => {
-    // 获取所有目标冒险家，按综合等级降序（高等级优先获得更好的符文石）
+    // 获取所有目标冒险家
     const adventurers = await GameAdventurer.find({
       _id: { $in: adventurerIds },
       account: accountId
-    }).sort({ comprehensiveLevel: -1 })
+    })
+
+    if (adventurers.length === 0) {
+      const err = new Error('未找到指定冒险家')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    // 按角色标记优先级排序：刺客(3) > 输出(1) > 平衡(4) > 坦克(2) > 未设定('')
+    // 同优先级内按综合等级降序
+    const ROLE_TAG_PRIORITY = { 3: 0, 1: 1, 4: 2, 2: 3 }
+    adventurers.sort((a, b) => {
+      const pa = ROLE_TAG_PRIORITY[a.roleTag] ?? 4
+      const pb = ROLE_TAG_PRIORITY[b.roleTag] ?? 4
+      if (pa !== pb) return pa - pb
+      return (b.comprehensiveLevel || 1) - (a.comprehensiveLevel || 1)
+    })
 
     if (adventurers.length === 0) {
       const err = new Error('未找到指定冒险家')
@@ -1390,6 +1407,16 @@ export async function batchRatioDistribute(accountId, operations) {
       inventory.save()
     ])
 
-    return { results, skipped: skippedResults }
+    return {
+      results,
+      skipped: skippedResults,
+      playerInfo: { gold: playerInfo.gold },
+      inventory: {
+        attackCrystal: inventory.attackCrystal || 0,
+        defenseCrystal: inventory.defenseCrystal || 0,
+        speedCrystal: inventory.speedCrystal || 0,
+        sanCrystal: inventory.sanCrystal || 0
+      }
+    }
   })
 }
