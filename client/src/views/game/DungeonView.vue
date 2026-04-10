@@ -1791,6 +1791,10 @@ function onWindowResize() {
 }
 
 // ── 自动挑战 ──
+const AUTO_CHALLENGE_PREPARING_TEXT = '准备中...'
+const AUTO_CHALLENGE_LOADING_FORMATION_TEXT = '正在读取阵容...'
+const AUTO_CHALLENGE_RUNNING_TEXT = '正在挑战...'
+const AUTO_CHALLENGE_PREPARE_FAILED_TEXT = '准备失败，请重新开始'
 const autoChallenge = ref(
   localStorage.getItem('dungeon_auto_challenge') === 'true'
 )
@@ -1811,7 +1815,6 @@ const autoChallengeScenePhase = ref('idle')
 const autoChallengeSceneLoser = ref('')
 const autoChallengeSceneBattlePending = ref(false)
 const AUTO_CHALLENGE_TRANSITION_MS = 300
-const AUTO_CHALLENGE_PREPARE_FAILED_TEXT = '准备失败，请重新开始'
 const autoChallengeSparkSeeds = [
   {
     id: 'spark-1',
@@ -2140,7 +2143,7 @@ async function startAutoChallenge() {
     return false
   }
 
-  autoChallengeStatusText.value = '正在读取阵容...'
+  autoChallengeStatusText.value = AUTO_CHALLENGE_LOADING_FORMATION_TEXT
   const formationDetail = await ensureSelectedFormationDetailReady()
   if (!formationDetail?.grid) {
     ElMessage.warning({
@@ -2174,7 +2177,7 @@ async function startAutoChallenge() {
   autoChallengeTotalCount.value = 0
   autoChallengeUpgradeCount.value = 0
   autoChallengeTimerText.value = '00:00'
-  autoChallengeStatusText.value = '正在挑战...'
+  autoChallengeStatusText.value = AUTO_CHALLENGE_RUNNING_TEXT
   autoChallengeCooldownSeconds.value = 0
   autoChallengeRequestPending.value = false
   autoChallengeEndingAfterCooldown.value = false
@@ -2196,7 +2199,7 @@ async function startAutoChallenge() {
 async function executeAutoChallenge() {
   if (!autoChallengeRunning.value) return
 
-  autoChallengeStatusText.value = '正在挑战...'
+  autoChallengeStatusText.value = AUTO_CHALLENGE_RUNNING_TEXT
   autoChallengeRequestPending.value = true
   if (!autoChallengeSceneReady.value) {
     applyAutoChallengeScenePair({ startInBattle: true })
@@ -2271,7 +2274,7 @@ function handleStopAutoChallenge() {
   stopAutoChallengeTimer()
   releaseWakeLock()
   autoChallengeCooldownSeconds.value = 0
-  if (autoChallengeStatusText.value === '正在挑战...') {
+  if (autoChallengeStatusText.value === AUTO_CHALLENGE_RUNNING_TEXT) {
     autoChallengeStatusText.value = '已停止'
   }
 }
@@ -2279,7 +2282,7 @@ function handleStopAutoChallenge() {
 function openAutoChallengeDialog() {
   resetAutoChallengeSceneState()
   autoChallengeStartPending.value = true
-  autoChallengeStatusText.value = '准备中...'
+  autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARING_TEXT
   autoChallengeTimerText.value = '00:00'
   autoChallengeDialogVisible.value = true
 }
