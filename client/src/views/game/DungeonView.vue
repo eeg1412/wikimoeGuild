@@ -1338,9 +1338,9 @@ const legionCombatPower = computed(() => {
 // 所选阵容的详细数据（含冰险家属性）及其战斗力
 const selectedFormationDetail = ref(null)
 const selectedFormationDetailLoading = ref(false)
-let selectedFormationDetailRequestId = 0
-let selectedFormationDetailPromise = null
-let selectedFormationDetailRequestKey = ''
+let formationDetailRequestCounter = 0
+let formationDetailFetchPromise = null
+let formationDetailCurrentId = ''
 
 const myFormationCombatPower = computed(() => {
   if (!selectedFormationDetail.value?.grid) return 0
@@ -1362,67 +1362,71 @@ async function ensureSelectedFormationDetailReady(
   slot = selectedFormationSlot.value
 ) {
   if (!slot) {
-    selectedFormationDetailRequestId++
+    formationDetailRequestCounter++
     selectedFormationDetail.value = null
     selectedFormationDetailLoading.value = false
-    selectedFormationDetailPromise = null
-    selectedFormationDetailRequestKey = ''
+    formationDetailFetchPromise = null
+    formationDetailCurrentId = ''
     return null
   }
 
   const formation = myFormations.value.find(f => f.slot === slot)
   if (!formation) {
-    selectedFormationDetailRequestId++
+    formationDetailRequestCounter++
     selectedFormationDetail.value = null
     selectedFormationDetailLoading.value = false
-    selectedFormationDetailPromise = null
-    selectedFormationDetailRequestKey = ''
+    formationDetailFetchPromise = null
+    formationDetailCurrentId = ''
     return null
   }
 
   const formationId = String(formation._id)
-  if (
-    !selectedFormationDetailLoading.value &&
-    String(selectedFormationDetail.value?._id || '') === formationId
-  ) {
+  if (isFormationDetailCached(formationId)) {
     return selectedFormationDetail.value
   }
 
   if (
     selectedFormationDetailLoading.value &&
-    selectedFormationDetailRequestKey === formationId &&
-    selectedFormationDetailPromise
+    formationDetailCurrentId === formationId &&
+    formationDetailFetchPromise
   ) {
-    return await selectedFormationDetailPromise
+    return await formationDetailFetchPromise
   }
 
-  const requestId = ++selectedFormationDetailRequestId
-  selectedFormationDetailRequestKey = formationId
+  const requestId = ++formationDetailRequestCounter
+  formationDetailCurrentId = formationId
   selectedFormationDetailLoading.value = true
 
-  selectedFormationDetailPromise = (async () => {
+  formationDetailFetchPromise = (async () => {
     try {
       const res = await getFormationDetailApi(formationId)
       const detail = res.data.data || null
-      if (requestId === selectedFormationDetailRequestId) {
+      if (requestId === formationDetailRequestCounter) {
         selectedFormationDetail.value = detail
       }
       return detail
     } catch {
-      if (requestId === selectedFormationDetailRequestId) {
+      if (requestId === formationDetailRequestCounter) {
         selectedFormationDetail.value = null
       }
       return null
     } finally {
-      if (requestId === selectedFormationDetailRequestId) {
+      if (requestId === formationDetailRequestCounter) {
         selectedFormationDetailLoading.value = false
-        selectedFormationDetailPromise = null
-        selectedFormationDetailRequestKey = ''
+        formationDetailFetchPromise = null
+        formationDetailCurrentId = ''
       }
     }
   })()
 
-  return await selectedFormationDetailPromise
+  return await formationDetailFetchPromise
+}
+
+function isFormationDetailCached(formationId) {
+  return (
+    !selectedFormationDetailLoading.value &&
+    String(selectedFormationDetail.value?._id || '') === formationId
+  )
 }
 
 watch(
