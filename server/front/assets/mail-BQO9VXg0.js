@@ -1,1 +1,0 @@
-import{g as e}from"./request-BHHgljME.js";function a(t){return e.get("/mail/list",{params:t})}function n(t){return e.get(`/mail/${t}`)}function l(t){return e.post(`/mail/${t}/claim`)}function r(t){return e.delete(`/mail/${t}`)}function u(){return e.get("/mail/unread-count")}export{a,n as b,l as c,r as d,u as g};

@@ -1,1 +1,0 @@
-import{a as n}from"./request-CBRT1Ha_.js";function i(a){return n.post("/auth/login",a)}function o(){return n.get("/auth/profile")}function r(a){return n.put("/auth/password",a)}export{i as a,o as b,r as c};
