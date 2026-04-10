@@ -667,7 +667,7 @@
       <!-- ==================== 自动挑战弹窗 ==================== -->
       <el-dialog
         v-model="autoChallengeDialogVisible"
-        title="⚔️ 自动挑战迷宫军团"
+        title="自动挑战迷宫军团"
         width="400px"
         align-center
         :close-on-click-modal="!autoChallengeRunning"
@@ -682,84 +682,109 @@
             {{ autoChallengeBattleDisplay }}
           </p>
 
-          <!-- 战场动画 -->
-          <div
-            class="battlefield-arena"
-            :class="{ shaking: autoChallengeAnimAttacking }"
-          >
-            <div class="battlefield-grid">
-              <div
-                v-for="match in battleMatchups"
-                :key="match.idx"
-                class="bf-duel"
-                :style="{ '--duel-delay': `${match.idx * 0.13}s` }"
+          <!-- 头像轮播战场 -->
+          <div class="auto-challenge-stage">
+            <div class="auto-duel-frame">
+              <Transition
+                name="auto-duel-fade"
+                mode="out-in"
+                @after-enter="handleAutoChallengeSceneEntered"
               >
-                <!-- 我方 -->
                 <div
-                  class="bf-duel-side bf-duel-allies"
+                  v-if="autoChallengeSceneReady"
+                  :key="autoChallengeSceneKey"
+                  class="auto-duel-scene"
                   :class="{
-                    charging: autoChallengeAnimAttacking,
-                    defeated: autoChallengeDefeated
+                    'is-battling': autoChallengeScenePhase === 'battle',
+                    'is-settling': autoChallengeScenePhase === 'settling'
                   }"
                 >
-                  <GameAdventurerAvatar
-                    v-for="ally in match.allies"
-                    :key="ally._id"
-                    :adventurer="ally"
-                    class="bf-fighter-avatar"
-                    :style="{
-                      borderColor: getElementColor(ally.elements),
-                      boxShadow: `0 0 6px ${getElementColor(ally.elements)}80`
+                  <div
+                    class="auto-duel-side auto-duel-side--ally"
+                    :class="{
+                      'is-defeated': autoChallengeSceneLoser === 'ally'
                     }"
-                  />
-                </div>
-                <!-- 碰撞特效 -->
-                <div
-                  class="bf-duel-clash"
-                  :class="{ active: autoChallengeAnimAttacking }"
-                >
-                  <div class="bf-clash-glow"></div>
-                  <div class="bf-clash-ring"></div>
+                  >
+                    <div
+                      class="auto-duel-side__halo auto-duel-side__halo--ally"
+                    ></div>
+                    <GameAdventurerAvatar
+                      :adventurer="autoChallengeScenePair.ally"
+                      class="auto-duel-avatar"
+                      :style="{
+                        borderColor: getElementColor(
+                          autoChallengeScenePair.ally?.elements
+                        ),
+                        boxShadow: `0 0 18px ${getElementColor(
+                          autoChallengeScenePair.ally?.elements
+                        )}55`
+                      }"
+                    />
+                    <span class="auto-duel-side__label">冒险家</span>
+                  </div>
+
                   <div
-                    class="bf-clash-spark"
-                    style="--angle: 35deg; --dist: 9px; --s-delay: 0s"
-                  ></div>
+                    class="auto-duel-impact"
+                    :class="{ active: autoChallengeScenePhase === 'battle' }"
+                  >
+                    <div class="auto-duel-impact-core"></div>
+                    <div
+                      class="auto-duel-impact-wave auto-duel-impact-wave--outer"
+                    ></div>
+                    <div
+                      class="auto-duel-impact-wave auto-duel-impact-wave--inner"
+                    ></div>
+                    <span
+                      v-for="spark in autoChallengeSparkSeeds"
+                      :key="spark.id"
+                      class="auto-duel-spark"
+                      :style="spark.style"
+                    ></span>
+                  </div>
+
                   <div
-                    class="bf-clash-spark"
-                    style="--angle: 145deg; --dist: 8px; --s-delay: 0.08s"
-                  ></div>
-                  <div
-                    class="bf-clash-spark"
-                    style="--angle: 215deg; --dist: 10px; --s-delay: 0.04s"
-                  ></div>
-                  <div
-                    class="bf-clash-spark"
-                    style="--angle: 325deg; --dist: 7px; --s-delay: 0.12s"
-                  ></div>
-                </div>
-                <!-- 敌方 -->
-                <div
-                  class="bf-duel-side bf-duel-enemies"
-                  :class="{ recoiling: autoChallengeAnimAttacking }"
-                >
-                  <GameAdventurerAvatar
-                    v-for="(enemy, ei) in match.enemies"
-                    :key="'e' + ei"
-                    :adventurer="enemy"
-                    :is-demon="true"
-                    class="bf-fighter-avatar"
-                    :style="{
-                      borderColor: getElementColor(enemy.elements),
-                      boxShadow: `0 0 6px ${getElementColor(enemy.elements)}80`
+                    class="auto-duel-side auto-duel-side--enemy"
+                    :class="{
+                      'is-defeated': autoChallengeSceneLoser === 'enemy'
                     }"
-                  />
+                  >
+                    <div
+                      class="auto-duel-side__halo auto-duel-side__halo--enemy"
+                    ></div>
+                    <GameAdventurerAvatar
+                      :adventurer="autoChallengeScenePair.enemy"
+                      :is-demon="true"
+                      class="auto-duel-avatar"
+                      :style="{
+                        borderColor: getElementColor(
+                          autoChallengeScenePair.enemy?.elements
+                        ),
+                        boxShadow: `0 0 18px ${getElementColor(
+                          autoChallengeScenePair.enemy?.elements
+                        )}55`
+                      }"
+                    />
+                    <span class="auto-duel-side__label">军团</span>
+                  </div>
                 </div>
-              </div>
+              </Transition>
+              <p
+                v-if="!autoChallengeSceneReady"
+                class="text-gray-400 text-sm py-6"
+              >
+                等待战斗数据...
+              </p>
             </div>
-            <!-- 无数据兜底 -->
-            <p v-if="!battleMatchups.length" class="text-gray-400 text-sm py-4">
-              等待战斗数据...
-            </p>
+
+            <div class="auto-challenge-timer-card">
+              <p class="auto-challenge-timer-card__label">用时</p>
+              <p class="auto-challenge-timer-card__value">
+                {{ autoChallengeTimerText }}
+              </p>
+              <p class="auto-challenge-timer-card__hint">
+                {{ autoChallengeCountdownHint }}
+              </p>
+            </div>
           </div>
 
           <!-- 状态信息 -->
@@ -792,7 +817,7 @@
           <el-button
             v-else
             type="primary"
-            @click="autoChallengeDialogVisible = false"
+            @click="handleCloseAutoChallengeDialog"
           >
             关闭
           </el-button>
@@ -1691,12 +1716,82 @@ const autoChallengeUpgradeCount = ref(0)
 const autoChallengeTimerText = ref('00:00')
 const autoChallengeStatusText = ref('准备中...')
 const autoChallengeCooldownSeconds = ref(0)
-const autoChallengeAnimAttacking = ref(false)
-const autoChallengeDefeated = ref(false)
-let autoChallengeTimer = null
+const autoChallengeRequestPending = ref(false)
+const autoChallengeSceneKey = ref(0)
+const autoChallengeScenePair = ref({ ally: null, enemy: null })
+const autoChallengeScenePhase = ref('idle')
+const autoChallengeSceneLoser = ref('')
+const autoChallengeSceneBattlePending = ref(false)
+const AUTO_CHALLENGE_TRANSITION_MS = 300
+const autoChallengeSparkSeeds = [
+  {
+    id: 'spark-1',
+    style: {
+      '--spark-angle': '-28deg',
+      '--spark-distance': '24px',
+      '--spark-delay': '0s',
+      '--spark-size': '16px'
+    }
+  },
+  {
+    id: 'spark-2',
+    style: {
+      '--spark-angle': '24deg',
+      '--spark-distance': '26px',
+      '--spark-delay': '0.08s',
+      '--spark-size': '18px'
+    }
+  },
+  {
+    id: 'spark-3',
+    style: {
+      '--spark-angle': '78deg',
+      '--spark-distance': '20px',
+      '--spark-delay': '0.04s',
+      '--spark-size': '14px'
+    }
+  },
+  {
+    id: 'spark-4',
+    style: {
+      '--spark-angle': '138deg',
+      '--spark-distance': '22px',
+      '--spark-delay': '0.12s',
+      '--spark-size': '15px'
+    }
+  },
+  {
+    id: 'spark-5',
+    style: {
+      '--spark-angle': '204deg',
+      '--spark-distance': '25px',
+      '--spark-delay': '0.03s',
+      '--spark-size': '17px'
+    }
+  },
+  {
+    id: 'spark-6',
+    style: {
+      '--spark-angle': '256deg',
+      '--spark-distance': '19px',
+      '--spark-delay': '0.1s',
+      '--spark-size': '13px'
+    }
+  },
+  {
+    id: 'spark-7',
+    style: {
+      '--spark-angle': '316deg',
+      '--spark-distance': '23px',
+      '--spark-delay': '0.06s',
+      '--spark-size': '16px'
+    }
+  }
+]
 let autoChallengeStartTime = null
 let autoChallengeCooldownTimer = null
 let autoChallengeTimerInterval = null
+let autoChallengeSceneDelayTimer = null
 let wakeLock = null
 
 // 自动挑战动画 - 冒险家和恶魔头像列表
@@ -1717,45 +1812,142 @@ const autoChallengeDemonsList = computed(() => {
   return legionPreview.value?.demons || []
 })
 
-// 战场对决匹配：多余的一方组成团队合作攻击
-const battleMatchups = computed(() => {
-  const advs = autoChallengeAdventurers.value
-  const demons = autoChallengeDemonsList.value
-  if (!advs.length || !demons.length) return []
+const autoChallengeSceneReady = computed(() => {
+  return !!(
+    autoChallengeScenePair.value.ally && autoChallengeScenePair.value.enemy
+  )
+})
 
-  const moreAllies = advs.length >= demons.length
-  const bigSide = moreAllies ? [...advs] : [...demons]
-  const smallSide = moreAllies ? [...demons] : [...advs]
-
-  const groups = smallSide.length
-  const perGroup = Math.floor(bigSide.length / groups)
-  const extra = bigSide.length % groups
-
-  const matchups = []
-  let bigIdx = 0
-  for (let i = 0; i < groups; i++) {
-    const count = perGroup + (i < extra ? 1 : 0)
-    const bigChunk = bigSide.slice(bigIdx, bigIdx + count)
-    bigIdx += count
-    matchups.push({
-      allies: moreAllies ? bigChunk : [smallSide[i]],
-      enemies: moreAllies ? [smallSide[i]] : bigChunk,
-      idx: i
-    })
+const autoChallengeCountdownHint = computed(() => {
+  if (autoChallengeRequestPending.value) {
+    return '当前战斗进行中...'
   }
-  return matchups
+  if (autoChallengeRunning.value && autoChallengeCooldownSeconds.value > 0) {
+    return `下一批将在 ${autoChallengeCooldownSeconds.value} 秒后切换`
+  }
+  if (autoChallengeRunning.value) {
+    return '正在准备下一批对手...'
+  }
+  if (autoChallengeTotalCount.value > 0) {
+    return '自动挑战已结束'
+  }
+  return '等待自动挑战开始'
 })
 
 // 自动挑战场次显示
 const autoChallengeBattleDisplay = computed(() => {
-  if (autoChallengeAnimAttacking.value) {
+  if (autoChallengeRunning.value) {
     return `⚔️ 第 ${autoChallengeTotalCount.value + 1} 场战斗`
   }
   if (autoChallengeTotalCount.value > 0) {
-    return `⚔️ 第 ${autoChallengeTotalCount.value} 场完成`
+    return `⚔️ 共完成 ${autoChallengeTotalCount.value} 场战斗`
   }
   return '⚔️ 准备中…'
 })
+
+function clearAutoChallengeSceneDelayTimer() {
+  if (autoChallengeSceneDelayTimer) {
+    clearTimeout(autoChallengeSceneDelayTimer)
+    autoChallengeSceneDelayTimer = null
+  }
+}
+
+function resetAutoChallengeSceneState() {
+  clearAutoChallengeSceneDelayTimer()
+  autoChallengeSceneBattlePending.value = false
+  autoChallengeSceneKey.value = 0
+  autoChallengeScenePair.value = { ally: null, enemy: null }
+  autoChallengeScenePhase.value = 'idle'
+  autoChallengeSceneLoser.value = ''
+}
+
+function getAutoChallengeEntityKey(entity) {
+  return (
+    entity?.adventurerId ||
+    entity?._id ||
+    entity?.id ||
+    `avatar-${entity?.defaultAvatarId || 0}`
+  )
+}
+
+function pickAutoChallengeUnit(list, previousUnit) {
+  if (!list.length) return null
+  const previousKey = getAutoChallengeEntityKey(previousUnit)
+  const candidates = list.filter(
+    item => getAutoChallengeEntityKey(item) !== previousKey
+  )
+  const source = candidates.length ? candidates : list
+  return source[Math.floor(Math.random() * source.length)]
+}
+
+function buildAutoChallengeScenePair() {
+  const ally = pickAutoChallengeUnit(
+    autoChallengeAdventurers.value,
+    autoChallengeScenePair.value.ally
+  )
+  const enemy = pickAutoChallengeUnit(
+    autoChallengeDemonsList.value,
+    autoChallengeScenePair.value.enemy
+  )
+  if (!ally || !enemy) return null
+  return { ally, enemy }
+}
+
+function applyAutoChallengeScenePair({
+  useTransition = false,
+  startInBattle = false
+} = {}) {
+  const nextPair = buildAutoChallengeScenePair()
+  if (!nextPair) {
+    resetAutoChallengeSceneState()
+    return false
+  }
+
+  autoChallengeScenePair.value = nextPair
+  autoChallengeSceneLoser.value = ''
+  autoChallengeSceneBattlePending.value = useTransition && startInBattle
+  autoChallengeScenePhase.value = useTransition
+    ? 'idle'
+    : startInBattle
+      ? 'battle'
+      : 'idle'
+
+  if (useTransition) {
+    autoChallengeSceneKey.value++
+  }
+
+  return true
+}
+
+function scheduleNextAutoChallengeScene() {
+  clearAutoChallengeSceneDelayTimer()
+  if (!autoChallengeRunning.value) return
+
+  autoChallengeSceneDelayTimer = setTimeout(() => {
+    autoChallengeSceneDelayTimer = null
+    if (!autoChallengeRunning.value) return
+    applyAutoChallengeScenePair({ useTransition: true, startInBattle: true })
+  }, AUTO_CHALLENGE_TRANSITION_MS)
+}
+
+function setAutoChallengeSceneResult(winner) {
+  autoChallengeScenePhase.value = 'settling'
+  if (winner === 'attacker') {
+    autoChallengeSceneLoser.value = 'enemy'
+    return
+  }
+  if (winner === 'defender') {
+    autoChallengeSceneLoser.value = 'ally'
+    return
+  }
+  autoChallengeSceneLoser.value = ''
+}
+
+function handleAutoChallengeSceneEntered() {
+  if (!autoChallengeSceneBattlePending.value) return
+  autoChallengeSceneBattlePending.value = false
+  autoChallengeScenePhase.value = autoChallengeRunning.value ? 'battle' : 'idle'
+}
 
 function handleAutoChallengeChange(val) {
   autoChallenge.value = val
@@ -1804,11 +1996,13 @@ function stopAutoChallengeTimer() {
 }
 
 async function startAutoChallenge() {
+  if (autoChallengeRunning.value) return
   if (!selectedFormationSlot.value) {
     ElMessage.warning({ message: '请先选择出战阵容', showClose: true })
     return
   }
 
+  resetAutoChallengeSceneState()
   autoChallengeRunning.value = true
   autoChallengeWinCount.value = 0
   autoChallengeLoseCount.value = 0
@@ -1817,7 +2011,8 @@ async function startAutoChallenge() {
   autoChallengeTimerText.value = '00:00'
   autoChallengeStatusText.value = '正在挑战...'
   autoChallengeCooldownSeconds.value = 0
-  autoChallengeDefeated.value = false
+  autoChallengeRequestPending.value = false
+  applyAutoChallengeScenePair({ startInBattle: true })
 
   await acquireWakeLock()
   startAutoChallengeTimer()
@@ -1830,16 +2025,25 @@ async function executeAutoChallenge() {
   if (!autoChallengeRunning.value) return
 
   autoChallengeStatusText.value = '正在挑战...'
-  autoChallengeAnimAttacking.value = true
+  autoChallengeRequestPending.value = true
+  if (!autoChallengeSceneReady.value) {
+    applyAutoChallengeScenePair({ startInBattle: true })
+  } else {
+    autoChallengeSceneLoser.value = ''
+    autoChallengeScenePhase.value = 'battle'
+  }
 
   try {
     const res = await challengeLegionApi({
       formationSlot: selectedFormationSlot.value
     })
     const data = res.data.data
+    autoChallengeRequestPending.value = false
     autoChallengeTotalCount.value++
 
     const winner = data.battleResult?.winner
+    setAutoChallengeSceneResult(winner)
+
     if (winner === 'attacker') {
       autoChallengeWinCount.value++
       if (data.upgraded) {
@@ -1858,9 +2062,6 @@ async function executeAutoChallenge() {
     } else if (winner === 'defender') {
       autoChallengeLoseCount.value++
       autoChallengeStatusText.value = '💀 挑战失败，自动挑战结束'
-      // 挑战失败停止 - 播放战败动画
-      autoChallengeAnimAttacking.value = false
-      autoChallengeDefeated.value = true
       handleStopAutoChallenge()
       await fetchDungeonInfo()
       await fetchPlayerInfo()
@@ -1873,6 +2074,7 @@ async function executeAutoChallenge() {
 
     // 启动冷却
     startBattleCooldown()
+    scheduleNextAutoChallengeScene()
     await fetchDungeonInfo()
     await fetchPlayerInfo()
 
@@ -1890,18 +2092,22 @@ async function executeAutoChallenge() {
       }
     }, 1000)
   } catch {
+    autoChallengeRequestPending.value = false
     autoChallengeStatusText.value = '❌ 挑战请求失败，已停止'
-    autoChallengeAnimAttacking.value = false
+    autoChallengeScenePhase.value = 'idle'
     handleStopAutoChallenge()
   }
 }
 
 function handleStopAutoChallenge() {
   autoChallengeRunning.value = false
+  autoChallengeRequestPending.value = false
   if (autoChallengeCooldownTimer) {
     clearInterval(autoChallengeCooldownTimer)
     autoChallengeCooldownTimer = null
   }
+  clearAutoChallengeSceneDelayTimer()
+  autoChallengeSceneBattlePending.value = false
   stopAutoChallengeTimer()
   releaseWakeLock()
   autoChallengeCooldownSeconds.value = 0
@@ -1912,6 +2118,12 @@ function handleStopAutoChallenge() {
 
 function handleAutoChallengeDialogClose() {
   if (autoChallengeRunning.value) return
+  resetAutoChallengeSceneState()
+}
+
+function handleCloseAutoChallengeDialog() {
+  if (autoChallengeRunning.value) return
+  autoChallengeDialogVisible.value = false
 }
 
 // ── 初始化 ──
@@ -2042,7 +2254,6 @@ onUnmounted(() => {
   margin-left: 0px !important;
 }
 
-/* ── 冒险家探索动画 ── */
 .dungeon-explorer-box.paused * {
   animation-play-state: paused !important;
 }
@@ -2090,7 +2301,6 @@ onUnmounted(() => {
   transform: scaleX(-1);
 }
 
-/* 头像样式 */
 .dungeon-explorer-avatar {
   width: 36px;
   height: 36px;
@@ -2102,7 +2312,6 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.3);
 }
 
-/* 对话气泡 */
 .explorer-bubble {
   position: absolute;
   top: 50%;
@@ -2128,7 +2337,6 @@ onUnmounted(() => {
   margin-left: 4px;
 }
 
-/* 右侧气泡箭头（指向左侧头像） */
 .explorer-bubble--right::before {
   content: '';
   position: absolute;
@@ -2142,7 +2350,6 @@ onUnmounted(() => {
   border-right: 6px solid rgba(255, 255, 255, 1);
 }
 
-/* 左侧气泡箭头（指向右侧头像） */
 .explorer-bubble--left::after {
   content: '';
   position: absolute;
@@ -2156,7 +2363,6 @@ onUnmounted(() => {
   border-left: 6px solid rgba(255, 255, 255, 1);
 }
 
-/* 气泡进入/离开动画 */
 .bubble-enter-active {
   animation: bubblePop 0.3s ease-out;
 }
@@ -2175,18 +2381,15 @@ onUnmounted(() => {
   }
 }
 
-/* 搬运水晶泡泡 */
 .carry-bubble,
 .carry-bubble-content {
   position: absolute;
   bottom: calc(100% + 2px);
   left: 50%;
   transform: translateX(-50%);
-
   width: 24px;
   height: 24px;
   border-radius: 50%;
-
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2194,32 +2397,27 @@ onUnmounted(() => {
   pointer-events: none;
   white-space: nowrap;
 }
+
 .carry-bubble {
-  /* 泡泡主体 */
   background: radial-gradient(
     circle at 30% 30%,
     rgba(255, 255, 255, 0.9),
     rgba(255, 255, 255, 0.35) 40%,
     rgba(255, 255, 255, 0.15) 70%
   );
-
   border: 1px solid rgba(255, 255, 255, 0.4);
-
-  /* 玻璃模糊 */
   backdrop-filter: blur(0.5px);
-
   box-shadow:
     inset 0 2px 4px rgba(255, 255, 255, 0.7),
     inset 0 -3px 6px rgba(0, 0, 0, 0.15),
     0 3px 10px rgba(0, 0, 0, 0.25);
-
   z-index: 5;
 }
+
 .carry-bubble-content {
   z-index: 4;
 }
 
-/* 反光 */
 .carry-bubble::after {
   content: '';
   position: absolute;
@@ -2228,18 +2426,15 @@ onUnmounted(() => {
   width: 8px;
   height: 5px;
   border-radius: 50%;
-
   background: radial-gradient(
     ellipse at center,
     rgba(255, 255, 255, 0.6),
     rgba(255, 255, 255, 0.2) 70%,
     transparent
   );
-
   transform: rotate(-20deg);
 }
 
-/* 产物数量浮动 +x 动画 */
 .output-float-num {
   position: absolute;
   right: 0;
@@ -2265,13 +2460,11 @@ onUnmounted(() => {
   }
 }
 
-/* 走路上下弹跳 */
 .dungeon-explorer-bounce {
   position: relative;
   animation: explorerBounce var(--bounce-speed, 0.35s) ease-in-out infinite;
 }
 
-/* 从左到右穿越框体（使用 left 百分比兼容主流浏览器） */
 @keyframes explorerMoveRight {
   0% {
     left: -40px;
@@ -2281,7 +2474,6 @@ onUnmounted(() => {
   }
 }
 
-/* 从右到左穿越框体 */
 @keyframes explorerMoveLeft {
   0% {
     left: calc(100% + 4px);
@@ -2291,7 +2483,6 @@ onUnmounted(() => {
   }
 }
 
-/* 走路弹跳效果 */
 @keyframes explorerBounce {
   0%,
   100% {
@@ -2302,289 +2493,371 @@ onUnmounted(() => {
   }
 }
 
-/* ── 自动挑战动画 ── */
-/* ========== 自动挑战 - 战场动画 ========== */
-.battlefield-arena {
-  padding: 6px 0;
-  max-height: calc(50dvh - 100px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-
-.battlefield-arena::-webkit-scrollbar {
-  width: 4px;
-}
-
-.battlefield-arena::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.4);
-  border-radius: 2px;
-}
-
-.battlefield-arena.shaking {
-  animation: battlefieldShake 0.25s ease-in-out infinite;
-}
-
-/* 战斗网格 */
-.battlefield-grid {
+.auto-challenge-stage {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px 14px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* 单场对决 */
-.bf-duel {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  animation: duelFloat 2s ease-in-out infinite;
-  animation-delay: var(--duel-delay, 0s);
-}
-
-/* 对决中一方的容器 */
-.bf-duel-side {
-  display: flex;
-  align-items: center;
+.auto-duel-frame {
   position: relative;
-  transition: transform 0.35s ease-out;
+  min-height: 178px;
+  padding: 20px 16px;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(
+      circle at 18% 24%,
+      rgba(59, 130, 246, 0.22),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 82% 28%,
+      rgba(248, 113, 113, 0.18),
+      transparent 32%
+    ),
+    linear-gradient(180deg, rgba(11, 18, 32, 0.96), rgba(20, 26, 43, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -24px 48px rgba(15, 23, 42, 0.34),
+    0 18px 40px rgba(2, 6, 23, 0.28);
 }
 
-/* 团队头像重叠 */
-.bf-duel-side .bf-fighter-avatar + .bf-fighter-avatar {
-  margin-left: -10px;
-}
-
-/* 头像 */
-.bf-fighter-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2.5px solid;
-  object-fit: cover;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-}
-
-/* 团队人数标记 */
-.bf-team-badge {
+.auto-duel-frame::before {
+  content: '';
   position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #3b82f6;
-  color: #fff;
-  font-size: 9px;
-  line-height: 1;
-  padding: 1px 3px;
-  border-radius: 6px;
-  z-index: 2;
+  inset: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   pointer-events: none;
 }
 
-.bf-team-badge-enemy {
-  background: #ef4444;
+.auto-duel-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent),
+    radial-gradient(circle at center, rgba(250, 204, 21, 0.08), transparent 48%);
+  opacity: 0.55;
+  pointer-events: none;
 }
 
-/* 冲锋动画 */
-.bf-duel-allies.charging {
-  animation: allyCharge 0.55s ease-in-out infinite;
-  animation-delay: var(--duel-delay, 0s);
-}
-
-/* 受击动画 */
-.bf-duel-enemies.recoiling {
-  animation: enemyRecoil 0.4s ease-in-out infinite;
-  animation-delay: var(--duel-delay, 0s);
-}
-
-/* 战败动画 */
-.bf-duel-allies.defeated {
-  animation: none;
-}
-
-.bf-duel:has(.bf-duel-allies.defeated) {
-  animation: none;
-}
-
-.bf-duel-allies.defeated .bf-fighter-avatar {
-  animation: defeatedFall 0.8s ease-in forwards;
-  filter: grayscale(1);
-}
-
-@keyframes defeatedFall {
-  0% {
-    opacity: 1;
-  }
-  40% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 0.35;
-  }
-}
-
-/* ===== 碰撞特效（纯CSS） ===== */
-.bf-duel-clash {
+.auto-duel-scene {
   position: relative;
-  width: 20px;
-  height: 20px;
+  z-index: 1;
+  min-height: 138px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.auto-duel-side {
+  position: relative;
+  flex: 0 0 108px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transition:
+    opacity 0.3s ease,
+    filter 0.3s ease,
+    transform 0.3s ease;
+}
+
+.auto-duel-side__halo {
+  position: absolute;
+  top: 6px;
+  width: 74px;
+  height: 74px;
+  border-radius: 999px;
+  filter: blur(18px);
+  opacity: 0.82;
+}
+
+.auto-duel-side__halo--ally {
+  background: radial-gradient(
+    circle,
+    rgba(96, 165, 250, 0.52),
+    transparent 72%
+  );
+}
+
+.auto-duel-side__halo--enemy {
+  background: radial-gradient(
+    circle,
+    rgba(248, 113, 113, 0.52),
+    transparent 72%
+  );
+}
+
+.auto-duel-avatar {
+  position: relative;
+  z-index: 1;
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  border: 3px solid;
+  object-fit: cover;
+  background: rgba(15, 23, 42, 0.82);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition:
+    opacity 0.3s ease,
+    filter 0.3s ease,
+    transform 0.3s ease;
+}
+
+.auto-duel-side__label {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(226, 232, 240, 0.84);
+}
+
+.auto-duel-side.is-defeated {
+  filter: grayscale(1);
+  opacity: 0.48;
+  transform: scale(0.96);
+}
+
+.auto-duel-scene.is-battling .auto-duel-side--ally {
+  animation: autoDuelAdvance 0.68s cubic-bezier(0.42, 0, 0.24, 1) infinite;
+}
+
+.auto-duel-scene.is-battling .auto-duel-side--enemy {
+  animation: autoDuelBrace 0.68s cubic-bezier(0.42, 0, 0.24, 1) infinite;
+}
+
+.auto-duel-impact {
+  position: relative;
+  flex: 1;
+  min-width: 84px;
+  max-width: 120px;
+  height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 
-.bf-duel-clash.active {
-  opacity: 1;
+.auto-duel-impact:not(.active) {
+  opacity: 0.36;
+  transform: scale(0.92);
 }
 
-.bf-clash-glow {
+.auto-duel-impact-core {
   position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 12px;
-  height: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.9) 0%,
-    rgba(251, 191, 36, 0.6) 40%,
-    transparent 70%
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(254, 240, 138, 0.95) 24%,
+    rgba(251, 191, 36, 0.92) 48%,
+    rgba(249, 115, 22, 0.18) 74%,
+    transparent 76%
   );
-  border-radius: 50%;
-  animation: clashGlow 0.35s ease-in-out infinite;
-  animation-delay: var(--duel-delay, 0s);
+  box-shadow:
+    0 0 18px rgba(251, 191, 36, 0.72),
+    0 0 30px rgba(249, 115, 22, 0.34);
 }
 
-.bf-clash-ring {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 6px;
-  height: 6px;
-  border: 1.5px solid rgba(251, 191, 36, 0.8);
-  border-radius: 50%;
-  animation: clashRingExpand 0.6s ease-out infinite;
-  animation-delay: var(--duel-delay, 0s);
+.auto-duel-impact.active .auto-duel-impact-core {
+  animation: autoDuelCorePulse 0.62s ease-out infinite;
 }
 
-.bf-clash-spark {
+.auto-duel-impact-wave {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  margin-top: -2.5px;
-  margin-left: -1px;
-  width: 2px;
-  height: 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(253, 224, 71, 0.72);
+  opacity: 0;
+}
+
+.auto-duel-impact-wave--outer {
+  width: 28px;
+  height: 28px;
+}
+
+.auto-duel-impact-wave--inner {
+  width: 18px;
+  height: 18px;
+  border-color: rgba(255, 255, 255, 0.76);
+}
+
+.auto-duel-impact.active .auto-duel-impact-wave--outer {
+  animation: autoDuelWave 0.62s ease-out infinite;
+}
+
+.auto-duel-impact.active .auto-duel-impact-wave--inner {
+  animation: autoDuelWave 0.62s ease-out infinite 0.12s;
+}
+
+.auto-duel-spark {
+  position: absolute;
+  width: 4px;
+  height: var(--spark-size, 16px);
+  border-radius: 999px;
   background: linear-gradient(
-    to top,
-    rgba(245, 158, 11, 0.9),
-    rgba(253, 230, 138, 0.7),
-    transparent
+    180deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 248, 220, 0.96) 28%,
+    rgba(251, 191, 36, 0.92) 60%,
+    rgba(249, 115, 22, 0.12)
   );
-  border-radius: 1px;
-  transform: rotate(var(--angle, 0deg));
-  animation: sparkShoot 0.45s ease-out infinite;
-  animation-delay: var(--s-delay, 0s);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.36);
+  opacity: 0;
+  transform-origin: 50% calc(100% - 2px);
 }
 
-/* ===== 关键帧 ===== */
-@keyframes duelFloat {
+.auto-duel-impact.active .auto-duel-spark {
+  animation: autoDuelSpark 0.62s ease-out infinite;
+  animation-delay: var(--spark-delay, 0s);
+}
+
+.auto-challenge-timer-card {
+  padding: 12px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.78),
+    rgba(15, 23, 42, 0.56)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 28px rgba(15, 23, 42, 0.2);
+}
+
+.auto-challenge-timer-card__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.auto-challenge-timer-card__value {
+  margin-top: 6px;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 800;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', 'Consolas', 'SFMono-Regular', monospace;
+  text-shadow: 0 0 16px rgba(250, 204, 21, 0.18);
+}
+
+.auto-challenge-timer-card__hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(191, 219, 254, 0.82);
+}
+
+.auto-duel-fade-enter-active,
+.auto-duel-fade-leave-active {
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease,
+    filter 0.3s ease;
+}
+
+.auto-duel-fade-enter-from,
+.auto-duel-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.94);
+  filter: blur(4px);
+}
+
+@keyframes autoDuelAdvance {
   0%,
   100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
-@keyframes allyCharge {
-  0% {
-    transform: translateX(0) scale(1);
-  }
-  35% {
-    transform: translateX(10px) scale(1.05);
-  }
-  60% {
-    transform: translateX(8px) scale(1.02);
-  }
-  100% {
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes enemyRecoil {
-  0% {
-    transform: translateX(0) scale(1) rotate(0deg);
-  }
-  25% {
-    transform: translateX(6px) scale(0.94) rotate(2deg);
-  }
-  50% {
-    transform: translateX(-4px) scale(0.97) rotate(-1deg);
-  }
-  75% {
-    transform: translateX(2px) scale(0.99);
-  }
-  100% {
-    transform: translateX(0) scale(1) rotate(0deg);
-  }
-}
-
-@keyframes battlefieldShake {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  20% {
-    transform: translate(-2px, 1px);
+    transform: translateX(0) translateY(0) scale(1);
   }
   40% {
-    transform: translate(2px, -1px);
+    transform: translateX(10px) translateY(-2px) scale(1.04);
   }
-  60% {
-    transform: translate(-1px, 2px);
-  }
-  80% {
-    transform: translate(1px, -2px);
+  70% {
+    transform: translateX(4px) translateY(1px) scale(1.01);
   }
 }
 
-@keyframes clashGlow {
+@keyframes autoDuelBrace {
   0%,
   100% {
-    opacity: 0.3;
-    transform: scale(0.5);
+    transform: translateX(0) translateY(0) scale(1);
   }
-  50% {
-    opacity: 1;
-    transform: scale(1.3);
+  32% {
+    transform: translateX(-8px) translateY(1px) scale(0.97) rotate(-2deg);
   }
-}
-
-@keyframes clashRingExpand {
-  0% {
-    opacity: 0.9;
-    transform: scale(0.5);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(3);
+  58% {
+    transform: translateX(3px) translateY(-1px) scale(1.01) rotate(1deg);
   }
 }
 
-@keyframes sparkShoot {
+@keyframes autoDuelCorePulse {
   0% {
+    transform: scale(0.72);
+    opacity: 0.7;
+  }
+  52% {
+    transform: scale(1.18);
     opacity: 1;
-    transform: rotate(var(--angle, 0deg)) translateY(0);
+  }
+  100% {
+    transform: scale(0.86);
+    opacity: 0.8;
+  }
+}
+
+@keyframes autoDuelWave {
+  0% {
+    opacity: 0.76;
+    transform: scale(0.42);
   }
   100% {
     opacity: 0;
-    transform: rotate(var(--angle, 0deg))
-      translateY(calc(var(--dist, 8px) * -1));
+    transform: scale(2.8);
+  }
+}
+
+@keyframes autoDuelSpark {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--spark-angle, 0deg)) translateY(0) scaleY(0.72);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--spark-angle, 0deg))
+      translateY(calc(var(--spark-distance, 22px) * -1)) scaleY(1.18);
+  }
+}
+
+@media (max-width: 480px) {
+  .auto-duel-side {
+    flex-basis: 92px;
+  }
+
+  .auto-duel-avatar {
+    width: 60px;
+    height: 60px;
+  }
+
+  .auto-duel-impact {
+    min-width: 72px;
+  }
+
+  .auto-challenge-timer-card__value {
+    font-size: 30px;
   }
 }
 </style>
