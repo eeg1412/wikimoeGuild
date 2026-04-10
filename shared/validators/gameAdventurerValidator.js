@@ -161,5 +161,47 @@ export const adventurerBatchRatioDistributeSchema = Joi.object({
       'array.min': '请至少选择一个操作',
       'array.max': '最多 50 个操作',
       'any.required': '请提供操作列表'
-    })
+    }),
+  preview: Joi.boolean().default(false)
+})
+
+/**
+ * 按阵容升级到当前资源可达的最高等级
+ */
+export const adventurerFormationMaxUpgradeSchema = Joi.object({
+  adventurerIds: Joi.array()
+    .items(objectId)
+    .min(1)
+    .max(50)
+    .required()
+    .messages({
+      'array.min': '请至少选择一个冒险家',
+      'array.max': '最多选择 50 个冒险家',
+      'any.required': '请选择冒险家'
+    }),
+  preview: Joi.boolean().default(false)
+})
+
+/**
+ * 批量固定等级升级
+ */
+export const adventurerBatchFixedUpgradeSchema = Joi.object({
+  adventurerIds: Joi.array()
+    .items(objectId)
+    .min(1)
+    .max(50)
+    .required()
+    .messages({
+      'array.min': '请至少选择一个冒险家',
+      'array.max': '最多选择 50 个冒险家',
+      'any.required': '请选择冒险家'
+    }),
+  totalLevels: Joi.number().integer().min(1).max(100).required().messages({
+    'number.base': '升级级数必须是数字',
+    'number.integer': '升级级数必须是整数',
+    'number.min': '升级级数至少为 1',
+    'number.max': '升级级数不能超过 100',
+    'any.required': '请提供升级级数'
+  }),
+  preview: Joi.boolean().default(false)
 })

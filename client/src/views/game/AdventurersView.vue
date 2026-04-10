@@ -161,14 +161,15 @@
         size="small"
         trigger="click"
         :disabled="batchRatioLoading || formationUpgradeLoading"
-        @click="handleOpenFormationUpgrade(10)"
+        @click="handleOpenFormationUpgradeMax"
         @command="handleOpenFormationUpgrade"
       >
-        🏗️ 按阵容升级+10
+        🏗️ 按阵容升到最高等级
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item :command="1">+1</el-dropdown-item>
-            <el-dropdown-item :command="5">+5</el-dropdown-item>
+            <el-dropdown-item :command="10">+10级</el-dropdown-item>
+            <el-dropdown-item :command="5">+5级</el-dropdown-item>
+            <el-dropdown-item :command="1">+1级</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -378,7 +379,7 @@
     <!-- ==================== 批量升降级报表预览弹窗 ==================== -->
     <el-dialog
       v-model="batchReportVisible"
-      :title="`批量${batchReportDirection === 'up' ? '升级' : '降级'}预览`"
+      :title="batchReportDialogTitle"
       width="90%"
       style="max-width: 700px"
       align-center
@@ -387,153 +388,201 @@
       v-bind="batchRatioLockProps"
       append-to-body
     >
-      <div v-if="batchReportData.length" class="text-sm">
-        <!-- 总览 -->
+      <div class="relative">
         <div
-          class="mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center"
+          v-if="batchReportData.length"
+          class="text-sm"
+          :class="{
+            'pointer-events-none select-none opacity-60': batchRatioLoading
+          }"
         >
-          <p>
-            共 <b>{{ batchReportData.length }}</b> 名冒险家，
-            <span class="text-green-500"
-              >{{ batchReportData.filter(i => !i.error).length }} 名可操作</span
-            >
-            <span
-              v-if="batchReportData.some(i => i.error)"
-              class="text-red-400 ml-1"
-            >
-              {{ batchReportData.filter(i => i.error).length }} 名将被跳过
-            </span>
-            ，每人
-            {{ batchReportDirection === 'up' ? '+' : '-'
-            }}{{ batchReportTotalPerAdv }} 级
-          </p>
-          <p class="mt-1">
-            💰 总金币:
-            <span class="text-yellow-500 font-bold">{{
-              formatNumberWithCommas(batchReportTotalGold)
-            }}</span>
-            <span class="text-xs text-gray-400 ml-1">
-              (当前:
-              {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }})
-            </span>
-            <span
-              v-if="batchReportDirection === 'down'"
-              class="text-xs text-gray-400 ml-1"
-            >
-              ({{
-                formatNumberWithCommas(
-                  gameSettings?.adventurerLevelDownGoldPrice ?? 1000
-                )
-              }}🪙/级)
-            </span>
-          </p>
-          <p v-if="batchReportDirection === 'up'" class="mt-1 space-x-2">
-            <span
-              >⚔️ 攻击水晶:
-              {{
-                formatNumberWithCommas(batchReportTotalCrystals.attackCrystal)
-              }}</span
-            >
-            <span
-              >🛡️ 防御水晶:
-              {{
-                formatNumberWithCommas(batchReportTotalCrystals.defenseCrystal)
-              }}</span
-            >
-            <span
-              >💨 速度水晶:
-              {{
-                formatNumberWithCommas(batchReportTotalCrystals.speedCrystal)
-              }}</span
-            >
-            <span
-              >❤️ SAN水晶:
-              {{
-                formatNumberWithCommas(batchReportTotalCrystals.sanCrystal)
-              }}</span
-            >
-          </p>
-          <!-- 自动升级公会等级提示 -->
-          <p
-            v-if="batchReportDirection === 'up' && batchReportGuildUpgradeInfo"
-            class="mt-2 text-green-500 text-xs"
-          >
-            🏰 满足公会升级条件，升级时将自动升级公会等级至 Lv.{{
-              batchReportGuildUpgradeInfo.targetGuildLevel
-            }}（额外消耗
-            {{
-              formatNumberWithCommas(batchReportGuildUpgradeInfo.totalGuildFee)
-            }}
-            金币）
-          </p>
-        </div>
-
-        <!-- 每个冒险家详情 -->
-        <div class="overflow-y-auto space-y-2 batch-report-list">
+          <!-- 总览 -->
           <div
-            v-for="item in batchReportData"
-            :key="item.adventurerId"
-            class="p-2 border rounded-lg dark:border-gray-600 flex gap-2 items-start"
-            :class="{ 'opacity-50': item.error }"
+            class="mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center"
           >
-            <!-- 冒险家头像 -->
-            <div class="shrink-0">
-              <GameAdventurerAvatar
-                :adventurer="item.adventurerObj"
-                class="w-10 h-10 rounded-full object-cover border-2"
-                :style="{
-                  borderColor: getElementColor(item.adventurerObj?.elements)
-                }"
-              />
-            </div>
-            <!-- 信息区 -->
-            <div class="flex-1 min-w-0">
-              <p class="font-medium truncate">{{ item.name }}</p>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 text-xs mt-1">
-                <span
-                  >⚔️ Lv.{{ item.currentLevels.attack }} → Lv.{{
-                    item.newLevels.attack
-                  }}</span
-                >
-                <span
-                  >🛡️ Lv.{{ item.currentLevels.defense }} → Lv.{{
-                    item.newLevels.defense
-                  }}</span
-                >
-                <span
-                  >💨 Lv.{{ item.currentLevels.speed }} → Lv.{{
-                    item.newLevels.speed
-                  }}</span
-                >
-                <span
-                  >❤️ Lv.{{ item.currentLevels.san }} → Lv.{{
-                    item.newLevels.san
-                  }}</span
-                >
+            <p>
+              共 <b>{{ batchReportData.length }}</b> 名冒险家，
+              <span class="text-green-500"
+                >{{
+                  batchReportData.filter(i => !i.error).length
+                }}
+                名可操作</span
+              >
+              <span
+                v-if="batchReportData.some(i => i.error)"
+                class="text-red-400 ml-1"
+              >
+                {{ batchReportData.filter(i => i.error).length }} 名将被跳过
+              </span>
+              <template
+                v-if="batchReportMode === BATCH_REPORT_MODE_FORMATION_MAX"
+              >
+                ，按低等级优先自动升级到当前资源可达最高等级
+              </template>
+              <template v-else>
+                ，每人 {{ batchReportDirection === 'up' ? '+' : '-'
+                }}{{ batchReportTotalPerAdv }} 级
+              </template>
+            </p>
+            <p class="mt-1">
+              💰 总金币:
+              <span class="text-yellow-500 font-bold">{{
+                formatNumberWithCommas(batchReportTotalGold)
+              }}</span>
+              <span class="text-xs text-gray-400 ml-1">
+                (当前:
+                {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }})
+              </span>
+              <span
+                v-if="batchReportDirection === 'down'"
+                class="text-xs text-gray-400 ml-1"
+              >
+                ({{
+                  formatNumberWithCommas(
+                    gameSettings?.adventurerLevelDownGoldPrice ?? 1000
+                  )
+                }}🪙/级)
+              </span>
+            </p>
+            <p v-if="batchReportDirection === 'up'" class="mt-1 space-x-2">
+              <span
+                >⚔️ 攻击水晶:
+                {{
+                  formatNumberWithCommas(batchReportTotalCrystals.attackCrystal)
+                }}</span
+              >
+              <span
+                >🛡️ 防御水晶:
+                {{
+                  formatNumberWithCommas(
+                    batchReportTotalCrystals.defenseCrystal
+                  )
+                }}</span
+              >
+              <span
+                >💨 速度水晶:
+                {{
+                  formatNumberWithCommas(batchReportTotalCrystals.speedCrystal)
+                }}</span
+              >
+              <span
+                >❤️ SAN水晶:
+                {{
+                  formatNumberWithCommas(batchReportTotalCrystals.sanCrystal)
+                }}</span
+              >
+            </p>
+            <!-- 自动升级公会等级提示 -->
+            <p
+              v-if="
+                batchReportDirection === 'up' && batchReportGuildUpgradeInfo
+              "
+              class="mt-2 text-green-500 text-xs"
+            >
+              🏰 满足公会升级条件，升级时将自动升级公会等级至 Lv.{{
+                batchReportGuildUpgradeInfo.targetGuildLevel
+              }}（额外消耗
+              {{
+                formatNumberWithCommas(
+                  batchReportGuildUpgradeInfo.totalGuildFee
+                )
+              }}
+              金币）
+            </p>
+          </div>
+
+          <!-- 每个冒险家详情 -->
+          <div class="overflow-y-auto space-y-2 batch-report-list">
+            <div
+              v-for="item in batchReportData"
+              :key="item.adventurerId"
+              class="p-2 border rounded-lg dark:border-gray-600 flex gap-2 items-start"
+              :class="{ 'opacity-50': item.error }"
+            >
+              <!-- 冒险家头像 -->
+              <div class="shrink-0">
+                <GameAdventurerAvatar
+                  :adventurer="item.adventurerObj"
+                  class="w-10 h-10 rounded-full object-cover border-2"
+                  :style="{
+                    borderColor: getElementColor(item.adventurerObj?.elements)
+                  }"
+                />
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                综合 {{ item.currentLevels.comprehensive }} →
-                {{ item.newLevels.comprehensive }} | 金币:
-                {{ formatNumberWithCommas(item.goldCost) }}
-                <template v-if="batchReportDirection === 'up'">
-                  | 水晶: 攻{{
-                    formatNumberWithCommas(item.crystalCost.attack)
-                  }}
-                  防{{ formatNumberWithCommas(item.crystalCost.defense) }} 速{{
-                    formatNumberWithCommas(item.crystalCost.speed)
-                  }}
-                  SAN{{ formatNumberWithCommas(item.crystalCost.san) }}
-                </template>
-              </p>
-              <p v-if="item.error" class="text-xs text-red-500 mt-1">
-                ⚠️ {{ item.error }}
-              </p>
+              <!-- 信息区 -->
+              <div class="flex-1 min-w-0">
+                <p class="font-medium truncate">{{ item.name }}</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 text-xs mt-1">
+                  <span
+                    >⚔️ Lv.{{ item.currentLevels.attack }} → Lv.{{
+                      item.newLevels.attack
+                    }}</span
+                  >
+                  <span
+                    >🛡️ Lv.{{ item.currentLevels.defense }} → Lv.{{
+                      item.newLevels.defense
+                    }}</span
+                  >
+                  <span
+                    >💨 Lv.{{ item.currentLevels.speed }} → Lv.{{
+                      item.newLevels.speed
+                    }}</span
+                  >
+                  <span
+                    >❤️ Lv.{{ item.currentLevels.san }} → Lv.{{
+                      item.newLevels.san
+                    }}</span
+                  >
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  综合 {{ item.currentLevels.comprehensive }} →
+                  {{ item.newLevels.comprehensive }} | 金币:
+                  {{ formatNumberWithCommas(item.goldCost) }}
+                  <template v-if="batchReportDirection === 'up'">
+                    | 水晶: 攻{{
+                      formatNumberWithCommas(item.crystalCost.attack)
+                    }}
+                    防{{
+                      formatNumberWithCommas(item.crystalCost.defense)
+                    }}
+                    速{{ formatNumberWithCommas(item.crystalCost.speed) }} SAN{{
+                      formatNumberWithCommas(item.crystalCost.san)
+                    }}
+                  </template>
+                </p>
+                <p v-if="item.error" class="text-xs text-red-500 mt-1">
+                  ⚠️ {{ item.error }}
+                </p>
+                <p
+                  v-else-if="item.warning"
+                  class="text-xs text-orange-500 dark:text-orange-400 mt-1"
+                >
+                  ⚠️ {{ item.warning }}
+                </p>
+              </div>
             </div>
           </div>
         </div>
+
+        <div
+          v-if="batchRatioLoading"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg bg-white/72 dark:bg-black/55 backdrop-blur-[1px]"
+        >
+          <div
+            class="h-8 w-8 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin"
+          />
+          <p class="text-sm font-medium text-gray-700 dark:text-gray-200">
+            正在处理升级，请稍候...
+          </p>
+        </div>
       </div>
       <template #footer>
-        <el-button @click="batchReportVisible = false">取消</el-button>
+        <el-button
+          :disabled="batchRatioLoading"
+          @click="batchReportVisible = false"
+        >
+          取消
+        </el-button>
         <el-button
           type="primary"
           :loading="batchRatioLoading"
@@ -548,7 +597,7 @@
     <!-- ==================== 批量升降级结果报表弹窗 ==================== -->
     <el-dialog
       v-model="batchResultVisible"
-      :title="`批量${batchResultDirection === 'up' ? '升级' : '降级'}结果`"
+      :title="batchResultDialogTitle"
       width="90%"
       style="max-width: 700px"
       align-center
@@ -717,6 +766,12 @@
                   级)
                 </span>
               </p>
+              <p
+                v-if="item.warning"
+                class="text-xs text-orange-500 dark:text-orange-400 mt-1"
+              >
+                ⚠️ {{ item.warning }}
+              </p>
             </div>
           </div>
           <!-- 跳过的冒险家 -->
@@ -753,7 +808,7 @@
     <!-- ==================== 按阵容升级弹窗 ==================== -->
     <el-dialog
       v-model="formationSelectVisible"
-      title="🏗️ 按阵容升级"
+      :title="formationUpgradeDialogTitle"
       width="90%"
       style="max-width: 600px"
       align-center
@@ -765,8 +820,7 @@
       <!-- 阵容选择 -->
       <div v-if="!formationSelectedId" class="space-y-3">
         <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
-          选择阵容后，将对阵容中的冒险家批量升级
-          <b>+{{ formationUpgradeLevels }}</b> 级
+          {{ formationUpgradeDescription }}
         </p>
         <div v-if="formationListLoading" class="flex justify-center py-6">
           <span class="animate-spin inline-block text-2xl">⏳</span>
@@ -809,7 +863,11 @@
       <!-- 选择阵容后：冒险家勾选列表 -->
       <div v-else class="space-y-3">
         <div class="flex items-center justify-between">
-          <el-button size="small" @click="handleBackToFormationList">
+          <el-button
+            size="small"
+            :disabled="formationUpgradeLoading"
+            @click="handleBackToFormationList"
+          >
             ← 重选阵容
           </el-button>
           <span class="text-sm text-gray-500">
@@ -875,17 +933,30 @@
 
       <template #footer>
         <template v-if="formationSelectedId">
-          <el-button @click="formationSelectVisible = false">取消</el-button>
+          <el-button
+            :disabled="formationUpgradeLoading"
+            @click="formationSelectVisible = false"
+          >
+            取消
+          </el-button>
           <el-button
             type="primary"
-            :disabled="formationSelectedAdvIds.size === 0"
+            :loading="formationUpgradeLoading"
+            :disabled="
+              formationSelectedAdvIds.size === 0 || formationUpgradeLoading
+            "
             @click="handleFormationUpgradePreview"
           >
-            预览升级报表
+            {{ formationUpgradePreviewButtonText }}
           </el-button>
         </template>
         <template v-else>
-          <el-button @click="formationSelectVisible = false">关闭</el-button>
+          <el-button
+            :disabled="formationUpgradeLoading"
+            @click="formationSelectVisible = false"
+          >
+            关闭
+          </el-button>
         </template>
       </template>
     </el-dialog>
@@ -893,15 +964,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   getMyAdventurersApi,
   recruitAdventurerApi,
   setRoleTagApi,
   batchEquipBestRuneStonesApi,
-  batchRatioDistributeApi
+  batchRatioDistributeApi,
+  batchFixedUpgradeApi,
+  formationMaxUpgradeApi
 } from '@/api/game/adventurer.js'
 import { getGameSettingsApi } from '@/api/game/config.js'
 import { useGameUser } from '@/composables/useGameUser.js'
@@ -910,11 +983,8 @@ import { useDialogLock } from '@/composables/useDialogLock.js'
 import { ROLE_TAG_MAP } from 'shared/constants/index.js'
 import {
   getMaxAdventurerCount,
-  getMaxComprehensiveLevel,
   getAdventurerLevelUpCrystalCost,
-  getAdventurerLevelUpGoldCost,
-  getGuildLevelUpFee,
-  getRequiredMaxLevelAdventurerCount
+  getAdventurerLevelUpGoldCost
 } from 'shared/utils/guildLevelUtils.js'
 
 const ROLE_TAGS = Object.entries(ROLE_TAG_MAP).map(
@@ -935,9 +1005,14 @@ import {
 } from 'shared/utils/utils.js'
 import { getMyFormationsApi } from '@/api/game/formation.js'
 import { getArenaFormationApi } from '@/api/game/arena.js'
-import { upgradeGuildLevelApi } from '@/api/game/guild.js'
+
+const FORMATION_UPGRADE_MODE_FIXED = 'fixed'
+const FORMATION_UPGRADE_MODE_MAX = 'max'
+const BATCH_REPORT_MODE_FIXED = 'fixed'
+const BATCH_REPORT_MODE_FORMATION_MAX = 'formationMax'
 
 const router = useRouter()
+const route = useRoute()
 const { isLoggedIn, playerInfo, fetchPlayerInfo } = useGameUser()
 
 if (!isLoggedIn.value) {
@@ -1312,9 +1387,13 @@ function handleStatUpgradeUpdated(updatedAdv) {
 
 // ── 批量按比例升降级 ──
 const batchRatioLoading = ref(false)
-const { visible: batchReportVisible } = useDialogRoute('batchReport')
+const {
+  visible: batchReportVisible,
+  setVisibleSilently: setBatchReportVisibleSilently
+} = useDialogRoute('batchReport')
 const batchReportData = ref([])
 const batchReportDirection = ref('up')
+const batchReportMode = ref(BATCH_REPORT_MODE_FIXED)
 const batchReportTotalPerAdv = ref(0)
 const batchReportTotalGold = ref(0)
 const batchReportTotalCrystals = ref({
@@ -1328,33 +1407,348 @@ const batchReportGuildUpgradeInfo = ref(null)
 const batchReportGuildUpgradeNeedFirst = ref(false)
 
 // ── 批量升降级结果报表 ──
-const { visible: batchResultVisible } = useDialogRoute('batchResult')
+const {
+  visible: batchResultVisible,
+  setVisibleSilently: setBatchResultVisibleSilently
+} = useDialogRoute('batchResult')
 const batchResultData = ref(null)
 const batchResultDirection = ref('up')
+const batchResultMode = ref(BATCH_REPORT_MODE_FIXED)
 
-function handleOpenBatchRatioReport(direction, totalLevels) {
-  if (selectedIds.value.size === 0) {
-    ElMessage.warning({ message: '请先选中冒险家', showClose: true })
-    return
+const batchReportDialogTitle = computed(() => {
+  if (batchReportMode.value === BATCH_REPORT_MODE_FORMATION_MAX) {
+    return '按阵容升级到最高等级预览'
   }
+  return `批量${batchReportDirection.value === 'up' ? '升级' : '降级'}预览`
+})
 
-  batchReportDirection.value = direction
-  batchReportTotalPerAdv.value = totalLevels
+const batchResultDialogTitle = computed(() => {
+  if (batchResultMode.value === BATCH_REPORT_MODE_FORMATION_MAX) {
+    return '按阵容升级到最高等级结果'
+  }
+  return `批量${batchResultDirection.value === 'up' ? '升级' : '降级'}结果`
+})
 
-  const crystalBase = gameSettings.value.adventurerLevelUpCrystalBase ?? 100
-  const goldBase = gameSettings.value.adventurerLevelUpGoldBase ?? 500
-  const downPricePerLevel =
-    gameSettings.value.adventurerLevelDownGoldPrice ?? 1000
-  const guildLevel = playerInfo.value?.guildLevel || 1
-  const maxCompLevel = getMaxComprehensiveLevel(guildLevel)
+function createZeroCrystalCost() {
+  return {
+    attack: 0,
+    defense: 0,
+    speed: 0,
+    san: 0
+  }
+}
 
-  let totalGold = 0
-  const totalCrystalsAcc = {
+function createZeroCrystalInventory() {
+  return {
     attackCrystal: 0,
     defenseCrystal: 0,
     speedCrystal: 0,
     sanCrystal: 0
   }
+}
+
+function buildAdventurerMap() {
+  const adventurerMap = new Map()
+  for (const adventurer of adventurers.value) {
+    adventurerMap.set(adventurer._id, adventurer)
+  }
+  return adventurerMap
+}
+
+function sortByAdventurerOrder(items, orderedIds) {
+  const orderMap = new Map(orderedIds.map((id, index) => [id, index]))
+  return [...items].sort((left, right) => {
+    const leftOrder = orderMap.get(left.adventurerId) ?? Number.MAX_SAFE_INTEGER
+    const rightOrder =
+      orderMap.get(right.adventurerId) ?? Number.MAX_SAFE_INTEGER
+    return leftOrder - rightOrder
+  })
+}
+
+function normalizeFormationMaxReportItem(item, adventurerMap, error = '') {
+  const currentLevels = item.oldLevels || {
+    attack: 0,
+    defense: 0,
+    speed: 0,
+    san: 0,
+    comprehensive: 0
+  }
+  const nextLevels = item.newLevels
+    ? {
+        attack: item.newLevels.attackLevel,
+        defense: item.newLevels.defenseLevel,
+        speed: item.newLevels.speedLevel,
+        san: item.newLevels.SANLevel,
+        comprehensive: item.newLevels.comprehensiveLevel
+      }
+    : { ...currentLevels }
+
+  return {
+    adventurerId: item.adventurerId,
+    adventurerObj: adventurerMap.get(item.adventurerId) || null,
+    name: item.adventurerName,
+    alloc: item.allocation || createZeroCrystalCost(),
+    currentLevels,
+    newLevels: nextLevels,
+    goldCost: item.goldCost || 0,
+    crystalCost: item.crystalCost || createZeroCrystalCost(),
+    error
+  }
+}
+
+function normalizeBatchLevelSnapshot(levels) {
+  return {
+    attack: levels?.attack ?? levels?.attackLevel ?? 0,
+    defense: levels?.defense ?? levels?.defenseLevel ?? 0,
+    speed: levels?.speed ?? levels?.speedLevel ?? 0,
+    san: levels?.san ?? levels?.SANLevel ?? 0,
+    comprehensive: levels?.comprehensive ?? levels?.comprehensiveLevel ?? 0
+  }
+}
+
+function normalizeFixedBatchReportItem(
+  item,
+  adventurerMap,
+  error = '',
+  warning = ''
+) {
+  const currentLevels = normalizeBatchLevelSnapshot(item.oldLevels)
+  const nextLevels = normalizeBatchLevelSnapshot(item.newLevels)
+
+  return {
+    adventurerId: item.adventurerId,
+    adventurerObj: adventurerMap.get(item.adventurerId) || null,
+    name: item.adventurerName,
+    alloc: item.allocation || createZeroCrystalCost(),
+    currentLevels,
+    newLevels: nextLevels,
+    goldCost: item.goldCost || 0,
+    crystalCost: item.crystalCost || createZeroCrystalCost(),
+    error,
+    warning: warning || item.warning || ''
+  }
+}
+
+function applyFixedBatchUpgradePreviewData(data, orderedIds, totalLevels) {
+  const adventurerMap = buildAdventurerMap()
+  const previewItems = sortByAdventurerOrder(
+    [
+      ...(data.successList || []).map(item =>
+        normalizeFixedBatchReportItem(item, adventurerMap, '', item.warning)
+      ),
+      ...(data.skippedList || []).map(item =>
+        normalizeFixedBatchReportItem(
+          item,
+          adventurerMap,
+          item.skipReason || '当前无法升级'
+        )
+      )
+    ],
+    orderedIds
+  )
+
+  batchReportMode.value = BATCH_REPORT_MODE_FIXED
+  batchReportDirection.value = 'up'
+  batchReportTotalPerAdv.value = totalLevels
+  batchReportData.value = previewItems
+  batchReportTotalGold.value = data.adventurerGoldSpent || 0
+  batchReportTotalCrystals.value =
+    data.totalCrystalsSpent || createZeroCrystalInventory()
+  batchReportGuildUpgradeInfo.value = data.guildUpgradeInfo || null
+  batchReportGuildUpgradeNeedFirst.value = false
+  batchReportHasError.value = previewItems.every(item => !!item.error)
+}
+
+function buildFixedBatchResultData(data, orderedIds) {
+  const adventurerMap = buildAdventurerMap()
+
+  return {
+    successList: sortByAdventurerOrder(data.successList || [], orderedIds).map(
+      item => ({
+        ...item,
+        adventurerObj: adventurerMap.get(item.adventurerId) || null
+      })
+    ),
+    skippedList: sortByAdventurerOrder(data.skippedList || [], orderedIds).map(
+      item => ({
+        ...item,
+        adventurerObj: adventurerMap.get(item.adventurerId) || null
+      })
+    ),
+    totalGoldSpent: data.totalGoldSpent || 0,
+    remainingGold: data.remainingGold ?? playerInfo.value?.gold ?? 0,
+    totalCrystalsSpent: data.totalCrystalsSpent || createZeroCrystalInventory(),
+    remainingCrystals: data.remainingCrystals || createZeroCrystalInventory(),
+    guildUpgraded: !!data.guildUpgradeInfo,
+    newGuildLevel: data.newGuildLevel || playerInfo.value?.guildLevel || 1
+  }
+}
+
+function applyFormationMaxPreviewData(data, orderedIds) {
+  const adventurerMap = buildAdventurerMap()
+  const previewItems = sortByAdventurerOrder(
+    [
+      ...(data.successList || []).map(item =>
+        normalizeFormationMaxReportItem(item, adventurerMap)
+      ),
+      ...(data.skippedList || []).map(item =>
+        normalizeFormationMaxReportItem(
+          item,
+          adventurerMap,
+          item.skipReason || '当前无法升级'
+        )
+      )
+    ],
+    orderedIds
+  )
+
+  batchReportMode.value = BATCH_REPORT_MODE_FORMATION_MAX
+  batchReportDirection.value = 'up'
+  batchReportTotalPerAdv.value = 0
+  batchReportData.value = previewItems
+  batchReportTotalGold.value = data.adventurerGoldSpent || 0
+  batchReportTotalCrystals.value =
+    data.totalCrystalsSpent || createZeroCrystalInventory()
+  batchReportGuildUpgradeInfo.value = data.guildUpgradeInfo || null
+  batchReportGuildUpgradeNeedFirst.value = false
+  batchReportHasError.value = previewItems.every(item => !!item.error)
+}
+
+function buildFormationMaxResultData(data, orderedIds) {
+  const adventurerMap = buildAdventurerMap()
+  return {
+    successList: sortByAdventurerOrder(data.successList || [], orderedIds).map(
+      item => ({
+        ...item,
+        adventurerObj: adventurerMap.get(item.adventurerId) || null
+      })
+    ),
+    skippedList: sortByAdventurerOrder(data.skippedList || [], orderedIds).map(
+      item => ({
+        ...item,
+        adventurerObj: adventurerMap.get(item.adventurerId) || null
+      })
+    ),
+    totalGoldSpent: data.totalGoldSpent || 0,
+    remainingGold: data.remainingGold ?? playerInfo.value?.gold ?? 0,
+    totalCrystalsSpent: data.totalCrystalsSpent || createZeroCrystalInventory(),
+    remainingCrystals: data.remainingCrystals || createZeroCrystalInventory(),
+    guildUpgraded: !!data.guildUpgradeInfo,
+    newGuildLevel: data.newGuildLevel || playerInfo.value?.guildLevel || 1
+  }
+}
+
+function normalizeCurrentLevelsFromResult(newLevels) {
+  return {
+    attack: newLevels.attackLevel,
+    defense: newLevels.defenseLevel,
+    speed: newLevels.speedLevel,
+    san: newLevels.SANLevel,
+    comprehensive: newLevels.comprehensiveLevel
+  }
+}
+
+function calculateBatchUpgradeAllocationCost(currentLevels, allocation) {
+  const crystalBase = gameSettings.value.adventurerLevelUpCrystalBase ?? 100
+  const goldBase = gameSettings.value.adventurerLevelUpGoldBase ?? 500
+  const statLevels = {
+    attack: currentLevels.attack,
+    defense: currentLevels.defense,
+    speed: currentLevels.speed,
+    san: currentLevels.san
+  }
+  const crystalCost = createZeroCrystalCost()
+  let goldCost = 0
+
+  for (const [statType, totalLevels] of Object.entries(allocation || {})) {
+    if (totalLevels <= 0) continue
+
+    let currentLevel = statLevels[statType] || 1
+    for (let index = 0; index < totalLevels; index += 1) {
+      const crystal = getAdventurerLevelUpCrystalCost(currentLevel, crystalBase)
+      const gold = getAdventurerLevelUpGoldCost(currentLevel, goldBase)
+      crystalCost[statType] += crystal
+      goldCost += gold
+      currentLevel += 1
+    }
+  }
+
+  return { goldCost, crystalCost }
+}
+
+function createBatchReportBaseItem(adventurer) {
+  const currentLevels = {
+    attack: adventurer.attackLevel || 1,
+    defense: adventurer.defenseLevel || 1,
+    speed: adventurer.speedLevel || 1,
+    san: adventurer.SANLevel || 1,
+    comprehensive: adventurer.comprehensiveLevel || 1
+  }
+
+  return {
+    adventurerId: adventurer._id,
+    adventurerObj: adventurer,
+    name: adventurer.name,
+    alloc: createZeroCrystalCost(),
+    currentLevels,
+    newLevels: { ...currentLevels },
+    goldCost: 0,
+    crystalCost: createZeroCrystalCost(),
+    error: '',
+    warning: ''
+  }
+}
+
+async function handleOpenBatchRatioUpgradePreview(totalLevels) {
+  batchRatioLoading.value = true
+  try {
+    const selectedAdventurers = adventurers.value.filter(adventurer =>
+      selectedIds.value.has(adventurer._id)
+    )
+    const orderedAdventurerIds = selectedAdventurers.map(
+      adventurer => adventurer._id
+    )
+    const res = await batchFixedUpgradeApi({
+      adventurerIds: orderedAdventurerIds,
+      totalLevels,
+      preview: true
+    })
+
+    applyFixedBatchUpgradePreviewData(
+      res.data.data,
+      orderedAdventurerIds,
+      totalLevels
+    )
+    batchReportVisible.value = true
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchRatioLoading.value = false
+  }
+}
+
+async function handleOpenBatchRatioReport(direction, totalLevels) {
+  if (selectedIds.value.size === 0) {
+    ElMessage.warning({ message: '请先选中冒险家', showClose: true })
+    return
+  }
+
+  if (direction === 'up') {
+    await handleOpenBatchRatioUpgradePreview(totalLevels)
+    return
+  }
+
+  batchReportMode.value = BATCH_REPORT_MODE_FIXED
+  batchReportDirection.value = direction
+  batchReportTotalPerAdv.value = totalLevels
+  batchReportGuildUpgradeInfo.value = null
+  batchReportGuildUpgradeNeedFirst.value = false
+
+  const downPricePerLevel =
+    gameSettings.value.adventurerLevelDownGoldPrice ?? 1000
+
+  let totalGold = 0
+  const totalCrystalsAcc = createZeroCrystalInventory()
   const reportItems = []
   const selectedAdvs = adventurers.value.filter(a =>
     selectedIds.value.has(a._id)
@@ -1388,21 +1782,7 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
       error = '分配比例未设置（需合计100%），将被跳过'
     }
 
-    let effectiveLevels = totalLevels
-    if (direction === 'up' && !error) {
-      const currentComp =
-        (adv.attackLevel || 1) +
-        (adv.defenseLevel || 1) +
-        (adv.speedLevel || 1) +
-        (adv.SANLevel || 1) -
-        3
-      const remaining = maxCompLevel - currentComp
-      if (remaining <= 0) {
-        error = '综合等级已达上限，将被跳过'
-      } else {
-        effectiveLevels = Math.min(totalLevels, remaining)
-      }
-    }
+    const effectiveLevels = totalLevels
 
     const alloc = {
       attack: error
@@ -1424,33 +1804,15 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
     const itemCrystals = { attack: 0, defense: 0, speed: 0, san: 0 }
 
     if (!error) {
-      if (direction === 'up') {
-        for (const [statType, allocCount] of Object.entries(alloc)) {
-          if (allocCount <= 0) continue
-          let currentLevel = adv[statLevelKeys[statType]] || 1
-          for (let i = 0; i < allocCount; i++) {
-            const cc = getAdventurerLevelUpCrystalCost(
-              currentLevel,
-              crystalBase
-            )
-            const gc = getAdventurerLevelUpGoldCost(currentLevel, goldBase)
-            itemCrystals[statType] += cc
-            itemGold += gc
-            totalCrystalsAcc[crystalKeys[statType]] += cc
-            currentLevel++
-          }
+      for (const [statType, allocCount] of Object.entries(alloc)) {
+        if (allocCount <= 0) continue
+        const currentLevel = adv[statLevelKeys[statType]] || 1
+        if (currentLevel - allocCount < 1) {
+          error = `${statNames[statType]}等级不足以降级 ${allocCount} 级（当前 Lv.${currentLevel}），将被跳过`
+          break
         }
-      } else {
-        for (const [statType, allocCount] of Object.entries(alloc)) {
-          if (allocCount <= 0) continue
-          const currentLevel = adv[statLevelKeys[statType]] || 1
-          if (currentLevel - allocCount < 1) {
-            error = `${statNames[statType]}等级不足以降级 ${allocCount} 级（当前 Lv.${currentLevel}），将被跳过`
-            break
-          }
-        }
-        itemGold = effectiveLevels * downPricePerLevel
       }
+      itemGold = effectiveLevels * downPricePerLevel
     }
 
     totalGold += itemGold
@@ -1464,17 +1826,10 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
     }
     const newLevels = { ...currentLevels }
     if (!error) {
-      if (direction === 'up') {
-        newLevels.attack += alloc.attack
-        newLevels.defense += alloc.defense
-        newLevels.speed += alloc.speed
-        newLevels.san += alloc.san
-      } else {
-        newLevels.attack -= alloc.attack
-        newLevels.defense -= alloc.defense
-        newLevels.speed -= alloc.speed
-        newLevels.san -= alloc.san
-      }
+      newLevels.attack -= alloc.attack
+      newLevels.defense -= alloc.defense
+      newLevels.speed -= alloc.speed
+      newLevels.san -= alloc.san
       newLevels.comprehensive =
         newLevels.attack +
         newLevels.defense +
@@ -1499,177 +1854,9 @@ function handleOpenBatchRatioReport(direction, totalLevels) {
   batchReportData.value = reportItems
   batchReportTotalGold.value = totalGold
   batchReportTotalCrystals.value = totalCrystalsAcc
-  // 只有全部都有错误时才阻止提交
   batchReportHasError.value = reportItems.every(item => !!item.error)
 
-  // 检查是否可以自动升级公会等级（仅升级方向）
-  batchReportGuildUpgradeInfo.value = null
-  batchReportGuildUpgradeNeedFirst.value = false
-  if (direction === 'up') {
-    const guildUpgradeInfo = calcGuildAutoUpgradeInfo(reportItems, totalGold)
-    if (guildUpgradeInfo) {
-      batchReportGuildUpgradeInfo.value = guildUpgradeInfo
-    }
-
-    // 公会可升级且当前全部冒险家因综合等级上限被跳过时，
-    // 用升级后公会等级的新上限重新计算报表
-    if (batchReportGuildUpgradeInfo.value && batchReportHasError.value) {
-      batchReportGuildUpgradeNeedFirst.value = true
-      const newMaxCompLevel = getMaxComprehensiveLevel(
-        batchReportGuildUpgradeInfo.value.targetGuildLevel
-      )
-      totalGold = 0
-      totalCrystalsAcc.attackCrystal = 0
-      totalCrystalsAcc.defenseCrystal = 0
-      totalCrystalsAcc.speedCrystal = 0
-      totalCrystalsAcc.sanCrystal = 0
-
-      for (const item of reportItems) {
-        if (item.error && item.error !== '综合等级已达上限，将被跳过') {
-          continue
-        }
-        if (item.error === '综合等级已达上限，将被跳过') {
-          const adv = item.adventurerObj
-          const ratio = adv.statDistributeRatio
-          const currentComp =
-            (adv.attackLevel || 1) +
-            (adv.defenseLevel || 1) +
-            (adv.speedLevel || 1) +
-            (adv.SANLevel || 1) -
-            3
-          const remaining = newMaxCompLevel - currentComp
-          if (remaining <= 0) continue
-
-          item.error = ''
-          const effectiveLevels = Math.min(totalLevels, remaining)
-          item.alloc = {
-            attack: Math.round((effectiveLevels * (ratio?.attack || 0)) / 100),
-            defense: Math.round(
-              (effectiveLevels * (ratio?.defense || 0)) / 100
-            ),
-            speed: Math.round((effectiveLevels * (ratio?.speed || 0)) / 100),
-            san: 0
-          }
-          item.alloc.san =
-            effectiveLevels -
-            item.alloc.attack -
-            item.alloc.defense -
-            item.alloc.speed
-
-          let itemGold = 0
-          const itemCrystals = { attack: 0, defense: 0, speed: 0, san: 0 }
-          for (const [statType, allocCount] of Object.entries(item.alloc)) {
-            if (allocCount <= 0) continue
-            let currentLevel = adv[statLevelKeys[statType]] || 1
-            for (let i = 0; i < allocCount; i++) {
-              const cc = getAdventurerLevelUpCrystalCost(
-                currentLevel,
-                crystalBase
-              )
-              const gc = getAdventurerLevelUpGoldCost(currentLevel, goldBase)
-              itemCrystals[statType] += cc
-              itemGold += gc
-              currentLevel++
-            }
-          }
-          item.goldCost = itemGold
-          item.crystalCost = itemCrystals
-
-          const cl = item.currentLevels
-          item.newLevels = {
-            attack: cl.attack + item.alloc.attack,
-            defense: cl.defense + item.alloc.defense,
-            speed: cl.speed + item.alloc.speed,
-            san: cl.san + item.alloc.san
-          }
-          item.newLevels.comprehensive =
-            item.newLevels.attack +
-            item.newLevels.defense +
-            item.newLevels.speed +
-            item.newLevels.san -
-            3
-        }
-
-        totalGold += item.goldCost
-        totalCrystalsAcc.attackCrystal += item.crystalCost.attack
-        totalCrystalsAcc.defenseCrystal += item.crystalCost.defense
-        totalCrystalsAcc.speedCrystal += item.crystalCost.speed
-        totalCrystalsAcc.sanCrystal += item.crystalCost.san
-      }
-
-      batchReportTotalGold.value = totalGold
-      batchReportTotalCrystals.value = totalCrystalsAcc
-      batchReportHasError.value = reportItems.every(item => !!item.error)
-
-      // 基于新消耗重新计算公会升级信息
-      const newInfo = calcGuildAutoUpgradeInfo(reportItems, totalGold)
-      if (newInfo) {
-        batchReportGuildUpgradeInfo.value = newInfo
-      } else {
-        // 重算后金币不足以同时覆盖批量升级和公会升级，取消公会自动升级
-        batchReportGuildUpgradeInfo.value = null
-        batchReportGuildUpgradeNeedFirst.value = false
-      }
-    }
-  }
-
   batchReportVisible.value = true
-}
-
-/**
- * 计算批量升级后是否可以自动升级公会等级
- * 模拟升级后所有冒险家的等级，检查是否满足公会升级条件
- */
-function calcGuildAutoUpgradeInfo(reportItems, totalUpgradeGold) {
-  const currentGuildLevel = playerInfo.value?.guildLevel || 1
-  const feeBase = gameSettings.value?.guildLevelUpFeeBase ?? 1000
-  const currentGold = playerInfo.value?.gold ?? 0
-  const goldAfterUpgrade = currentGold - totalUpgradeGold
-
-  // 模拟升级后的所有冒险家等级
-  const advLevelsAfter = new Map()
-  for (const adv of adventurers.value) {
-    advLevelsAfter.set(adv._id, adv.comprehensiveLevel || 1)
-  }
-  for (const item of reportItems) {
-    if (!item.error) {
-      advLevelsAfter.set(item.adventurerId, item.newLevels.comprehensive)
-    }
-  }
-
-  let gLevel = currentGuildLevel
-  let remainGold = goldAfterUpgrade
-  let totalGuildFee = 0
-  let upgraded = false
-
-  // 循环检查是否可以连续升级公会
-  while (gLevel < 200000) {
-    const requiredCompLevel = getMaxComprehensiveLevel(gLevel)
-    const requiredCount = getRequiredMaxLevelAdventurerCount(gLevel)
-    const fee = getGuildLevelUpFee(gLevel, feeBase)
-
-    // 检查金币
-    if (remainGold < fee) break
-
-    // 检查满级冒险家数量
-    let qualifiedCount = 0
-    for (const compLevel of advLevelsAfter.values()) {
-      if (compLevel >= requiredCompLevel) qualifiedCount++
-    }
-    if (qualifiedCount < requiredCount) break
-
-    // 可以升级
-    remainGold -= fee
-    totalGuildFee += fee
-    gLevel++
-    upgraded = true
-  }
-
-  if (!upgraded) return null
-  return {
-    targetGuildLevel: gLevel,
-    totalGuildFee
-  }
 }
 
 // ── Dropdown 升降级快捷方法 ──
@@ -1687,6 +1874,16 @@ function handleBatchDownCommand(levels) {
 }
 
 async function handleConfirmBatchRatio() {
+  if (batchReportMode.value === BATCH_REPORT_MODE_FORMATION_MAX) {
+    await handleConfirmFormationMaxUpgrade()
+    return
+  }
+
+  if (batchReportDirection.value === 'up') {
+    await handleConfirmBatchRatioUpgradeWithGuildPhases()
+    return
+  }
+
   batchRatioLoading.value = true
   try {
     const ops = batchReportData.value
@@ -1697,33 +1894,8 @@ async function handleConfirmBatchRatio() {
         totalLevels: batchReportTotalPerAdv.value
       }))
 
-    // 判断是否需要先升级公会（全部冒险家原本因上限被跳过的场景）
-    const needGuildUpgradeFirst =
-      batchReportDirection.value === 'up' &&
-      batchReportGuildUpgradeInfo.value &&
-      batchReportGuildUpgradeNeedFirst.value
-
     let guildUpgraded = false
     let newGuildLevel = playerInfo.value?.guildLevel || 1
-
-    // 场景A：全部冒险家原本因等级上限被跳过 → 先升级公会再批量升级
-    if (needGuildUpgradeFirst) {
-      try {
-        while (
-          newGuildLevel < batchReportGuildUpgradeInfo.value.targetGuildLevel
-        ) {
-          const guildRes = await upgradeGuildLevelApi()
-          if (guildRes.data.data?.guildLevel) {
-            newGuildLevel = guildRes.data.data.guildLevel
-            guildUpgraded = true
-          } else {
-            break
-          }
-        }
-      } catch {
-        // 公会升级失败不影响整体结果
-      }
-    }
 
     if (ops.length === 0 && !guildUpgraded) return
 
@@ -1745,29 +1917,6 @@ async function handleConfirmBatchRatio() {
       skipped = data.skipped || []
       updatedPlayerInfo = data.playerInfo
       updatedInventory = data.inventory
-    }
-
-    // 场景B：部分冒险家可升级 → 先批量升级再升级公会
-    if (
-      !needGuildUpgradeFirst &&
-      batchReportDirection.value === 'up' &&
-      batchReportGuildUpgradeInfo.value
-    ) {
-      try {
-        while (
-          newGuildLevel < batchReportGuildUpgradeInfo.value.targetGuildLevel
-        ) {
-          const guildRes = await upgradeGuildLevelApi()
-          if (guildRes.data.data?.guildLevel) {
-            newGuildLevel = guildRes.data.data.guildLevel
-            guildUpgraded = true
-          } else {
-            break
-          }
-        }
-      } catch {
-        // 公会升级失败不影响整体结果
-      }
     }
 
     // 构建结果报表数据
@@ -1797,6 +1946,7 @@ async function handleConfirmBatchRatio() {
         }))
     ]
 
+    batchResultMode.value = batchReportMode.value
     batchResultDirection.value = batchReportDirection.value
     batchResultData.value = {
       successList,
@@ -1816,15 +1966,92 @@ async function handleConfirmBatchRatio() {
       newGuildLevel
     }
 
-    batchReportVisible.value = false
     selectedIds.value = new Set()
     await fetchAdventurers()
     await fetchPlayerInfo()
+    await switchBatchReportToResultDialog()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchRatioLoading.value = false
+  }
+}
 
-    // 显示结果报表弹窗
-    setTimeout(() => {
-      batchResultVisible.value = true
-    }, 300)
+async function switchBatchReportToResultDialog() {
+  const dlg = route.query.dlg
+  const stack = (Array.isArray(dlg) ? dlg : dlg ? [dlg] : [])
+    .flatMap(item => item.split(','))
+    .filter(Boolean)
+    .filter(key => key !== 'batchReport')
+
+  if (!stack.includes('batchResult')) {
+    stack.push('batchResult')
+  }
+
+  const nextQuery = { ...route.query }
+  nextQuery.dlg = stack.join(',')
+
+  await router.replace({ query: nextQuery })
+  setBatchReportVisibleSilently(false, false)
+  setBatchResultVisibleSilently(true, true)
+  await nextTick()
+}
+
+async function handleConfirmBatchRatioUpgradeWithGuildPhases() {
+  const orderedAdventurerIds = batchReportData.value.map(
+    item => item.adventurerId
+  )
+  if (orderedAdventurerIds.length === 0) return
+
+  batchRatioLoading.value = true
+  try {
+    const res = await batchFixedUpgradeApi({
+      adventurerIds: orderedAdventurerIds,
+      totalLevels: batchReportTotalPerAdv.value,
+      preview: false
+    })
+
+    batchResultMode.value = BATCH_REPORT_MODE_FIXED
+    batchResultDirection.value = 'up'
+    batchResultData.value = buildFixedBatchResultData(
+      res.data.data,
+      orderedAdventurerIds
+    )
+
+    selectedIds.value = new Set()
+    await fetchAdventurers()
+    await fetchPlayerInfo()
+    await switchBatchReportToResultDialog()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchRatioLoading.value = false
+  }
+}
+
+async function handleConfirmFormationMaxUpgrade() {
+  const orderedAdventurerIds = [...selectedIds.value]
+  if (orderedAdventurerIds.length === 0) return
+
+  batchRatioLoading.value = true
+  try {
+    const res = await formationMaxUpgradeApi({
+      adventurerIds: orderedAdventurerIds,
+      preview: false
+    })
+    const data = res.data.data
+
+    batchResultMode.value = BATCH_REPORT_MODE_FORMATION_MAX
+    batchResultDirection.value = 'up'
+    batchResultData.value = buildFormationMaxResultData(
+      data,
+      orderedAdventurerIds
+    )
+
+    selectedIds.value = new Set()
+    await fetchAdventurers()
+    await fetchPlayerInfo()
+    await switchBatchReportToResultDialog()
   } catch {
     // handled by interceptor
   } finally {
@@ -1836,6 +2063,7 @@ async function handleConfirmBatchRatio() {
 const { visible: formationSelectVisible } = useDialogRoute('formationUpgrade')
 const formationUpgradeLoading = ref(false)
 const formationListLoading = ref(false)
+const formationUpgradeMode = ref(FORMATION_UPGRADE_MODE_FIXED)
 const formationUpgradeLevels = ref(10)
 const formationOptions = ref([])
 const arenaFormationOption = ref(null)
@@ -1843,11 +2071,33 @@ const formationSelectedId = ref(null)
 const formationAdvList = ref([])
 const formationSelectedAdvIds = ref(new Set())
 
+const formationUpgradeDialogTitle = computed(() => {
+  if (formationUpgradeMode.value === FORMATION_UPGRADE_MODE_MAX) {
+    return '🏗️ 按阵容升级到最高等级'
+  }
+  return '🏗️ 按阵容升级'
+})
+
+const formationUpgradeDescription = computed(() => {
+  if (formationUpgradeMode.value === FORMATION_UPGRADE_MODE_MAX) {
+    return '选择阵容后，将优先升级等级较低的冒险家，直到当前资源可达的最高等级'
+  }
+  return `选择阵容后，将对阵容中的冒险家批量升级 +${formationUpgradeLevels.value} 级`
+})
+
+const formationUpgradePreviewButtonText = computed(() => {
+  if (formationUpgradeMode.value === FORMATION_UPGRADE_MODE_MAX) {
+    return '预览最高等级方案'
+  }
+  return '预览升级报表'
+})
+
 // 保存原始阵容数据以便查找冒险家
 let formationDataCache = []
 let arenaFormationCache = null
 
-async function handleOpenFormationUpgrade(levels) {
+async function openFormationUpgradeSelector(mode, levels = 0) {
+  formationUpgradeMode.value = mode
   formationUpgradeLevels.value = levels
   formationSelectedId.value = null
   formationAdvList.value = []
@@ -1903,6 +2153,14 @@ async function handleOpenFormationUpgrade(levels) {
   }
 }
 
+async function handleOpenFormationUpgrade(levels) {
+  await openFormationUpgradeSelector(FORMATION_UPGRADE_MODE_FIXED, levels)
+}
+
+async function handleOpenFormationUpgradeMax() {
+  await openFormationUpgradeSelector(FORMATION_UPGRADE_MODE_MAX)
+}
+
 function handleSelectFormation(idOrSlot) {
   formationSelectedId.value = idOrSlot
 
@@ -1952,14 +2210,38 @@ function handleToggleFormationAdv(id) {
   formationSelectedAdvIds.value = newSet
 }
 
-function handleFormationUpgradePreview() {
+async function handleFormationUpgradePreview() {
   if (formationSelectedAdvIds.value.size === 0) {
     ElMessage.warning({ message: '请先选中冒险家', showClose: true })
     return
   }
 
-  // 暂存选中的阵容冒险家ID
-  const advIds = new Set(formationSelectedAdvIds.value)
+  const orderedAdventurerIds = [...formationSelectedAdvIds.value]
+
+  if (formationUpgradeMode.value === FORMATION_UPGRADE_MODE_MAX) {
+    formationUpgradeLoading.value = true
+    try {
+      const res = await formationMaxUpgradeApi({
+        adventurerIds: orderedAdventurerIds,
+        preview: true
+      })
+
+      selectedIds.value = new Set(orderedAdventurerIds)
+      applyFormationMaxPreviewData(res.data.data, orderedAdventurerIds)
+      formationSelectVisible.value = false
+
+      setTimeout(() => {
+        batchReportVisible.value = true
+      }, 300)
+    } catch {
+      // handled by interceptor
+    } finally {
+      formationUpgradeLoading.value = false
+    }
+    return
+  }
+
+  const advIds = new Set(orderedAdventurerIds)
   const levels = formationUpgradeLevels.value
 
   // 先关闭阵容选择弹窗

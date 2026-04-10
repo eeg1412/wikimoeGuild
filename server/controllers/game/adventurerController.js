@@ -266,12 +266,53 @@ export async function autoDistributeLevelUp(req, res, next) {
 export async function batchRatioDistribute(req, res, next) {
   try {
     const accountId = req.player.id
-    const { operations } = req.body
+    const { operations, preview = false } = req.body
     const result = await adventurerService.batchRatioDistribute(
       accountId,
-      operations
+      operations,
+      preview
     )
-    res.success(result, '批量升降级完成')
+    res.success(result, preview ? '批量升降级预演完成' : '批量升降级完成')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 批量固定等级升级
+ */
+export async function batchFixedUpgrade(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { adventurerIds, totalLevels, preview = false } = req.body
+    const result = await adventurerService.batchFixedUpgrade(
+      accountId,
+      adventurerIds,
+      totalLevels,
+      preview
+    )
+    res.success(result, preview ? '批量固定升级预演完成' : '批量固定升级完成')
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * 按阵容升级到当前资源可达的最高等级
+ */
+export async function formationMaxUpgrade(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const { adventurerIds, preview = false } = req.body
+    const result = await adventurerService.formationMaxUpgrade(
+      accountId,
+      adventurerIds,
+      preview
+    )
+    res.success(
+      result,
+      preview ? '预览最高等级方案成功' : '按阵容升级到最高等级成功'
+    )
   } catch (error) {
     next(error)
   }

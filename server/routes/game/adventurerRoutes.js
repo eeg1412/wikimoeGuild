@@ -13,7 +13,9 @@ import {
   adventurerBatchEquipBestSchema,
   adventurerSaveDistributeRatioSchema,
   adventurerAutoDistributeLevelUpSchema,
-  adventurerBatchRatioDistributeSchema
+  adventurerBatchRatioDistributeSchema,
+  adventurerFormationMaxUpgradeSchema,
+  adventurerBatchFixedUpgradeSchema
 } from '../../../shared/validators/index.js'
 
 const router = Router()
@@ -35,6 +37,20 @@ router.post(
   authPlayer,
   validate(adventurerBatchRatioDistributeSchema),
   adventurerController.batchRatioDistribute
+)
+// 批量固定等级升级（支持自动升级公会后继续升级）
+router.post(
+  '/batch-fixed-upgrade',
+  authPlayer,
+  validate(adventurerBatchFixedUpgradeSchema),
+  adventurerController.batchFixedUpgrade
+)
+// 按阵容升级到当前资源可达的最高等级（放在 /:id 之前避免路由匹配冲突）
+router.post(
+  '/formation-max-upgrade',
+  authPlayer,
+  validate(adventurerFormationMaxUpgradeSchema),
+  adventurerController.formationMaxUpgrade
 )
 // 获取冒险家详情
 router.get('/:id', authPlayer, adventurerController.getAdventurerDetail)

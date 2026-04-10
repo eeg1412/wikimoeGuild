@@ -17,7 +17,7 @@ import { useRouter, useRoute } from 'vue-router'
  * @param {string} dialogKey - 弹窗标识符，需在当前页面唯一
  * @param {Object} options
  * @param {Function} options.onBack - 用户按浏览器后退时的额外回调
- * @returns {{ visible: Ref<boolean> }}
+ * @returns {{ visible: Ref<boolean>, setVisibleSilently: Function }}
  */
 export function useDialogRoute(dialogKey, options = {}) {
   const router = useRouter()
@@ -94,5 +94,11 @@ export function useDialogRoute(dialogKey, options = {}) {
     window.removeEventListener('popstate', handlePopState)
   })
 
-  return { visible }
+  function setVisibleSilently(val, pushed = hasPushed) {
+    skipNextWatch = true
+    hasPushed = pushed
+    visible.value = val
+  }
+
+  return { visible, setVisibleSilently }
 }

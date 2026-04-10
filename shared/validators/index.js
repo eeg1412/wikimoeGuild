@@ -54,7 +54,9 @@ export {
   adventurerBatchEquipBestSchema,
   adventurerSaveDistributeRatioSchema,
   adventurerAutoDistributeLevelUpSchema,
-  adventurerBatchRatioDistributeSchema
+  adventurerBatchRatioDistributeSchema,
+  adventurerFormationMaxUpgradeSchema,
+  adventurerBatchFixedUpgradeSchema
 } from './gameAdventurerValidator.js'
 export {
   dungeonLegionChallengeSchema,

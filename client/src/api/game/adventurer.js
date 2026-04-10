@@ -104,3 +104,17 @@ export function autoDistributeLevelUpApi(id, data) {
 export function batchRatioDistributeApi(data) {
   return gameRequest.post('/adventurers/batch-ratio-distribute', data)
 }
+
+/**
+ * 批量固定等级升级
+ */
+export function batchFixedUpgradeApi(data) {
+  return gameRequest.post('/adventurers/batch-fixed-upgrade', data)
+}
+
+/**
+ * 按阵容升级到当前资源可达的最高等级
+ */
+export function formationMaxUpgradeApi(data) {
+  return gameRequest.post('/adventurers/formation-max-upgrade', data)
+}

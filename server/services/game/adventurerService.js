@@ -16,8 +16,11 @@ import {
   getMaxAdventurerCount,
   getMaxComprehensiveLevel,
   getAdventurerLevelUpCrystalCost,
-  getAdventurerLevelUpGoldCost
+  getAdventurerLevelUpGoldCost,
+  getGuildLevelUpFee,
+  getRequiredMaxLevelAdventurerCount
 } from 'shared/utils/guildLevelUtils.js'
+import { recordActivity } from './activityService.js'
 
 /**
  * 冒险家洗属性（元素/被动增益/攻击偏好）
@@ -1081,8 +1084,12 @@ export async function autoDistributeLevelUp(
  * @param {string} accountId
  * @param {Array<{adventurerId: string, direction: 'up'|'down', totalLevels: number}>} operations
  */
-export async function batchRatioDistribute(accountId, operations) {
-  return await executeInLock(`batchRatio:${accountId}`, async () => {
+export async function batchRatioDistribute(
+  accountId,
+  operations,
+  preview = false
+) {
+  const runner = async () => {
     const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
     if (!playerInfo) {
       const err = new Error('玩家信息不存在')
@@ -1261,6 +1268,20 @@ export async function batchRatioDistribute(accountId, operations) {
     }
 
     if (opPlans.length === 0) {
+      if (preview) {
+        return {
+          results: [],
+          skipped: skippedResults,
+          playerInfo: { gold: playerInfo.gold },
+          inventory: {
+            attackCrystal: inventory.attackCrystal || 0,
+            defenseCrystal: inventory.defenseCrystal || 0,
+            speedCrystal: inventory.speedCrystal || 0,
+            sanCrystal: inventory.sanCrystal || 0
+          }
+        }
+      }
+
       const err = new Error('没有可操作的冒险家')
       err.statusCode = 400
       err.expose = true
@@ -1318,6 +1339,20 @@ export async function batchRatioDistribute(accountId, operations) {
     }
 
     if (executablePlans.length === 0) {
+      if (preview) {
+        return {
+          results: [],
+          skipped: skippedResults,
+          playerInfo: { gold: playerInfo.gold },
+          inventory: {
+            attackCrystal: inventory.attackCrystal || 0,
+            defenseCrystal: inventory.defenseCrystal || 0,
+            speedCrystal: inventory.speedCrystal || 0,
+            sanCrystal: inventory.sanCrystal || 0
+          }
+        }
+      }
+
       const err = new Error('资源不足，无法为任何冒险家执行操作')
       err.statusCode = 400
       err.expose = true
@@ -1398,14 +1433,16 @@ export async function batchRatioDistribute(accountId, operations) {
       })
     }
 
-    // 批量更新冒险家、玩家信息、背包，减少数据库往返
-    await Promise.all([
-      bulkOps.length > 0
-        ? GameAdventurer.bulkWrite(bulkOps)
-        : Promise.resolve(),
-      playerInfo.save(),
-      inventory.save()
-    ])
+    if (!preview) {
+      // 批量更新冒险家、玩家信息、背包，减少数据库往返
+      await Promise.all([
+        bulkOps.length > 0
+          ? GameAdventurer.bulkWrite(bulkOps)
+          : Promise.resolve(),
+        playerInfo.save(),
+        inventory.save()
+      ])
+    }
 
     return {
       results,
@@ -1418,5 +1455,1441 @@ export async function batchRatioDistribute(accountId, operations) {
         sanCrystal: inventory.sanCrystal || 0
       }
     }
-  })
+  }
+
+  if (preview) {
+    return await runner()
+  }
+
+  return await executeInLock(`batchRatio:${accountId}`, runner)
+}
+
+const FORMATION_MAX_STAT_ORDER = ['attack', 'defense', 'speed', 'san']
+const FORMATION_MAX_STAT_MAP = {
+  attack: {
+    crystalKey: 'attackCrystal',
+    levelKey: 'attackLevel',
+    label: '攻击'
+  },
+  defense: {
+    crystalKey: 'defenseCrystal',
+    levelKey: 'defenseLevel',
+    label: '防御'
+  },
+  speed: {
+    crystalKey: 'speedCrystal',
+    levelKey: 'speedLevel',
+    label: '速度'
+  },
+  san: {
+    crystalKey: 'sanCrystal',
+    levelKey: 'SANLevel',
+    label: 'SAN'
+  }
+}
+
+function getNormalizedComprehensiveLevel(adventurer) {
+  return (
+    (adventurer.attackLevel || 1) +
+    (adventurer.defenseLevel || 1) +
+    (adventurer.speedLevel || 1) +
+    (adventurer.SANLevel || 1) -
+    3
+  )
+}
+
+function hasValidFormationMaxRatio(ratio) {
+  if (!ratio) return false
+  return ratio.attack + ratio.defense + ratio.speed + ratio.san === 100
+}
+
+function createEmptyFormationMaxLevels() {
+  return {
+    attack: 0,
+    defense: 0,
+    speed: 0,
+    san: 0,
+    comprehensive: 0
+  }
+}
+
+function createFormationMaxState(adventurer, orderIndex) {
+  const currentLevels = {
+    attack: adventurer.attackLevel || 1,
+    defense: adventurer.defenseLevel || 1,
+    speed: adventurer.speedLevel || 1,
+    san: adventurer.SANLevel || 1,
+    comprehensive: getNormalizedComprehensiveLevel(adventurer)
+  }
+
+  return {
+    orderIndex,
+    adventurerId: adventurer._id.toString(),
+    adventurerName: adventurer.name,
+    ratio: adventurer.statDistributeRatio,
+    currentLevels,
+    simulatedLevels: {
+      attackLevel: currentLevels.attack,
+      defenseLevel: currentLevels.defense,
+      speedLevel: currentLevels.speed,
+      SANLevel: currentLevels.san,
+      comprehensiveLevel: currentLevels.comprehensive
+    },
+    allocation: {
+      attack: 0,
+      defense: 0,
+      speed: 0,
+      san: 0
+    },
+    crystalCost: {
+      attack: 0,
+      defense: 0,
+      speed: 0,
+      san: 0
+    },
+    goldCost: 0,
+    totalLevels: 0
+  }
+}
+
+function createFixedUpgradeState(adventurer, orderIndex, totalLevels) {
+  return {
+    ...createFormationMaxState(adventurer, orderIndex),
+    requestedLevels: totalLevels,
+    remainingLevels: totalLevels,
+    warning: ''
+  }
+}
+
+function createDefaultFixedLevels() {
+  return {
+    attack: 1,
+    defense: 1,
+    speed: 1,
+    san: 1,
+    comprehensive: 1
+  }
+}
+
+function calculateFixedUpgradeAllocation(totalLevels, ratio) {
+  const allocation = {
+    attack: Math.round((totalLevels * (ratio?.attack || 0)) / 100),
+    defense: Math.round((totalLevels * (ratio?.defense || 0)) / 100),
+    speed: Math.round((totalLevels * (ratio?.speed || 0)) / 100),
+    san: 0
+  }
+
+  allocation.san =
+    totalLevels - allocation.attack - allocation.defense - allocation.speed
+
+  if (allocation.san < 0) {
+    const maxKey = ['attack', 'defense', 'speed'].reduce((left, right) =>
+      allocation[left] >= allocation[right] ? left : right
+    )
+    allocation[maxKey] -= 1
+    allocation.san = 0
+  }
+
+  return allocation
+}
+
+function calculateFixedUpgradeCost(
+  simulatedLevels,
+  allocation,
+  crystalBase,
+  goldBase
+) {
+  const crystalCost = {
+    attack: 0,
+    defense: 0,
+    speed: 0,
+    san: 0
+  }
+  let goldCost = 0
+
+  for (const statType of FORMATION_MAX_STAT_ORDER) {
+    const allocCount = allocation[statType] || 0
+    if (allocCount <= 0) continue
+
+    const statMeta = FORMATION_MAX_STAT_MAP[statType]
+    let currentLevel = simulatedLevels[statMeta.levelKey]
+    for (let index = 0; index < allocCount; index += 1) {
+      crystalCost[statType] += getAdventurerLevelUpCrystalCost(
+        currentLevel,
+        crystalBase
+      )
+      goldCost += getAdventurerLevelUpGoldCost(currentLevel, goldBase)
+      currentLevel += 1
+    }
+  }
+
+  return {
+    goldCost,
+    crystalCost
+  }
+}
+
+function buildFixedUpgradePlan(state, maxCompLevel, crystalBase, goldBase) {
+  if (!hasValidFormationMaxRatio(state.ratio)) {
+    return { blocked: 'ratio' }
+  }
+
+  if (state.remainingLevels <= 0) {
+    return { blocked: 'done' }
+  }
+
+  if (state.simulatedLevels.comprehensiveLevel >= maxCompLevel) {
+    return { blocked: 'cap' }
+  }
+
+  const effectiveLevels = Math.min(
+    state.remainingLevels,
+    maxCompLevel - state.simulatedLevels.comprehensiveLevel
+  )
+
+  if (effectiveLevels <= 0) {
+    return { blocked: 'cap' }
+  }
+
+  const allocation = calculateFixedUpgradeAllocation(
+    effectiveLevels,
+    state.ratio
+  )
+  const { goldCost, crystalCost } = calculateFixedUpgradeCost(
+    state.simulatedLevels,
+    allocation,
+    crystalBase,
+    goldBase
+  )
+
+  return {
+    effectiveLevels,
+    allocation,
+    goldCost,
+    crystalCost
+  }
+}
+
+function getFixedUpgradeResourceShortage(
+  plan,
+  remainingGold,
+  remainingCrystals
+) {
+  if (remainingGold < plan.goldCost) {
+    return {
+      type: 'gold',
+      message: `金币不足（需要 ${plan.goldCost}，剩余 ${remainingGold}）`
+    }
+  }
+
+  for (const statType of FORMATION_MAX_STAT_ORDER) {
+    const needed = plan.crystalCost[statType] || 0
+    if (needed <= 0) continue
+
+    const statMeta = FORMATION_MAX_STAT_MAP[statType]
+    const remaining = remainingCrystals[statMeta.crystalKey] || 0
+    if (remaining < needed) {
+      return {
+        type: 'crystal',
+        statType,
+        message: `${statMeta.label}水晶不足（需要 ${needed}，剩余 ${remaining}）`
+      }
+    }
+  }
+
+  return null
+}
+
+function applyFixedUpgradePlan(state, plan) {
+  for (const statType of FORMATION_MAX_STAT_ORDER) {
+    const allocCount = plan.allocation[statType] || 0
+    if (allocCount <= 0) continue
+
+    const statMeta = FORMATION_MAX_STAT_MAP[statType]
+    state.simulatedLevels[statMeta.levelKey] += allocCount
+    state.simulatedLevels.comprehensiveLevel += allocCount
+    state.allocation[statType] += allocCount
+    state.crystalCost[statType] += plan.crystalCost[statType] || 0
+  }
+
+  state.remainingLevels -= plan.effectiveLevels
+  state.totalLevels += plan.effectiveLevels
+  state.goldCost += plan.goldCost
+}
+
+function buildAllAdventurerCompLevelMap(allAdventurers, states) {
+  const allCompLevels = new Map(
+    allAdventurers.map(adventurer => [
+      adventurer._id.toString(),
+      getNormalizedComprehensiveLevel(adventurer)
+    ])
+  )
+
+  for (const state of states) {
+    allCompLevels.set(
+      state.adventurerId,
+      state.simulatedLevels.comprehensiveLevel
+    )
+  }
+
+  return allCompLevels
+}
+
+function buildAutoGuildUpgradeInfo(
+  allCompLevels,
+  currentGuildLevel,
+  remainingGold,
+  guildFeeBase
+) {
+  let guildLevel = currentGuildLevel
+  let gold = remainingGold
+  let totalGuildFee = 0
+  let upgraded = false
+
+  while (guildLevel < 200000) {
+    const requiredCompLevel = getMaxComprehensiveLevel(guildLevel)
+    const requiredCount = getRequiredMaxLevelAdventurerCount(guildLevel)
+    const qualifiedCount = countQualifiedAdventurers(
+      allCompLevels,
+      requiredCompLevel
+    )
+    const guildFee = getGuildLevelUpFee(guildLevel, guildFeeBase)
+
+    if (qualifiedCount < requiredCount || gold < guildFee) {
+      break
+    }
+
+    gold -= guildFee
+    totalGuildFee += guildFee
+    guildLevel += 1
+    upgraded = true
+  }
+
+  if (!upgraded) {
+    return null
+  }
+
+  return {
+    targetGuildLevel: guildLevel,
+    totalGuildFee
+  }
+}
+
+function getGuildUpgradeBlockStatus(
+  allCompLevels,
+  currentGuildLevel,
+  remainingGold,
+  guildFeeBase
+) {
+  if (currentGuildLevel >= 200000) {
+    return {
+      type: 'guild-max',
+      message: '已达当前公会上限，且公会等级已达最大值'
+    }
+  }
+
+  const requiredCompLevel = getMaxComprehensiveLevel(currentGuildLevel)
+  const requiredCount = getRequiredMaxLevelAdventurerCount(currentGuildLevel)
+  const qualifiedCount = countQualifiedAdventurers(
+    allCompLevels,
+    requiredCompLevel
+  )
+
+  if (qualifiedCount < requiredCount) {
+    return {
+      type: 'guild-condition',
+      message: `已达当前公会上限，当前仅有 ${qualifiedCount}/${requiredCount} 名冒险家达到综合等级 ${requiredCompLevel}`
+    }
+  }
+
+  const guildFee = getGuildLevelUpFee(currentGuildLevel, guildFeeBase)
+  if (remainingGold < guildFee) {
+    return {
+      type: 'guild-gold',
+      message: `已达当前公会上限，升级公会需要 ${guildFee} 金币，当前剩余 ${remainingGold}`
+    }
+  }
+
+  return {
+    type: 'guild-blocked',
+    message: '已达当前公会上限，当前无法继续升级公会'
+  }
+}
+
+function getFixedUpgradePendingStatus(
+  state,
+  maxCompLevel,
+  remainingGold,
+  remainingCrystals,
+  crystalBase,
+  goldBase,
+  allCompLevels,
+  currentGuildLevel,
+  guildFeeBase
+) {
+  const plan = buildFixedUpgradePlan(state, maxCompLevel, crystalBase, goldBase)
+
+  if (plan.blocked === 'ratio') {
+    return {
+      type: 'ratio',
+      message: '分配比例未设置（需合计100%）'
+    }
+  }
+
+  if (plan.blocked === 'cap') {
+    return getGuildUpgradeBlockStatus(
+      allCompLevels,
+      currentGuildLevel,
+      remainingGold,
+      guildFeeBase
+    )
+  }
+
+  const shortage = getFixedUpgradeResourceShortage(
+    plan,
+    remainingGold,
+    remainingCrystals
+  )
+  if (shortage) {
+    return shortage
+  }
+
+  return {
+    type: 'pending',
+    message: '当前无法继续升级'
+  }
+}
+
+function buildFixedUpgradePartialWarning(state, pendingStatus) {
+  if (state.remainingLevels <= 0) {
+    return ''
+  }
+
+  if (
+    pendingStatus.type === 'guild-condition' ||
+    pendingStatus.type === 'guild-gold' ||
+    pendingStatus.type === 'guild-max' ||
+    pendingStatus.type === 'guild-blocked'
+  ) {
+    return `已升级到当前显示等级，剩余 ${state.remainingLevels} 级需先升级公会`
+  }
+
+  if (pendingStatus.type === 'gold') {
+    return `已升级到当前显示等级，剩余 ${state.remainingLevels} 级因金币不足未完成`
+  }
+
+  if (pendingStatus.type === 'crystal') {
+    const statLabel =
+      FORMATION_MAX_STAT_MAP[pendingStatus.statType]?.label || '资源'
+    return `已升级到当前显示等级，剩余 ${state.remainingLevels} 级因${statLabel}水晶不足未完成`
+  }
+
+  return `已升级到当前显示等级，剩余 ${state.remainingLevels} 级未完成`
+}
+
+function buildFixedUpgradeSuccessItem(state) {
+  return {
+    adventurerId: state.adventurerId,
+    adventurerName: state.adventurerName,
+    allocation: { ...state.allocation },
+    requestedLevels: state.requestedLevels,
+    completedLevels: state.totalLevels,
+    remainingLevels: state.remainingLevels,
+    goldCost: state.goldCost,
+    crystalCost: { ...state.crystalCost },
+    oldLevels: { ...state.currentLevels },
+    newLevels: {
+      attackLevel: state.simulatedLevels.attackLevel,
+      defenseLevel: state.simulatedLevels.defenseLevel,
+      speedLevel: state.simulatedLevels.speedLevel,
+      SANLevel: state.simulatedLevels.SANLevel,
+      comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+    },
+    warning: state.warning || ''
+  }
+}
+
+function buildFixedUpgradeSkippedItem({
+  adventurerId,
+  adventurerName,
+  oldLevels,
+  newLevels,
+  skipReason,
+  orderIndex,
+  remainingLevels
+}) {
+  return {
+    adventurerId,
+    adventurerName,
+    oldLevels,
+    newLevels,
+    remainingLevels,
+    skipReason,
+    orderIndex
+  }
+}
+
+async function buildBatchFixedUpgradePlan(
+  accountId,
+  preview,
+  adventurerIds,
+  totalLevels
+) {
+  const [playerInfo, inventory, allAdventurers] = await Promise.all([
+    GamePlayerInfo.findOne({ account: accountId }),
+    GamePlayerInventory.findOne({ account: accountId }),
+    GameAdventurer.find({ account: accountId }).lean()
+  ])
+
+  if (!playerInfo) {
+    const err = new Error('玩家信息不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  if (!inventory) {
+    const err = new Error('背包信息不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  const adventurerMap = new Map(
+    allAdventurers.map(adventurer => [adventurer._id.toString(), adventurer])
+  )
+  const orderedIds = adventurerIds.map(id => id.toString())
+  const skippedList = []
+  const states = []
+
+  for (const [orderIndex, adventurerId] of orderedIds.entries()) {
+    const adventurer = adventurerMap.get(adventurerId)
+    if (!adventurer) {
+      const defaultLevels = createDefaultFixedLevels()
+      skippedList.push(
+        buildFixedUpgradeSkippedItem({
+          adventurerId,
+          adventurerName: '未知冒险家',
+          oldLevels: { ...defaultLevels },
+          newLevels: { ...defaultLevels },
+          remainingLevels: totalLevels,
+          skipReason: '冒险家不存在',
+          orderIndex
+        })
+      )
+      continue
+    }
+
+    const state = createFixedUpgradeState(adventurer, orderIndex, totalLevels)
+    if (!hasValidFormationMaxRatio(state.ratio)) {
+      skippedList.push(
+        buildFixedUpgradeSkippedItem({
+          adventurerId: state.adventurerId,
+          adventurerName: state.adventurerName,
+          oldLevels: { ...state.currentLevels },
+          newLevels: {
+            attackLevel: state.simulatedLevels.attackLevel,
+            defenseLevel: state.simulatedLevels.defenseLevel,
+            speedLevel: state.simulatedLevels.speedLevel,
+            SANLevel: state.simulatedLevels.SANLevel,
+            comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+          },
+          remainingLevels: totalLevels,
+          skipReason: '分配比例未设置（需合计100%）',
+          orderIndex
+        })
+      )
+      continue
+    }
+
+    states.push(state)
+  }
+
+  const initialGold = playerInfo.gold || 0
+  const initialCrystals = {
+    attackCrystal: inventory.attackCrystal || 0,
+    defenseCrystal: inventory.defenseCrystal || 0,
+    speedCrystal: inventory.speedCrystal || 0,
+    sanCrystal: inventory.sanCrystal || 0
+  }
+
+  let remainingGold = initialGold
+  const remainingCrystals = { ...initialCrystals }
+
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  const crystalBase = gameSettings.adventurerLevelUpCrystalBase ?? 100
+  const goldBase = gameSettings.adventurerLevelUpGoldBase ?? 500
+  const guildFeeBase = gameSettings.guildLevelUpFeeBase ?? 1000
+
+  const originalGuildLevel = playerInfo.guildLevel || 1
+  let currentGuildLevel = originalGuildLevel
+  let currentMaxCompLevel = getMaxComprehensiveLevel(currentGuildLevel)
+  let totalGuildFee = 0
+
+  let loopGuard = 0
+  while (loopGuard < 2000) {
+    loopGuard += 1
+
+    const pendingStates = states.filter(state => state.remainingLevels > 0)
+    if (pendingStates.length === 0) {
+      break
+    }
+
+    for (const state of pendingStates) {
+      const plan = buildFixedUpgradePlan(
+        state,
+        currentMaxCompLevel,
+        crystalBase,
+        goldBase
+      )
+
+      if (plan.blocked) {
+        continue
+      }
+
+      const shortage = getFixedUpgradeResourceShortage(
+        plan,
+        remainingGold,
+        remainingCrystals
+      )
+      if (shortage) {
+        continue
+      }
+
+      remainingGold -= plan.goldCost
+      for (const statType of FORMATION_MAX_STAT_ORDER) {
+        const crystalKey = FORMATION_MAX_STAT_MAP[statType].crystalKey
+        remainingCrystals[crystalKey] -= plan.crystalCost[statType] || 0
+      }
+
+      applyFixedUpgradePlan(state, plan)
+    }
+
+    const nextPendingStates = states.filter(state => state.remainingLevels > 0)
+    if (nextPendingStates.length === 0) {
+      break
+    }
+
+    const hasCapPending = nextPendingStates.some(
+      state => state.simulatedLevels.comprehensiveLevel >= currentMaxCompLevel
+    )
+
+    if (!hasCapPending) {
+      break
+    }
+
+    const allCompLevels = buildAllAdventurerCompLevelMap(allAdventurers, states)
+    const guildUpgradeInfo = buildAutoGuildUpgradeInfo(
+      allCompLevels,
+      currentGuildLevel,
+      remainingGold,
+      guildFeeBase
+    )
+
+    if (!guildUpgradeInfo) {
+      break
+    }
+
+    remainingGold -= guildUpgradeInfo.totalGuildFee
+    totalGuildFee += guildUpgradeInfo.totalGuildFee
+    currentGuildLevel = guildUpgradeInfo.targetGuildLevel
+    currentMaxCompLevel = getMaxComprehensiveLevel(currentGuildLevel)
+  }
+
+  const allCompLevels = buildAllAdventurerCompLevelMap(allAdventurers, states)
+  const successStates = states
+    .filter(state => state.totalLevels > 0)
+    .sort((left, right) => left.orderIndex - right.orderIndex)
+
+  for (const state of states) {
+    if (state.remainingLevels <= 0) {
+      continue
+    }
+
+    const pendingStatus = getFixedUpgradePendingStatus(
+      state,
+      currentMaxCompLevel,
+      remainingGold,
+      remainingCrystals,
+      crystalBase,
+      goldBase,
+      allCompLevels,
+      currentGuildLevel,
+      guildFeeBase
+    )
+
+    if (state.totalLevels > 0) {
+      state.warning = buildFixedUpgradePartialWarning(state, pendingStatus)
+      continue
+    }
+
+    skippedList.push(
+      buildFixedUpgradeSkippedItem({
+        adventurerId: state.adventurerId,
+        adventurerName: state.adventurerName,
+        oldLevels: { ...state.currentLevels },
+        newLevels: {
+          attackLevel: state.simulatedLevels.attackLevel,
+          defenseLevel: state.simulatedLevels.defenseLevel,
+          speedLevel: state.simulatedLevels.speedLevel,
+          SANLevel: state.simulatedLevels.SANLevel,
+          comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+        },
+        remainingLevels: state.remainingLevels,
+        skipReason: pendingStatus.message,
+        orderIndex: state.orderIndex
+      })
+    )
+  }
+
+  const totalCrystalsSpent = {
+    attackCrystal: successStates.reduce(
+      (sum, state) => sum + state.crystalCost.attack,
+      0
+    ),
+    defenseCrystal: successStates.reduce(
+      (sum, state) => sum + state.crystalCost.defense,
+      0
+    ),
+    speedCrystal: successStates.reduce(
+      (sum, state) => sum + state.crystalCost.speed,
+      0
+    ),
+    sanCrystal: successStates.reduce(
+      (sum, state) => sum + state.crystalCost.san,
+      0
+    )
+  }
+  const adventurerGoldSpent = successStates.reduce(
+    (sum, state) => sum + state.goldCost,
+    0
+  )
+
+  return {
+    successList: successStates.map(buildFixedUpgradeSuccessItem),
+    skippedList: skippedList.sort(
+      (left, right) => left.orderIndex - right.orderIndex
+    ),
+    adventurerGoldSpent,
+    totalGoldSpent: adventurerGoldSpent + totalGuildFee,
+    remainingGold,
+    totalCrystalsSpent,
+    remainingCrystals: { ...remainingCrystals },
+    guildUpgradeInfo:
+      totalGuildFee > 0
+        ? {
+            targetGuildLevel: currentGuildLevel,
+            totalGuildFee
+          }
+        : null,
+    newGuildLevel: currentGuildLevel,
+    originalGuildLevel,
+    appliedStates: successStates.map(state => ({
+      adventurerId: state.adventurerId,
+      newLevels: {
+        attackLevel: state.simulatedLevels.attackLevel,
+        defenseLevel: state.simulatedLevels.defenseLevel,
+        speedLevel: state.simulatedLevels.speedLevel,
+        SANLevel: state.simulatedLevels.SANLevel,
+        comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+      }
+    }))
+  }
+}
+
+function pickFormationMaxNextStat(state) {
+  const nextTotalLevels = state.totalLevels + 1
+  let bestStatType = null
+  let bestScore = -Infinity
+  let bestWeight = -Infinity
+
+  for (const statType of FORMATION_MAX_STAT_ORDER) {
+    const weight = Number(state.ratio?.[statType] || 0)
+    if (weight <= 0) continue
+
+    const score = (nextTotalLevels * weight) / 100 - state.allocation[statType]
+    if (
+      score > bestScore + 1e-9 ||
+      (Math.abs(score - bestScore) <= 1e-9 && weight > bestWeight)
+    ) {
+      bestStatType = statType
+      bestScore = score
+      bestWeight = weight
+    }
+  }
+
+  return bestStatType
+}
+
+function getFormationMaxNextStep(state, maxCompLevel, crystalBase, goldBase) {
+  if (state.simulatedLevels.comprehensiveLevel >= maxCompLevel) {
+    return { blocked: 'cap' }
+  }
+
+  const statType = pickFormationMaxNextStat(state)
+  if (!statType) {
+    return { blocked: 'ratio' }
+  }
+
+  const statMeta = FORMATION_MAX_STAT_MAP[statType]
+  const currentLevel = state.simulatedLevels[statMeta.levelKey]
+
+  return {
+    statType,
+    crystalKey: statMeta.crystalKey,
+    crystalLabel: statMeta.label,
+    crystalCost: getAdventurerLevelUpCrystalCost(currentLevel, crystalBase),
+    goldCost: getAdventurerLevelUpGoldCost(currentLevel, goldBase)
+  }
+}
+
+function applyFormationMaxStep(state, step) {
+  const statMeta = FORMATION_MAX_STAT_MAP[step.statType]
+  state.simulatedLevels[statMeta.levelKey] += 1
+  state.simulatedLevels.comprehensiveLevel += 1
+  state.allocation[step.statType] += 1
+  state.crystalCost[step.statType] += step.crystalCost
+  state.goldCost += step.goldCost
+  state.totalLevels += 1
+}
+
+function countQualifiedAdventurers(allCompLevels, requiredCompLevel) {
+  let qualifiedCount = 0
+  for (const compLevel of allCompLevels.values()) {
+    if (compLevel >= requiredCompLevel) {
+      qualifiedCount += 1
+    }
+  }
+  return qualifiedCount
+}
+
+function buildFormationMaxSuccessItem(state) {
+  return {
+    adventurerId: state.adventurerId,
+    adventurerName: state.adventurerName,
+    allocation: { ...state.allocation },
+    totalLevels: state.totalLevels,
+    goldCost: state.goldCost,
+    crystalCost: { ...state.crystalCost },
+    oldLevels: { ...state.currentLevels },
+    newLevels: {
+      attackLevel: state.simulatedLevels.attackLevel,
+      defenseLevel: state.simulatedLevels.defenseLevel,
+      speedLevel: state.simulatedLevels.speedLevel,
+      SANLevel: state.simulatedLevels.SANLevel,
+      comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+    }
+  }
+}
+
+function buildFormationMaxSkippedItem({
+  adventurerId,
+  adventurerName,
+  oldLevels,
+  newLevels,
+  skipReason,
+  orderIndex
+}) {
+  return {
+    adventurerId,
+    adventurerName,
+    oldLevels,
+    newLevels,
+    skipReason,
+    orderIndex
+  }
+}
+
+function getFormationMaxSkipReason(
+  state,
+  maxCompLevel,
+  remainingGold,
+  remainingCrystals,
+  crystalBase,
+  goldBase
+) {
+  const nextStep = getFormationMaxNextStep(
+    state,
+    maxCompLevel,
+    crystalBase,
+    goldBase
+  )
+
+  if (nextStep.blocked === 'cap') {
+    return '综合等级已达当前公会上限'
+  }
+
+  if (nextStep.blocked === 'ratio') {
+    return '分配比例未设置（需合计100%）'
+  }
+
+  if (remainingGold < nextStep.goldCost) {
+    return `金币不足（剩余 ${remainingGold}，需要 ${nextStep.goldCost}）`
+  }
+
+  if (remainingCrystals[nextStep.crystalKey] < nextStep.crystalCost) {
+    return `${nextStep.crystalLabel}水晶不足（剩余 ${remainingCrystals[nextStep.crystalKey]}，需要 ${nextStep.crystalCost}）`
+  }
+
+  return '资源已优先分配给等级较低的冒险家'
+}
+
+async function buildFormationMaxUpgradePlan(accountId, preview, adventurerIds) {
+  const playerInfoQuery = GamePlayerInfo.findOne({ account: accountId })
+  const inventoryQuery = GamePlayerInventory.findOne({ account: accountId })
+
+  const [playerInfo, inventory, allAdventurers] = await Promise.all([
+    preview ? playerInfoQuery.lean() : playerInfoQuery,
+    preview ? inventoryQuery.lean() : inventoryQuery,
+    GameAdventurer.find({ account: accountId })
+      .select(
+        'name attackLevel defenseLevel speedLevel SANLevel comprehensiveLevel statDistributeRatio'
+      )
+      .lean()
+  ])
+
+  if (!playerInfo) {
+    const err = new Error('玩家信息不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  if (!inventory) {
+    const err = new Error('背包信息不存在')
+    err.statusCode = 404
+    err.expose = true
+    throw err
+  }
+
+  const uniqueAdventurerIds = [...new Set((adventurerIds || []).map(String))]
+  const allAdventurerMap = new Map(
+    allAdventurers.map(adventurer => [adventurer._id.toString(), adventurer])
+  )
+
+  const states = []
+  const skippedList = []
+
+  for (const [orderIndex, adventurerId] of uniqueAdventurerIds.entries()) {
+    const adventurer = allAdventurerMap.get(adventurerId)
+    if (!adventurer) {
+      const emptyLevels = createEmptyFormationMaxLevels()
+      skippedList.push(
+        buildFormationMaxSkippedItem({
+          adventurerId,
+          adventurerName: '未知冒险家',
+          oldLevels: { ...emptyLevels },
+          newLevels: {
+            attackLevel: 0,
+            defenseLevel: 0,
+            speedLevel: 0,
+            SANLevel: 0,
+            comprehensiveLevel: 0
+          },
+          skipReason: '冒险家不存在',
+          orderIndex
+        })
+      )
+      continue
+    }
+
+    const state = createFormationMaxState(adventurer, orderIndex)
+    if (!hasValidFormationMaxRatio(state.ratio)) {
+      skippedList.push(
+        buildFormationMaxSkippedItem({
+          adventurerId: state.adventurerId,
+          adventurerName: state.adventurerName,
+          oldLevels: { ...state.currentLevels },
+          newLevels: {
+            attackLevel: state.simulatedLevels.attackLevel,
+            defenseLevel: state.simulatedLevels.defenseLevel,
+            speedLevel: state.simulatedLevels.speedLevel,
+            SANLevel: state.simulatedLevels.SANLevel,
+            comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+          },
+          skipReason: '分配比例未设置（需合计100%）',
+          orderIndex
+        })
+      )
+      continue
+    }
+
+    states.push(state)
+  }
+
+  const initialGold = playerInfo.gold || 0
+  const initialCrystals = {
+    attackCrystal: inventory.attackCrystal || 0,
+    defenseCrystal: inventory.defenseCrystal || 0,
+    speedCrystal: inventory.speedCrystal || 0,
+    sanCrystal: inventory.sanCrystal || 0
+  }
+
+  let remainingGold = initialGold
+  const remainingCrystals = { ...initialCrystals }
+
+  const gameSettings = global.$globalConfig?.gameSettings || {}
+  const crystalBase = gameSettings.adventurerLevelUpCrystalBase ?? 100
+  const goldBase = gameSettings.adventurerLevelUpGoldBase ?? 500
+  const guildFeeBase = gameSettings.guildLevelUpFeeBase ?? 1000
+
+  const originalGuildLevel = playerInfo.guildLevel || 1
+  let currentGuildLevel = originalGuildLevel
+  let currentMaxCompLevel = getMaxComprehensiveLevel(currentGuildLevel)
+  let totalGuildFee = 0
+
+  const allCompLevels = new Map(
+    allAdventurers.map(adventurer => [
+      adventurer._id.toString(),
+      getNormalizedComprehensiveLevel(adventurer)
+    ])
+  )
+
+  let loopGuard = 0
+  while (loopGuard < 200000) {
+    loopGuard += 1
+
+    let upgraded = false
+    const candidateLevels = [
+      ...new Set(
+        states
+          .filter(
+            state =>
+              state.simulatedLevels.comprehensiveLevel < currentMaxCompLevel
+          )
+          .map(state => state.simulatedLevels.comprehensiveLevel)
+      )
+    ].sort((left, right) => left - right)
+
+    for (const level of candidateLevels) {
+      const candidates = states
+        .filter(
+          state =>
+            state.simulatedLevels.comprehensiveLevel === level &&
+            state.simulatedLevels.comprehensiveLevel < currentMaxCompLevel
+        )
+        .sort((left, right) => left.orderIndex - right.orderIndex)
+
+      for (const state of candidates) {
+        const nextStep = getFormationMaxNextStep(
+          state,
+          currentMaxCompLevel,
+          crystalBase,
+          goldBase
+        )
+
+        if (nextStep.blocked) continue
+        if (remainingGold < nextStep.goldCost) continue
+        if (remainingCrystals[nextStep.crystalKey] < nextStep.crystalCost) {
+          continue
+        }
+
+        remainingGold -= nextStep.goldCost
+        remainingCrystals[nextStep.crystalKey] -= nextStep.crystalCost
+        applyFormationMaxStep(state, nextStep)
+        allCompLevels.set(
+          state.adventurerId,
+          state.simulatedLevels.comprehensiveLevel
+        )
+        upgraded = true
+        break
+      }
+
+      if (upgraded) break
+    }
+
+    if (upgraded) continue
+
+    const shouldTryGuildUpgrade =
+      states.some(state => state.totalLevels > 0) ||
+      states.some(
+        state => state.simulatedLevels.comprehensiveLevel >= currentMaxCompLevel
+      )
+
+    if (!shouldTryGuildUpgrade) {
+      break
+    }
+
+    let guildUpgradedThisRound = false
+    while (currentGuildLevel < 200000) {
+      const guildFee = getGuildLevelUpFee(currentGuildLevel, guildFeeBase)
+      if (remainingGold < guildFee) {
+        break
+      }
+
+      const requiredCompLevel = getMaxComprehensiveLevel(currentGuildLevel)
+      const requiredCount =
+        getRequiredMaxLevelAdventurerCount(currentGuildLevel)
+      const qualifiedCount = countQualifiedAdventurers(
+        allCompLevels,
+        requiredCompLevel
+      )
+
+      if (qualifiedCount < requiredCount) {
+        break
+      }
+
+      remainingGold -= guildFee
+      totalGuildFee += guildFee
+      currentGuildLevel += 1
+      currentMaxCompLevel = getMaxComprehensiveLevel(currentGuildLevel)
+      guildUpgradedThisRound = true
+    }
+
+    if (!guildUpgradedThisRound) {
+      break
+    }
+  }
+
+  const successStates = states
+    .filter(state => state.totalLevels > 0)
+    .sort((left, right) => left.orderIndex - right.orderIndex)
+
+  if (successStates.length === 0) {
+    const zeroProgressSkippedList = states.map(state =>
+      buildFormationMaxSkippedItem({
+        adventurerId: state.adventurerId,
+        adventurerName: state.adventurerName,
+        oldLevels: { ...state.currentLevels },
+        newLevels: {
+          attackLevel: state.simulatedLevels.attackLevel,
+          defenseLevel: state.simulatedLevels.defenseLevel,
+          speedLevel: state.simulatedLevels.speedLevel,
+          SANLevel: state.simulatedLevels.SANLevel,
+          comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+        },
+        skipReason: getFormationMaxSkipReason(
+          state,
+          getMaxComprehensiveLevel(originalGuildLevel),
+          initialGold,
+          initialCrystals,
+          crystalBase,
+          goldBase
+        ),
+        orderIndex: state.orderIndex
+      })
+    )
+
+    return {
+      successList: [],
+      skippedList: [...skippedList, ...zeroProgressSkippedList].sort(
+        (left, right) => left.orderIndex - right.orderIndex
+      ),
+      adventurerGoldSpent: 0,
+      totalGoldSpent: 0,
+      remainingGold: initialGold,
+      totalCrystalsSpent: {
+        attackCrystal: 0,
+        defenseCrystal: 0,
+        speedCrystal: 0,
+        sanCrystal: 0
+      },
+      remainingCrystals: { ...initialCrystals },
+      guildUpgradeInfo: null,
+      newGuildLevel: originalGuildLevel,
+      originalGuildLevel,
+      appliedStates: []
+    }
+  }
+
+  for (const state of states) {
+    if (state.totalLevels > 0) continue
+
+    skippedList.push(
+      buildFormationMaxSkippedItem({
+        adventurerId: state.adventurerId,
+        adventurerName: state.adventurerName,
+        oldLevels: { ...state.currentLevels },
+        newLevels: {
+          attackLevel: state.simulatedLevels.attackLevel,
+          defenseLevel: state.simulatedLevels.defenseLevel,
+          speedLevel: state.simulatedLevels.speedLevel,
+          SANLevel: state.simulatedLevels.SANLevel,
+          comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+        },
+        skipReason: getFormationMaxSkipReason(
+          state,
+          currentMaxCompLevel,
+          remainingGold,
+          remainingCrystals,
+          crystalBase,
+          goldBase
+        ),
+        orderIndex: state.orderIndex
+      })
+    )
+  }
+
+  const totalCrystalsSpent = {
+    attackCrystal: successStates.reduce(
+      (sum, state) => sum + state.crystalCost.attack,
+      0
+    ),
+    defenseCrystal: successStates.reduce(
+      (sum, state) => sum + state.crystalCost.defense,
+      0
+    ),
+    speedCrystal: successStates.reduce(
+      (sum, state) => sum + state.crystalCost.speed,
+      0
+    ),
+    sanCrystal: successStates.reduce(
+      (sum, state) => sum + state.crystalCost.san,
+      0
+    )
+  }
+  const adventurerGoldSpent = successStates.reduce(
+    (sum, state) => sum + state.goldCost,
+    0
+  )
+
+  return {
+    successList: successStates.map(buildFormationMaxSuccessItem),
+    skippedList: skippedList.sort(
+      (left, right) => left.orderIndex - right.orderIndex
+    ),
+    adventurerGoldSpent,
+    totalGoldSpent: adventurerGoldSpent + totalGuildFee,
+    remainingGold,
+    totalCrystalsSpent,
+    remainingCrystals: { ...remainingCrystals },
+    guildUpgradeInfo:
+      totalGuildFee > 0
+        ? {
+            targetGuildLevel: currentGuildLevel,
+            totalGuildFee
+          }
+        : null,
+    newGuildLevel: currentGuildLevel,
+    originalGuildLevel,
+    appliedStates: successStates.map(state => ({
+      adventurerId: state.adventurerId,
+      newLevels: {
+        attackLevel: state.simulatedLevels.attackLevel,
+        defenseLevel: state.simulatedLevels.defenseLevel,
+        speedLevel: state.simulatedLevels.speedLevel,
+        SANLevel: state.simulatedLevels.SANLevel,
+        comprehensiveLevel: state.simulatedLevels.comprehensiveLevel
+      }
+    }))
+  }
+}
+
+/**
+ * 批量固定等级升级
+ * @param {string} accountId
+ * @param {string[]} adventurerIds
+ * @param {number} totalLevels
+ * @param {boolean} preview
+ */
+export async function batchFixedUpgrade(
+  accountId,
+  adventurerIds,
+  totalLevels,
+  preview = false
+) {
+  const runner = async () => {
+    const result = await buildBatchFixedUpgradePlan(
+      accountId,
+      preview,
+      adventurerIds,
+      totalLevels
+    )
+
+    if (preview) {
+      return result
+    }
+
+    if (result.successList.length === 0) {
+      const err = new Error('所选冒险家当前无法执行固定升级')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    const inventory = await GamePlayerInventory.findOne({ account: accountId })
+
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    if (!inventory) {
+      const err = new Error('背包信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const bulkOps = result.appliedStates.map(state => ({
+      updateOne: {
+        filter: { _id: state.adventurerId },
+        update: {
+          $set: {
+            attackLevel: state.newLevels.attackLevel,
+            defenseLevel: state.newLevels.defenseLevel,
+            speedLevel: state.newLevels.speedLevel,
+            SANLevel: state.newLevels.SANLevel,
+            comprehensiveLevel: state.newLevels.comprehensiveLevel
+          }
+        }
+      }
+    }))
+
+    const originalGuildLevel = playerInfo.guildLevel || 1
+    playerInfo.gold = result.remainingGold
+    playerInfo.guildLevel = result.newGuildLevel
+    inventory.attackCrystal = result.remainingCrystals.attackCrystal
+    inventory.defenseCrystal = result.remainingCrystals.defenseCrystal
+    inventory.speedCrystal = result.remainingCrystals.speedCrystal
+    inventory.sanCrystal = result.remainingCrystals.sanCrystal
+
+    await Promise.all([
+      bulkOps.length > 0
+        ? GameAdventurer.bulkWrite(bulkOps)
+        : Promise.resolve(),
+      playerInfo.save(),
+      inventory.save()
+    ])
+
+    if (result.newGuildLevel > originalGuildLevel) {
+      for (
+        let guildLevel = originalGuildLevel + 1;
+        guildLevel <= result.newGuildLevel;
+        guildLevel += 1
+      ) {
+        await recordActivity({
+          type: 'guild_upgrade',
+          account: accountId,
+          guildName: playerInfo.guildName,
+          title: `🏰 「${playerInfo.guildName}」升级到 Lv.${guildLevel}！`,
+          content: `公会等级提升至 Lv.${guildLevel}`
+        })
+      }
+    }
+
+    delete result.appliedStates
+    delete result.originalGuildLevel
+    return result
+  }
+
+  if (preview) {
+    const result = await runner()
+    delete result.appliedStates
+    delete result.originalGuildLevel
+    return result
+  }
+
+  return await executeInLock(`batchFixedUpgrade:${accountId}`, runner)
+}
+
+/**
+ * 按阵容升级到当前资源可达的最高等级
+ * @param {string} accountId
+ * @param {string[]} adventurerIds
+ * @param {boolean} preview
+ */
+export async function formationMaxUpgrade(
+  accountId,
+  adventurerIds,
+  preview = false
+) {
+  const runner = async () => {
+    const result = await buildFormationMaxUpgradePlan(
+      accountId,
+      preview,
+      adventurerIds
+    )
+
+    if (preview) {
+      return result
+    }
+
+    if (result.successList.length === 0) {
+      const err = new Error('所选阵容当前无法执行升级')
+      err.statusCode = 400
+      err.expose = true
+      throw err
+    }
+
+    const playerInfo = await GamePlayerInfo.findOne({ account: accountId })
+    const inventory = await GamePlayerInventory.findOne({ account: accountId })
+
+    if (!playerInfo) {
+      const err = new Error('玩家信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    if (!inventory) {
+      const err = new Error('背包信息不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
+    }
+
+    const bulkOps = result.appliedStates.map(state => ({
+      updateOne: {
+        filter: { _id: state.adventurerId },
+        update: {
+          $set: {
+            attackLevel: state.newLevels.attackLevel,
+            defenseLevel: state.newLevels.defenseLevel,
+            speedLevel: state.newLevels.speedLevel,
+            SANLevel: state.newLevels.SANLevel,
+            comprehensiveLevel: state.newLevels.comprehensiveLevel
+          }
+        }
+      }
+    }))
+
+    const originalGuildLevel = playerInfo.guildLevel || 1
+    playerInfo.gold = result.remainingGold
+    playerInfo.guildLevel = result.newGuildLevel
+    inventory.attackCrystal = result.remainingCrystals.attackCrystal
+    inventory.defenseCrystal = result.remainingCrystals.defenseCrystal
+    inventory.speedCrystal = result.remainingCrystals.speedCrystal
+    inventory.sanCrystal = result.remainingCrystals.sanCrystal
+
+    await Promise.all([
+      bulkOps.length > 0
+        ? GameAdventurer.bulkWrite(bulkOps)
+        : Promise.resolve(),
+      playerInfo.save(),
+      inventory.save()
+    ])
+
+    if (result.newGuildLevel > originalGuildLevel) {
+      for (
+        let guildLevel = originalGuildLevel + 1;
+        guildLevel <= result.newGuildLevel;
+        guildLevel += 1
+      ) {
+        await recordActivity({
+          type: 'guild_upgrade',
+          account: accountId,
+          guildName: playerInfo.guildName,
+          title: `🏰 「${playerInfo.guildName}」升级到 Lv.${guildLevel}！`,
+          content: `公会等级提升至 Lv.${guildLevel}`
+        })
+      }
+    }
+
+    delete result.appliedStates
+    delete result.originalGuildLevel
+    return result
+  }
+
+  if (preview) {
+    const result = await runner()
+    delete result.appliedStates
+    delete result.originalGuildLevel
+    return result
+  }
+
+  return await executeInLock(`formationMaxUpgrade:${accountId}`, runner)
 }
