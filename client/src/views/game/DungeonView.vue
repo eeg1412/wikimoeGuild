@@ -1737,6 +1737,7 @@ const autoChallengeTimerText = ref('00:00')
 const autoChallengeStatusText = ref('准备中...')
 const autoChallengeCooldownSeconds = ref(0)
 const autoChallengeRequestPending = ref(false)
+const autoChallengeEndingAfterCooldown = ref(false)
 const autoChallengeSceneKey = ref(0)
 const autoChallengeScenePair = ref({ ally: null, enemy: null })
 const autoChallengeScenePhase = ref('idle')
@@ -1843,9 +1844,15 @@ const autoChallengeCountdownHint = computed(() => {
     return '当前战斗进行中...'
   }
   if (autoChallengeRunning.value && autoChallengeCooldownSeconds.value > 0) {
+    if (autoChallengeEndingAfterCooldown.value) {
+      return `自动挑战将在 ${autoChallengeCooldownSeconds.value} 秒后结束`
+    }
     return `下一批将在 ${autoChallengeCooldownSeconds.value} 秒后切换`
   }
   if (autoChallengeRunning.value) {
+    if (autoChallengeEndingAfterCooldown.value) {
+      return '正在结束自动挑战...'
+    }
     return '正在准备下一批对手...'
   }
   if (autoChallengeTotalCount.value > 0) {
@@ -1856,7 +1863,7 @@ const autoChallengeCountdownHint = computed(() => {
 
 // 自动挑战场次显示
 const autoChallengeBattleDisplay = computed(() => {
-  if (autoChallengeRunning.value) {
+  if (autoChallengeRunning.value && !autoChallengeEndingAfterCooldown.value) {
     return `⚔️ 第 ${autoChallengeTotalCount.value + 1} 场战斗`
   }
   if (autoChallengeTotalCount.value > 0) {
@@ -1988,6 +1995,14 @@ function formatTimer(ms) {
   return `${min}:${sec}`
 }
 
+function syncAutoChallengeTimerText() {
+  if (!autoChallengeStartTime) {
+    autoChallengeTimerText.value = '00:00'
+    return
+  }
+  autoChallengeTimerText.value = formatTimer(Date.now() - autoChallengeStartTime)
+}
+
 async function acquireWakeLock() {
   try {
     if ('wakeLock' in navigator) {
@@ -2007,17 +2022,46 @@ function releaseWakeLock() {
 
 function startAutoChallengeTimer() {
   autoChallengeStartTime = Date.now()
+  syncAutoChallengeTimerText()
   autoChallengeTimerInterval = setInterval(() => {
-    const elapsed = Date.now() - autoChallengeStartTime
-    autoChallengeTimerText.value = formatTimer(elapsed)
+    syncAutoChallengeTimerText()
   }, 1000)
 }
 
 function stopAutoChallengeTimer() {
+  syncAutoChallengeTimerText()
   if (autoChallengeTimerInterval) {
     clearInterval(autoChallengeTimerInterval)
     autoChallengeTimerInterval = null
   }
+  autoChallengeStartTime = null
+}
+
+function clearAutoChallengeCooldownTimer() {
+  if (autoChallengeCooldownTimer) {
+    clearInterval(autoChallengeCooldownTimer)
+    autoChallengeCooldownTimer = null
+  }
+}
+
+function startAutoChallengeCooldown({ stopAfterFinish = false } = {}) {
+  clearAutoChallengeCooldownTimer()
+  autoChallengeEndingAfterCooldown.value = stopAfterFinish
+  autoChallengeCooldownSeconds.value = BATTLE_COOLDOWN_SECONDS
+
+  autoChallengeCooldownTimer = setInterval(() => {
+    autoChallengeCooldownSeconds.value--
+    if (autoChallengeCooldownSeconds.value <= 0) {
+      clearAutoChallengeCooldownTimer()
+      if (stopAfterFinish) {
+        handleStopAutoChallenge()
+        return
+      }
+      if (autoChallengeRunning.value) {
+        executeAutoChallenge()
+      }
+    }
+  }, 1000)
 }
 
 async function startAutoChallenge() {
@@ -2037,6 +2081,7 @@ async function startAutoChallenge() {
   autoChallengeStatusText.value = '正在挑战...'
   autoChallengeCooldownSeconds.value = 0
   autoChallengeRequestPending.value = false
+  autoChallengeEndingAfterCooldown.value = false
   applyAutoChallengeScenePair({ startInBattle: true })
 
   await acquireWakeLock()
@@ -2087,9 +2132,10 @@ async function executeAutoChallenge() {
     } else if (winner === 'defender') {
       autoChallengeLoseCount.value++
       autoChallengeStatusText.value = '💀 挑战失败，自动挑战结束'
-      handleStopAutoChallenge()
+      startBattleCooldown()
       await fetchDungeonInfo()
       await fetchPlayerInfo()
+      startAutoChallengeCooldown({ stopAfterFinish: true })
       return
     } else {
       // draw
@@ -2104,18 +2150,7 @@ async function executeAutoChallenge() {
     await fetchPlayerInfo()
 
     // 等3秒后进行下一次挑战（动画持续播放）
-    autoChallengeCooldownSeconds.value = BATTLE_COOLDOWN_SECONDS
-
-    autoChallengeCooldownTimer = setInterval(() => {
-      autoChallengeCooldownSeconds.value--
-      if (autoChallengeCooldownSeconds.value <= 0) {
-        clearInterval(autoChallengeCooldownTimer)
-        autoChallengeCooldownTimer = null
-        if (autoChallengeRunning.value) {
-          executeAutoChallenge()
-        }
-      }
-    }, 1000)
+    startAutoChallengeCooldown()
   } catch {
     autoChallengeRequestPending.value = false
     autoChallengeStatusText.value = '❌ 挑战请求失败，已停止'
@@ -2127,10 +2162,8 @@ async function executeAutoChallenge() {
 function handleStopAutoChallenge() {
   autoChallengeRunning.value = false
   autoChallengeRequestPending.value = false
-  if (autoChallengeCooldownTimer) {
-    clearInterval(autoChallengeCooldownTimer)
-    autoChallengeCooldownTimer = null
-  }
+  autoChallengeEndingAfterCooldown.value = false
+  clearAutoChallengeCooldownTimer()
   clearAutoChallengeSceneDelayTimer()
   autoChallengeSceneBattlePending.value = false
   stopAutoChallengeTimer()
