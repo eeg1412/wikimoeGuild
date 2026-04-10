@@ -1358,6 +1358,12 @@ const myFormationCombatPower = computed(() => {
 const myFormations = ref([])
 const selectedFormationSlot = ref(null)
 
+/**
+ * 加载指定阵容的详情，并复用同一阵容的进行中请求，避免自动挑战启动阶段重复请求。
+ *
+ * @param {number|null} slot
+ * @returns {Promise<object|null>}
+ */
 async function ensureSelectedFormationDetailReady(
   slot = selectedFormationSlot.value
 ) {
@@ -2292,6 +2298,7 @@ async function handleAutoChallengeDialogOpened() {
   autoChallengeStartPending.value = false
   const started = await startAutoChallenge()
   if (!started && !autoChallengeRunning.value) {
+    // 启动失败时直接关闭弹窗，避免留下一个无法继续操作的空弹窗
     autoChallengeDialogVisible.value = false
   }
 }
