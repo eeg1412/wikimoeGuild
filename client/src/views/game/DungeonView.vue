@@ -1811,6 +1811,7 @@ const autoChallengeScenePhase = ref('idle')
 const autoChallengeSceneLoser = ref('')
 const autoChallengeSceneBattlePending = ref(false)
 const AUTO_CHALLENGE_TRANSITION_MS = 300
+const AUTO_CHALLENGE_PREPARE_FAILED_TEXT = '准备失败，请重新开始'
 const autoChallengeSparkSeeds = [
   {
     id: 'spark-1',
@@ -2141,12 +2142,20 @@ async function startAutoChallenge() {
 
   autoChallengeStatusText.value = '正在读取阵容...'
   const formationDetail = await ensureSelectedFormationDetailReady()
-  if (!formationDetail?.grid || autoChallengeAdventurers.value.length === 0) {
+  if (!formationDetail?.grid) {
     ElMessage.warning({
       message: '当前阵容数据尚未准备完成，请稍后再试',
       showClose: true
     })
-    autoChallengeStatusText.value = '准备失败，请重新开始'
+    autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARE_FAILED_TEXT
+    return false
+  }
+  if (autoChallengeAdventurers.value.length === 0) {
+    ElMessage.warning({
+      message: '当前阵容中没有可出战的冒险家，请先调整阵容',
+      showClose: true
+    })
+    autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARE_FAILED_TEXT
     return false
   }
   if (autoChallengeDemonsList.value.length === 0) {
@@ -2154,7 +2163,7 @@ async function startAutoChallenge() {
       message: '军团数据读取失败，请重新打开挑战弹窗',
       showClose: true
     })
-    autoChallengeStatusText.value = '准备失败，请重新开始'
+    autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARE_FAILED_TEXT
     return false
   }
 
@@ -2171,7 +2180,7 @@ async function startAutoChallenge() {
   autoChallengeEndingAfterCooldown.value = false
   if (!applyAutoChallengeScenePair({ startInBattle: true })) {
     autoChallengeRunning.value = false
-    autoChallengeStatusText.value = '准备失败，请重新开始'
+    autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARE_FAILED_TEXT
     return false
   }
   await nextTick()
