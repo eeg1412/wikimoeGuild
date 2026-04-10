@@ -520,7 +520,11 @@
           <el-button
             type="danger"
             :loading="challengeLoading"
-            :disabled="challengeLoading || !selectedFormationSlot"
+            :disabled="
+              challengeLoading ||
+              selectedFormationDetailLoading ||
+              !selectedFormationSlot
+            "
             @click="handleChallenge"
           >
             开始挑战
@@ -674,6 +678,7 @@
         :close-on-press-escape="!autoChallengeRunning"
         :show-close="!autoChallengeRunning"
         append-to-body
+        @opened="handleAutoChallengeDialogOpened"
         @close="handleAutoChallengeDialogClose"
       >
         <div class="text-center space-y-4">
@@ -848,7 +853,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGameUser } from '@/composables/useGameUser.js'
@@ -1333,6 +1338,9 @@ const legionCombatPower = computed(() => {
 // 所选阵容的详细数据（含冰险家属性）及其战斗力
 const selectedFormationDetail = ref(null)
 const selectedFormationDetailLoading = ref(false)
+let selectedFormationDetailRequestId = 0
+let selectedFormationDetailPromise = null
+let selectedFormationDetailRequestKey = ''
 
 const myFormationCombatPower = computed(() => {
   if (!selectedFormationDetail.value?.grid) return 0
@@ -1350,6 +1358,73 @@ const myFormationCombatPower = computed(() => {
 const myFormations = ref([])
 const selectedFormationSlot = ref(null)
 
+async function ensureSelectedFormationDetailReady(
+  slot = selectedFormationSlot.value
+) {
+  if (!slot) {
+    selectedFormationDetailRequestId++
+    selectedFormationDetail.value = null
+    selectedFormationDetailLoading.value = false
+    selectedFormationDetailPromise = null
+    selectedFormationDetailRequestKey = ''
+    return null
+  }
+
+  const formation = myFormations.value.find(f => f.slot === slot)
+  if (!formation) {
+    selectedFormationDetailRequestId++
+    selectedFormationDetail.value = null
+    selectedFormationDetailLoading.value = false
+    selectedFormationDetailPromise = null
+    selectedFormationDetailRequestKey = ''
+    return null
+  }
+
+  const formationId = String(formation._id)
+  if (
+    !selectedFormationDetailLoading.value &&
+    String(selectedFormationDetail.value?._id || '') === formationId
+  ) {
+    return selectedFormationDetail.value
+  }
+
+  if (
+    selectedFormationDetailLoading.value &&
+    selectedFormationDetailRequestKey === formationId &&
+    selectedFormationDetailPromise
+  ) {
+    return await selectedFormationDetailPromise
+  }
+
+  const requestId = ++selectedFormationDetailRequestId
+  selectedFormationDetailRequestKey = formationId
+  selectedFormationDetailLoading.value = true
+
+  selectedFormationDetailPromise = (async () => {
+    try {
+      const res = await getFormationDetailApi(formationId)
+      const detail = res.data.data || null
+      if (requestId === selectedFormationDetailRequestId) {
+        selectedFormationDetail.value = detail
+      }
+      return detail
+    } catch {
+      if (requestId === selectedFormationDetailRequestId) {
+        selectedFormationDetail.value = null
+      }
+      return null
+    } finally {
+      if (requestId === selectedFormationDetailRequestId) {
+        selectedFormationDetailLoading.value = false
+        selectedFormationDetailPromise = null
+        selectedFormationDetailRequestKey = ''
+      }
+    }
+  })()
+
+  return await selectedFormationDetailPromise
+}
+
 watch(
   () => selectedFormationSlot.value,
   async slot => {
@@ -1357,17 +1432,7 @@ watch(
       selectedFormationDetail.value = null
       return
     }
-    const formation = myFormations.value.find(f => f.slot === slot)
-    if (!formation) return
-    selectedFormationDetailLoading.value = true
-    try {
-      const res = await getFormationDetailApi(formation._id)
-      selectedFormationDetail.value = res.data.data || null
-    } catch {
-      selectedFormationDetail.value = null
-    } finally {
-      selectedFormationDetailLoading.value = false
-    }
+    await ensureSelectedFormationDetailReady(slot)
   },
   { immediate: true }
 )
@@ -1431,8 +1496,7 @@ async function handleOpenLegionDialog() {
 
     // 自动挑战模式：跳过阵容选择弹窗，直接开始自动挑战
     if (autoChallenge.value && selectedFormationSlot.value) {
-      autoChallengeDialogVisible.value = true
-      startAutoChallenge()
+      openAutoChallengeDialog()
       return
     }
 
@@ -1451,8 +1515,7 @@ async function handleChallenge() {
   if (autoChallenge.value) {
     showLegionDialog.value = false
     setTimeout(() => {
-      autoChallengeDialogVisible.value = true
-      startAutoChallenge()
+      openAutoChallengeDialog()
     }, 300)
     return
   }
@@ -1814,6 +1877,7 @@ let autoChallengeCooldownTimer = null
 let autoChallengeTimerInterval = null
 let autoChallengeSceneDelayTimer = null
 let wakeLock = null
+const autoChallengeStartPending = ref(false)
 
 // 自动挑战动画 - 冒险家和恶魔头像列表
 const autoChallengeAdventurers = computed(() => {
@@ -2068,7 +2132,26 @@ async function startAutoChallenge() {
   if (autoChallengeRunning.value) return
   if (!selectedFormationSlot.value) {
     ElMessage.warning({ message: '请先选择出战阵容', showClose: true })
-    return
+    return false
+  }
+
+  autoChallengeStatusText.value = '正在读取阵容...'
+  const formationDetail = await ensureSelectedFormationDetailReady()
+  if (!formationDetail?.grid || autoChallengeAdventurers.value.length === 0) {
+    ElMessage.warning({
+      message: '当前阵容数据尚未准备完成，请稍后再试',
+      showClose: true
+    })
+    autoChallengeStatusText.value = '准备失败，请重新开始'
+    return false
+  }
+  if (autoChallengeDemonsList.value.length === 0) {
+    ElMessage.warning({
+      message: '军团数据读取失败，请重新打开挑战弹窗',
+      showClose: true
+    })
+    autoChallengeStatusText.value = '准备失败，请重新开始'
+    return false
   }
 
   resetAutoChallengeSceneState()
@@ -2082,13 +2165,19 @@ async function startAutoChallenge() {
   autoChallengeCooldownSeconds.value = 0
   autoChallengeRequestPending.value = false
   autoChallengeEndingAfterCooldown.value = false
-  applyAutoChallengeScenePair({ startInBattle: true })
+  if (!applyAutoChallengeScenePair({ startInBattle: true })) {
+    autoChallengeRunning.value = false
+    autoChallengeStatusText.value = '准备失败，请重新开始'
+    return false
+  }
+  await nextTick()
 
   await acquireWakeLock()
   startAutoChallengeTimer()
 
   // 第一次立即挑战
   await executeAutoChallenge()
+  return true
 }
 
 async function executeAutoChallenge() {
@@ -2174,7 +2263,25 @@ function handleStopAutoChallenge() {
   }
 }
 
+function openAutoChallengeDialog() {
+  resetAutoChallengeSceneState()
+  autoChallengeStartPending.value = true
+  autoChallengeStatusText.value = '准备中...'
+  autoChallengeTimerText.value = '00:00'
+  autoChallengeDialogVisible.value = true
+}
+
+async function handleAutoChallengeDialogOpened() {
+  if (!autoChallengeStartPending.value) return
+  autoChallengeStartPending.value = false
+  const started = await startAutoChallenge()
+  if (!started && !autoChallengeRunning.value) {
+    autoChallengeDialogVisible.value = false
+  }
+}
+
 function handleAutoChallengeDialogClose() {
+  autoChallengeStartPending.value = false
   if (autoChallengeRunning.value) return
   resetAutoChallengeSceneState()
 }
