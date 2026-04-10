@@ -720,7 +720,17 @@
                         )}55`
                       }"
                     />
-                    <span class="auto-duel-side__label">冒险家</span>
+                    <span
+                      class="auto-duel-side__label"
+                      :title="getAutoChallengeUnitName(autoChallengeScenePair.ally, '冒险家')"
+                    >
+                      {{
+                        getAutoChallengeUnitName(
+                          autoChallengeScenePair.ally,
+                          '冒险家'
+                        )
+                      }}
+                    </span>
                   </div>
 
                   <div
@@ -764,7 +774,17 @@
                         )}55`
                       }"
                     />
-                    <span class="auto-duel-side__label">军团</span>
+                    <span
+                      class="auto-duel-side__label"
+                      :title="getAutoChallengeUnitName(autoChallengeScenePair.enemy, '军团')"
+                    >
+                      {{
+                        getAutoChallengeUnitName(
+                          autoChallengeScenePair.enemy,
+                          '军团'
+                        )
+                      }}
+                    </span>
                   </div>
                 </div>
               </Transition>
@@ -1870,6 +1890,11 @@ function getAutoChallengeEntityKey(entity) {
   )
 }
 
+function getAutoChallengeUnitName(entity, fallback) {
+  const name = entity?.name?.trim()
+  return name || fallback
+}
+
 function pickAutoChallengeUnit(list, previousUnit) {
   if (!list.length) return null
   const previousKey = getAutoChallengeEntityKey(previousUnit)
@@ -2614,10 +2639,17 @@ onUnmounted(() => {
 .auto-duel-side__label {
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: 100px;
+  padding: 0 4px;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.04em;
   color: rgba(226, 232, 240, 0.84);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .auto-duel-side.is-defeated {
@@ -2845,6 +2877,10 @@ onUnmounted(() => {
 @media (max-width: 480px) {
   .auto-duel-side {
     flex-basis: 92px;
+  }
+
+  .auto-duel-side__label {
+    max-width: 88px;
   }
 
   .auto-duel-avatar {
