@@ -66,16 +66,29 @@ function getRuneStoneRarityLabel(rarity) {
   )
 }
 
+/** 水晶类型中文名 */
+function getCrystalTypeLabel(type, mode = 'full') {
+  const labelMap = {
+    short: {
+      attackCrystal: '攻',
+      defenseCrystal: '防',
+      speedCrystal: '速',
+      sanCrystal: 'SAN'
+    },
+    full: {
+      attackCrystal: '攻击水晶',
+      defenseCrystal: '防御水晶',
+      speedCrystal: '速度水晶',
+      sanCrystal: 'SAN水晶'
+    }
+  }
+
+  return labelMap[mode]?.[type] || labelMap.full[type] || type
+}
+
 /** 结算水晶日志文案 */
 function formatCrystalSettleAction(result) {
   if (!result) return null
-
-  const crystalLabelMap = {
-    attackCrystal: '攻',
-    defenseCrystal: '防',
-    speedCrystal: '速',
-    sanCrystal: 'SAN'
-  }
 
   const crystalEntries = Object.entries(result.crystals || {}).filter(
     ([, quantity]) => quantity > 0
@@ -91,7 +104,8 @@ function formatCrystalSettleAction(result) {
     parts.push(
       crystalEntries
         .map(
-          ([type, quantity]) => `${crystalLabelMap[type] || type}${quantity}`
+          ([type, quantity]) =>
+            `${getCrystalTypeLabel(type, 'short')}${quantity}`
         )
         .join(' ')
     )
@@ -573,9 +587,7 @@ async function actionMineExplore(accountId) {
         )
       )
       if (!result) break
-      actions.push(
-        `Lv.${mineDetail.level || targetMine.level}(${target.row},${target.col})`
-      )
+      actions.push(`Lv.${mineDetail.level || targetMine.level}矿格`)
     }
 
     return actions.length > 0
@@ -668,7 +680,9 @@ async function actionMarketTrade(accountId, bot) {
             listPrice
           )
         )
-        actions.push(`挂卖${marketQty}个${type}@${listPrice}`)
+        actions.push(
+          `挂卖${marketQty}个${getCrystalTypeLabel(type)}，单价${listPrice}`
+        )
       }
 
       // 超出部分卖给官方
@@ -676,7 +690,7 @@ async function actionMarketTrade(accountId, bot) {
         await safeExec('卖给官方', () =>
           marketService.smartSellCrystal(accountId, type, officialQty)
         )
-        actions.push(`官方出售${officialQty}个${type}`)
+        actions.push(`官方出售${officialQty}个${getCrystalTypeLabel(type)}`)
       }
     }
 
@@ -860,7 +874,7 @@ async function actionRuneStoneManage(accountId, bot) {
             )
           )
           actions.push(
-            `挂卖${getRuneStoneRarityLabel(stone.rarity)}Lv${stone.level}符文石@${listPrice}`
+            `挂卖${getRuneStoneRarityLabel(stone.rarity)}Lv${stone.level}符文石，单价${listPrice}`
           )
         }
       } else if (
@@ -935,7 +949,7 @@ async function actionRuneStoneManage(accountId, bot) {
             )
           )
           actions.push(
-            `替换挂卖：下架${getRuneStoneRarityLabel(listedStone.rarity)}Lv${listedStone.level}→上架${getRuneStoneRarityLabel(stone.rarity)}Lv${stone.level}@${listPrice}`
+            `替换挂卖：下架${getRuneStoneRarityLabel(listedStone.rarity)}Lv${listedStone.level}，上架${getRuneStoneRarityLabel(stone.rarity)}Lv${stone.level}，单价${listPrice}`
           )
         }
       }

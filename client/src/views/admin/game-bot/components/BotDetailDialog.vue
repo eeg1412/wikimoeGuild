@@ -112,7 +112,7 @@
           </ResponsiveTableColumn>
           <ResponsiveTableColumn label="详情" min-width="200">
             <template #default="{ row }">
-              {{ row.detail }}
+              {{ formatActionDetail(row.detail) }}
             </template>
           </ResponsiveTableColumn>
           <ResponsiveTableColumn label="时间" min-width="160">
@@ -192,6 +192,13 @@ const roleMap = {
   dps: `${ROLE_TAG_MAP[1].emoji} ${ROLE_TAG_MAP[1].label}`,
   assassin: `${ROLE_TAG_MAP[3].emoji} ${ROLE_TAG_MAP[3].label}`,
   balanced: `${ROLE_TAG_MAP[4].emoji} ${ROLE_TAG_MAP[4].label}`
+}
+
+const legacyDetailLabelMap = {
+  attackCrystal: '攻击水晶',
+  defenseCrystal: '防御水晶',
+  speedCrystal: '速度水晶',
+  sanCrystal: 'SAN水晶'
 }
 
 const detailLoading = ref(false)
@@ -283,5 +290,24 @@ async function loadDetail(botId) {
   } finally {
     detailLoading.value = false
   }
+}
+
+function formatActionDetail(detail) {
+  if (!detail) return '—'
+
+  let formatted = detail
+  for (const [rawLabel, localizedLabel] of Object.entries(
+    legacyDetailLabelMap
+  )) {
+    formatted = formatted.replaceAll(rawLabel, localizedLabel)
+  }
+
+  return formatted
+    .replace(/\bnormal\b/g, '普通')
+    .replace(/\brare\b/g, '稀有')
+    .replace(/\blegendary\b/g, '传说')
+    .replace(/Lv\.(\d+)\((\d+),(\d+)\)/g, 'Lv.$1矿格')
+    .replace(/@(?=\d+)/g, '，单价')
+    .replace(/→/g, '，')
 }
 </script>
