@@ -312,6 +312,12 @@ const routes = [
         name: 'AdminArenaSeason',
         component: () => import('../views/admin/arena-season/Index.vue'),
         meta: { title: '竞技场赛季' }
+      },
+      {
+        path: 'game-bot',
+        name: 'AdminGameBot',
+        component: () => import('../views/admin/game-bot/Index.vue'),
+        meta: { title: '机器人管理', requiredRole: 999 }
       }
       // ===GENERATOR_ADMIN_ROUTE===
     ]

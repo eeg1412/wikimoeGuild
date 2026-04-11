@@ -69,4 +69,12 @@ export {
 } from './gameGuildValidator.js'
 export { mineDigSchema } from './gameMineValidator.js'
 export { updateAdminArenaSeasonTimeSchema } from './adminArenaSeasonValidator.js'
+export {
+  createBotSchema,
+  updateBotSchema,
+  updateBotGuildNameSchema,
+  updateBotGuildIconSchema,
+  updateBotAdventurerNameSchema,
+  updateBotAdventurerAvatarSchema
+} from './gameBotValidator.js'
 // ===GENERATOR_VALIDATOR===

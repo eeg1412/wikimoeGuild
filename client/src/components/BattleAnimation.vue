@@ -475,7 +475,7 @@ const ELEMENT_NAME_TO_KEY = {
 const SKILL_TYPE_ICONS = {
   buff: '⬆️',
   debuff: '⬇️',
-  sanRecover: '💚',
+  sanRecover: '❤️',
   changeOrder: '🔀',
   attack: '⚔️'
 }
@@ -1466,7 +1466,7 @@ function formatLogEntry(entry) {
         }
         return `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 但未命中 ${targetLabel}${entry.targetName}`
       case 'sanRecover':
-        return `💚 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} 恢复 ${entry.healAmount} SAN`
+        return `❤️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} 恢复 ${entry.healAmount} SAN`
       default:
         return `${casterLabel}${entry.casterName} 使用技能`
     }

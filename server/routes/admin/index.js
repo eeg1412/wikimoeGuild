@@ -13,6 +13,7 @@ import gameAdventurerRoutes from './gameAdventurerRoutes.js'
 import gameMailRoutes from './gameMailRoutes.js'
 import marketRoutes from './marketRoutes.js'
 import arenaSeasonRoutes from './arenaSeasonRoutes.js'
+import gameBotRoutes from './gameBotRoutes.js'
 // ===GENERATOR_IMPORT===
 
 const router = Router()
@@ -29,6 +30,7 @@ router.use('/game-adventurers', authAdmin, gameAdventurerRoutes)
 router.use('/game-mails', authAdmin, gameMailRoutes)
 router.use('/market', authAdmin, marketRoutes)
 router.use('/arena-season', authAdmin, arenaSeasonRoutes)
+router.use('/game-bots', authAdmin, gameBotRoutes)
 router.use('/', installRoutes)
 // ===GENERATOR_ROUTE===
 

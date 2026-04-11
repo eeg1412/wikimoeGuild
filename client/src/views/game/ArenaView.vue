@@ -947,7 +947,7 @@
                     ⚔️{{ unit.attackLevel }} 🛡️{{ unit.defenseLevel }} 💨{{
                       unit.speedLevel
                     }}
-                    💚{{ unit.SANLevel }}
+                    ❤️{{ unit.SANLevel }}
                     <span v-if="unit.runeStone" class="ml-1"
                       >💎Lv{{ unit.runeStone.level }}</span
                     >
@@ -978,7 +978,7 @@
                     ⚔️{{ unit.attackLevel }} 🛡️{{ unit.defenseLevel }} 💨{{
                       unit.speedLevel
                     }}
-                    💚{{ unit.SANLevel }}
+                    ❤️{{ unit.SANLevel }}
                     <span v-if="unit.runeStone" class="ml-1"
                       >💎Lv{{ unit.runeStone.level }}</span
                     >
@@ -1877,7 +1877,7 @@ function getUnitAt(units, row, col) {
 
 function getUnitTooltip(unit) {
   if (!unit) return ''
-  return `${unit.name} | ⚔️${unit.attackLevel} 🛡️${unit.defenseLevel} 💨${unit.speedLevel} 💚${unit.SANLevel}`
+  return `${unit.name} | ⚔️${unit.attackLevel} 🛡️${unit.defenseLevel} 💨${unit.speedLevel} ❤️${unit.SANLevel}`
 }
 
 function getLogWinClass(detail) {

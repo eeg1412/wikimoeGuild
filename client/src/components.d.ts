@@ -22,6 +22,7 @@ declare module 'vue' {
     DeviceInfoDisplay: typeof import('./components/DeviceInfoDisplay.vue')['default']
     DraggableList: typeof import('./components/DraggableList.vue')['default']
     FormationGrid: typeof import('./components/FormationGrid.vue')['default']
+    FormationPreviewGrid: typeof import('./components/FormationPreviewGrid.vue')['default']
     GameAdventurerAvatar: typeof import('./components/GameAdventurerAvatar.vue')['default']
     GameGuildIcon: typeof import('./components/GameGuildIcon.vue')['default']
     GuestResultDialog: typeof import('./components/GuestResultDialog.vue')['default']

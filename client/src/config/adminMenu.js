@@ -58,6 +58,12 @@ export const adminMenu = [
     path: '/admin/global-config',
     title: '配置管理',
     icon: 'Document'
+  },
+  {
+    path: '/admin/game-bot',
+    title: '机器人管理',
+    icon: 'Monitor',
+    requiredRole: 999
   }
   // ===GENERATOR_MENU===
 ]

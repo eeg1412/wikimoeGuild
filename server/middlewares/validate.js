@@ -1,7 +1,7 @@
 /**
  * 创建 Joi 参数校验中间件
  * @param {import('joi').Schema} schema - Joi schema
- * @param {'body'|'query'|'params'} source - 校验来源
+ * @param {'body'|'query'|'params'} source - 校验来溁E
  */
 export function validate(schema, source = 'body') {
   return (req, res, next) => {
