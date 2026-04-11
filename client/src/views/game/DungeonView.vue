@@ -680,6 +680,7 @@
         append-to-body
         @opened="handleAutoChallengeDialogOpened"
         @close="handleAutoChallengeDialogClose"
+        @closed="handleAutoChallengeDialogClosed"
       >
         <div class="text-center space-y-4">
           <!-- 战斗场次 -->
@@ -696,7 +697,23 @@
                 @after-enter="handleAutoChallengeSceneEntered"
               >
                 <div
-                  v-if="autoChallengeSceneReady"
+                  v-if="autoChallengeShowSettlement"
+                  key="auto-challenge-settlement"
+                  class="auto-duel-settlement"
+                >
+                  <p class="auto-duel-settlement__title">结算完成</p>
+                  <p class="auto-duel-settlement__status">
+                    {{ autoChallengeStatusText }}
+                  </p>
+                  <div class="auto-duel-settlement__stats">
+                    <span>总场次 {{ autoChallengeTotalCount }}</span>
+                    <span>胜利 {{ autoChallengeWinCount }}</span>
+                    <span>失败 {{ autoChallengeLoseCount }}</span>
+                    <span>升级 {{ autoChallengeUpgradeCount }}</span>
+                  </div>
+                </div>
+                <div
+                  v-else-if="autoChallengeSceneReady"
                   :key="autoChallengeSceneKey"
                   class="auto-duel-scene"
                   :class="{
@@ -727,7 +744,12 @@
                     />
                     <span
                       class="auto-duel-side__label"
-                      :title="getAutoChallengeUnitName(autoChallengeScenePair.ally, '冒险家')"
+                      :title="
+                        getAutoChallengeUnitName(
+                          autoChallengeScenePair.ally,
+                          '冒险家'
+                        )
+                      "
                     >
                       {{
                         getAutoChallengeUnitName(
@@ -781,7 +803,12 @@
                     />
                     <span
                       class="auto-duel-side__label"
-                      :title="getAutoChallengeUnitName(autoChallengeScenePair.enemy, '军团')"
+                      :title="
+                        getAutoChallengeUnitName(
+                          autoChallengeScenePair.enemy,
+                          '军团'
+                        )
+                      "
                     >
                       {{
                         getAutoChallengeUnitName(
@@ -792,9 +819,21 @@
                     </span>
                   </div>
                 </div>
+                <div
+                  v-else-if="autoChallengeInitialLoading"
+                  key="auto-challenge-loading"
+                  class="auto-duel-loading"
+                >
+                  <span class="auto-duel-loading__spinner"></span>
+                  <p class="auto-duel-loading__text">正在加载首场战斗...</p>
+                </div>
               </Transition>
               <p
-                v-if="!autoChallengeSceneReady"
+                v-if="
+                  !autoChallengeDialogClosing &&
+                  !autoChallengeSceneReady &&
+                  !autoChallengeInitialLoading
+                "
                 class="text-gray-400 text-sm py-6"
               >
                 等待战斗数据...
@@ -813,7 +852,12 @@
           </div>
 
           <!-- 状态信息 -->
-          <div class="space-y-2">
+          <div
+            class="space-y-2 auto-challenge-summary"
+            :class="{
+              'auto-challenge-summary--hidden': autoChallengeShowSettlement
+            }"
+          >
             <p class="text-sm text-gray-500 dark:text-gray-400">
               {{ autoChallengeStatusText }}
             </p>
@@ -1504,12 +1548,6 @@ async function handleOpenLegionDialog() {
       }
     }
 
-    // 自动挑战模式：跳过阵容选择弹窗，直接开始自动挑战
-    if (autoChallenge.value && selectedFormationSlot.value) {
-      openAutoChallengeDialog()
-      return
-    }
-
     showLegionDialog.value = true
   } catch (e) {
     // 错误已由拦截器处理
@@ -1801,6 +1839,7 @@ const AUTO_CHALLENGE_PREPARING_TEXT = '准备中...'
 const AUTO_CHALLENGE_LOADING_FORMATION_TEXT = '正在读取阵容...'
 const AUTO_CHALLENGE_RUNNING_TEXT = '正在挑战...'
 const AUTO_CHALLENGE_PREPARE_FAILED_TEXT = '准备失败，请重新开始'
+const AUTO_CHALLENGE_DEFEAT_FINISHED_TEXT = '💀 挑战失败，自动挑战结束'
 const autoChallenge = ref(
   localStorage.getItem('dungeon_auto_challenge') === 'true'
 )
@@ -1813,14 +1852,14 @@ const autoChallengeUpgradeCount = ref(0)
 const autoChallengeTimerText = ref('00:00')
 const autoChallengeStatusText = ref('准备中...')
 const autoChallengeCooldownSeconds = ref(0)
+const autoChallengeDisplayCount = ref(0)
 const autoChallengeRequestPending = ref(false)
-const autoChallengeEndingAfterCooldown = ref(false)
 const autoChallengeSceneKey = ref(0)
 const autoChallengeScenePair = ref({ ally: null, enemy: null })
 const autoChallengeScenePhase = ref('idle')
 const autoChallengeSceneLoser = ref('')
 const autoChallengeSceneBattlePending = ref(false)
-const AUTO_CHALLENGE_TRANSITION_MS = 300
+const AUTO_CHALLENGE_SCENE_SWITCH_MS = 260
 const autoChallengeSparkSeeds = [
   {
     id: 'spark-1',
@@ -1890,8 +1929,10 @@ let autoChallengeStartTime = null
 let autoChallengeCooldownTimer = null
 let autoChallengeTimerInterval = null
 let autoChallengeSceneDelayTimer = null
+let autoChallengeRunToken = 0
 let wakeLock = null
 const autoChallengeStartPending = ref(false)
+const autoChallengeDialogClosing = ref(false)
 
 // 自动挑战动画 - 冒险家和恶魔头像列表
 const autoChallengeAdventurers = computed(() => {
@@ -1917,20 +1958,36 @@ const autoChallengeSceneReady = computed(() => {
   )
 })
 
-const autoChallengeCountdownHint = computed(() => {
-  if (autoChallengeRequestPending.value) {
-    return '当前战斗进行中...'
+const autoChallengeInitialLoading = computed(() => {
+  if (!autoChallengeDialogVisible.value) return false
+  if (autoChallengeDialogClosing.value) return false
+  if (
+    autoChallengeDisplayCount.value > 0 ||
+    autoChallengeTotalCount.value > 0
+  ) {
+    return false
   }
+  if (autoChallengeStartPending.value) return true
+  if (autoChallengeStatusText.value === AUTO_CHALLENGE_LOADING_FORMATION_TEXT) {
+    return true
+  }
+  return autoChallengeRunning.value || autoChallengeRequestPending.value
+})
+
+const autoChallengeShowSettlement = computed(() => {
+  return !autoChallengeRunning.value && autoChallengeTotalCount.value > 0
+})
+
+const autoChallengeCountdownHint = computed(() => {
   if (autoChallengeRunning.value && autoChallengeCooldownSeconds.value > 0) {
-    if (autoChallengeEndingAfterCooldown.value) {
-      return `自动挑战将在 ${autoChallengeCooldownSeconds.value} 秒后结束`
-    }
     return `下一批将在 ${autoChallengeCooldownSeconds.value} 秒后切换`
   }
+  if (autoChallengeRequestPending.value) {
+    return autoChallengeDisplayCount.value > 0
+      ? '正在判定下一场战斗结果...'
+      : '当前战斗进行中...'
+  }
   if (autoChallengeRunning.value) {
-    if (autoChallengeEndingAfterCooldown.value) {
-      return '正在结束自动挑战...'
-    }
     return '正在准备下一批对手...'
   }
   if (autoChallengeTotalCount.value > 0) {
@@ -1941,8 +1998,8 @@ const autoChallengeCountdownHint = computed(() => {
 
 // 自动挑战场次显示
 const autoChallengeBattleDisplay = computed(() => {
-  if (autoChallengeRunning.value && !autoChallengeEndingAfterCooldown.value) {
-    return `⚔️ 第 ${autoChallengeTotalCount.value + 1} 场战斗`
+  if (autoChallengeRunning.value) {
+    return `⚔️ 第 ${autoChallengeDisplayCount.value || 1} 场战斗`
   }
   if (autoChallengeTotalCount.value > 0) {
     return `⚔️ 共完成 ${autoChallengeTotalCount.value} 场战斗`
@@ -1955,6 +2012,17 @@ function clearAutoChallengeSceneDelayTimer() {
     clearTimeout(autoChallengeSceneDelayTimer)
     autoChallengeSceneDelayTimer = null
   }
+}
+
+function playAutoChallengeEnemyDefeatTransition() {
+  clearAutoChallengeSceneDelayTimer()
+  setAutoChallengeSceneResult('attacker')
+  autoChallengeSceneDelayTimer = setTimeout(() => {
+    autoChallengeSceneDelayTimer = null
+    if (!autoChallengeRunning.value) return
+    applyAutoChallengeScenePair({ useTransition: true, startInBattle: true })
+  }, AUTO_CHALLENGE_SCENE_SWITCH_MS)
+  return true
 }
 
 function resetAutoChallengeSceneState() {
@@ -2029,17 +2097,6 @@ function applyAutoChallengeScenePair({
   return true
 }
 
-function scheduleNextAutoChallengeScene() {
-  clearAutoChallengeSceneDelayTimer()
-  if (!autoChallengeRunning.value) return
-
-  autoChallengeSceneDelayTimer = setTimeout(() => {
-    autoChallengeSceneDelayTimer = null
-    if (!autoChallengeRunning.value) return
-    applyAutoChallengeScenePair({ useTransition: true, startInBattle: true })
-  }, AUTO_CHALLENGE_TRANSITION_MS)
-}
-
 function setAutoChallengeSceneResult(winner) {
   autoChallengeScenePhase.value = 'settling'
   if (winner === 'attacker') {
@@ -2078,7 +2135,9 @@ function syncAutoChallengeTimerText() {
     autoChallengeTimerText.value = '00:00'
     return
   }
-  autoChallengeTimerText.value = formatTimer(Date.now() - autoChallengeStartTime)
+  autoChallengeTimerText.value = formatTimer(
+    Date.now() - autoChallengeStartTime
+  )
 }
 
 async function acquireWakeLock() {
@@ -2122,22 +2181,119 @@ function clearAutoChallengeCooldownTimer() {
   }
 }
 
-function startAutoChallengeCooldown({ stopAfterFinish = false } = {}) {
+function buildAutoChallengeRoundResult(data) {
+  return {
+    data,
+    winner: data?.battleResult?.winner || 'draw'
+  }
+}
+
+async function syncAutoChallengeRoundData(roundResult) {
+  startBattleCooldown()
+  if (roundResult.data?.upgraded) {
+    const newDungeonLevel =
+      roundResult.data.newDungeonLevel ||
+      (dungeonInfo.value?.dungeonsLevel || 1) + 1
+    if (selectedLevel.value < newDungeonLevel) {
+      selectedLevel.value = newDungeonLevel
+      handleSelectLevel(newDungeonLevel)
+    }
+  }
+
+  try {
+    await Promise.all([fetchDungeonInfo(), fetchPlayerInfo()])
+  } catch {
+    // 错误由全局拦截器处理
+  }
+}
+
+function applyDisplayedAutoChallengeSuccess(
+  roundResult,
+  { useTransition = false } = {}
+) {
+  autoChallengeDisplayCount.value++
+  autoChallengeTotalCount.value++
+
+  if (roundResult.winner === 'attacker') {
+    autoChallengeWinCount.value++
+    if (roundResult.data?.upgraded) {
+      autoChallengeUpgradeCount.value++
+      autoChallengeStatusText.value = '🎉 胜利！迷宫等级提升！'
+    } else {
+      autoChallengeStatusText.value = '⚔️ 胜利，但未全歼军团'
+    }
+  } else {
+    autoChallengeWinCount.value++
+    autoChallengeStatusText.value = '🤝 平局'
+  }
+
+  if (useTransition) {
+    return playAutoChallengeEnemyDefeatTransition()
+  }
+
+  if (!autoChallengeSceneReady.value) {
+    const applied = applyAutoChallengeScenePair({ startInBattle: true })
+    if (!applied) return false
+  } else {
+    autoChallengeSceneLoser.value = ''
+    autoChallengeScenePhase.value = 'battle'
+  }
+
+  return true
+}
+
+function finalizeAutoChallengeFailure(roundResult) {
   clearAutoChallengeCooldownTimer()
-  autoChallengeEndingAfterCooldown.value = stopAfterFinish
+  autoChallengeCooldownSeconds.value = 0
+  autoChallengeTotalCount.value++
+  autoChallengeLoseCount.value++
+  if (!autoChallengeSceneReady.value) {
+    const applied = applyAutoChallengeScenePair({ startInBattle: true })
+    if (!applied) {
+      autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARE_FAILED_TEXT
+      handleStopAutoChallenge({
+        finalStatusText: AUTO_CHALLENGE_DEFEAT_FINISHED_TEXT
+      })
+      return
+    }
+  }
+  void syncAutoChallengeRoundData(roundResult)
+  setAutoChallengeSceneResult('defender')
+  handleStopAutoChallenge({
+    finalStatusText: AUTO_CHALLENGE_DEFEAT_FINISHED_TEXT
+  })
+}
+
+async function requestAutoChallengeRound(runToken) {
+  autoChallengeRequestPending.value = true
+  try {
+    const res = await challengeLegionApi({
+      formationSlot: selectedFormationSlot.value
+    })
+    if (runToken !== autoChallengeRunToken) return null
+    return buildAutoChallengeRoundResult(res.data.data)
+  } finally {
+    if (runToken === autoChallengeRunToken) {
+      autoChallengeRequestPending.value = false
+    }
+  }
+}
+
+function startAutoChallengeCooldown(runToken) {
+  clearAutoChallengeCooldownTimer()
   autoChallengeCooldownSeconds.value = BATTLE_COOLDOWN_SECONDS
 
   autoChallengeCooldownTimer = setInterval(() => {
+    if (!autoChallengeRunning.value || runToken !== autoChallengeRunToken) {
+      clearAutoChallengeCooldownTimer()
+      return
+    }
+
     autoChallengeCooldownSeconds.value--
     if (autoChallengeCooldownSeconds.value <= 0) {
       clearAutoChallengeCooldownTimer()
-      if (stopAfterFinish) {
-        handleStopAutoChallenge()
-        return
-      }
-      if (autoChallengeRunning.value) {
-        executeAutoChallenge()
-      }
+      autoChallengeCooldownSeconds.value = 0
+      void executeAutoChallenge(runToken, { useTransitionOnSuccess: true })
     }
   }, 1000)
 }
@@ -2185,108 +2341,109 @@ async function startAutoChallenge() {
   autoChallengeTimerText.value = '00:00'
   autoChallengeStatusText.value = AUTO_CHALLENGE_RUNNING_TEXT
   autoChallengeCooldownSeconds.value = 0
+  autoChallengeDisplayCount.value = 0
   autoChallengeRequestPending.value = false
-  autoChallengeEndingAfterCooldown.value = false
-  if (!applyAutoChallengeScenePair({ startInBattle: true })) {
-    autoChallengeRunning.value = false
-    autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARE_FAILED_TEXT
-    return false
-  }
-  await nextTick()
-
+  const runToken = ++autoChallengeRunToken
   await acquireWakeLock()
   startAutoChallengeTimer()
 
   // 第一次立即挑战
-  await executeAutoChallenge()
+  await executeAutoChallenge(runToken, { useTransitionOnSuccess: false })
   return true
 }
 
-async function executeAutoChallenge() {
-  if (!autoChallengeRunning.value) return
+async function executeAutoChallenge(
+  runToken,
+  { useTransitionOnSuccess = false } = {}
+) {
+  if (!autoChallengeRunning.value || runToken !== autoChallengeRunToken) return
 
   autoChallengeStatusText.value = AUTO_CHALLENGE_RUNNING_TEXT
-  autoChallengeRequestPending.value = true
+  const isInitialRoundRequest =
+    autoChallengeDisplayCount.value === 0 && autoChallengeTotalCount.value === 0
+
   if (!autoChallengeSceneReady.value) {
-    applyAutoChallengeScenePair({ startInBattle: true })
+    if (isInitialRoundRequest) {
+      await nextTick()
+    } else {
+      const applied = applyAutoChallengeScenePair({ startInBattle: true })
+      if (!applied) {
+        autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARE_FAILED_TEXT
+        handleStopAutoChallenge()
+        return
+      }
+    }
   } else {
     autoChallengeSceneLoser.value = ''
     autoChallengeScenePhase.value = 'battle'
   }
 
   try {
-    const res = await challengeLegionApi({
-      formationSlot: selectedFormationSlot.value
-    })
-    const data = res.data.data
-    autoChallengeRequestPending.value = false
-    autoChallengeTotalCount.value++
+    const firstRoundResult = await requestAutoChallengeRound(runToken)
+    if (!firstRoundResult || runToken !== autoChallengeRunToken) return
 
-    const winner = data.battleResult?.winner
-    setAutoChallengeSceneResult(winner)
-
-    if (winner === 'attacker') {
-      autoChallengeWinCount.value++
-      if (data.upgraded) {
-        autoChallengeUpgradeCount.value++
-        autoChallengeStatusText.value = '🎉 胜利！迷宫等级提升！'
-        // 更新产出等级
-        const newDungeonLevel =
-          data.newDungeonLevel || (dungeonInfo.value?.dungeonsLevel || 1) + 1
-        if (selectedLevel.value < newDungeonLevel) {
-          selectedLevel.value = newDungeonLevel
-          handleSelectLevel(newDungeonLevel)
-        }
-      } else {
-        autoChallengeStatusText.value = '⚔️ 胜利，但未全歼军团'
-      }
-    } else if (winner === 'defender') {
-      autoChallengeLoseCount.value++
-      autoChallengeStatusText.value = '💀 挑战失败，自动挑战结束'
-      startBattleCooldown()
-      await fetchDungeonInfo()
-      await fetchPlayerInfo()
-      startAutoChallengeCooldown({ stopAfterFinish: true })
+    if (firstRoundResult.winner === 'defender') {
+      finalizeAutoChallengeFailure(firstRoundResult)
       return
-    } else {
-      // draw
-      autoChallengeWinCount.value++
-      autoChallengeStatusText.value = '🤝 平局'
     }
 
-    // 启动冷却
-    startBattleCooldown()
-    scheduleNextAutoChallengeScene()
-    await fetchDungeonInfo()
-    await fetchPlayerInfo()
+    const applied = applyDisplayedAutoChallengeSuccess(firstRoundResult, {
+      useTransition: useTransitionOnSuccess
+    })
+    if (!applied) {
+      autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARE_FAILED_TEXT
+      handleStopAutoChallenge()
+      return
+    }
 
-    // 等3秒后进行下一次挑战（动画持续播放）
-    startAutoChallengeCooldown()
+    void syncAutoChallengeRoundData(firstRoundResult)
+    startAutoChallengeCooldown(runToken)
   } catch {
-    autoChallengeRequestPending.value = false
+    if (runToken !== autoChallengeRunToken) return
     autoChallengeStatusText.value = '❌ 挑战请求失败，已停止'
     autoChallengeScenePhase.value = 'idle'
     handleStopAutoChallenge()
   }
 }
 
-function handleStopAutoChallenge() {
+function handleStopAutoChallenge(options = {}) {
+  const finalStatusText =
+    options && typeof options === 'object' && 'finalStatusText' in options
+      ? options.finalStatusText || ''
+      : ''
+  autoChallengeRunToken++
+
   autoChallengeRunning.value = false
   autoChallengeRequestPending.value = false
-  autoChallengeEndingAfterCooldown.value = false
   clearAutoChallengeCooldownTimer()
   clearAutoChallengeSceneDelayTimer()
   autoChallengeSceneBattlePending.value = false
   stopAutoChallengeTimer()
   releaseWakeLock()
   autoChallengeCooldownSeconds.value = 0
-  if (autoChallengeStatusText.value === AUTO_CHALLENGE_RUNNING_TEXT) {
+  if (finalStatusText) {
+    autoChallengeStatusText.value = finalStatusText
+  } else if (autoChallengeStatusText.value === AUTO_CHALLENGE_RUNNING_TEXT) {
     autoChallengeStatusText.value = '已停止'
   }
 }
 
-function openAutoChallengeDialog() {
+function resetAutoChallengeDialogDisplayState() {
   resetAutoChallengeSceneState()
+  autoChallengeWinCount.value = 0
+  autoChallengeLoseCount.value = 0
+  autoChallengeTotalCount.value = 0
+  autoChallengeUpgradeCount.value = 0
+  autoChallengeTimerText.value = '00:00'
+  autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARING_TEXT
+  autoChallengeCooldownSeconds.value = 0
+  autoChallengeDisplayCount.value = 0
+  autoChallengeRequestPending.value = false
+}
+
+function openAutoChallengeDialog() {
+  autoChallengeDialogClosing.value = false
+  resetAutoChallengeDialogDisplayState()
   autoChallengeStartPending.value = true
   autoChallengeStatusText.value = AUTO_CHALLENGE_PREPARING_TEXT
   autoChallengeTimerText.value = '00:00'
@@ -2294,6 +2451,7 @@ function openAutoChallengeDialog() {
 }
 
 async function handleAutoChallengeDialogOpened() {
+  autoChallengeDialogClosing.value = false
   if (!autoChallengeStartPending.value) return
   autoChallengeStartPending.value = false
   const started = await startAutoChallenge()
@@ -2304,13 +2462,19 @@ async function handleAutoChallengeDialogOpened() {
 }
 
 function handleAutoChallengeDialogClose() {
+  autoChallengeDialogClosing.value = true
   autoChallengeStartPending.value = false
+}
+
+function handleAutoChallengeDialogClosed() {
+  autoChallengeDialogClosing.value = false
   if (autoChallengeRunning.value) return
-  resetAutoChallengeSceneState()
+  resetAutoChallengeDialogDisplayState()
 }
 
 function handleCloseAutoChallengeDialog() {
   if (autoChallengeRunning.value) return
+  autoChallengeDialogClosing.value = true
   autoChallengeDialogVisible.value = false
 }
 
@@ -2742,6 +2906,79 @@ onUnmounted(() => {
   gap: 14px;
 }
 
+.auto-duel-loading {
+  position: relative;
+  z-index: 1;
+  min-height: 138px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.auto-duel-loading__spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid rgba(148, 163, 184, 0.22);
+  border-top-color: rgba(250, 204, 21, 0.96);
+  border-right-color: rgba(96, 165, 250, 0.88);
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.18);
+  animation: autoChallengeLoadingSpin 0.8s linear infinite;
+}
+
+.auto-duel-loading__text {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.auto-duel-settlement {
+  position: relative;
+  z-index: 1;
+  min-height: 138px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.auto-duel-settlement__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(148, 163, 184, 0.86);
+}
+
+.auto-duel-settlement__status {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.auto-duel-settlement__stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(191, 219, 254, 0.82);
+}
+
+.auto-duel-settlement__stats span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
 .auto-duel-side {
   position: relative;
   flex: 0 0 108px;
@@ -2955,6 +3192,14 @@ onUnmounted(() => {
   color: rgba(191, 219, 254, 0.82);
 }
 
+.auto-challenge-summary {
+  transition: opacity 0.2s ease;
+}
+
+.auto-challenge-summary--hidden {
+  opacity: 0;
+}
+
 .auto-duel-fade-enter-active,
 .auto-duel-fade-leave-active {
   transition:
@@ -3019,6 +3264,15 @@ onUnmounted(() => {
   100% {
     opacity: 0;
     transform: scale(2.8);
+  }
+}
+
+@keyframes autoChallengeLoadingSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
 
