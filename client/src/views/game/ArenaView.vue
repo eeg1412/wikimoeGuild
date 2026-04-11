@@ -246,6 +246,18 @@
             </el-button>
           </div>
 
+          <!-- 自动对战按钮 -->
+          <div class="flex justify-center mb-4">
+            <el-button
+              type="warning"
+              size="small"
+              :disabled="(arenaInfo.registration?.challengeUses ?? 0) <= 0"
+              @click="handleStartAutoArena"
+            >
+              ⚡ 自动对战
+            </el-button>
+          </div>
+
           <!-- ===== 匹配对手 ===== -->
           <div v-if="arenaTab === 'match'">
             <div v-if="matchLoading" class="flex justify-center py-8">
@@ -1011,11 +1023,227 @@
       v-model="guildInfoDialogVisible"
       :player-info-id="guildInfoPlayerInfoId"
     />
+
+    <!-- ===== 自动竞技场对战弹窗 ===== -->
+    <el-dialog
+      v-model="autoArenaDialogVisible"
+      title="⚡ 自动竞技场对战"
+      width="400px"
+      align-center
+      :close-on-click-modal="!autoArenaRunning"
+      :close-on-press-escape="!autoArenaRunning"
+      :show-close="!autoArenaRunning"
+      append-to-body
+      @opened="handleAutoArenaDialogOpened"
+      @close="handleAutoArenaDialogClose"
+      @closed="handleAutoArenaDialogClosed"
+    >
+      <div class="text-center space-y-4">
+        <!-- 战斗场次 -->
+        <p class="text-2xl font-bold text-yellow-500 dark:text-yellow-400">
+          {{ autoArenaBattleDisplay }}
+        </p>
+
+        <!-- 公会图标对战场景 -->
+        <div class="auto-arena-stage">
+          <div class="auto-arena-duel-frame">
+            <Transition
+              name="auto-arena-duel-fade"
+              mode="out-in"
+              @after-enter="handleAutoArenaSceneEntered"
+            >
+              <!-- 结算完成 -->
+              <div
+                v-if="autoArenaShowSettlement"
+                key="auto-arena-settlement"
+                class="auto-arena-duel-settlement"
+              >
+                <p class="auto-arena-duel-settlement__title">结算完成</p>
+                <p class="auto-arena-duel-settlement__status">
+                  {{ autoArenaStatusText }}
+                </p>
+                <div class="auto-arena-duel-settlement__stats">
+                  <span>总场次 {{ autoArenaTotalCount }}</span>
+                  <span>胜利 {{ autoArenaWinCount }}</span>
+                  <span>平局 {{ autoArenaDrawCount }}</span>
+                  <span>失败 {{ autoArenaLoseCount }}</span>
+                </div>
+                <p
+                  class="text-sm mt-2"
+                  :class="
+                    autoArenaTotalPointsChange >= 0
+                      ? 'text-green-400'
+                      : 'text-red-400'
+                  "
+                >
+                  竞技点变化:
+                  {{ autoArenaTotalPointsChange >= 0 ? '+' : ''
+                  }}{{ formatNumberWithCommas(autoArenaTotalPointsChange) }}
+                </p>
+              </div>
+              <!-- 对战场景 -->
+              <div
+                v-else-if="autoArenaSceneReady"
+                :key="autoArenaSceneKey"
+                class="auto-arena-duel-scene"
+                :class="{
+                  'is-battling': autoArenaScenePhase === 'battle',
+                  'is-settling': autoArenaScenePhase === 'settling'
+                }"
+              >
+                <!-- 我方公会 -->
+                <div
+                  class="auto-arena-duel-side auto-arena-duel-side--ally"
+                  :class="{
+                    'is-defeated': autoArenaSceneLoser === 'ally'
+                  }"
+                >
+                  <div
+                    class="auto-arena-duel-side__halo auto-arena-duel-side__halo--ally"
+                  ></div>
+                  <img
+                    :src="autoArenaMyGuildIconUrl"
+                    class="auto-arena-duel-avatar"
+                  />
+                  <span
+                    class="auto-arena-duel-side__label"
+                    :title="autoArenaMyGuildName"
+                  >
+                    {{ autoArenaMyGuildName }}
+                  </span>
+                </div>
+
+                <!-- 碰撞效果 -->
+                <div
+                  class="auto-arena-duel-impact"
+                  :class="{ active: autoArenaScenePhase === 'battle' }"
+                >
+                  <div class="auto-arena-duel-impact-core"></div>
+                  <div
+                    class="auto-arena-duel-impact-wave auto-arena-duel-impact-wave--outer"
+                  ></div>
+                  <div
+                    class="auto-arena-duel-impact-wave auto-arena-duel-impact-wave--inner"
+                  ></div>
+                  <span
+                    v-for="spark in autoArenaSparkSeeds"
+                    :key="spark.id"
+                    class="auto-arena-duel-spark"
+                    :style="spark.style"
+                  ></span>
+                </div>
+
+                <!-- 对方公会 -->
+                <div
+                  class="auto-arena-duel-side auto-arena-duel-side--enemy"
+                  :class="{
+                    'is-defeated': autoArenaSceneLoser === 'enemy'
+                  }"
+                >
+                  <div
+                    class="auto-arena-duel-side__halo auto-arena-duel-side__halo--enemy"
+                  ></div>
+                  <img
+                    :src="autoArenaCurrentOpponentIconUrl"
+                    class="auto-arena-duel-avatar"
+                  />
+                  <span
+                    class="auto-arena-duel-side__label"
+                    :title="autoArenaCurrentOpponent?.guildName || '对手'"
+                  >
+                    {{ autoArenaCurrentOpponent?.guildName || '对手' }}
+                  </span>
+                </div>
+              </div>
+              <!-- 加载中 -->
+              <div
+                v-else-if="autoArenaInitialLoading"
+                key="auto-arena-loading"
+                class="auto-arena-duel-loading"
+              >
+                <span class="auto-arena-duel-loading__spinner"></span>
+                <p class="auto-arena-duel-loading__text">正在匹配最佳对手...</p>
+              </div>
+            </Transition>
+            <p
+              v-if="
+                !autoArenaDialogClosing &&
+                !autoArenaSceneReady &&
+                !autoArenaInitialLoading &&
+                !autoArenaShowSettlement
+              "
+              class="text-gray-400 text-sm py-6"
+            >
+              等待战斗数据...
+            </p>
+          </div>
+
+          <div class="auto-arena-timer-card">
+            <p class="auto-arena-timer-card__label">用时</p>
+            <p class="auto-arena-timer-card__value">
+              {{ autoArenaTimerText }}
+            </p>
+            <p class="auto-arena-timer-card__hint">
+              {{ autoArenaCountdownHint }}
+            </p>
+          </div>
+        </div>
+
+        <!-- 状态信息 -->
+        <div
+          class="space-y-2 auto-arena-summary"
+          :class="{
+            'auto-arena-summary--hidden': autoArenaShowSettlement
+          }"
+        >
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            {{ autoArenaStatusText }}
+          </p>
+          <div class="flex justify-center gap-4 text-sm flex-wrap">
+            <span class="text-green-500">
+              ✅ 胜利: {{ autoArenaWinCount }}
+            </span>
+            <span class="text-gray-400">
+              🤝 平局: {{ autoArenaDrawCount }}
+            </span>
+            <span class="text-red-400">
+              ❌ 失败: {{ autoArenaLoseCount }}
+            </span>
+          </div>
+          <p class="text-xs text-gray-400">
+            已挑战: {{ autoArenaTotalCount }} 次 | 竞技点变化:
+            <span
+              :class="
+                autoArenaTotalPointsChange >= 0
+                  ? 'text-green-400'
+                  : 'text-red-400'
+              "
+            >
+              {{ autoArenaTotalPointsChange >= 0 ? '+' : ''
+              }}{{ formatNumberWithCommas(autoArenaTotalPointsChange) }}
+            </span>
+            | 金币: +{{ formatNumberWithCommas(autoArenaTotalGold) }}
+          </p>
+        </div>
+      </div>
+      <template #footer>
+        <el-button
+          v-if="autoArenaRunning"
+          type="danger"
+          @click="handleStopAutoArena"
+        >
+          停止自动对战
+        </el-button>
+        <el-button v-else type="primary" @click="handleCloseAutoArenaDialog">
+          关闭
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import FormationGrid from '@/components/FormationGrid.vue'
@@ -1062,7 +1290,7 @@ import {
 } from 'shared/utils/utils.js'
 
 const router = useRouter()
-const { isLoggedIn, fetchPlayerInfo } = useGameUser()
+const { isLoggedIn, fetchPlayerInfo, playerInfo, guildIconUrl } = useGameUser()
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
 }
@@ -1680,6 +1908,729 @@ function formatTime(t) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+// ══════════════════════════════════════════
+// ═══════ 自动竞技场对战 ════════════════
+// ══════════════════════════════════════════
+
+const AUTO_ARENA_ROUND_DELAY_MS = 3000
+const AUTO_ARENA_SCENE_SWITCH_MS = 260
+const AUTO_ARENA_MAX_REFRESHES = 5
+const AUTO_ARENA_MIN_WIN_PROB = 0.6
+const AUTO_ARENA_MIN_SCORE_THRESHOLD = 5
+
+const { visible: autoArenaDialogVisible } = useDialogRoute('autoArena')
+const autoArenaRunning = ref(false)
+const autoArenaWinCount = ref(0)
+const autoArenaDrawCount = ref(0)
+const autoArenaLoseCount = ref(0)
+const autoArenaTotalCount = ref(0)
+const autoArenaTotalPointsChange = ref(0)
+const autoArenaTotalGold = ref(0)
+const autoArenaTimerText = ref('00:00')
+const autoArenaStatusText = ref('准备中...')
+const autoArenaCooldownSeconds = ref(0)
+const autoArenaDisplayCount = ref(0)
+const autoArenaRequestPending = ref(false)
+const autoArenaSceneKey = ref(0)
+const autoArenaScenePhase = ref('idle')
+const autoArenaSceneLoser = ref('')
+const autoArenaSceneBattlePending = ref(false)
+const autoArenaCurrentOpponent = ref(null)
+const autoArenaStartPending = ref(false)
+const autoArenaDialogClosing = ref(false)
+
+let autoArenaStartTime = null
+let autoArenaCooldownTimer = null
+let autoArenaTimerInterval = null
+let autoArenaSceneDelayTimer = null
+let autoArenaRunToken = 0
+let autoArenaWakeLock = null
+
+const autoArenaSparkSeeds = [
+  {
+    id: 'spark-1',
+    style: {
+      '--spark-angle': '-28deg',
+      '--spark-distance': '24px',
+      '--spark-delay': '0s',
+      '--spark-size': '16px'
+    }
+  },
+  {
+    id: 'spark-2',
+    style: {
+      '--spark-angle': '24deg',
+      '--spark-distance': '26px',
+      '--spark-delay': '0.08s',
+      '--spark-size': '18px'
+    }
+  },
+  {
+    id: 'spark-3',
+    style: {
+      '--spark-angle': '78deg',
+      '--spark-distance': '20px',
+      '--spark-delay': '0.04s',
+      '--spark-size': '14px'
+    }
+  },
+  {
+    id: 'spark-4',
+    style: {
+      '--spark-angle': '138deg',
+      '--spark-distance': '22px',
+      '--spark-delay': '0.12s',
+      '--spark-size': '15px'
+    }
+  },
+  {
+    id: 'spark-5',
+    style: {
+      '--spark-angle': '204deg',
+      '--spark-distance': '25px',
+      '--spark-delay': '0.03s',
+      '--spark-size': '17px'
+    }
+  },
+  {
+    id: 'spark-6',
+    style: {
+      '--spark-angle': '256deg',
+      '--spark-distance': '19px',
+      '--spark-delay': '0.1s',
+      '--spark-size': '13px'
+    }
+  },
+  {
+    id: 'spark-7',
+    style: {
+      '--spark-angle': '316deg',
+      '--spark-distance': '23px',
+      '--spark-delay': '0.06s',
+      '--spark-size': '16px'
+    }
+  }
+]
+
+// ── 计算属性 ──
+const autoArenaMyGuildName = computed(() => {
+  return (
+    arenaInfo.value.registration?.guildName ||
+    playerInfo.value?.guildName ||
+    '我的公会'
+  )
+})
+
+const autoArenaMyGuildIconUrl = computed(() => {
+  return guildIconUrl.value
+})
+
+const autoArenaCurrentOpponentIconUrl = computed(() => {
+  const op = autoArenaCurrentOpponent.value
+  if (!op) return ''
+  return getAutoArenaOpponentGuildIconUrl(op)
+})
+
+function getAutoArenaOpponentGuildIconUrl(opponent) {
+  if (opponent.isNpc) {
+    return `/publicgame/guildicon/${opponent.npcGuildIconId || 1}.webp`
+  }
+  if (opponent.hasCustomGuildIcon) {
+    const t = opponent.customGuildIconUpdatedAt
+      ? new Date(opponent.customGuildIconUpdatedAt).getTime()
+      : ''
+    return `/uploads/custom-guild-icon/${opponent.accountId}.png${t ? '?t=' + t : ''}`
+  }
+  return `/uploads/default-guild-icon/${opponent.accountId}.png`
+}
+
+const autoArenaSceneReady = computed(() => {
+  return !!autoArenaCurrentOpponent.value
+})
+
+const autoArenaInitialLoading = computed(() => {
+  if (!autoArenaDialogVisible.value) return false
+  if (autoArenaDialogClosing.value) return false
+  if (autoArenaDisplayCount.value > 0 || autoArenaTotalCount.value > 0) {
+    return false
+  }
+  if (autoArenaStartPending.value) return true
+  return autoArenaRunning.value || autoArenaRequestPending.value
+})
+
+const autoArenaShowSettlement = computed(() => {
+  return !autoArenaRunning.value && autoArenaTotalCount.value > 0
+})
+
+const autoArenaCountdownHint = computed(() => {
+  if (autoArenaRunning.value && autoArenaCooldownSeconds.value > 0) {
+    return `下一场将在 ${autoArenaCooldownSeconds.value} 秒后开始`
+  }
+  if (autoArenaRequestPending.value) {
+    return autoArenaDisplayCount.value > 0
+      ? '正在判定战斗结果...'
+      : '当前战斗进行中...'
+  }
+  if (autoArenaRunning.value) {
+    return '正在寻找最佳对手...'
+  }
+  if (autoArenaTotalCount.value > 0) {
+    return '自动对战已结束'
+  }
+  return '等待自动对战开始'
+})
+
+const autoArenaBattleDisplay = computed(() => {
+  if (autoArenaRunning.value) {
+    return `⚔️ 第 ${autoArenaDisplayCount.value || 1} 场对战`
+  }
+  if (autoArenaTotalCount.value > 0) {
+    return `⚔️ 共完成 ${autoArenaTotalCount.value} 场对战`
+  }
+  return '⚔️ 准备中…'
+})
+
+// ── 对手评分算法 ──
+function scoreArenaOpponent(opponent) {
+  const myPoints = arenaInfo.value.registration?.points ?? 500
+  const myCombat = arenaCombatPower.value
+  const opPoints = opponent.points ?? 500
+  const opCombat = opponent.combatPower ?? 0
+
+  // 分值变动幅度（与服务端逻辑一致）
+  let changeAmount
+  if (opPoints < myPoints) {
+    changeAmount = 10
+  } else {
+    const pointsDiff = Math.abs(myPoints - opPoints)
+    changeAmount = Math.min(Math.max(pointsDiff, 10), 100)
+  }
+
+  // 根据战斗力比值估算胜率
+  let winProb = 0.5
+  if (myCombat > 0 && opCombat > 0) {
+    const ratio = myCombat / opCombat
+    if (ratio > 2.0) winProb = 0.98
+    else if (ratio > 1.5) winProb = 0.95
+    else if (ratio > 1.3) winProb = 0.88
+    else if (ratio > 1.15) winProb = 0.78
+    else if (ratio > 1.0) winProb = 0.65
+    else if (ratio > 0.9) winProb = 0.55
+    else if (ratio > 0.8) winProb = 0.42
+    else if (ratio > 0.7) winProb = 0.3
+    else if (ratio > 0.6) winProb = 0.2
+    else winProb = 0.1
+  }
+
+  return {
+    score: changeAmount * (2 * winProb - 1),
+    winProb,
+    changeAmount
+  }
+}
+
+/**
+ * 寻找最佳对手
+ * @param {boolean} strictMode - 严格模式下需要期望值 >= 阈值，宽松模式下只需胜率 >= 最低胜率
+ */
+function findBestAutoArenaOpponent(strictMode = true) {
+  const candidates = []
+  for (const op of matchList.value) {
+    if (challengedOpponents.value.has(op._id)) continue
+    const info = scoreArenaOpponent(op)
+    if (info.winProb >= AUTO_ARENA_MIN_WIN_PROB) {
+      candidates.push({ opponent: op, ...info })
+    }
+  }
+  if (candidates.length === 0) return null
+  candidates.sort((a, b) => b.score - a.score)
+
+  // 严格模式：如果最优对手的期望值太低（如全都是低分对手，只能获得+10且胜率一般），
+  // 返回 null 以触发刷新，寻找更高价值的对手
+  if (strictMode && candidates[0].score < AUTO_ARENA_MIN_SCORE_THRESHOLD) {
+    return null
+  }
+
+  return candidates[0].opponent
+}
+
+// ── 场景管理 ──
+function clearAutoArenaSceneDelayTimer() {
+  if (autoArenaSceneDelayTimer) {
+    clearTimeout(autoArenaSceneDelayTimer)
+    autoArenaSceneDelayTimer = null
+  }
+}
+
+function resetAutoArenaSceneState() {
+  clearAutoArenaSceneDelayTimer()
+  autoArenaSceneBattlePending.value = false
+  autoArenaSceneKey.value = 0
+  autoArenaCurrentOpponent.value = null
+  autoArenaScenePhase.value = 'idle'
+  autoArenaSceneLoser.value = ''
+}
+
+function setAutoArenaSceneResult(winner) {
+  autoArenaScenePhase.value = 'settling'
+  if (winner === 'attacker') {
+    autoArenaSceneLoser.value = 'enemy'
+  } else if (winner === 'defender') {
+    autoArenaSceneLoser.value = 'ally'
+  } else {
+    autoArenaSceneLoser.value = ''
+  }
+}
+
+function handleAutoArenaSceneEntered() {
+  if (!autoArenaSceneBattlePending.value) return
+  autoArenaSceneBattlePending.value = false
+  autoArenaScenePhase.value = autoArenaRunning.value ? 'battle' : 'idle'
+}
+
+// ── 计时器管理 ──
+function formatAutoArenaTimer(ms) {
+  const totalSec = Math.floor(ms / 1000)
+  const min = Math.floor(totalSec / 60)
+    .toString()
+    .padStart(2, '0')
+  const sec = (totalSec % 60).toString().padStart(2, '0')
+  return `${min}:${sec}`
+}
+
+function syncAutoArenaTimerText() {
+  if (!autoArenaStartTime) {
+    autoArenaTimerText.value = '00:00'
+    return
+  }
+  autoArenaTimerText.value = formatAutoArenaTimer(
+    Date.now() - autoArenaStartTime
+  )
+}
+
+function startAutoArenaTimer() {
+  autoArenaStartTime = Date.now()
+  syncAutoArenaTimerText()
+  autoArenaTimerInterval = setInterval(syncAutoArenaTimerText, 1000)
+}
+
+function stopAutoArenaTimer() {
+  syncAutoArenaTimerText()
+  if (autoArenaTimerInterval) {
+    clearInterval(autoArenaTimerInterval)
+    autoArenaTimerInterval = null
+  }
+  autoArenaStartTime = null
+}
+
+function clearAutoArenaCooldownTimer() {
+  if (autoArenaCooldownTimer) {
+    clearInterval(autoArenaCooldownTimer)
+    autoArenaCooldownTimer = null
+  }
+}
+
+// ── Wake Lock ──
+async function acquireAutoArenaWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      autoArenaWakeLock = await navigator.wakeLock.request('screen')
+    }
+  } catch {
+    // not supported
+  }
+}
+
+function releaseAutoArenaWakeLock() {
+  if (autoArenaWakeLock) {
+    autoArenaWakeLock.release().catch(() => {})
+    autoArenaWakeLock = null
+  }
+}
+
+// ── 刷新对手列表（自动对战用） ──
+async function autoArenaRefreshMatchList(runToken) {
+  if (matchRefreshedAt.value) {
+    const elapsed = Date.now() - matchRefreshedAt.value.getTime()
+    if (elapsed < 10000) {
+      const waitMs = 10000 - elapsed
+      autoArenaCooldownSeconds.value = Math.ceil(waitMs / 1000)
+      autoArenaStatusText.value = `⏳ 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
+
+      const refreshed = await new Promise(resolve => {
+        autoArenaCooldownTimer = setInterval(() => {
+          if (!autoArenaRunning.value || runToken !== autoArenaRunToken) {
+            clearAutoArenaCooldownTimer()
+            autoArenaCooldownSeconds.value = 0
+            resolve(false)
+            return
+          }
+          const remaining = Math.max(
+            0,
+            10000 - (Date.now() - matchRefreshedAt.value.getTime())
+          )
+          autoArenaCooldownSeconds.value = Math.ceil(remaining / 1000)
+          autoArenaStatusText.value = `⏳ 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
+          if (remaining <= 0) {
+            clearAutoArenaCooldownTimer()
+            autoArenaCooldownSeconds.value = 0
+            doAutoArenaRefresh().then(resolve)
+          }
+        }, 500)
+      })
+      return refreshed
+    }
+  }
+  return doAutoArenaRefresh()
+}
+
+async function doAutoArenaRefresh() {
+  autoArenaStatusText.value = '🔄 刷新对手列表...'
+  challengedOpponents.value = new Set()
+  try {
+    const res = await getMatchListApi({ refresh: '1' })
+    const data = res.data.data
+    matchList.value = data?.opponents || []
+    matchList.value.sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+    if (data?.refreshedAt) {
+      matchRefreshedAt.value = new Date(data.refreshedAt)
+      startRefreshCooldown()
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+// ── 对话框管理 ──
+function handleStartAutoArena() {
+  if (autoArenaRunning.value) return
+  if ((arenaInfo.value.registration?.challengeUses ?? 0) <= 0) {
+    ElMessage.warning({ message: '挑战次数不足', showClose: true })
+    return
+  }
+  autoArenaDialogClosing.value = false
+  resetAutoArenaDialogState()
+  autoArenaStartPending.value = true
+  autoArenaDialogVisible.value = true
+}
+
+async function handleAutoArenaDialogOpened() {
+  autoArenaDialogClosing.value = false
+  if (!autoArenaStartPending.value) return
+  autoArenaStartPending.value = false
+  const started = await startAutoArena()
+  if (!started && !autoArenaRunning.value) {
+    autoArenaDialogVisible.value = false
+  }
+}
+
+function handleAutoArenaDialogClose() {
+  autoArenaDialogClosing.value = true
+  autoArenaStartPending.value = false
+}
+
+function handleAutoArenaDialogClosed() {
+  autoArenaDialogClosing.value = false
+  if (autoArenaRunning.value) return
+  resetAutoArenaDialogState()
+  // 静默同步服务端状态
+  getArenaInfoApi()
+    .then(res => {
+      arenaInfo.value = res.data.data || {}
+    })
+    .catch(() => {})
+  fetchPlayerInfo()
+}
+
+function handleCloseAutoArenaDialog() {
+  if (autoArenaRunning.value) return
+  autoArenaDialogClosing.value = true
+  autoArenaDialogVisible.value = false
+}
+
+function resetAutoArenaDialogState() {
+  resetAutoArenaSceneState()
+  autoArenaWinCount.value = 0
+  autoArenaDrawCount.value = 0
+  autoArenaLoseCount.value = 0
+  autoArenaTotalCount.value = 0
+  autoArenaTotalPointsChange.value = 0
+  autoArenaTotalGold.value = 0
+  autoArenaTimerText.value = '00:00'
+  autoArenaStatusText.value = '准备中...'
+  autoArenaCooldownSeconds.value = 0
+  autoArenaDisplayCount.value = 0
+  autoArenaRequestPending.value = false
+}
+
+// ── 核心流程 ──
+async function startAutoArena() {
+  if (autoArenaRunning.value) return false
+
+  resetAutoArenaSceneState()
+  autoArenaRunning.value = true
+  autoArenaWinCount.value = 0
+  autoArenaDrawCount.value = 0
+  autoArenaLoseCount.value = 0
+  autoArenaTotalCount.value = 0
+  autoArenaTotalPointsChange.value = 0
+  autoArenaTotalGold.value = 0
+  autoArenaTimerText.value = '00:00'
+  autoArenaStatusText.value = '正在寻找最佳对手...'
+  autoArenaCooldownSeconds.value = 0
+  autoArenaDisplayCount.value = 0
+  autoArenaRequestPending.value = false
+
+  const runToken = ++autoArenaRunToken
+  await acquireAutoArenaWakeLock()
+  startAutoArenaTimer()
+
+  // 确保有对手列表
+  if (matchList.value.length === 0) {
+    await fetchMatchList(false)
+  }
+
+  // 寻找第一个对手并设置场景
+  const found = await findAndSetupNextOpponent(runToken, false)
+  if (!found) {
+    handleStopAutoArena({ finalStatusText: '⚠️ 未找到合适对手' })
+    return false
+  }
+
+  // 立即发起第一场挑战（无冷却）
+  await executeAutoArenaChallenge(runToken)
+  return true
+}
+
+/**
+ * 寻找最佳对手并设置对战场景
+ * @param {number} runToken
+ * @param {boolean} useTransition - 是否使用场景过渡动画
+ */
+async function findAndSetupNextOpponent(runToken, useTransition) {
+  autoArenaStatusText.value = '正在寻找最佳对手...'
+
+  // 第一阶段：严格模式，只要高价值对手
+  let bestOpponent = findBestAutoArenaOpponent(true)
+  let consecutiveRefreshes = 0
+
+  // 第二阶段：未找到高价值对手，刷新列表寻找（宁愿等CD）
+  while (
+    !bestOpponent &&
+    autoArenaRunning.value &&
+    runToken === autoArenaRunToken
+  ) {
+    consecutiveRefreshes++
+    if (consecutiveRefreshes > AUTO_ARENA_MAX_REFRESHES) break
+
+    autoArenaStatusText.value = `🔍 未找到高价值对手，刷新中 (${consecutiveRefreshes}/${AUTO_ARENA_MAX_REFRESHES})...`
+
+    const refreshed = await autoArenaRefreshMatchList(runToken)
+    if (!autoArenaRunning.value || runToken !== autoArenaRunToken) return false
+    if (!refreshed) return false
+
+    bestOpponent = findBestAutoArenaOpponent(true)
+  }
+
+  // 第三阶段：多次刷新后仍无高价值对手，退而求其次，挑战胜率最高的
+  if (!bestOpponent) {
+    bestOpponent = findBestAutoArenaOpponent(false)
+  }
+
+  if (!bestOpponent) return false
+
+  // 设置场景
+  autoArenaCurrentOpponent.value = bestOpponent
+  autoArenaSceneLoser.value = ''
+
+  if (useTransition) {
+    autoArenaSceneKey.value++
+    autoArenaSceneBattlePending.value = true
+  } else {
+    autoArenaScenePhase.value = 'battle'
+  }
+
+  return true
+}
+
+/**
+ * 向当前显示的对手发起挑战
+ */
+async function executeAutoArenaChallenge(runToken) {
+  if (!autoArenaRunning.value || runToken !== autoArenaRunToken) return
+
+  const opponent = autoArenaCurrentOpponent.value
+  if (!opponent) return
+
+  autoArenaStatusText.value = `⚔️ 正在挑战「${opponent.guildName}」...`
+  autoArenaRequestPending.value = true
+
+  try {
+    const res = await challengeOpponentApi({
+      registrationId: opponent.registrationId
+    })
+
+    if (runToken !== autoArenaRunToken) return
+    autoArenaRequestPending.value = false
+
+    const result = res.data.data
+    const winner = result.battleResult.winner
+
+    // 更新统计
+    autoArenaDisplayCount.value++
+    autoArenaTotalCount.value++
+    autoArenaTotalPointsChange.value += result.pointsChange
+    autoArenaTotalGold.value += result.goldEarned || 0
+
+    // 标记已挑战
+    challengedOpponents.value.add(opponent._id)
+
+    // 更新本地竞技场状态（避免触发全局loading）
+    if (arenaInfo.value.registration) {
+      arenaInfo.value.registration.points = result.newPoints
+      arenaInfo.value.registration.challengeUses = Math.max(
+        (arenaInfo.value.registration.challengeUses || 0) - 1,
+        0
+      )
+      arenaInfo.value.registration.totalBattleCount =
+        (arenaInfo.value.registration.totalBattleCount || 0) + 1
+    }
+
+    if (winner === 'attacker') {
+      autoArenaWinCount.value++
+      setAutoArenaSceneResult('attacker')
+      autoArenaStatusText.value = `✅ 击败「${opponent.guildName}」+${formatNumberWithCommas(result.pointsChange)} pt`
+    } else if (winner === 'draw') {
+      autoArenaDrawCount.value++
+      setAutoArenaSceneResult('draw')
+      autoArenaStatusText.value = `🤝 与「${opponent.guildName}」平局`
+    } else {
+      // defender wins → 失败，停止
+      autoArenaLoseCount.value++
+      setAutoArenaSceneResult('defender')
+      autoArenaStatusText.value = `💀 败给「${opponent.guildName}」${result.pointsChange} pt`
+
+      fetchPlayerInfo()
+      handleStopAutoArena({ finalStatusText: '💀 对战失败，自动对战结束' })
+      return
+    }
+
+    // 胜利或平局 → 继续
+    fetchPlayerInfo()
+
+    if (runToken !== autoArenaRunToken || !autoArenaRunning.value) return
+
+    // 检查剩余挑战次数
+    if ((arenaInfo.value.registration?.challengeUses ?? 0) <= 0) {
+      handleStopAutoArena({
+        finalStatusText: '📋 挑战次数已用完，自动对战结束'
+      })
+      return
+    }
+
+    // 260ms 后切换到下一个对手场景，然后开始冷却
+    scheduleTransitionAndCooldown(runToken)
+  } catch (err) {
+    if (runToken !== autoArenaRunToken) return
+    autoArenaRequestPending.value = false
+
+    const errMsg = err.response?.data?.message || err.message || '请求失败'
+    if (errMsg.includes('挑战次数不足')) {
+      handleStopAutoArena({
+        finalStatusText: '📋 挑战次数已用完，自动对战结束'
+      })
+    } else {
+      handleStopAutoArena({ finalStatusText: `❌ ${errMsg}` })
+    }
+  }
+}
+
+/**
+ * 胜利/平局后的场景切换和冷却
+ * 流程：展示击败效果 260ms → 切换到下一个对手场景(战斗动画) → 3 秒冷却 → 发起挑战
+ */
+function scheduleTransitionAndCooldown(runToken) {
+  clearAutoArenaSceneDelayTimer()
+
+  autoArenaSceneDelayTimer = setTimeout(async () => {
+    autoArenaSceneDelayTimer = null
+    if (!autoArenaRunning.value || runToken !== autoArenaRunToken) return
+
+    // 寻找下一个对手并切换场景（带过渡动画）
+    const found = await findAndSetupNextOpponent(runToken, true)
+    if (!found) {
+      if (autoArenaRunning.value && runToken === autoArenaRunToken) {
+        handleStopAutoArena({
+          finalStatusText: '⚠️ 连续多次未找到合适对手，已停止'
+        })
+      }
+      return
+    }
+
+    // 开始 3 秒冷却，冷却期间展示新对手的战斗动画
+    startAutoArenaBattleCooldown(runToken)
+  }, AUTO_ARENA_SCENE_SWITCH_MS)
+}
+
+/**
+ * 战斗冷却倒计时，结束后发起挑战
+ */
+function startAutoArenaBattleCooldown(runToken) {
+  clearAutoArenaCooldownTimer()
+  const delaySec = Math.ceil(AUTO_ARENA_ROUND_DELAY_MS / 1000)
+  autoArenaCooldownSeconds.value = delaySec
+
+  autoArenaCooldownTimer = setInterval(() => {
+    if (!autoArenaRunning.value || runToken !== autoArenaRunToken) {
+      clearAutoArenaCooldownTimer()
+      return
+    }
+    autoArenaCooldownSeconds.value--
+    if (autoArenaCooldownSeconds.value <= 0) {
+      clearAutoArenaCooldownTimer()
+      autoArenaCooldownSeconds.value = 0
+      // 冷却结束，向当前显示的对手发起挑战
+      executeAutoArenaChallenge(runToken)
+    }
+  }, 1000)
+}
+
+function handleStopAutoArena(options = {}) {
+  const finalStatusText = options?.finalStatusText || ''
+  autoArenaRunToken++
+
+  autoArenaRunning.value = false
+  autoArenaRequestPending.value = false
+  clearAutoArenaCooldownTimer()
+  clearAutoArenaSceneDelayTimer()
+  autoArenaSceneBattlePending.value = false
+  stopAutoArenaTimer()
+  releaseAutoArenaWakeLock()
+  autoArenaCooldownSeconds.value = 0
+  if (finalStatusText) {
+    autoArenaStatusText.value = finalStatusText
+  } else if (
+    autoArenaStatusText.value.startsWith('⚔️') ||
+    autoArenaStatusText.value.startsWith('正在')
+  ) {
+    autoArenaStatusText.value = '已停止'
+  }
+}
+
+function cleanupAutoArena() {
+  if (autoArenaRunning.value) {
+    handleStopAutoArena()
+  }
+  clearAutoArenaCooldownTimer()
+  clearAutoArenaSceneDelayTimer()
+  if (autoArenaTimerInterval) {
+    clearInterval(autoArenaTimerInterval)
+    autoArenaTimerInterval = null
+  }
+  releaseAutoArenaWakeLock()
+}
+
 onMounted(async () => {
   await Promise.all([fetchArenaInfo(), fetchFormations()])
   if (arenaInfo.value.registration) {
@@ -1694,6 +2645,7 @@ onBeforeUnmount(() => {
     clearInterval(refreshCooldownTimer)
     refreshCooldownTimer = null
   }
+  cleanupAutoArena()
 })
 </script>
 
@@ -1905,6 +2857,485 @@ onBeforeUnmount(() => {
   .arena-grid-cell {
     width: 48px;
     height: 48px;
+  }
+}
+
+/* ══════════════════════════════════════════ */
+/* ═══════ 自动竞技场对战样式 ════════════ */
+/* ══════════════════════════════════════════ */
+
+.auto-arena-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auto-arena-duel-frame {
+  position: relative;
+  min-height: 178px;
+  padding: 20px 16px;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(
+      circle at 18% 24%,
+      rgba(59, 130, 246, 0.22),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 82% 28%,
+      rgba(248, 113, 113, 0.18),
+      transparent 32%
+    ),
+    linear-gradient(180deg, rgba(11, 18, 32, 0.96), rgba(20, 26, 43, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -24px 48px rgba(15, 23, 42, 0.34),
+    0 18px 40px rgba(2, 6, 23, 0.28);
+}
+
+.auto-arena-duel-frame::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.auto-arena-duel-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent),
+    radial-gradient(circle at center, rgba(250, 204, 21, 0.08), transparent 48%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.auto-arena-duel-scene {
+  position: relative;
+  z-index: 1;
+  min-height: 138px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.auto-arena-duel-loading {
+  position: relative;
+  z-index: 1;
+  min-height: 138px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.auto-arena-duel-loading__spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid rgba(148, 163, 184, 0.22);
+  border-top-color: rgba(250, 204, 21, 0.96);
+  border-right-color: rgba(96, 165, 250, 0.88);
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.18);
+  animation: autoArenaLoadingSpin 0.8s linear infinite;
+}
+
+.auto-arena-duel-loading__text {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.auto-arena-duel-settlement {
+  position: relative;
+  z-index: 1;
+  min-height: 138px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.auto-arena-duel-settlement__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(148, 163, 184, 0.86);
+}
+
+.auto-arena-duel-settlement__status {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.auto-arena-duel-settlement__stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(191, 219, 254, 0.82);
+}
+
+.auto-arena-duel-settlement__stats span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.auto-arena-duel-side {
+  position: relative;
+  flex: 0 0 108px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transition:
+    opacity 0.3s ease,
+    filter 0.3s ease,
+    transform 0.3s ease;
+}
+
+.auto-arena-duel-side__halo {
+  position: absolute;
+  top: 6px;
+  width: 74px;
+  height: 74px;
+  border-radius: 18px;
+  filter: blur(18px);
+  opacity: 0.82;
+}
+
+.auto-arena-duel-side__halo--ally {
+  background: radial-gradient(
+    circle,
+    rgba(96, 165, 250, 0.52),
+    transparent 72%
+  );
+}
+
+.auto-arena-duel-side__halo--enemy {
+  background: radial-gradient(
+    circle,
+    rgba(248, 113, 113, 0.52),
+    transparent 72%
+  );
+}
+
+.auto-arena-duel-avatar {
+  position: relative;
+  z-index: 1;
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  border: 3px solid rgba(200, 160, 80, 0.6);
+  object-fit: cover;
+  background: rgba(15, 23, 42, 0.82);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition:
+    opacity 0.3s ease,
+    filter 0.3s ease,
+    transform 0.3s ease;
+}
+
+.auto-arena-duel-side--ally .auto-arena-duel-avatar {
+  border-color: rgba(96, 165, 250, 0.7);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.35),
+    0 0 18px rgba(96, 165, 250, 0.25);
+}
+
+.auto-arena-duel-side--enemy .auto-arena-duel-avatar {
+  border-color: rgba(248, 113, 113, 0.7);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.35),
+    0 0 18px rgba(248, 113, 113, 0.25);
+}
+
+.auto-arena-duel-side__label {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 100px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(226, 232, 240, 0.84);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auto-arena-duel-side.is-defeated {
+  filter: grayscale(1);
+  opacity: 0.48;
+  transform: scale(0.96);
+}
+
+.auto-arena-duel-scene.is-battling .auto-arena-duel-side--ally {
+  animation: autoArenaDuelAdvance 0.68s cubic-bezier(0.42, 0, 0.24, 1) infinite;
+}
+
+.auto-arena-duel-scene.is-battling .auto-arena-duel-side--enemy {
+  animation: autoArenaDuelBrace 0.68s cubic-bezier(0.42, 0, 0.24, 1) infinite;
+}
+
+.auto-arena-duel-impact {
+  position: relative;
+  flex: 1;
+  min-width: 84px;
+  max-width: 120px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.auto-arena-duel-impact:not(.active) {
+  opacity: 0.36;
+  transform: scale(0.92);
+}
+
+.auto-arena-duel-impact-core {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(254, 240, 138, 0.95) 24%,
+    rgba(251, 191, 36, 0.92) 48%,
+    rgba(249, 115, 22, 0.18) 74%,
+    transparent 76%
+  );
+  box-shadow:
+    0 0 18px rgba(251, 191, 36, 0.72),
+    0 0 30px rgba(249, 115, 22, 0.34);
+}
+
+.auto-arena-duel-impact.active .auto-arena-duel-impact-core {
+  animation: autoArenaDuelCorePulse 0.62s ease-out infinite;
+}
+
+.auto-arena-duel-impact-wave {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px solid rgba(253, 224, 71, 0.72);
+  opacity: 0;
+}
+
+.auto-arena-duel-impact-wave--outer {
+  width: 28px;
+  height: 28px;
+}
+
+.auto-arena-duel-impact-wave--inner {
+  width: 18px;
+  height: 18px;
+  border-color: rgba(255, 255, 255, 0.76);
+}
+
+.auto-arena-duel-impact.active .auto-arena-duel-impact-wave--outer {
+  animation: autoArenaDuelWave 0.62s ease-out infinite;
+}
+
+.auto-arena-duel-impact.active .auto-arena-duel-impact-wave--inner {
+  animation: autoArenaDuelWave 0.62s ease-out infinite 0.12s;
+}
+
+.auto-arena-duel-spark {
+  position: absolute;
+  width: 4px;
+  height: var(--spark-size, 16px);
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 248, 220, 0.96) 28%,
+    rgba(251, 191, 36, 0.92) 60%,
+    rgba(249, 115, 22, 0.12)
+  );
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.36);
+  opacity: 0;
+  transform-origin: 50% calc(100% - 2px);
+}
+
+.auto-arena-duel-impact.active .auto-arena-duel-spark {
+  animation: autoArenaDuelSpark 0.62s ease-out infinite;
+  animation-delay: var(--spark-delay, 0s);
+}
+
+.auto-arena-timer-card {
+  padding: 12px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.78),
+    rgba(15, 23, 42, 0.56)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 28px rgba(15, 23, 42, 0.2);
+}
+
+.auto-arena-timer-card__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.auto-arena-timer-card__value {
+  margin-top: 6px;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 800;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', 'Consolas', 'SFMono-Regular', monospace;
+  text-shadow: 0 0 16px rgba(250, 204, 21, 0.18);
+}
+
+.auto-arena-timer-card__hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(191, 219, 254, 0.82);
+}
+
+.auto-arena-summary {
+  transition: opacity 0.2s ease;
+}
+
+.auto-arena-summary--hidden {
+  opacity: 0;
+}
+
+.auto-arena-duel-fade-enter-active,
+.auto-arena-duel-fade-leave-active {
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease,
+    filter 0.3s ease;
+}
+
+.auto-arena-duel-fade-enter-from,
+.auto-arena-duel-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.94);
+  filter: blur(4px);
+}
+
+@keyframes autoArenaDuelAdvance {
+  0%,
+  100% {
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  40% {
+    transform: translateX(10px) translateY(-2px) scale(1.04);
+  }
+  70% {
+    transform: translateX(4px) translateY(1px) scale(1.01);
+  }
+}
+
+@keyframes autoArenaDuelBrace {
+  0%,
+  100% {
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  32% {
+    transform: translateX(-8px) translateY(1px) scale(0.97) rotate(-2deg);
+  }
+  58% {
+    transform: translateX(3px) translateY(-1px) scale(1.01) rotate(1deg);
+  }
+}
+
+@keyframes autoArenaDuelCorePulse {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.7;
+  }
+  52% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.86);
+    opacity: 0.8;
+  }
+}
+
+@keyframes autoArenaDuelWave {
+  0% {
+    opacity: 0.76;
+    transform: scale(0.42);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.8);
+  }
+}
+
+@keyframes autoArenaLoadingSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes autoArenaDuelSpark {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--spark-angle, 0deg)) translateY(0) scaleY(0.72);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--spark-angle, 0deg))
+      translateY(calc(var(--spark-distance, 22px) * -1)) scaleY(1.18);
+  }
+}
+
+@media (max-width: 480px) {
+  .auto-arena-duel-side {
+    flex-basis: 92px;
+  }
+
+  .auto-arena-duel-side__label {
+    max-width: 88px;
+  }
+
+  .auto-arena-duel-avatar {
+    width: 56px;
+    height: 56px;
   }
 }
 </style>
