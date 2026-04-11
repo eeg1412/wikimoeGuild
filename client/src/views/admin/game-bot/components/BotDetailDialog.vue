@@ -14,7 +14,9 @@
           {{ detailData.playerInfo?.guildName || '—' }}
         </el-descriptions-item>
         <el-descriptions-item label="阵容倾向">
-          {{ tendencyMap[detailData.bot?.formationTendency || 'balanced'] || '—' }}
+          {{
+            tendencyMap[detailData.bot?.formationTendency || 'balanced'] || '—'
+          }}
         </el-descriptions-item>
         <el-descriptions-item label="公会等级">
           Lv.{{ detailData.playerInfo?.guildLevel || 1 }}
@@ -26,7 +28,10 @@
           {{ detailData.playerInfo?.adventurerCount || 0 }}
         </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="detailData.bot?.isActive ? 'success' : 'info'" size="small">
+          <el-tag
+            :type="detailData.bot?.isActive ? 'success' : 'info'"
+            size="small"
+          >
             {{ detailData.bot?.isActive ? '活跃' : '停用' }}
           </el-tag>
         </el-descriptions-item>
@@ -34,7 +39,11 @@
           {{ formatNumberWithCommas(detailData.bot?.totalActions || 0) }}
         </el-descriptions-item>
         <el-descriptions-item label="上次行动">
-          {{ detailData.bot?.lastTickAt ? formatDate(detailData.bot.lastTickAt) : '—' }}
+          {{
+            detailData.bot?.lastTickAt
+              ? formatDate(detailData.bot.lastTickAt)
+              : '—'
+          }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -44,7 +53,9 @@
           {{ formatNumberWithCommas(detailData.inventory?.attackCrystal || 0) }}
         </el-descriptions-item>
         <el-descriptions-item label="防御水晶">
-          {{ formatNumberWithCommas(detailData.inventory?.defenseCrystal || 0) }}
+          {{
+            formatNumberWithCommas(detailData.inventory?.defenseCrystal || 0)
+          }}
         </el-descriptions-item>
         <el-descriptions-item label="速度水晶">
           {{ formatNumberWithCommas(detailData.inventory?.speedCrystal || 0) }}
@@ -59,7 +70,9 @@
 
       <el-divider />
       <h4 class="mb-2">阵容</h4>
-      <p class="text-xs text-gray-400 mb-3">↑ 前排（面向敌人） · ↓ 后排 · 点击头像查看冒险家详情</p>
+      <p class="text-xs text-gray-400 mb-3">
+        ↑ 前排（面向敌人） · ↓ 后排 · 点击头像查看冒险家详情
+      </p>
       <div v-if="formationBoards.length" class="grid grid-cols-1 gap-4 mb-4">
         <div
           v-for="formation in formationBoards"
@@ -68,8 +81,11 @@
         >
           <div class="flex items-start justify-between gap-3 mb-3">
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
-                槽{{ formation.slot }} · {{ formation.name || `阵容${formation.slot}` }}
+              <p
+                class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate"
+              >
+                槽{{ formation.slot }} ·
+                {{ formation.name || `阵容${formation.slot}` }}
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 已放置 {{ formation.memberCount }} 名冒险家

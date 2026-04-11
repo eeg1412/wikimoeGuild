@@ -12,7 +12,11 @@
   >
     <el-form :model="editForm" label-width="120px">
       <el-form-item label="状态">
-        <el-switch v-model="editForm.isActive" active-text="活跃" inactive-text="停用" />
+        <el-switch
+          v-model="editForm.isActive"
+          active-text="活跃"
+          inactive-text="停用"
+        />
       </el-form-item>
       <el-form-item label="阵容倾向">
         <el-select v-model="editForm.formationTendency" style="width: 100%">
@@ -39,7 +43,11 @@
           {{ name }}
         </el-button>
       </div>
-      <el-form-item v-for="weight in weightFields" :key="weight.key" :label="weight.label">
+      <el-form-item
+        v-for="weight in weightFields"
+        :key="weight.key"
+        :label="weight.label"
+      >
         <el-slider
           v-model="editForm.behaviorWeights[weight.key]"
           :min="0"
@@ -103,7 +111,9 @@
           </div>
         </el-form-item>
         <el-form-item label="出售稀有度">
-          <el-checkbox-group v-model="editForm.marketSettings.sellRuneStones.rarities">
+          <el-checkbox-group
+            v-model="editForm.marketSettings.sellRuneStones.rarities"
+          >
             <el-checkbox value="normal">普通</el-checkbox>
             <el-checkbox value="rare">稀有</el-checkbox>
             <el-checkbox value="legendary">传说</el-checkbox>
@@ -111,12 +121,21 @@
         </el-form-item>
       </template>
       <el-form-item label="备注">
-        <el-input v-model="editForm.note" type="textarea" :rows="2" maxlength="500" />
+        <el-input
+          v-model="editForm.note"
+          type="textarea"
+          :rows="2"
+          maxlength="500"
+        />
       </el-form-item>
       <el-divider content-position="left">公会信息</el-divider>
       <el-form-item label="公会名">
         <div class="flex gap-2 w-full">
-          <el-input v-model="guildNameInput" placeholder="新公会名" maxlength="20" />
+          <el-input
+            v-model="guildNameInput"
+            placeholder="新公会名"
+            maxlength="20"
+          />
           <el-button
             type="primary"
             :disabled="!!actioningId || !guildNameInput"
@@ -154,7 +173,9 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button :disabled="!!actioningId" @click="dialogVisible = false">取消</el-button>
+      <el-button :disabled="!!actioningId" @click="dialogVisible = false"
+        >取消</el-button
+      >
       <el-button type="primary" :loading="!!actioningId" @click="handleUpdate">
         保存
       </el-button>
@@ -313,7 +334,8 @@ function createDefaultEditForm() {
 function applyBotToForm(bot) {
   const defaults = createDefaultEditForm()
   editForm.isActive = bot.isActive
-  editForm.formationTendency = bot.formationTendency || defaults.formationTendency
+  editForm.formationTendency =
+    bot.formationTendency || defaults.formationTendency
   editForm.note = bot.note || ''
 
   const weights = bot.behaviorWeights || {}
@@ -325,12 +347,17 @@ function applyBotToForm(bot) {
   const sellCrystals = marketSettings.sellCrystals || {}
   editForm.marketSettings.sellCrystals.enabled = sellCrystals.enabled || false
   editForm.marketSettings.sellCrystals.reserveAmount =
-    sellCrystals.reserveAmount ?? sellCrystals.maxAmount ?? defaults.marketSettings.sellCrystals.reserveAmount
+    sellCrystals.reserveAmount ??
+    sellCrystals.maxAmount ??
+    defaults.marketSettings.sellCrystals.reserveAmount
   editForm.marketSettings.sellCrystals.maxMarketAmount =
-    sellCrystals.maxMarketAmount ?? sellCrystals.maxAmount ?? defaults.marketSettings.sellCrystals.maxMarketAmount
+    sellCrystals.maxMarketAmount ??
+    sellCrystals.maxAmount ??
+    defaults.marketSettings.sellCrystals.maxMarketAmount
 
   const sellRuneStones = marketSettings.sellRuneStones || {}
-  editForm.marketSettings.sellRuneStones.enabled = sellRuneStones.enabled || false
+  editForm.marketSettings.sellRuneStones.enabled =
+    sellRuneStones.enabled || false
   editForm.marketSettings.sellRuneStones.maxAmount =
     sellRuneStones.maxAmount ?? defaults.marketSettings.sellRuneStones.maxAmount
   editForm.marketSettings.sellRuneStones.rarities =
@@ -381,7 +408,9 @@ async function handleUpdateGuildName() {
   if (!guildNameInput.value || !props.bot?._id) return
   actioningId.value = 'guildName'
   try {
-    await updateBotGuildNameApi(props.bot._id, { guildName: guildNameInput.value })
+    await updateBotGuildNameApi(props.bot._id, {
+      guildName: guildNameInput.value
+    })
     ElMessage.success({ message: '公会名修改成功', showClose: true })
     guildNameInput.value = ''
     await fetchEditGuildInfo(props.bot._id)
@@ -405,7 +434,9 @@ async function handleSaveGuildIcon() {
   if (!guildIconBase64.value || !props.bot?._id) return
   actioningId.value = 'guildIcon'
   try {
-    await updateBotGuildIconApi(props.bot._id, { iconBase64: guildIconBase64.value })
+    await updateBotGuildIconApi(props.bot._id, {
+      iconBase64: guildIconBase64.value
+    })
     ElMessage.success({ message: '公会图标修改成功', showClose: true })
     guildIconBase64.value = ''
     await fetchEditGuildInfo(props.bot._id)

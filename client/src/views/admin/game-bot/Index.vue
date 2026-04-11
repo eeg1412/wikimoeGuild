@@ -31,7 +31,11 @@
             搜索
           </el-button>
           <el-button :disabled="loading" @click="handleReset">重置</el-button>
-          <el-button type="success" :disabled="loading" @click="openCreateDialog">
+          <el-button
+            type="success"
+            :disabled="loading"
+            @click="openCreateDialog"
+          >
             创建机器人
           </el-button>
         </el-form-item>
@@ -39,7 +43,12 @@
     </el-card>
 
     <el-card shadow="never">
-      <ResponsiveTable :data="tableData" v-loading="loading" stripe style="width: 100%">
+      <ResponsiveTable
+        :data="tableData"
+        v-loading="loading"
+        stripe
+        style="width: 100%"
+      >
         <ResponsiveTableColumn label="公会名" min-width="120">
           <template #default="{ row }">
             {{ row.playerInfo?.guildName || '—' }}
@@ -73,7 +82,12 @@
           </template>
         </ResponsiveTableColumn>
         <ResponsiveTableColumn label="备注" prop="note" min-width="120" />
-        <ResponsiveTableColumn label="操作" width="280" align="center" fixed="right">
+        <ResponsiveTableColumn
+          label="操作"
+          width="280"
+          align="center"
+          fixed="right"
+        >
           <template #default="{ row }">
             <el-button
               type="primary"
@@ -130,7 +144,11 @@
     </el-card>
 
     <BotCreateDialog v-model="createDialogVisible" @created="fetchData" />
-    <BotEditDialog v-model="editDialogVisible" :bot="editingBot" @updated="fetchData" />
+    <BotEditDialog
+      v-model="editDialogVisible"
+      :bot="editingBot"
+      @updated="fetchData"
+    />
     <BotDetailDialog v-model="detailDialogVisible" :bot-id="detailBotId" />
     <BotAdventurerManagerDialog
       v-model="adventurerDialogVisible"

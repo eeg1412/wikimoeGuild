@@ -170,11 +170,15 @@ function resetCreateForm() {
   createForm.guildName = defaults.guildName
   createForm.formationTendency = defaults.formationTendency
   createForm.initialGold = defaults.initialGold
-  createForm.initialCrystals.attackCrystal = defaults.initialCrystals.attackCrystal
-  createForm.initialCrystals.defenseCrystal = defaults.initialCrystals.defenseCrystal
-  createForm.initialCrystals.speedCrystal = defaults.initialCrystals.speedCrystal
+  createForm.initialCrystals.attackCrystal =
+    defaults.initialCrystals.attackCrystal
+  createForm.initialCrystals.defenseCrystal =
+    defaults.initialCrystals.defenseCrystal
+  createForm.initialCrystals.speedCrystal =
+    defaults.initialCrystals.speedCrystal
   createForm.initialCrystals.sanCrystal = defaults.initialCrystals.sanCrystal
-  createForm.initialCrystals.runeFragment = defaults.initialCrystals.runeFragment
+  createForm.initialCrystals.runeFragment =
+    defaults.initialCrystals.runeFragment
   createForm.note = defaults.note
   createGuildIconBase64.value = ''
 }

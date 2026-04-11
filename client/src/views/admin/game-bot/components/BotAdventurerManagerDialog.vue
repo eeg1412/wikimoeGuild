@@ -8,10 +8,18 @@
     align-center
   >
     <div v-if="loading" v-loading="true" style="min-height: 180px"></div>
-    <ResponsiveTable v-else :data="detailData?.adventurers || []" stripe size="small">
+    <ResponsiveTable
+      v-else
+      :data="detailData?.adventurers || []"
+      stripe
+      size="small"
+    >
       <ResponsiveTableColumn label="头像" width="70">
         <template #default="{ row }">
-          <GameAdventurerAvatar :adventurer="row" style="width: 32px; height: 32px" />
+          <GameAdventurerAvatar
+            :adventurer="row"
+            style="width: 32px; height: 32px"
+          />
         </template>
       </ResponsiveTableColumn>
       <ResponsiveTableColumn label="名字" min-width="100">
@@ -28,7 +36,12 @@
       <ResponsiveTableColumn label="防御" prop="defenseLevel" min-width="60" />
       <ResponsiveTableColumn label="速度" prop="speedLevel" min-width="60" />
       <ResponsiveTableColumn label="SAN" prop="SANLevel" min-width="60" />
-      <ResponsiveTableColumn label="操作" width="160" align="center" fixed="right">
+      <ResponsiveTableColumn
+        label="操作"
+        width="160"
+        align="center"
+        fixed="right"
+      >
         <template #default="{ row }">
           <el-button
             type="primary"
@@ -66,7 +79,11 @@
   >
     <el-form label-width="80px">
       <el-form-item label="新名字">
-        <el-input v-model="advNameInput" placeholder="请输入新名字" maxlength="20" />
+        <el-input
+          v-model="advNameInput"
+          placeholder="请输入新名字"
+          maxlength="20"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
