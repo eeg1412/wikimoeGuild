@@ -97,7 +97,7 @@
               type="warning"
               size="small"
               text
-              :disabled="!!actioningId"
+              :disabled="!!actioningId || isBotRow(row)"
               @click="openBanDialog(row)"
             >
               封禁
@@ -106,7 +106,7 @@
               type="primary"
               size="small"
               text
-              :disabled="!!actioningId"
+              :disabled="!!actioningId || isBotRow(row)"
               @click="openPasswordDialog(row)"
             >
               改密
@@ -244,6 +244,15 @@ function disablePastDate(date) {
   return date < new Date()
 }
 
+function isBotRow(row) {
+  const email = row?.accountInfo?.email || ''
+  return /^bot_[^@]+@system\.internal$/i.test(email)
+}
+
+function isDialogCancel(error) {
+  return error === 'cancel' || error === 'close'
+}
+
 async function fetchData() {
   loading.value = true
   try {
@@ -273,12 +282,20 @@ function handleReset() {
 }
 
 function openBanDialog(row) {
+  if (isBotRow(row)) {
+    ElMessage.error({ message: '机器人账号禁止封号', showClose: true })
+    return
+  }
   currentRow.value = row
   banForm.banExpires = null
   banDialogVisible.value = true
 }
 
 function openPasswordDialog(row) {
+  if (isBotRow(row)) {
+    ElMessage.error({ message: '机器人账号禁止修改密码', showClose: true })
+    return
+  }
   currentRow.value = row
   passwordForm.newPassword = ''
   passwordDialogVisible.value = true
@@ -306,8 +323,13 @@ async function handleBan() {
     ElMessage.success({ message: '封禁成功', showClose: true })
     banDialogVisible.value = false
     fetchData()
-  } catch {
-    // 取消或失败
+  } catch (err) {
+    if (!isDialogCancel(err)) {
+      ElMessage.error({
+        message: err?.response?.data?.message || '封禁失败',
+        showClose: true
+      })
+    }
   } finally {
     actioningId.value = null
   }
@@ -328,8 +350,13 @@ async function handleChangePassword() {
     })
     ElMessage.success({ message: '密码修改成功', showClose: true })
     passwordDialogVisible.value = false
-  } catch {
-    // 取消或失败
+  } catch (err) {
+    if (!isDialogCancel(err)) {
+      ElMessage.error({
+        message: err?.response?.data?.message || '密码修改失败',
+        showClose: true
+      })
+    }
   } finally {
     actioningId.value = null
   }

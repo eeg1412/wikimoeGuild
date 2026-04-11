@@ -1,5 +1,29 @@
 import GamePlayerBanLog from '../../models/gamePlayerBanLogs.js'
 import GamePlayerAccount from '../../models/gamePlayerAccounts.js'
+import GameBotProfile from '../../models/gameBotProfile.js'
+
+async function assertNotBotAccount({ accountId, email, actionLabel }) {
+  let targetAccountId = accountId
+
+  if (!targetAccountId && email) {
+    const account = await GamePlayerAccount.findOne({ email })
+      .select('_id')
+      .lean()
+    targetAccountId = account?._id || null
+  }
+
+  if (!targetAccountId) return
+
+  const bot = await GameBotProfile.findOne({ account: targetAccountId })
+    .select('_id')
+    .lean()
+  if (!bot) return
+
+  const err = new Error(`机器人账号禁止${actionLabel}`)
+  err.statusCode = 403
+  err.expose = true
+  throw err
+}
 
 /**
  * 封禁玩家账号
@@ -11,6 +35,8 @@ import GamePlayerAccount from '../../models/gamePlayerAccounts.js'
  * @param {string} [reason] - 封禁原因（可选）
  */
 export async function banPlayer(email, banExpires) {
+  await assertNotBotAccount({ email, actionLabel: '封号' })
+
   const expires = new Date(banExpires)
   if (isNaN(expires.getTime()) || expires <= new Date()) {
     const err = new Error('封禁到期时间必须是未来的有效时间')
@@ -45,6 +71,8 @@ export async function banPlayer(email, banExpires) {
  * @param {string} newPassword - 新密码（明文，存储前会自动加密）
  */
 export async function changePlayerPassword(accountId, newPassword) {
+  await assertNotBotAccount({ accountId, actionLabel: '修改密码' })
+
   const account = await GamePlayerAccount.findById(accountId)
   if (!account) {
     const err = new Error('玩家账号不存在')

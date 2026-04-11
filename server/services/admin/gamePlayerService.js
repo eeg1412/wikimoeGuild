@@ -1,5 +1,5 @@
-import GamePlayerAccount from '../../models/gamePlayerAccounts.js'
 import GamePlayerInfo from '../../models/gamePlayerInfos.js'
+import GameBotProfile from '../../models/gameBotProfile.js'
 
 /**
  * 玩家列表（分页）
@@ -30,6 +30,15 @@ export async function list({ page = 1, pageSize = 20, email, guildName }) {
       }
     },
     { $unwind: '$accountInfo' },
+    {
+      $lookup: {
+        from: GameBotProfile.collection.name,
+        localField: 'account',
+        foreignField: 'account',
+        as: 'botInfo'
+      }
+    },
+    { $match: { 'botInfo.0': { $exists: false } } },
     ...(email
       ? [{ $match: { 'accountInfo.email': { $regex: email, $options: 'i' } } }]
       : []),
