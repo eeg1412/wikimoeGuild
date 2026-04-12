@@ -178,6 +178,12 @@ import {
   upgradeRuneStoneApi
 } from '@/api/game/runeStone.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
+import { getGameSettingsApi } from '@/api/game/config.js'
+import {
+  RUNE_STONE_UPGRADE_NORMAL_BASE,
+  RUNE_STONE_UPGRADE_RARE_BASE,
+  RUNE_STONE_UPGRADE_LEGENDARY_BASE
+} from 'shared/constants/index.js'
 import RuneStoneInfoCard from '@/components/RuneStoneInfoCard.vue'
 import RuneStoneSelectPanel from '@/components/RuneStoneSelectPanel.vue'
 import RuneStoneSynthesisDialog from '@/components/RuneStoneSynthesisDialog.vue'
@@ -270,18 +276,42 @@ async function fetchInventory() {
 watch(
   () => props.modelValue,
   val => {
-    if (val) fetchInventory()
+    if (val) {
+      fetchInventory()
+      fetchGameSettings()
+    }
   },
   { immediate: true }
 )
 
-// ── 升级 ──
-const RARITY_UPGRADE_COST = { normal: 100, rare: 1000, legendary: 5000 }
+// ── 游戏配置 ──
+const gameSettings = ref({})
 
+async function fetchGameSettings() {
+  try {
+    const res = await getGameSettingsApi()
+    gameSettings.value = res.data.data || {}
+  } catch {
+    // ignore
+  }
+}
+
+// ── 升级 ──
 const upgradeCost = computed(() => {
   if (!props.adventurer?.runeStone) return 0
   const rs = props.adventurer.runeStone
-  return (RARITY_UPGRADE_COST[rs.rarity] || 100) * rs.level
+  const costCoeff = {
+    normal:
+      gameSettings.value.runeStoneUpgradeNormalBase ??
+      RUNE_STONE_UPGRADE_NORMAL_BASE,
+    rare:
+      gameSettings.value.runeStoneUpgradeRareBase ??
+      RUNE_STONE_UPGRADE_RARE_BASE,
+    legendary:
+      gameSettings.value.runeStoneUpgradeLegendaryBase ??
+      RUNE_STONE_UPGRADE_LEGENDARY_BASE
+  }
+  return (costCoeff[rs.rarity] || costCoeff.normal) * rs.level
 })
 
 const canUpgrade = computed(() => {

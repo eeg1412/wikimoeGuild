@@ -1914,9 +1914,6 @@ function formatTime(t) {
 
 const AUTO_ARENA_ROUND_DELAY_MS = 3000
 const AUTO_ARENA_SCENE_SWITCH_MS = 260
-const AUTO_ARENA_MAX_REFRESHES = 5
-const AUTO_ARENA_MIN_WIN_PROB = 0.6
-const AUTO_ARENA_MIN_SCORE_THRESHOLD = 5
 
 const { visible: autoArenaDialogVisible } = useDialogRoute('autoArena')
 const autoArenaRunning = ref(false)
@@ -2090,68 +2087,46 @@ const autoArenaBattleDisplay = computed(() => {
   return '⚔️ 准备中…'
 })
 
-// ── 对手评分算法 ──
-function scoreArenaOpponent(opponent) {
-  const myPoints = arenaInfo.value.registration?.points ?? 500
-  const myCombat = arenaCombatPower.value
-  const opPoints = opponent.points ?? 500
-  const opCombat = opponent.combatPower ?? 0
-
-  // 分值变动幅度（与服务端逻辑一致）
-  let changeAmount
-  if (opPoints < myPoints) {
-    changeAmount = 10
-  } else {
-    const pointsDiff = Math.abs(myPoints - opPoints)
-    changeAmount = Math.min(Math.max(pointsDiff, 10), 100)
-  }
-
-  // 根据战斗力比值估算胜率
-  let winProb = 0.5
-  if (myCombat > 0 && opCombat > 0) {
-    const ratio = myCombat / opCombat
-    if (ratio > 2.0) winProb = 0.98
-    else if (ratio > 1.5) winProb = 0.95
-    else if (ratio > 1.3) winProb = 0.88
-    else if (ratio > 1.15) winProb = 0.78
-    else if (ratio > 1.0) winProb = 0.65
-    else if (ratio > 0.9) winProb = 0.55
-    else if (ratio > 0.8) winProb = 0.42
-    else if (ratio > 0.7) winProb = 0.3
-    else if (ratio > 0.6) winProb = 0.2
-    else winProb = 0.1
-  }
-
-  return {
-    score: changeAmount * (2 * winProb - 1),
-    winProb,
-    changeAmount
-  }
-}
-
 /**
- * 寻找最佳对手
- * @param {boolean} strictMode - 严格模式下需要期望值 >= 阈值，宽松模式下只需胜率 >= 最低胜率
+ * 寻找下一个自动对战对手
+ * 策略：
+ * - 优先挑战竞技点高于自己的对手（按积分从高到低）
+ * - 若无高积分对手，且之前没输给过高积分对手，且未尝试过刷新 → 返回 needRefresh
+ * - 刷新后仍无高积分对手 / 或曾输给过高积分对手 → 从高到低挑战剩余对手
+ * - 列表全部打完 → needRefresh
+ * @param {boolean} lostToHigher - 本轮是否曾输给过高积分对手
+ * @param {boolean} alreadyRefreshed - 本轮是否已经刷新过（刷新后仍无高积分对手时不再刷新）
+ * @returns {{ opponent, needRefresh: boolean }}
  */
-function findBestAutoArenaOpponent(strictMode = true) {
-  const candidates = []
-  for (const op of matchList.value) {
-    if (challengedOpponents.value.has(op._id)) continue
-    const info = scoreArenaOpponent(op)
-    if (info.winProb >= AUTO_ARENA_MIN_WIN_PROB) {
-      candidates.push({ opponent: op, ...info })
-    }
-  }
-  if (candidates.length === 0) return null
-  candidates.sort((a, b) => b.score - a.score)
+function findNextAutoArenaOpponent(lostToHigher, alreadyRefreshed) {
+  const myPoints = arenaInfo.value.registration?.points ?? 500
+  const unchallenged = matchList.value.filter(
+    op => !challengedOpponents.value.has(op._id)
+  )
 
-  // 严格模式：如果最优对手的期望值太低（如全都是低分对手，只能获得+10且胜率一般），
-  // 返回 null 以触发刷新，寻找更高价值的对手
-  if (strictMode && candidates[0].score < AUTO_ARENA_MIN_SCORE_THRESHOLD) {
-    return null
+  if (unchallenged.length === 0) {
+    return { opponent: null, needRefresh: true }
   }
 
-  return candidates[0].opponent
+  // 按积分从高到低排序
+  unchallenged.sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+
+  // 分成高积分和低积分两组
+  const higherOps = unchallenged.filter(op => (op.points ?? 0) > myPoints)
+
+  if (higherOps.length > 0) {
+    // 优先挑战最高积分对手
+    return { opponent: higherOps[0], needRefresh: false }
+  }
+
+  // 没有高积分对手了
+  if (!lostToHigher && !alreadyRefreshed) {
+    // 之前全胜高积分对手，且还没刷新过 → 刷新一次寻找新的高积分对手
+    return { opponent: null, needRefresh: true }
+  }
+
+  // 曾输给过高积分对手 或 已经刷新过 → 按积分从高到低打剩余对手
+  return { opponent: unchallenged[0], needRefresh: false }
 }
 
 // ── 场景管理 ──
@@ -2365,6 +2340,11 @@ function resetAutoArenaDialogState() {
 }
 
 // ── 核心流程 ──
+// 追踪本轮是否曾输给过高积分对手
+let autoArenaLostToHigher = false
+// 追踪是否刷新后仍无高积分对手（防止重复刷新）
+let autoArenaRefreshedNoHigher = false
+
 async function startAutoArena() {
   if (autoArenaRunning.value) return false
 
@@ -2381,6 +2361,8 @@ async function startAutoArena() {
   autoArenaCooldownSeconds.value = 0
   autoArenaDisplayCount.value = 0
   autoArenaRequestPending.value = false
+  autoArenaLostToHigher = false
+  autoArenaRefreshedNoHigher = false
 
   const runToken = ++autoArenaRunToken
   await acquireAutoArenaWakeLock()
@@ -2405,39 +2387,50 @@ async function startAutoArena() {
 
 /**
  * 寻找最佳对手并设置对战场景
+ * 策略：优先挑战高积分对手，全胜后刷新；输过则继续挑战低积分对手
  * @param {number} runToken
  * @param {boolean} useTransition - 是否使用场景过渡动画
  */
 async function findAndSetupNextOpponent(runToken, useTransition) {
   autoArenaStatusText.value = '正在寻找最佳对手...'
 
-  // 第一阶段：严格模式，只要高价值对手
-  let bestOpponent = findBestAutoArenaOpponent(true)
-  let consecutiveRefreshes = 0
+  let result = findNextAutoArenaOpponent(
+    autoArenaLostToHigher,
+    autoArenaRefreshedNoHigher
+  )
 
-  // 第二阶段：未找到高价值对手，刷新列表寻找（宁愿等CD）
-  while (
-    !bestOpponent &&
+  // 需要刷新时，执行刷新并重新查找
+  if (
+    result.needRefresh &&
+    !result.opponent &&
     autoArenaRunning.value &&
     runToken === autoArenaRunToken
   ) {
-    consecutiveRefreshes++
-    if (consecutiveRefreshes > AUTO_ARENA_MAX_REFRESHES) break
-
-    autoArenaStatusText.value = `🔍 未找到高价值对手，刷新中 (${consecutiveRefreshes}/${AUTO_ARENA_MAX_REFRESHES})...`
+    autoArenaStatusText.value = '🔍 刷新对手列表...'
 
     const refreshed = await autoArenaRefreshMatchList(runToken)
     if (!autoArenaRunning.value || runToken !== autoArenaRunToken) return false
     if (!refreshed) return false
 
-    bestOpponent = findBestAutoArenaOpponent(true)
+    // 刷新后重置 lostToHigher（新的列表可能有新的高积分对手）
+    autoArenaLostToHigher = false
+    // 标记已刷新过，后续不再因无高积分对手而重复刷新
+    autoArenaRefreshedNoHigher = true
+    result = findNextAutoArenaOpponent(
+      autoArenaLostToHigher,
+      autoArenaRefreshedNoHigher
+    )
+
+    // 如果刷新后有高积分对手了，重置标记（下次打完高积分后可以再刷新一次）
+    if (result.opponent) {
+      const myPoints = arenaInfo.value.registration?.points ?? 500
+      if ((result.opponent.points ?? 0) > myPoints) {
+        autoArenaRefreshedNoHigher = false
+      }
+    }
   }
 
-  // 第三阶段：多次刷新后仍无高价值对手，退而求其次，挑战胜率最高的
-  if (!bestOpponent) {
-    bestOpponent = findBestAutoArenaOpponent(false)
-  }
-
+  const bestOpponent = result.opponent
   if (!bestOpponent) return false
 
   // 设置场景
@@ -2465,6 +2458,10 @@ async function executeAutoArenaChallenge(runToken) {
 
   autoArenaStatusText.value = `⚔️ 正在挑战「${opponent.guildName}」...`
   autoArenaRequestPending.value = true
+
+  // 挑战前记录对手积分是否高于自己（使用最新积分比较）
+  const myPointsBefore = arenaInfo.value.registration?.points ?? 500
+  const opponentIsHigher = (opponent.points ?? 0) > myPointsBefore
 
   try {
     const res = await challengeOpponentApi({
@@ -2506,22 +2503,39 @@ async function executeAutoArenaChallenge(runToken) {
       setAutoArenaSceneResult('draw')
       autoArenaStatusText.value = `🤝 与「${opponent.guildName}」平局`
     } else {
-      // defender wins → 失败，停止
+      // defender wins → 失败
       autoArenaLoseCount.value++
       setAutoArenaSceneResult('defender')
       autoArenaStatusText.value = `💀 败给「${opponent.guildName}」${result.pointsChange} pt`
 
-      fetchPlayerInfo()
-      handleStopAutoArena({ finalStatusText: '💀 对战失败，自动对战结束' })
-      return
+      // 如果输给了高积分对手，标记以便后续不再刷新、继续挑战低积分对手
+      if (opponentIsHigher) {
+        autoArenaLostToHigher = true
+      }
     }
 
-    // 胜利或平局 → 继续
+    // 不论胜负，都继续（除非触发停止条件）
     fetchPlayerInfo()
 
     if (runToken !== autoArenaRunToken || !autoArenaRunning.value) return
 
-    // 检查剩余挑战次数
+    // 停止条件1：单次失败竞技点下降 >= 100
+    if (result.pointsChange <= -100) {
+      handleStopAutoArena({
+        finalStatusText: `💀 单次竞技点下降 ${result.pointsChange}，自动对战结束`
+      })
+      return
+    }
+
+    // 停止条件2：本轮总竞技点收益 < -100
+    if (autoArenaTotalPointsChange.value < -100) {
+      handleStopAutoArena({
+        finalStatusText: `💀 总竞技点收益 ${autoArenaTotalPointsChange.value}，自动对战结束`
+      })
+      return
+    }
+
+    // 停止条件3：挑战次数用完
     if ((arenaInfo.value.registration?.challengeUses ?? 0) <= 0) {
       handleStopAutoArena({
         finalStatusText: '📋 挑战次数已用完，自动对战结束'

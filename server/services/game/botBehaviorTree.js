@@ -454,43 +454,94 @@ async function actionArena(accountId) {
       3 + Math.floor(Math.random() * 3) // 3~5次
     )
     const actions = []
+    let lostToHigher = false
+    let myPoints = info.registration.points
+    let consecutiveRefreshes = 0
+    const maxRefreshes = 3
 
     for (let i = 0; i < maxChallenges; i++) {
       if (i > 0) await delay(3200) // 战斗冷却
 
-      // 获取对手列表
+      // 获取对手列表（含已挑战ID列表）
       const matchResult = await arenaService.getMatchList(accountId, false)
       const opponents = matchResult.opponents || []
       if (opponents.length === 0) break
 
-      // 重新获取当前积分
+      // 使用服务端返回的最新积分
+      myPoints = matchResult.myPoints ?? myPoints
+
+      // 检查剩余挑战次数
       const currentInfo = await arenaService.getArenaInfo(accountId)
-      const myPoints =
-        currentInfo.registration?.points || info.registration.points
       if ((currentInfo.registration?.challengeUses || 0) <= 0) break
+      myPoints = currentInfo.registration?.points ?? myPoints
 
-      const sorted = [...opponents]
-        .filter(o => !o.alreadyChallenged)
-        .sort(
-          (a, b) =>
-            Math.abs(a.points - myPoints) - Math.abs(b.points - myPoints)
-        )
+      // 用 challengedIds 过滤已挑战的对手
+      const challengedSet = new Set(
+        (matchResult.challengedIds || []).map(id => id.toString())
+      )
+      const unchallenged = opponents.filter(
+        o =>
+          !challengedSet.has(o._id?.toString()) &&
+          !challengedSet.has(o.registrationId?.toString())
+      )
 
-      if (sorted.length === 0) {
-        // 所有对手都已挑战过，刷新
+      // 按积分分组：高于自己的 和 低于/等于自己的
+      const higherOps = unchallenged
+        .filter(o => o.points > myPoints)
+        .sort((a, b) => b.points - a.points)
+      const lowerOps = unchallenged
+        .filter(o => o.points <= myPoints)
+        .sort((a, b) => b.points - a.points)
+
+      let target = null
+      if (higherOps.length > 0) {
+        // 优先挑战高积分对手
+        target = higherOps[0]
+      } else if (unchallenged.length === 0) {
+        // 所有对手都已挑战过，刷新列表
+        consecutiveRefreshes++
+        if (consecutiveRefreshes > maxRefreshes) break
         await safeExec('刷新对手', () =>
           arenaService.getMatchList(accountId, true)
         )
+        lostToHigher = false
         continue
+      } else if (!lostToHigher) {
+        // 没有高积分对手 & 没输给过高积分对手 → 刷新寻找新的高积分对手
+        consecutiveRefreshes++
+        if (consecutiveRefreshes > maxRefreshes) {
+          // 刷新次数用完，挑战低积分对手
+          target = lowerOps[0]
+        } else {
+          await safeExec('刷新对手', () =>
+            arenaService.getMatchList(accountId, true)
+          )
+          lostToHigher = false
+          continue
+        }
+      } else {
+        // 输给过高积分对手，不刷新，继续挑战低积分对手
+        target = lowerOps[0]
       }
 
-      const target = sorted[0]
+      if (!target) break
+
       const result = await safeExec('竞技场挑战', () =>
         arenaService.challengeOpponent(accountId, target.registrationId)
       )
       if (result) {
+        // 更新本地积分为最新值
+        myPoints = result.newPoints ?? myPoints
         actions.push(`对手积分${target.points}`)
+        // 判断是否输给了高积分对手
+        if (
+          target.points > myPoints + (result.pointsChange || 0) &&
+          result.battleResult?.winner !== 'attacker'
+        ) {
+          lostToHigher = true
+        }
       }
+      consecutiveRefreshes = 0
     }
 
     return actions.length > 0
