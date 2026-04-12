@@ -2,7 +2,7 @@
   <el-dialog
     v-model="dialogVisible"
     title="创建机器人"
-    width="520px"
+    width="600px"
     :close-on-click-modal="!loading"
     :close-on-press-escape="!loading"
     :show-close="!loading"
@@ -11,11 +11,11 @@
     align-center
   >
     <el-form :model="createForm" label-width="120px">
-      <el-form-item label="公会名">
-        <el-input
-          v-model="createForm.guildName"
-          placeholder="留空则自动生成"
-          maxlength="20"
+      <el-form-item label="状态">
+        <el-switch
+          v-model="createForm.isActive"
+          active-text="活跃"
+          inactive-text="停用"
         />
       </el-form-item>
       <el-form-item label="阵容倾向">
@@ -25,7 +25,91 @@
           <el-option label="防御型" value="defensive" />
           <el-option label="刺客型" value="assassin" />
         </el-select>
+        <div class="text-xs text-gray-400 mt-1">
+          决定冒险家角色分配：攻击型=1排坦克+4排输出；防御型=3排坦克+2排输出；均衡型=2排坦克+1排平衡+1排刺客+1排输出；刺客型=1排坦克+4排刺客。
+        </div>
       </el-form-item>
+      <el-divider content-position="left">行为权重 (0-100)</el-divider>
+      <div class="text-xs text-gray-400 mb-3 px-4">
+        权重决定每项行动的执行概率，数值越高越可能执行。
+        <br />
+        <span class="text-blue-400"
+          >注：收获水晶、卖水晶、招募冒险家、升级属性、公会升级
+          已成为共通行动，每次都会自动执行。</span
+        >
+      </div>
+      <div class="mb-3 px-4 flex flex-wrap gap-2">
+        <el-button
+          v-for="(_, name) in weightPresets"
+          :key="name"
+          size="small"
+          @click="applyWeightPreset(name)"
+        >
+          {{ name }}
+        </el-button>
+      </div>
+      <el-form-item
+        v-for="weight in weightFields"
+        :key="weight.key"
+        :label="weight.label"
+      >
+        <el-slider
+          v-model="createForm.behaviorWeights[weight.key]"
+          :min="0"
+          :max="100"
+          show-input
+          input-size="small"
+        />
+      </el-form-item>
+      <el-divider content-position="left">市场交易设置</el-divider>
+      <div class="text-xs text-gray-400 mb-3 px-4">
+        机器人会智能计算升级所需的水晶保留量，多余的水晶将自动出售换取金币用于招募冒险家和公会升级。
+      </div>
+      <el-form-item label="水晶挂卖市场数">
+        <el-input-number
+          v-model="createForm.marketSettings.sellCrystals.maxMarketAmount"
+          :min="0"
+          :max="99999"
+          :step="100"
+          style="width: 100%"
+        />
+        <div class="text-xs text-gray-400 mt-1">
+          每种水晶同时在自由市场最多挂卖此数量。超出部分会直接卖给官方。
+          <br />
+          设置为 0 则全部直接卖给官方（不挂单到市场）。
+        </div>
+      </el-form-item>
+      <el-form-item label="出售符文石">
+        <el-switch
+          v-model="createForm.marketSettings.sellRuneStones.enabled"
+          active-text="开启"
+          inactive-text="关闭"
+        />
+      </el-form-item>
+      <template v-if="createForm.marketSettings.sellRuneStones.enabled">
+        <el-form-item label="最大挂卖数">
+          <el-input-number
+            v-model="createForm.marketSettings.sellRuneStones.maxAmount"
+            :min="0"
+            :max="100"
+            :step="1"
+            style="width: 100%"
+          />
+          <div class="text-xs text-gray-400 mt-1">
+            同时挂卖的符文石数量上限，超出时下架低级替换高级的，低级卖官方。
+          </div>
+        </el-form-item>
+        <el-form-item label="出售稀有度">
+          <el-checkbox-group
+            v-model="createForm.marketSettings.sellRuneStones.rarities"
+          >
+            <el-checkbox value="normal">普通</el-checkbox>
+            <el-checkbox value="rare">稀有</el-checkbox>
+            <el-checkbox value="legendary">传说</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </template>
+      <el-divider content-position="left">初始资源</el-divider>
       <el-form-item label="初始金币">
         <el-input-number
           v-model="createForm.initialGold"
@@ -35,7 +119,6 @@
           style="width: 100%"
         />
       </el-form-item>
-      <el-divider content-position="left">初始水晶</el-divider>
       <el-form-item label="攻击水晶">
         <el-input-number
           v-model="createForm.initialCrystals.attackCrystal"
@@ -89,21 +172,67 @@
           maxlength="500"
         />
       </el-form-item>
-      <el-divider content-position="left">公会图标</el-divider>
+      <el-divider content-position="left">活动时间设置</el-divider>
+      <el-form-item label="限制活动时间">
+        <el-switch
+          v-model="createForm.activeTimeSettings.enabled"
+          active-text="开启"
+          inactive-text="关闭"
+        />
+        <div class="text-xs text-gray-400 mt-1">关闭后机器人将24小时活动。</div>
+      </el-form-item>
+      <template v-if="createForm.activeTimeSettings.enabled">
+        <el-form-item label="活动时段">
+          <div class="flex items-center gap-2 w-full">
+            <el-input-number
+              v-model="createForm.activeTimeSettings.startHour"
+              :min="0"
+              :max="23"
+              :step="1"
+              style="width: 120px"
+            />
+            <span>时 至</span>
+            <el-input-number
+              v-model="createForm.activeTimeSettings.endHour"
+              :min="0"
+              :max="23"
+              :step="1"
+              style="width: 120px"
+            />
+            <span>时</span>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">
+            机器人仅在此时段内执行行动。支持跨天设置（如22时至6时）。
+          </div>
+        </el-form-item>
+      </template>
+      <el-divider content-position="left">公会信息</el-divider>
+      <el-form-item label="公会名">
+        <div class="w-full">
+          <el-input
+            v-model="createForm.guildName"
+            placeholder="留空则自动生成"
+            maxlength="20"
+          />
+          <div class="text-xs text-gray-400 mt-1">
+            留空时会自动生成唯一公会名。
+          </div>
+        </div>
+      </el-form-item>
       <el-form-item label="公会图标">
         <div>
           <Cropper
             :src="createGuildIconBase64"
             :aspect-ratio="1"
-            :width="128"
-            :height="128"
-            :max-width="128"
-            :max-height="128"
+            :width="200"
+            :height="200"
             put-image-type="image/png"
             :put-image-quality="0.9"
             @crop="handleCreateGuildIconCrop"
           />
-          <p class="text-gray-400 text-xs mt-1">留空则使用默认图标</p>
+          <div class="text-xs text-gray-400 mt-2">
+            留空则使用默认图标；裁剪后的图标会在点击底部“创建”后统一提交。
+          </div>
         </div>
       </el-form-item>
     </el-form>
@@ -123,6 +252,12 @@ import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import Cropper from '@/components/Cropper.vue'
 import { createBotApi } from '@/api/admin/bot.js'
+import {
+  botWeightFields,
+  botWeightPresets,
+  buildBotSettingsPayload,
+  createDefaultBotSettings
+} from '@/views/admin/game-bot/botFormShared.js'
 
 const props = defineProps({
   modelValue: {
@@ -138,6 +273,9 @@ const dialogVisible = computed({
   set: value => emit('update:modelValue', value)
 })
 
+const weightFields = botWeightFields
+const weightPresets = botWeightPresets
+
 const loading = ref(false)
 const createGuildIconBase64 = ref('')
 const createForm = reactive(createDefaultForm())
@@ -151,8 +289,8 @@ watch(
 
 function createDefaultForm() {
   return {
+    ...createDefaultBotSettings(),
     guildName: '',
-    formationTendency: 'balanced',
     initialGold: 0,
     initialCrystals: {
       attackCrystal: 0,
@@ -160,15 +298,31 @@ function createDefaultForm() {
       speedCrystal: 0,
       sanCrystal: 0,
       runeFragment: 0
-    },
-    note: ''
+    }
   }
 }
 
 function resetCreateForm() {
   const defaults = createDefaultForm()
-  createForm.guildName = defaults.guildName
+  createForm.isActive = defaults.isActive
   createForm.formationTendency = defaults.formationTendency
+  for (const field of weightFields) {
+    createForm.behaviorWeights[field.key] = defaults.behaviorWeights[field.key]
+  }
+  createForm.marketSettings.sellCrystals.maxMarketAmount =
+    defaults.marketSettings.sellCrystals.maxMarketAmount
+  createForm.marketSettings.sellRuneStones.enabled =
+    defaults.marketSettings.sellRuneStones.enabled
+  createForm.marketSettings.sellRuneStones.maxAmount =
+    defaults.marketSettings.sellRuneStones.maxAmount
+  createForm.marketSettings.sellRuneStones.rarities = [
+    ...defaults.marketSettings.sellRuneStones.rarities
+  ]
+  createForm.activeTimeSettings.enabled = defaults.activeTimeSettings.enabled
+  createForm.activeTimeSettings.startHour =
+    defaults.activeTimeSettings.startHour
+  createForm.activeTimeSettings.endHour = defaults.activeTimeSettings.endHour
+  createForm.guildName = defaults.guildName
   createForm.initialGold = defaults.initialGold
   createForm.initialCrystals.attackCrystal =
     defaults.initialCrystals.attackCrystal
@@ -183,6 +337,14 @@ function resetCreateForm() {
   createGuildIconBase64.value = ''
 }
 
+function applyWeightPreset(presetName) {
+  const preset = weightPresets[presetName]
+  if (!preset) return
+  for (const [key, value] of Object.entries(preset)) {
+    createForm.behaviorWeights[key] = value
+  }
+}
+
 function handleCreateGuildIconCrop(base64) {
   createGuildIconBase64.value = base64
 }
@@ -191,11 +353,10 @@ async function handleCreate() {
   loading.value = true
   try {
     const payload = {
+      ...buildBotSettingsPayload(createForm),
       guildName: createForm.guildName,
-      formationTendency: createForm.formationTendency,
       initialGold: createForm.initialGold,
-      initialCrystals: { ...createForm.initialCrystals },
-      note: createForm.note
+      initialCrystals: { ...createForm.initialCrystals }
     }
     if (createGuildIconBase64.value) {
       payload.iconBase64 = createGuildIconBase64.value

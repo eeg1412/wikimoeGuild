@@ -1,13 +1,16 @@
 /**
  * 机器人行为树引擎
  *
- * 每个整点(8:00-22:00)执行一次行动树，所有行动直接调用游戏服务层，
+ * 每个整点执行一次行动树，所有行动直接调用游戏服务层，
  * 确保所有规则约束与真实玩家一致。
  *
  * 行动树执行流程：
- * 1. 资源收集（结算水晶、领取邮件）
- * 2. 评估当前状态
- * 3. 根据权重和概率选择并执行行动
+ * 1. 资源收集（结算水晶、领取邮件）- 共通行动
+ * 2. 卖水晶换金币（为招募冒险家和公会升级准备资金）- 共通行动
+ * 3. 招募冒险家（优先招募到下次公会升级所需数量，最多25个）- 共通行动
+ * 4. 升级冒险家属性（智能分配水晶）- 共通行动
+ * 5. 公会升级（自动判断条件，可连续升级）- 共通行动
+ * 6. 根据权重和概率选择并执行其他行动
  */
 
 import GameBotProfile from '../../models/gameBotProfile.js'
@@ -37,7 +40,9 @@ import {
   getMaxAdventurerCount,
   getMaxComprehensiveLevel,
   getAdventurerLevelUpCrystalCost,
-  getAdventurerLevelUpGoldCost
+  getAdventurerLevelUpGoldCost,
+  getRequiredMaxLevelAdventurerCount,
+  getGuildLevelUpFee
 } from 'shared/utils/guildLevelUtils.js'
 
 import logger from '../../utils/logger.js'
@@ -171,7 +176,86 @@ async function actionClaimMails(accountId) {
 }
 
 /**
- * 3. 招募冒险家
+ * 计算升级属性所需的水晶总量
+ * @param {object[]} adventurers - 冒险家列表
+ * @param {number} maxCompLevel - 当前公会最大综合等级
+ * @param {number} crystalBase - 升级素材基数
+ * @returns {object} 各类型水晶所需数量 { attackCrystal, defenseCrystal, speedCrystal, sanCrystal }
+ */
+function calculateUpgradeCrystalNeeds(adventurers, maxCompLevel, crystalBase) {
+  const needs = {
+    attackCrystal: 0,
+    defenseCrystal: 0,
+    speedCrystal: 0,
+    sanCrystal: 0
+  }
+
+  const statToKey = {
+    attack: 'attackCrystal',
+    defense: 'defenseCrystal',
+    speed: 'speedCrystal',
+    san: 'sanCrystal'
+  }
+  const levelMap = {
+    attack: 'attackLevel',
+    defense: 'defenseLevel',
+    speed: 'speedLevel',
+    san: 'SANLevel'
+  }
+
+  for (const adv of adventurers) {
+    const compLevel =
+      adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
+    if (compLevel >= maxCompLevel) continue
+
+    // 估算到 maxCompLevel 的全部升级次数
+    const levelsToGain = maxCompLevel - compLevel
+    const levelsPerStat = Math.ceil(levelsToGain / 4)
+
+    for (const stat of ['attack', 'defense', 'speed', 'san']) {
+      const currentLevel = adv[levelMap[stat]]
+      let totalCost = 0
+      for (let i = 0; i < levelsPerStat && currentLevel + i < maxCompLevel; i++) {
+        totalCost += getAdventurerLevelUpCrystalCost(currentLevel + i, crystalBase)
+      }
+      needs[statToKey[stat]] += totalCost
+    }
+  }
+
+  return needs
+}
+
+/**
+ * 计算公会升级所需的金币总量（估算未来若干次升级费用）
+ * 算法：从当前公会等级开始，估算到下一次升级需要的金币，同时也预估招募冒险家的费用
+ * @param {number} guildLevel - 当前公会等级
+ * @param {number} feeBase - 升级手续费基数
+ * @param {number} adventurerCount - 当前冒险家数量
+ * @param {number} recruitPrice - 招募冒险家的费用
+ * @returns {number} 需要预留的金币总量
+ */
+function calculateGuildUpgradeGoldNeeds(
+  guildLevel,
+  feeBase,
+  adventurerCount,
+  recruitPrice
+) {
+  // 下次公会升级的手续费
+  const upgradeFee = getGuildLevelUpFee(guildLevel, feeBase)
+
+  // 下次公会升级需要的满级冒险家数量
+  const requiredAdventurers = getRequiredMaxLevelAdventurerCount(guildLevel)
+  // 还需要招募多少冒险家（未满时需要招募金币）
+  const recruitNeeded = Math.max(0, requiredAdventurers - adventurerCount)
+  const recruitCost = recruitNeeded * recruitPrice
+
+  // 总计：升级费 + 招募费
+  return upgradeFee + recruitCost
+}
+
+/**
+ * 3. 招募冒险家（共通行动）
+ * 优先招募到下次公会升级所需的冒险家数量，最多不超过25个
  */
 async function actionRecruitAdventurer(accountId) {
   return await safeExec('招募冒险家', async () => {
@@ -180,12 +264,17 @@ async function actionRecruitAdventurer(accountId) {
     }).lean()
     if (!playerInfo) return null
 
-    // 机器人最多招募25名（阵容满编），不超过公会等级上限
-    const maxAdventurers = Math.min(
-      getMaxAdventurerCount(playerInfo.guildLevel || 1),
-      25
+    const guildLevel = playerInfo.guildLevel || 1
+    // 下次公会升级需要的满级冒险家数量
+    const requiredForNextUpgrade = getRequiredMaxLevelAdventurerCount(guildLevel)
+    // 机器人优先招募到下次升级所需数量，最多25名，不超过公会等级上限
+    const targetAdventurers = Math.min(
+      requiredForNextUpgrade,
+      25,
+      getMaxAdventurerCount(guildLevel)
     )
-    if (playerInfo.adventurerCount >= maxAdventurers) return null
+
+    if (playerInfo.adventurerCount >= targetAdventurers) return null
 
     const gameSettings = global.$globalConfig?.gameSettings || {}
     const recruitPrice = gameSettings.adventurerRecruitPrice ?? 10000
@@ -194,7 +283,7 @@ async function actionRecruitAdventurer(accountId) {
     let currentGold = playerInfo.gold
     let currentCount = playerInfo.adventurerCount
 
-    while (currentCount < maxAdventurers && currentGold >= recruitPrice) {
+    while (currentCount < targetAdventurers && currentGold >= recruitPrice) {
       const result = await safeExec('招募', () =>
         adventurerService.recruitAdventurer(accountId)
       )
@@ -204,7 +293,7 @@ async function actionRecruitAdventurer(accountId) {
       currentCount++
     }
 
-    return recruited > 0 ? `招募了${recruited}名冒险家` : null
+    return recruited > 0 ? `招募了${recruited}名冒险家（目标${targetAdventurers}名）` : null
   })
 }
 
@@ -648,43 +737,84 @@ async function actionMineExplore(accountId) {
 }
 
 /**
- * 9. 市场交易 — 水晶挂单出售
- * - 开启时检查背包水晶，超出保留量的部分参与出售
- * - 调研当前市场最低价，以最低价出售（无人出售则最低价+10）
- * - 受市场最大挂卖量限制，超出当前可挂卖额度的部分卖给官方快速变现
+ * 9. 卖水晶换金币（共通行动）
+ * - 机器人每次行动都会执行此操作（为招募冒险家和公会升级准备金币）
+ * - 智能计算需要保留多少水晶用于属性升级
+ * - 同时考虑公会升级和招募所需金币，金币不足时额外卖出水晶
+ * - 当设置了 maxMarketAmount，先挂到自由市场，超出部分卖给官方
+ * - 若 maxMarketAmount 为 0 或未设置，则直接卖给官方
  */
-async function actionMarketTrade(accountId, bot) {
-  return await safeExec('市场交易', async () => {
-    const ms = bot.marketSettings || {}
-    const crystalSellSettings = ms.sellCrystals || {}
-    if (!crystalSellSettings.enabled) return null
+async function actionSellCrystals(accountId, bot) {
+  return await safeExec('卖水晶', async () => {
+    const playerInfo = await GamePlayerInfo.findOne({
+      account: accountId
+    }).lean()
+    if (!playerInfo) return null
 
     const inventory = await GamePlayerInventory.findOne({
       account: accountId
     }).lean()
     if (!inventory) return null
 
-    const reserveAmount =
-      crystalSellSettings.reserveAmount ?? crystalSellSettings.maxAmount ?? 1000
-    const maxMarketAmount =
-      crystalSellSettings.maxMarketAmount ??
-      crystalSellSettings.maxAmount ??
-      1000
+    const adventurers = await GameAdventurer.find({ account: accountId })
+      .sort({ comprehensiveLevel: 1 })
+      .lean()
+
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const crystalBase = gameSettings.adventurerLevelUpCrystalBase ?? 100
+    const freeMarketMinPrice = gameSettings.freeMarketMinPrice ?? 100
+    const officialBuyPrice = gameSettings.officialCrystalBuyPrice ?? 100
+    const guildLevel = playerInfo.guildLevel || 1
+    const maxCompLevel = getMaxComprehensiveLevel(guildLevel)
+
+    // 计算属性升级所需的水晶（用于决定保留多少）
+    const crystalNeeds = calculateUpgradeCrystalNeeds(
+      adventurers,
+      maxCompLevel,
+      crystalBase
+    )
+
+    // 计算公会升级 + 招募冒险家所需的金币
+    const feeBase = gameSettings.guildLevelUpFeeBase ?? 1000
+    const recruitPrice = gameSettings.adventurerRecruitPrice ?? 10000
+    const goldNeeded = calculateGuildUpgradeGoldNeeds(
+      guildLevel,
+      feeBase,
+      adventurers.length,
+      recruitPrice
+    )
+    // 当前金币缺口（需要通过卖水晶补足的部分）
+    const goldDeficit = Math.max(0, goldNeeded - (playerInfo.gold || 0))
+    // 按官方价格估算需要额外卖出的水晶总量，平均分配到4种水晶
+    const extraSellPerType =
+      goldDeficit > 0 ? Math.ceil(goldDeficit / officialBuyPrice / 4) : 0
+
+    // 从 marketSettings 获取市场挂卖设置
+    const ms = bot.marketSettings || {}
+    const crystalSellSettings = ms.sellCrystals || {}
+    const maxMarketAmount = crystalSellSettings.maxMarketAmount ?? 0
+
     const crystalTypes = [
       'attackCrystal',
       'defenseCrystal',
       'speedCrystal',
       'sanCrystal'
     ]
-    const gameSettings = global.$globalConfig?.gameSettings || {}
-    const freeMarketMinPrice = gameSettings.freeMarketMinPrice ?? 100
 
     const actions = []
 
     for (const type of crystalTypes) {
       const held = inventory[type] || 0
-      if (held <= reserveAmount) continue
-      const excessQty = held - reserveAmount
+      // 保留用于属性升级的水晶数量（保留估算需要量的1.2倍，确保有余量）
+      const reserveForUpgrade = Math.ceil(crystalNeeds[type] * 1.2)
+      // 基础可出售量 = 持有量 - 属性升级保留量
+      const baseSellable = Math.max(0, held - reserveForUpgrade)
+      // 如果金币不足以支撑公会升级/招募，额外卖出一部分水晶（从保留量中借用）
+      const sellableQty =
+        extraSellPerType > 0
+          ? Math.max(baseSellable, Math.min(held, baseSellable + extraSellPerType))
+          : baseSellable
+      if (sellableQty < 10) continue
 
       // 查看当前已上架的卖单数量
       const myActiveOrders = await GameMarketListing.find({
@@ -698,10 +828,15 @@ async function actionMarketTrade(accountId, bot) {
         0
       )
 
-      // 计算还能挂多少到市场
-      const canListOnMarket = Math.max(0, maxMarketAmount - alreadyListed)
-      const marketQty = Math.min(excessQty, canListOnMarket)
-      const officialQty = excessQty - marketQty
+      let marketQty = 0
+      let officialQty = sellableQty
+
+      // 当设置了 maxMarketAmount 且大于 0，先挂到自由市场
+      if (maxMarketAmount > 0) {
+        const canListOnMarket = Math.max(0, maxMarketAmount - alreadyListed)
+        marketQty = Math.min(sellableQty, canListOnMarket)
+        officialQty = sellableQty - marketQty
+      }
 
       // 挂单到自由市场
       if (marketQty >= 10) {
@@ -736,7 +871,7 @@ async function actionMarketTrade(accountId, bot) {
         )
       }
 
-      // 超出部分卖给官方
+      // 剩余的卖给官方
       if (officialQty >= 10) {
         await safeExec('卖给官方', () =>
           marketService.smartSellCrystal(accountId, type, officialQty)
@@ -1044,15 +1179,27 @@ async function actionRuneStoneManage(accountId, bot) {
 }
 
 /**
- * 11. 公会升级
+ * 11. 公会升级（共通行动）
+ * 自动判断是否满足升级条件（金币 + 满级冒险家数量），可连续升级多次
  */
 async function actionGuildUpgrade(accountId) {
   return await safeExec('公会升级', async () => {
-    const result = await guildService.upgradeGuildLevel(accountId)
-    if (result) {
-      return `公会升级至 Lv.${result.guildLevel}`
+    let totalUpgrades = 0
+    // 每次tick最多尝试3次连续升级（避免无限循环）
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await safeExec('公会升级尝试', () =>
+        guildService.upgradeGuildLevel(accountId)
+      )
+      if (result) {
+        totalUpgrades++
+      } else {
+        break
+      }
     }
-    return null
+    if (totalUpgrades === 0) return null
+    // 获取最新公会等级
+    const info = await GamePlayerInfo.findOne({ account: accountId }).lean()
+    return `公会升级了${totalUpgrades}次，当前 Lv.${info?.guildLevel || '?'}`
   })
 }
 
@@ -1210,6 +1357,17 @@ async function assignAdventurerRoles(bot, grid, adventurers) {
  * 执行单个机器人的一次行动tick
  * @param {object} bot - GameBotProfile文档
  * @returns {string[]} 执行的行动列表
+ *
+ * 共通行动（每次tick都会执行）：
+ * 1. 结算水晶
+ * 2. 领取邮件
+ * 3. 卖水晶换金币（为招募和公会升级准备资金）
+ * 4. 招募冒险家（优先招募到公会升级所需数量）
+ * 5. 升级冒险家属性
+ * 6. 公会升级（自动判断条件，可连续升级）
+ *
+ * 权重行动（按概率执行）：
+ * - 阵容管理、地牢战斗、切换地牢、竞技场、矿场探索、符文石管理
  */
 export async function executeBotTick(bot) {
   const accountId = bot.account.toString()
@@ -1225,7 +1383,7 @@ export async function executeBotTick(bot) {
   // ── 先判断是否发呆（什么都不做）──
   if (shouldAct(weights.idle || 20)) {
     addAction('idle', '本次不做任何事')
-    // 发呆时仍然结算水晶和领邮件（这是被动行为）
+    // 发呆时仍然执行共通行动
     addAction('settleCrystals', await actionSettleCrystals(accountId))
     addAction('claimMails', await actionClaimMails(accountId))
 
@@ -1239,33 +1397,40 @@ export async function executeBotTick(bot) {
     return idleActions
   }
 
-  // ── Phase 1: 必做行动（资源收集）──
+  // ══════════════════════════════════════════════════════
+  // Phase 1: 共通行动（每次tick都会执行，不受权重影响）
+  // ══════════════════════════════════════════════════════
+
+  // 1.1 结算水晶
   addAction('settleCrystals', await actionSettleCrystals(accountId))
+
+  // 1.2 领取邮件附件
   addAction('claimMails', await actionClaimMails(accountId))
 
-  // ── Phase 2: 成长类行动 ──
+  // 1.3 卖水晶换金币（为招募冒险家和公会升级准备金币）
+  addAction('sellCrystals', await actionSellCrystals(accountId, bot))
 
-  // 招募冒险家（先于阵容管理，确保新冒险家能被纳入阵容）
-  if (shouldAct(weights.recruitAdventurer || 60)) {
-    addAction('recruitAdventurer', await actionRecruitAdventurer(accountId))
-  }
+  // 1.4 招募冒险家（优先招募到下次公会升级所需数量）
+  addAction('recruitAdventurer', await actionRecruitAdventurer(accountId))
 
-  // ── Phase 3: 阵容管理（招募后更新阵容和竞技场阵容）──
+  // 1.5 升级冒险家属性
+  addAction('levelUpStats', await actionLevelUpStats(accountId, bot))
+
+  // 1.6 公会升级（自动判断条件，满足则升级，可连续升级多次）
+  addAction('guildUpgrade', await actionGuildUpgrade(accountId))
+
+  // ══════════════════════════════════════════════════════
+  // Phase 2: 阵容管理（按权重执行）
+  // ══════════════════════════════════════════════════════
+
+  // 阵容管理（招募后更新阵容和竞技场阵容）
   if (shouldAct(weights.formationManage || 60)) {
     addAction('formationManage', await actionFormationManage(accountId, bot))
   }
 
-  // 升级属性
-  if (shouldAct(weights.levelUpStats || 80)) {
-    addAction('levelUpStats', await actionLevelUpStats(accountId, bot))
-  }
-
-  // 公会升级
-  if (shouldAct(weights.guildUpgrade || 70)) {
-    addAction('guildUpgrade', await actionGuildUpgrade(accountId))
-  }
-
-  // ── Phase 4: 战斗类行动 ──
+  // ══════════════════════════════════════════════════════
+  // Phase 3: 战斗类行动（按权重执行）
+  // ══════════════════════════════════════════════════════
 
   // 地牢战斗（挑战军团升级迷宫等级）
   if (shouldAct(weights.dungeonBattle || 70)) {
@@ -1282,26 +1447,24 @@ export async function executeBotTick(bot) {
     addAction('arena', await actionArena(accountId))
   }
 
-  // ── Phase 5: 探索类行动 ──
+  // ══════════════════════════════════════════════════════
+  // Phase 4: 探索与资源管理（按权重执行）
+  // ══════════════════════════════════════════════════════
 
   // 矿场探索
   if (shouldAct(weights.mineExplore || 50)) {
     addAction('mineExplore', await actionMineExplore(accountId))
   }
 
-  // ── Phase 6: 经济类行动 ──
-
   // 符文石管理
   if (shouldAct(weights.runeStoneManage || 50)) {
     addAction('runeStoneManage', await actionRuneStoneManage(accountId, bot))
   }
 
-  // 市场交易
-  if (shouldAct(weights.marketTrade || 40)) {
-    addAction('marketTrade', await actionMarketTrade(accountId, bot))
-  }
+  // ══════════════════════════════════════════════════════
+  // 保存 bot 状态
+  // ══════════════════════════════════════════════════════
 
-  // 更新bot状态
   const finalActions = executedActions.filter(a => a.detail)
   bot.lastTickAt = new Date()
   // 追加到历史记录，保留最近100条
@@ -1319,11 +1482,6 @@ export async function executeBotTick(bot) {
  */
 export async function executeAllBotTicks() {
   const currentHour = new Date().getHours()
-  // 只在 8:00 - 22:00 活动
-  if (currentHour < 8 || currentHour >= 22) {
-    logger.info('[Bot] 当前时间不在活动时段(8:00-22:00)，跳过')
-    return
-  }
 
   const bots = await GameBotProfile.find({ isActive: true }).lean()
   if (bots.length === 0) {
@@ -1331,10 +1489,31 @@ export async function executeAllBotTicks() {
     return
   }
 
-  logger.info(`[Bot] 开始调度 ${bots.length} 个机器人的行动...`)
+  // 按活动时间过滤
+  const activeBots = bots.filter(bot => {
+    const ats = bot.activeTimeSettings || {}
+    // 如果未启用活动时间限制，则24小时活动
+    if (ats.enabled === false) return true
+    const startHour = ats.startHour ?? 8
+    const endHour = ats.endHour ?? 23
+    if (startHour <= endHour) {
+      // 正常范围，如 8-23
+      return currentHour >= startHour && currentHour < endHour
+    } else {
+      // 跨天范围，如 22-6（22:00到次日6:00）
+      return currentHour >= startHour || currentHour < endHour
+    }
+  })
+
+  if (activeBots.length === 0) {
+    logger.info(`[Bot] 当前时间(${currentHour}:00)没有处于活动时段的机器人，跳过`)
+    return
+  }
+
+  logger.info(`[Bot] 开始调度 ${activeBots.length} 个机器人的行动（共 ${bots.length} 个活跃）...`)
 
   // 每个机器人分配0-30分钟的随机延迟，分散服务器压力
-  for (const bot of bots) {
+  for (const bot of activeBots) {
     const delayMs = Math.floor(Math.random() * 30 * 60 * 1000)
     const delayMin = (delayMs / 60000).toFixed(1)
     logger.info(`[Bot] ${bot._id} 将在 ${delayMin} 分钟后执行`)

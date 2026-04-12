@@ -38,35 +38,29 @@ const gameBotProfileSchema = new mongoose.Schema(
       default: () => new Map()
     },
     // 行为权重 (0-100)，越高越可能执行该行为
+    // 注：招募冒险家、升级属性、卖水晶、公会升级已成为共通行动，每次tick都会执行
     behaviorWeights: {
-      recruitAdventurer: { type: Number, min: 0, max: 100, default: 60 },
-      levelUpStats: { type: Number, min: 0, max: 100, default: 80 },
       switchDungeon: { type: Number, min: 0, max: 100, default: 40 },
       dungeonBattle: { type: Number, min: 0, max: 100, default: 70 },
       arenaBattle: { type: Number, min: 0, max: 100, default: 60 },
       mineExplore: { type: Number, min: 0, max: 100, default: 50 },
-      marketTrade: { type: Number, min: 0, max: 100, default: 40 },
       runeStoneManage: { type: Number, min: 0, max: 100, default: 50 },
-      guildUpgrade: { type: Number, min: 0, max: 100, default: 70 },
       formationManage: { type: Number, min: 0, max: 100, default: 60 },
       idle: { type: Number, min: 0, max: 100, default: 20 }
     },
     // 市场交易设置
     marketSettings: {
-      // 水晶挂单出售设置
+      // 水晶出售设置（卖水晶现在是共通行动，智能计算保留量）
       sellCrystals: {
-        enabled: { type: Boolean, default: false },
-        // 每种水晶在背包中至少保留多少个
-        reserveAmount: { type: Number, min: 0, max: 99999, default: 1000 },
         // 每种水晶同时最多在市场上挂卖多少个
+        // 如果设置了此值且大于0，优先挂单到市场，超出部分卖给官方
+        // 如果为0或未设置，直接卖给官方
         maxMarketAmount: {
           type: Number,
           min: 0,
           max: 99999,
-          default: 1000
-        },
-        // 兼容旧配置：单值同时表示保留量和市场最大挂卖量
-        maxAmount: { type: Number, min: 0, max: 99999 }
+          default: 0
+        }
       },
       // 符文石挂单出售设置
       sellRuneStones: {
@@ -105,6 +99,15 @@ const gameBotProfileSchema = new mongoose.Schema(
       type: String,
       default: '',
       maxlength: 500
+    },
+    // 活动时间设置
+    activeTimeSettings: {
+      // 是否启用活动时间限制，关闭时24小时活动
+      enabled: { type: Boolean, default: true },
+      // 活动开始时间（0-23小时）
+      startHour: { type: Number, min: 0, max: 23, default: 8 },
+      // 活动结束时间（0-23小时）
+      endHour: { type: Number, min: 0, max: 23, default: 23 }
     }
   },
   {
