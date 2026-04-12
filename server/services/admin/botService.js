@@ -290,18 +290,16 @@ export async function create({
 
 /**
  * 根据阵容倾向获取默认行为权重
+ * 注：招募冒险家、升级属性、卖水晶已成为共通行动，不再需要对应的行为权重
  */
 function getTendencyWeights(tendency) {
   switch (tendency) {
     case 'aggressive':
       return {
-        recruitAdventurer: 70,
-        levelUpStats: 90,
         switchDungeon: 50,
         dungeonBattle: 85,
         arenaBattle: 80,
         mineExplore: 60,
-        marketTrade: 30,
         runeStoneManage: 60,
         guildUpgrade: 80,
         formationManage: 70,
@@ -309,13 +307,10 @@ function getTendencyWeights(tendency) {
       }
     case 'balanced':
       return {
-        recruitAdventurer: 60,
-        levelUpStats: 80,
         switchDungeon: 40,
         dungeonBattle: 70,
         arenaBattle: 60,
         mineExplore: 50,
-        marketTrade: 40,
         runeStoneManage: 50,
         guildUpgrade: 70,
         formationManage: 60,
@@ -323,13 +318,10 @@ function getTendencyWeights(tendency) {
       }
     case 'defensive':
       return {
-        recruitAdventurer: 50,
-        levelUpStats: 70,
         switchDungeon: 30,
         dungeonBattle: 50,
         arenaBattle: 40,
         mineExplore: 60,
-        marketTrade: 50,
         runeStoneManage: 60,
         guildUpgrade: 60,
         formationManage: 50,
@@ -337,13 +329,10 @@ function getTendencyWeights(tendency) {
       }
     case 'assassin':
       return {
-        recruitAdventurer: 70,
-        levelUpStats: 85,
         switchDungeon: 45,
         dungeonBattle: 80,
         arenaBattle: 85,
         mineExplore: 55,
-        marketTrade: 30,
         runeStoneManage: 55,
         guildUpgrade: 75,
         formationManage: 65,
@@ -351,13 +340,10 @@ function getTendencyWeights(tendency) {
       }
     default:
       return {
-        recruitAdventurer: 60,
-        levelUpStats: 80,
         switchDungeon: 40,
         dungeonBattle: 70,
         arenaBattle: 60,
         mineExplore: 50,
-        marketTrade: 40,
         runeStoneManage: 50,
         guildUpgrade: 70,
         formationManage: 60,
@@ -398,24 +384,13 @@ export async function update(botId, data) {
       const sc = data.marketSettings.sellCrystals
       if (!bot.marketSettings) bot.marketSettings = {}
       if (!bot.marketSettings.sellCrystals) bot.marketSettings.sellCrystals = {}
-      if (sc.enabled !== undefined)
-        bot.marketSettings.sellCrystals.enabled = sc.enabled
-      if (sc.reserveAmount !== undefined)
-        bot.marketSettings.sellCrystals.reserveAmount = sc.reserveAmount
+      // 只保留 maxMarketAmount 设置
       if (sc.maxMarketAmount !== undefined)
         bot.marketSettings.sellCrystals.maxMarketAmount = sc.maxMarketAmount
-      if (sc.reserveAmount !== undefined || sc.maxMarketAmount !== undefined) {
-        bot.marketSettings.sellCrystals.maxAmount = undefined
-      }
-      if (
-        sc.maxAmount !== undefined &&
-        sc.reserveAmount === undefined &&
-        sc.maxMarketAmount === undefined
-      ) {
-        bot.marketSettings.sellCrystals.reserveAmount = sc.maxAmount
-        bot.marketSettings.sellCrystals.maxMarketAmount = sc.maxAmount
-        bot.marketSettings.sellCrystals.maxAmount = sc.maxAmount
-      }
+      // 清理旧的不再使用的字段
+      bot.marketSettings.sellCrystals.enabled = undefined
+      bot.marketSettings.sellCrystals.reserveAmount = undefined
+      bot.marketSettings.sellCrystals.maxAmount = undefined
     }
     if (data.marketSettings.sellRuneStones) {
       const sr = data.marketSettings.sellRuneStones

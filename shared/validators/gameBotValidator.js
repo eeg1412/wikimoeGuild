@@ -19,19 +19,17 @@ export const createBotSchema = Joi.object({
 })
 
 // 更新机器人
+// 注：招募冒险家、升级属性、卖水晶已成为共通行动，不再需要对应的行为权重
 export const updateBotSchema = Joi.object({
   isActive: Joi.boolean().optional(),
   formationTendency: Joi.string()
     .valid('aggressive', 'balanced', 'defensive', 'assassin')
     .optional(),
   behaviorWeights: Joi.object({
-    recruitAdventurer: Joi.number().integer().min(0).max(100),
-    levelUpStats: Joi.number().integer().min(0).max(100),
     switchDungeon: Joi.number().integer().min(0).max(100),
     dungeonBattle: Joi.number().integer().min(0).max(100),
     arenaBattle: Joi.number().integer().min(0).max(100),
     mineExplore: Joi.number().integer().min(0).max(100),
-    marketTrade: Joi.number().integer().min(0).max(100),
     runeStoneManage: Joi.number().integer().min(0).max(100),
     guildUpgrade: Joi.number().integer().min(0).max(100),
     formationManage: Joi.number().integer().min(0).max(100),
@@ -39,11 +37,9 @@ export const updateBotSchema = Joi.object({
   }).optional(),
   marketSettings: Joi.object({
     sellCrystals: Joi.object({
-      enabled: Joi.boolean(),
-      reserveAmount: Joi.number().integer().min(0).max(99999),
-      maxMarketAmount: Joi.number().integer().min(0).max(99999),
-      // 兼容旧版单参数配置
-      maxAmount: Joi.number().integer().min(0).max(99999)
+      // maxMarketAmount: 市场最大挂卖数量。设置后，优先挂单到自由市场，超出部分卖给官方
+      // 若为 0 或未设置，则直接卖给官方
+      maxMarketAmount: Joi.number().integer().min(0).max(99999)
     }).optional(),
     sellRuneStones: Joi.object({
       enabled: Joi.boolean(),

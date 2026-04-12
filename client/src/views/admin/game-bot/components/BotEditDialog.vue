@@ -31,7 +31,12 @@
       </el-form-item>
       <el-divider content-position="left">行为权重 (0-100)</el-divider>
       <div class="text-xs text-gray-400 mb-3 px-4">
-        权重决定每项行动的执行概率，数值越高越可能执行。阵容倾向与权重互不冲突：倾向影响"怎么做"，权重影响"做不做"。
+        权重决定每项行动的执行概率，数值越高越可能执行。
+        <br />
+        <span class="text-blue-400"
+          >注：收获水晶、卖水晶、招募冒险家、升级属性
+          已成为共通行动，每次都会执行。</span
+        >
       </div>
       <div class="mb-3 px-4 flex flex-wrap gap-2">
         <el-button
@@ -57,39 +62,23 @@
         />
       </el-form-item>
       <el-divider content-position="left">市场交易设置</el-divider>
-      <el-form-item label="出售水晶">
-        <el-switch
-          v-model="editForm.marketSettings.sellCrystals.enabled"
-          active-text="开启"
-          inactive-text="关闭"
+      <div class="text-xs text-gray-400 mb-3 px-4">
+        机器人会智能计算升级所需的水晶保留量，多余的水晶将自动出售换取金币用于招募冒险家。
+      </div>
+      <el-form-item label="市场最大挂卖数">
+        <el-input-number
+          v-model="editForm.marketSettings.sellCrystals.maxMarketAmount"
+          :min="0"
+          :max="99999"
+          :step="100"
+          style="width: 100%"
         />
+        <div class="text-xs text-gray-400 mt-1">
+          每种水晶同时在自由市场最多挂卖此数量。超出部分会直接卖给官方。
+          <br />
+          设置为 0 则全部直接卖给官方（不挂单到市场）。
+        </div>
       </el-form-item>
-      <template v-if="editForm.marketSettings.sellCrystals.enabled">
-        <el-form-item label="保留水晶数">
-          <el-input-number
-            v-model="editForm.marketSettings.sellCrystals.reserveAmount"
-            :min="0"
-            :max="99999"
-            :step="100"
-            style="width: 100%"
-          />
-          <div class="text-xs text-gray-400 mt-1">
-            每种水晶至少保留此数量，只有超过这部分时才会开始出售。
-          </div>
-        </el-form-item>
-        <el-form-item label="市场最大挂卖数">
-          <el-input-number
-            v-model="editForm.marketSettings.sellCrystals.maxMarketAmount"
-            :min="0"
-            :max="99999"
-            :step="100"
-            style="width: 100%"
-          />
-          <div class="text-xs text-gray-400 mt-1">
-            每种水晶同时在自由市场最多挂卖此数量，超过当前可挂卖额度的部分会卖给官方。
-          </div>
-        </el-form-item>
-      </template>
       <el-form-item label="出售符文石">
         <el-switch
           v-model="editForm.marketSettings.sellRuneStones.enabled"
@@ -212,14 +201,12 @@ const dialogVisible = computed({
   set: value => emit('update:modelValue', value)
 })
 
+// 行为权重字段（移除已成为共通行动的：招募冒险家、升级属性、市场交易）
 const weightFields = [
-  { key: 'recruitAdventurer', label: '招募冒险家' },
-  { key: 'levelUpStats', label: '升级属性' },
   { key: 'switchDungeon', label: '切换地牢' },
   { key: 'dungeonBattle', label: '地牢战斗' },
   { key: 'arenaBattle', label: '竞技场' },
   { key: 'mineExplore', label: '矿场探索' },
-  { key: 'marketTrade', label: '市场交易' },
   { key: 'runeStoneManage', label: '符文石管理' },
   { key: 'guildUpgrade', label: '公会升级' },
   { key: 'formationManage', label: '阵容管理' },
@@ -228,52 +215,40 @@ const weightFields = [
 
 const weightPresets = {
   积极战斗: {
-    recruitAdventurer: 80,
-    levelUpStats: 90,
     switchDungeon: 50,
     dungeonBattle: 95,
     arenaBattle: 90,
     mineExplore: 60,
-    marketTrade: 20,
     runeStoneManage: 70,
     guildUpgrade: 85,
     formationManage: 75,
     idle: 5
   },
   稳健成长: {
-    recruitAdventurer: 60,
-    levelUpStats: 85,
     switchDungeon: 40,
     dungeonBattle: 65,
     arenaBattle: 50,
     mineExplore: 70,
-    marketTrade: 50,
     runeStoneManage: 60,
     guildUpgrade: 80,
     formationManage: 60,
     idle: 25
   },
   低频活跃: {
-    recruitAdventurer: 40,
-    levelUpStats: 60,
     switchDungeon: 30,
     dungeonBattle: 45,
     arenaBattle: 30,
     mineExplore: 40,
-    marketTrade: 30,
     runeStoneManage: 40,
     guildUpgrade: 50,
     formationManage: 40,
     idle: 50
   },
   竞技专精: {
-    recruitAdventurer: 70,
-    levelUpStats: 85,
     switchDungeon: 35,
     dungeonBattle: 70,
     arenaBattle: 95,
     mineExplore: 50,
-    marketTrade: 30,
     runeStoneManage: 65,
     guildUpgrade: 75,
     formationManage: 80,
@@ -303,13 +278,10 @@ function createDefaultEditForm() {
     isActive: true,
     formationTendency: 'balanced',
     behaviorWeights: {
-      recruitAdventurer: 60,
-      levelUpStats: 80,
       switchDungeon: 40,
       dungeonBattle: 70,
       arenaBattle: 60,
       mineExplore: 50,
-      marketTrade: 40,
       runeStoneManage: 50,
       guildUpgrade: 70,
       formationManage: 60,
@@ -317,9 +289,7 @@ function createDefaultEditForm() {
     },
     marketSettings: {
       sellCrystals: {
-        enabled: false,
-        reserveAmount: 1000,
-        maxMarketAmount: 1000
+        maxMarketAmount: 0
       },
       sellRuneStones: {
         enabled: false,
@@ -345,11 +315,6 @@ function applyBotToForm(bot) {
 
   const marketSettings = bot.marketSettings || {}
   const sellCrystals = marketSettings.sellCrystals || {}
-  editForm.marketSettings.sellCrystals.enabled = sellCrystals.enabled || false
-  editForm.marketSettings.sellCrystals.reserveAmount =
-    sellCrystals.reserveAmount ??
-    sellCrystals.maxAmount ??
-    defaults.marketSettings.sellCrystals.reserveAmount
   editForm.marketSettings.sellCrystals.maxMarketAmount =
     sellCrystals.maxMarketAmount ??
     sellCrystals.maxAmount ??
