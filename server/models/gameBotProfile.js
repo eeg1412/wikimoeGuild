@@ -100,6 +100,15 @@ const gameBotProfileSchema = new mongoose.Schema(
       type: String,
       default: '',
       maxlength: 500
+    },
+    // 活动时间设置
+    activeTimeSettings: {
+      // 是否启用活动时间限制，关闭时24小时活动
+      enabled: { type: Boolean, default: true },
+      // 活动开始时间（0-23小时）
+      startHour: { type: Number, min: 0, max: 23, default: 8 },
+      // 活动结束时间（0-23小时）
+      endHour: { type: Number, min: 0, max: 23, default: 23 }
     }
   },
   {

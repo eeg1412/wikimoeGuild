@@ -50,6 +50,11 @@ export const updateBotSchema = Joi.object({
         .max(3)
     }).optional()
   }).optional(),
+  activeTimeSettings: Joi.object({
+    enabled: Joi.boolean(),
+    startHour: Joi.number().integer().min(0).max(23),
+    endHour: Joi.number().integer().min(0).max(23)
+  }).optional(),
   note: Joi.string().max(500).allow('').optional()
 })
 

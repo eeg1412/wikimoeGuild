@@ -387,10 +387,6 @@ export async function update(botId, data) {
       // 只保留 maxMarketAmount 设置
       if (sc.maxMarketAmount !== undefined)
         bot.marketSettings.sellCrystals.maxMarketAmount = sc.maxMarketAmount
-      // 清理旧的不再使用的字段
-      bot.marketSettings.sellCrystals.enabled = undefined
-      bot.marketSettings.sellCrystals.reserveAmount = undefined
-      bot.marketSettings.sellCrystals.maxAmount = undefined
     }
     if (data.marketSettings.sellRuneStones) {
       const sr = data.marketSettings.sellRuneStones
@@ -406,9 +402,33 @@ export async function update(botId, data) {
     }
     bot.markModified('marketSettings')
   }
+  if (data.activeTimeSettings) {
+    const ats = data.activeTimeSettings
+    if (!bot.activeTimeSettings) bot.activeTimeSettings = {}
+    if (ats.enabled !== undefined)
+      bot.activeTimeSettings.enabled = ats.enabled
+    if (ats.startHour !== undefined)
+      bot.activeTimeSettings.startHour = ats.startHour
+    if (ats.endHour !== undefined)
+      bot.activeTimeSettings.endHour = ats.endHour
+    bot.markModified('activeTimeSettings')
+  }
   if (data.note !== undefined) bot.note = data.note
 
   await bot.save()
+
+  // 使用 $unset 清理旧的不再使用的 sellCrystals 字段
+  await GameBotProfile.updateOne(
+    { _id: bot._id },
+    {
+      $unset: {
+        'marketSettings.sellCrystals.enabled': '',
+        'marketSettings.sellCrystals.reserveAmount': '',
+        'marketSettings.sellCrystals.maxAmount': ''
+      }
+    }
+  )
+
   return bot
 }
 

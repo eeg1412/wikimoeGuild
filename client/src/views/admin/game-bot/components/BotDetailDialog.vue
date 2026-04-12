@@ -175,6 +175,7 @@ const actionNameMap = {
   idle: '发呆',
   settleCrystals: '结算水晶',
   claimMails: '领取邮件',
+  sellCrystals: '卖水晶',
   formationManage: '阵容管理',
   recruitAdventurer: '招募冒险家',
   levelUpStats: '升级属性',

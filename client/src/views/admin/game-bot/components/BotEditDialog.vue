@@ -117,6 +117,42 @@
           maxlength="500"
         />
       </el-form-item>
+      <el-divider content-position="left">活动时间设置</el-divider>
+      <el-form-item label="限制活动时间">
+        <el-switch
+          v-model="editForm.activeTimeSettings.enabled"
+          active-text="开启"
+          inactive-text="关闭"
+        />
+        <div class="text-xs text-gray-400 mt-1">
+          关闭后机器人将24小时活动。
+        </div>
+      </el-form-item>
+      <template v-if="editForm.activeTimeSettings.enabled">
+        <el-form-item label="活动时段">
+          <div class="flex items-center gap-2 w-full">
+            <el-input-number
+              v-model="editForm.activeTimeSettings.startHour"
+              :min="0"
+              :max="23"
+              :step="1"
+              style="width: 120px"
+            />
+            <span>时 至</span>
+            <el-input-number
+              v-model="editForm.activeTimeSettings.endHour"
+              :min="0"
+              :max="23"
+              :step="1"
+              style="width: 120px"
+            />
+            <span>时</span>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">
+            机器人仅在此时段内执行行动。支持跨天设置（如22时至6时）。
+          </div>
+        </el-form-item>
+      </template>
       <el-divider content-position="left">公会信息</el-divider>
       <el-form-item label="公会名">
         <div class="flex gap-2 w-full">
@@ -297,6 +333,11 @@ function createDefaultEditForm() {
         rarities: ['legendary']
       }
     },
+    activeTimeSettings: {
+      enabled: true,
+      startHour: 8,
+      endHour: 23
+    },
     note: ''
   }
 }
@@ -327,6 +368,14 @@ function applyBotToForm(bot) {
     sellRuneStones.maxAmount ?? defaults.marketSettings.sellRuneStones.maxAmount
   editForm.marketSettings.sellRuneStones.rarities =
     sellRuneStones.rarities || defaults.marketSettings.sellRuneStones.rarities
+
+  const activeTimeSettings = bot.activeTimeSettings || {}
+  editForm.activeTimeSettings.enabled =
+    activeTimeSettings.enabled ?? defaults.activeTimeSettings.enabled
+  editForm.activeTimeSettings.startHour =
+    activeTimeSettings.startHour ?? defaults.activeTimeSettings.startHour
+  editForm.activeTimeSettings.endHour =
+    activeTimeSettings.endHour ?? defaults.activeTimeSettings.endHour
 
   guildNameInput.value = bot.playerInfo?.guildName || ''
   guildIconBase64.value = ''

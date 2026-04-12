@@ -206,15 +206,14 @@ function calculateUpgradeCrystalNeeds(adventurers, maxCompLevel, crystalBase) {
       adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
     if (compLevel >= maxCompLevel) continue
 
-    // 估算每个冒险家需要升级的次数（假设均匀分配）
-    const levelsToGain = Math.min(20, maxCompLevel - compLevel)
+    // 估算到 maxCompLevel 的全部升级次数
+    const levelsToGain = maxCompLevel - compLevel
     const levelsPerStat = Math.ceil(levelsToGain / 4)
 
     for (const stat of ['attack', 'defense', 'speed', 'san']) {
       const currentLevel = adv[levelMap[stat]]
-      // 计算升级所需水晶（取平均值）
       let totalCost = 0
-      for (let i = 0; i < levelsPerStat && currentLevel + i <= maxCompLevel; i++) {
+      for (let i = 0; i < levelsPerStat && currentLevel + i < maxCompLevel; i++) {
         totalCost += getAdventurerLevelUpCrystalCost(currentLevel + i, crystalBase)
       }
       needs[statToKey[stat]] += totalCost
@@ -1419,11 +1418,6 @@ export async function executeBotTick(bot) {
  */
 export async function executeAllBotTicks() {
   const currentHour = new Date().getHours()
-  // 只在 8:00 - 22:00 活动
-  if (currentHour < 8 || currentHour >= 22) {
-    logger.info('[Bot] 当前时间不在活动时段(8:00-22:00)，跳过')
-    return
-  }
 
   const bots = await GameBotProfile.find({ isActive: true }).lean()
   if (bots.length === 0) {
@@ -1431,10 +1425,31 @@ export async function executeAllBotTicks() {
     return
   }
 
-  logger.info(`[Bot] 开始调度 ${bots.length} 个机器人的行动...`)
+  // 按活动时间过滤
+  const activeBots = bots.filter(bot => {
+    const ats = bot.activeTimeSettings || {}
+    // 如果未启用活动时间限制，则24小时活动
+    if (ats.enabled === false) return true
+    const startHour = ats.startHour ?? 8
+    const endHour = ats.endHour ?? 23
+    if (startHour <= endHour) {
+      // 正常范围，如 8-23
+      return currentHour >= startHour && currentHour < endHour
+    } else {
+      // 跨天范围，如 22-6（22:00到次日6:00）
+      return currentHour >= startHour || currentHour < endHour
+    }
+  })
+
+  if (activeBots.length === 0) {
+    logger.info(`[Bot] 当前时间(${currentHour}:00)没有处于活动时段的机器人，跳过`)
+    return
+  }
+
+  logger.info(`[Bot] 开始调度 ${activeBots.length} 个机器人的行动（共 ${bots.length} 个活跃）...`)
 
   // 每个机器人分配0-30分钟的随机延迟，分散服务器压力
-  for (const bot of bots) {
+  for (const bot of activeBots) {
     const delayMs = Math.floor(Math.random() * 30 * 60 * 1000)
     const delayMin = (delayMs / 60000).toFixed(1)
     logger.info(`[Bot] ${bot._id} 将在 ${delayMin} 分钟后执行`)
