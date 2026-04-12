@@ -1,7 +1,40 @@
 import Joi from 'joi'
 
+const behaviorWeightsSchema = Joi.object({
+  switchDungeon: Joi.number().integer().min(0).max(100),
+  dungeonBattle: Joi.number().integer().min(0).max(100),
+  arenaBattle: Joi.number().integer().min(0).max(100),
+  mineExplore: Joi.number().integer().min(0).max(100),
+  runeStoneManage: Joi.number().integer().min(0).max(100),
+  formationManage: Joi.number().integer().min(0).max(100),
+  idle: Joi.number().integer().min(0).max(100)
+})
+
+const marketSettingsSchema = Joi.object({
+  sellCrystals: Joi.object({
+    // maxMarketAmount: 市场最大挂卖数量。设置后，优先挂单到自由市场，超出部分卖给官方
+    // 若为 0 或未设置，则直接卖给官方
+    maxMarketAmount: Joi.number().integer().min(0).max(99999)
+  }).optional(),
+  sellRuneStones: Joi.object({
+    enabled: Joi.boolean(),
+    maxAmount: Joi.number().integer().min(0).max(100),
+    rarities: Joi.array()
+      .items(Joi.string().valid('normal', 'rare', 'legendary'))
+      .min(0)
+      .max(3)
+  }).optional()
+})
+
+const activeTimeSettingsSchema = Joi.object({
+  enabled: Joi.boolean(),
+  startHour: Joi.number().integer().min(0).max(23),
+  endHour: Joi.number().integer().min(0).max(23)
+})
+
 // 创建机器人
 export const createBotSchema = Joi.object({
+  isActive: Joi.boolean().default(true),
   formationTendency: Joi.string()
     .valid('aggressive', 'balanced', 'defensive', 'assassin')
     .default('balanced'),
@@ -14,6 +47,9 @@ export const createBotSchema = Joi.object({
     sanCrystal: Joi.number().integer().min(0).max(9999999).default(0),
     runeFragment: Joi.number().integer().min(0).max(9999999).default(0)
   }).default(),
+  behaviorWeights: behaviorWeightsSchema.optional(),
+  marketSettings: marketSettingsSchema.optional(),
+  activeTimeSettings: activeTimeSettingsSchema.optional(),
   iconBase64: Joi.string().optional(),
   note: Joi.string().max(500).allow('').default('')
 })
@@ -25,35 +61,11 @@ export const updateBotSchema = Joi.object({
   formationTendency: Joi.string()
     .valid('aggressive', 'balanced', 'defensive', 'assassin')
     .optional(),
-  behaviorWeights: Joi.object({
-    switchDungeon: Joi.number().integer().min(0).max(100),
-    dungeonBattle: Joi.number().integer().min(0).max(100),
-    arenaBattle: Joi.number().integer().min(0).max(100),
-    mineExplore: Joi.number().integer().min(0).max(100),
-    runeStoneManage: Joi.number().integer().min(0).max(100),
-    formationManage: Joi.number().integer().min(0).max(100),
-    idle: Joi.number().integer().min(0).max(100)
-  }).optional(),
-  marketSettings: Joi.object({
-    sellCrystals: Joi.object({
-      // maxMarketAmount: 市场最大挂卖数量。设置后，优先挂单到自由市场，超出部分卖给官方
-      // 若为 0 或未设置，则直接卖给官方
-      maxMarketAmount: Joi.number().integer().min(0).max(99999)
-    }).optional(),
-    sellRuneStones: Joi.object({
-      enabled: Joi.boolean(),
-      maxAmount: Joi.number().integer().min(0).max(100),
-      rarities: Joi.array()
-        .items(Joi.string().valid('normal', 'rare', 'legendary'))
-        .min(0)
-        .max(3)
-    }).optional()
-  }).optional(),
-  activeTimeSettings: Joi.object({
-    enabled: Joi.boolean(),
-    startHour: Joi.number().integer().min(0).max(23),
-    endHour: Joi.number().integer().min(0).max(23)
-  }).optional(),
+  guildName: Joi.string().min(2).max(20).optional(),
+  iconBase64: Joi.string().optional(),
+  behaviorWeights: behaviorWeightsSchema.optional(),
+  marketSettings: marketSettingsSchema.optional(),
+  activeTimeSettings: activeTimeSettingsSchema.optional(),
   note: Joi.string().max(500).allow('').optional()
 })
 

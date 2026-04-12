@@ -38,6 +38,26 @@ function generateBotEmail() {
   return `bot_${id}@system.internal`
 }
 
+async function validateBotGuildName(accountId, guildName) {
+  if (global.$sensitiveFilter && global.$sensitiveFilter.contains(guildName)) {
+    const err = new Error('公会名包含违禁词')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+
+  const existing = await GamePlayerInfo.findOne({
+    guildName,
+    account: { $ne: accountId }
+  }).lean()
+  if (existing) {
+    const err = new Error('该公会名已被使用')
+    err.statusCode = 400
+    err.expose = true
+    throw err
+  }
+}
+
 /**
  * 获取机器人列表
  */
@@ -158,10 +178,14 @@ export async function getDetail(botId) {
  * 创建机器人
  */
 export async function create({
+  isActive = true,
   formationTendency = 'balanced',
   guildName,
   initialGold = 0,
   initialCrystals = {},
+  behaviorWeights,
+  marketSettings,
+  activeTimeSettings,
   iconBase64,
   note = ''
 } = {}) {
@@ -260,7 +284,11 @@ export async function create({
 
     // 如果提供了自定义公会图标，保存并标记
     if (iconBase64) {
-      await saveBase64Image(iconBase64, `custom-guild-icon/${account._id}.png`)
+      await saveBase64Image(
+        iconBase64,
+        'custom-guild-icon',
+        `${account._id}.png`
+      )
       await GamePlayerInfo.updateOne(
         { account: account._id },
         {
@@ -272,15 +300,37 @@ export async function create({
       )
     }
 
-    // 根据阵容倾向预设行为权重
-    const behaviorWeights = getTendencyWeights(formationTendency)
+    // 根据阵容倾向预设行为权重，并允许创建时覆盖默认值
+    const finalBehaviorWeights = {
+      ...getTendencyWeights(formationTendency),
+      ...(behaviorWeights || {})
+    }
+
+    const finalMarketSettings = {
+      sellCrystals: {
+        maxMarketAmount: marketSettings?.sellCrystals?.maxMarketAmount ?? 0
+      },
+      sellRuneStones: {
+        enabled: marketSettings?.sellRuneStones?.enabled ?? false,
+        maxAmount: marketSettings?.sellRuneStones?.maxAmount ?? 3,
+        rarities: marketSettings?.sellRuneStones?.rarities ?? ['legendary']
+      }
+    }
+
+    const finalActiveTimeSettings = {
+      enabled: activeTimeSettings?.enabled ?? true,
+      startHour: activeTimeSettings?.startHour ?? 8,
+      endHour: activeTimeSettings?.endHour ?? 23
+    }
 
     // 创建机器人档案
     const bot = await GameBotProfile.create({
       account: account._id,
-      isActive: true,
+      isActive,
       formationTendency,
-      behaviorWeights,
+      behaviorWeights: finalBehaviorWeights,
+      marketSettings: finalMarketSettings,
+      activeTimeSettings: finalActiveTimeSettings,
       note
     })
 
@@ -351,81 +401,107 @@ function getTendencyWeights(tendency) {
  * 更新机器人设置
  */
 export async function update(botId, data) {
-  const bot = await GameBotProfile.findById(botId)
-  if (!bot) {
-    const err = new Error('机器人不存在')
-    err.statusCode = 404
-    err.expose = true
-    throw err
-  }
-
-  if (data.isActive !== undefined) bot.isActive = data.isActive
-  if (data.formationTendency) {
-    bot.formationTendency = data.formationTendency
-    // 如果没有同时传递 behaviorWeights，则根据新倾向重置权重
-    if (!data.behaviorWeights) {
-      bot.behaviorWeights = getTendencyWeights(data.formationTendency)
+  return await executeInLock(`bot-update:${botId}`, async () => {
+    const bot = await GameBotProfile.findById(botId)
+    if (!bot) {
+      const err = new Error('机器人不存在')
+      err.statusCode = 404
+      err.expose = true
+      throw err
     }
-  }
-  if (data.behaviorWeights) {
-    for (const [key, value] of Object.entries(data.behaviorWeights)) {
-      if (bot.behaviorWeights[key] !== undefined) {
-        bot.behaviorWeights[key] = value
+
+    if (data.guildName !== undefined) {
+      await validateBotGuildName(bot.account, data.guildName)
+    }
+
+    const playerInfoUpdates = {}
+    if (data.iconBase64 !== undefined) {
+      const fileName = `${bot.account}.png`
+      await saveBase64Image(data.iconBase64, 'custom-guild-icon', fileName)
+      playerInfoUpdates.hasCustomGuildIcon = true
+      playerInfoUpdates.customGuildIconUpdatedAt = new Date()
+    }
+
+    if (data.isActive !== undefined) bot.isActive = data.isActive
+    if (data.formationTendency) {
+      bot.formationTendency = data.formationTendency
+      // 如果没有同时传递 behaviorWeights，则根据新倾向重置权重
+      if (!data.behaviorWeights) {
+        bot.behaviorWeights = getTendencyWeights(data.formationTendency)
       }
     }
-  }
-  if (data.marketSettings) {
-    if (data.marketSettings.sellCrystals) {
-      const sc = data.marketSettings.sellCrystals
-      if (!bot.marketSettings) bot.marketSettings = {}
-      if (!bot.marketSettings.sellCrystals) bot.marketSettings.sellCrystals = {}
-      // 只保留 maxMarketAmount 设置
-      if (sc.maxMarketAmount !== undefined)
-        bot.marketSettings.sellCrystals.maxMarketAmount = sc.maxMarketAmount
-    }
-    if (data.marketSettings.sellRuneStones) {
-      const sr = data.marketSettings.sellRuneStones
-      if (!bot.marketSettings) bot.marketSettings = {}
-      if (!bot.marketSettings.sellRuneStones)
-        bot.marketSettings.sellRuneStones = {}
-      if (sr.enabled !== undefined)
-        bot.marketSettings.sellRuneStones.enabled = sr.enabled
-      if (sr.maxAmount !== undefined)
-        bot.marketSettings.sellRuneStones.maxAmount = sr.maxAmount
-      if (sr.rarities !== undefined)
-        bot.marketSettings.sellRuneStones.rarities = sr.rarities
-    }
-    bot.markModified('marketSettings')
-  }
-  if (data.activeTimeSettings) {
-    const ats = data.activeTimeSettings
-    if (!bot.activeTimeSettings) bot.activeTimeSettings = {}
-    if (ats.enabled !== undefined)
-      bot.activeTimeSettings.enabled = ats.enabled
-    if (ats.startHour !== undefined)
-      bot.activeTimeSettings.startHour = ats.startHour
-    if (ats.endHour !== undefined)
-      bot.activeTimeSettings.endHour = ats.endHour
-    bot.markModified('activeTimeSettings')
-  }
-  if (data.note !== undefined) bot.note = data.note
-
-  await bot.save()
-
-  // 使用 $unset 清理旧的不再使用的字段
-  await GameBotProfile.updateOne(
-    { _id: bot._id },
-    {
-      $unset: {
-        'marketSettings.sellCrystals.enabled': '',
-        'marketSettings.sellCrystals.reserveAmount': '',
-        'marketSettings.sellCrystals.maxAmount': '',
-        'behaviorWeights.guildUpgrade': ''
+    if (data.behaviorWeights) {
+      for (const [key, value] of Object.entries(data.behaviorWeights)) {
+        if (bot.behaviorWeights[key] !== undefined) {
+          bot.behaviorWeights[key] = value
+        }
       }
     }
-  )
+    if (data.marketSettings) {
+      if (data.marketSettings.sellCrystals) {
+        const sc = data.marketSettings.sellCrystals
+        if (!bot.marketSettings) bot.marketSettings = {}
+        if (!bot.marketSettings.sellCrystals)
+          bot.marketSettings.sellCrystals = {}
+        // 只保留 maxMarketAmount 设置
+        if (sc.maxMarketAmount !== undefined)
+          bot.marketSettings.sellCrystals.maxMarketAmount = sc.maxMarketAmount
+      }
+      if (data.marketSettings.sellRuneStones) {
+        const sr = data.marketSettings.sellRuneStones
+        if (!bot.marketSettings) bot.marketSettings = {}
+        if (!bot.marketSettings.sellRuneStones)
+          bot.marketSettings.sellRuneStones = {}
+        if (sr.enabled !== undefined)
+          bot.marketSettings.sellRuneStones.enabled = sr.enabled
+        if (sr.maxAmount !== undefined)
+          bot.marketSettings.sellRuneStones.maxAmount = sr.maxAmount
+        if (sr.rarities !== undefined)
+          bot.marketSettings.sellRuneStones.rarities = sr.rarities
+      }
+      bot.markModified('marketSettings')
+    }
+    if (data.activeTimeSettings) {
+      const ats = data.activeTimeSettings
+      if (!bot.activeTimeSettings) bot.activeTimeSettings = {}
+      if (ats.enabled !== undefined)
+        bot.activeTimeSettings.enabled = ats.enabled
+      if (ats.startHour !== undefined)
+        bot.activeTimeSettings.startHour = ats.startHour
+      if (ats.endHour !== undefined)
+        bot.activeTimeSettings.endHour = ats.endHour
+      bot.markModified('activeTimeSettings')
+    }
+    if (data.note !== undefined) bot.note = data.note
 
-  return bot
+    await bot.save()
+
+    if (data.guildName !== undefined) {
+      playerInfoUpdates.guildName = data.guildName
+    }
+
+    if (Object.keys(playerInfoUpdates).length > 0) {
+      await GamePlayerInfo.updateOne(
+        { account: bot.account },
+        playerInfoUpdates
+      )
+    }
+
+    // 使用 $unset 清理旧的不再使用的字段
+    await GameBotProfile.updateOne(
+      { _id: bot._id },
+      {
+        $unset: {
+          'marketSettings.sellCrystals.enabled': '',
+          'marketSettings.sellCrystals.reserveAmount': '',
+          'marketSettings.sellCrystals.maxAmount': '',
+          'behaviorWeights.guildUpgrade': ''
+        }
+      }
+    )
+
+    return bot
+  })
 }
 
 /**
@@ -488,25 +564,7 @@ export async function updateGuildName(botId, guildName) {
     throw err
   }
 
-  // 敏感词检查
-  if (global.$sensitiveFilter && global.$sensitiveFilter.contains(guildName)) {
-    const err = new Error('公会名包含违禁词')
-    err.statusCode = 400
-    err.expose = true
-    throw err
-  }
-
-  // 唯一性检查
-  const existing = await GamePlayerInfo.findOne({
-    guildName,
-    account: { $ne: bot.account }
-  })
-  if (existing) {
-    const err = new Error('该公会名已被使用')
-    err.statusCode = 400
-    err.expose = true
-    throw err
-  }
+  await validateBotGuildName(bot.account, guildName)
 
   await GamePlayerInfo.updateOne({ account: bot.account }, { guildName })
 

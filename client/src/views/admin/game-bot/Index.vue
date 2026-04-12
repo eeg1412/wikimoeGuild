@@ -1,9 +1,7 @@
 <template>
   <div class="app-container">
     <h2>机器人管理</h2>
-    <p class="text-gray-500 text-sm mb-4">
-      管理自动化机器人，机器人每整点(8:00-22:00)执行行动树
-    </p>
+    <p class="text-gray-500 text-sm mb-4">管理自动化机器人</p>
 
     <el-card shadow="never" class="mb-4">
       <el-form :model="searchForm" inline class="flex flex-wrap gap-y-2">

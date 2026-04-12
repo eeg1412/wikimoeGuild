@@ -65,7 +65,7 @@
       <div class="text-xs text-gray-400 mb-3 px-4">
         机器人会智能计算升级所需的水晶保留量，多余的水晶将自动出售换取金币用于招募冒险家和公会升级。
       </div>
-      <el-form-item label="市场最大挂卖数">
+      <el-form-item label="水晶挂卖市场数">
         <el-input-number
           v-model="editForm.marketSettings.sellCrystals.maxMarketAmount"
           :min="0"
@@ -124,9 +124,7 @@
           active-text="开启"
           inactive-text="关闭"
         />
-        <div class="text-xs text-gray-400 mt-1">
-          关闭后机器人将24小时活动。
-        </div>
+        <div class="text-xs text-gray-400 mt-1">关闭后机器人将24小时活动。</div>
       </el-form-item>
       <template v-if="editForm.activeTimeSettings.enabled">
         <el-form-item label="活动时段">
@@ -155,20 +153,15 @@
       </template>
       <el-divider content-position="left">公会信息</el-divider>
       <el-form-item label="公会名">
-        <div class="flex gap-2 w-full">
+        <div class="w-full">
           <el-input
             v-model="guildNameInput"
             placeholder="新公会名"
             maxlength="20"
           />
-          <el-button
-            type="primary"
-            :disabled="!!actioningId || !guildNameInput"
-            :loading="actioningId === 'guildName'"
-            @click="handleUpdateGuildName"
-          >
-            修改
-          </el-button>
+          <div class="text-xs text-gray-400 mt-1">
+            修改后的公会名会在点击底部“保存”后统一提交。
+          </div>
         </div>
       </el-form-item>
       <el-form-item label="公会图标">
@@ -176,24 +169,15 @@
           <Cropper
             :src="guildIconPreview"
             :aspect-ratio="1"
-            :width="128"
-            :height="128"
-            :max-width="128"
-            :max-height="128"
+            :width="200"
+            :height="200"
             put-image-type="image/png"
             :put-image-quality="0.9"
             @crop="handleGuildIconCrop"
           />
-          <el-button
-            type="primary"
-            size="small"
-            class="mt-2"
-            :disabled="!!actioningId || !guildIconBase64"
-            :loading="actioningId === 'guildIcon'"
-            @click="handleSaveGuildIcon"
-          >
-            上传图标
-          </el-button>
+          <div class="text-xs text-gray-400 mt-2">
+            裁剪后的图标会在点击底部“保存”后统一提交。
+          </div>
         </div>
       </el-form-item>
     </el-form>
@@ -201,7 +185,12 @@
       <el-button :disabled="!!actioningId" @click="dialogVisible = false"
         >取消</el-button
       >
-      <el-button type="primary" :loading="!!actioningId" @click="handleUpdate">
+      <el-button
+        type="primary"
+        :loading="actioningId === 'save'"
+        :disabled="!!actioningId"
+        @click="handleUpdate"
+      >
         保存
       </el-button>
     </template>
@@ -212,12 +201,13 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import Cropper from '@/components/Cropper.vue'
+import { getBotDetailApi, updateBotApi } from '@/api/admin/bot.js'
 import {
-  getBotDetailApi,
-  updateBotApi,
-  updateBotGuildIconApi,
-  updateBotGuildNameApi
-} from '@/api/admin/bot.js'
+  botWeightFields,
+  botWeightPresets,
+  buildBotSettingsPayload,
+  createDefaultBotSettings
+} from '@/views/admin/game-bot/botFormShared.js'
 
 const props = defineProps({
   modelValue: {
@@ -237,59 +227,13 @@ const dialogVisible = computed({
   set: value => emit('update:modelValue', value)
 })
 
-// 行为权重字段（移除已成为共通行动的：招募冒险家、升级属性、市场交易、公会升级）
-const weightFields = [
-  { key: 'switchDungeon', label: '切换地牢' },
-  { key: 'dungeonBattle', label: '地牢战斗' },
-  { key: 'arenaBattle', label: '竞技场' },
-  { key: 'mineExplore', label: '矿场探索' },
-  { key: 'runeStoneManage', label: '符文石管理' },
-  { key: 'formationManage', label: '阵容管理' },
-  { key: 'idle', label: '发呆概率' }
-]
-
-const weightPresets = {
-  积极战斗: {
-    switchDungeon: 50,
-    dungeonBattle: 95,
-    arenaBattle: 90,
-    mineExplore: 60,
-    runeStoneManage: 70,
-    formationManage: 75,
-    idle: 5
-  },
-  稳健成长: {
-    switchDungeon: 40,
-    dungeonBattle: 65,
-    arenaBattle: 50,
-    mineExplore: 70,
-    runeStoneManage: 60,
-    formationManage: 60,
-    idle: 25
-  },
-  低频活跃: {
-    switchDungeon: 30,
-    dungeonBattle: 45,
-    arenaBattle: 30,
-    mineExplore: 40,
-    runeStoneManage: 40,
-    formationManage: 40,
-    idle: 50
-  },
-  竞技专精: {
-    switchDungeon: 35,
-    dungeonBattle: 70,
-    arenaBattle: 95,
-    mineExplore: 50,
-    runeStoneManage: 65,
-    formationManage: 80,
-    idle: 10
-  }
-}
+const weightFields = botWeightFields
+const weightPresets = botWeightPresets
 
 const actioningId = ref(null)
 const detailData = ref(null)
 const guildNameInput = ref('')
+const initialGuildName = ref('')
 const guildIconPreview = ref('')
 const guildIconBase64 = ref('')
 const editForm = reactive(createDefaultEditForm())
@@ -305,35 +249,7 @@ watch(
 )
 
 function createDefaultEditForm() {
-  return {
-    isActive: true,
-    formationTendency: 'balanced',
-    behaviorWeights: {
-      switchDungeon: 40,
-      dungeonBattle: 70,
-      arenaBattle: 60,
-      mineExplore: 50,
-      runeStoneManage: 50,
-      formationManage: 60,
-      idle: 20
-    },
-    marketSettings: {
-      sellCrystals: {
-        maxMarketAmount: 0
-      },
-      sellRuneStones: {
-        enabled: false,
-        maxAmount: 3,
-        rarities: ['legendary']
-      }
-    },
-    activeTimeSettings: {
-      enabled: true,
-      startHour: 8,
-      endHour: 23
-    },
-    note: ''
-  }
+  return createDefaultBotSettings()
 }
 
 function applyBotToForm(bot) {
@@ -372,6 +288,7 @@ function applyBotToForm(bot) {
     activeTimeSettings.endHour ?? defaults.activeTimeSettings.endHour
 
   guildNameInput.value = bot.playerInfo?.guildName || ''
+  initialGuildName.value = bot.playerInfo?.guildName || ''
   guildIconBase64.value = ''
   guildIconPreview.value = ''
 }
@@ -396,9 +313,9 @@ async function fetchEditGuildInfo(botId) {
 
 async function handleUpdate() {
   if (!props.bot?._id) return
-  actioningId.value = props.bot._id
+  actioningId.value = 'save'
   try {
-    await updateBotApi(props.bot._id, editForm)
+    await updateBotApi(props.bot._id, buildUpdatePayload())
     ElMessage.success({ message: '更新成功', showClose: true })
     dialogVisible.value = false
     emit('updated')
@@ -412,51 +329,23 @@ async function handleUpdate() {
   }
 }
 
-async function handleUpdateGuildName() {
-  if (!guildNameInput.value || !props.bot?._id) return
-  actioningId.value = 'guildName'
-  try {
-    await updateBotGuildNameApi(props.bot._id, {
-      guildName: guildNameInput.value
-    })
-    ElMessage.success({ message: '公会名修改成功', showClose: true })
-    guildNameInput.value = ''
-    await fetchEditGuildInfo(props.bot._id)
-    emit('updated')
-  } catch (err) {
-    ElMessage.error({
-      message: err?.response?.data?.message || '修改失败',
-      showClose: true
-    })
-  } finally {
-    actioningId.value = null
+function buildUpdatePayload() {
+  const payload = buildBotSettingsPayload(editForm)
+
+  if (guildNameInput.value !== initialGuildName.value) {
+    payload.guildName = guildNameInput.value
   }
+
+  if (guildIconBase64.value) {
+    payload.iconBase64 = guildIconBase64.value
+  }
+
+  return payload
 }
 
 function handleGuildIconCrop(base64) {
   guildIconBase64.value = base64
   guildIconPreview.value = base64
-}
-
-async function handleSaveGuildIcon() {
-  if (!guildIconBase64.value || !props.bot?._id) return
-  actioningId.value = 'guildIcon'
-  try {
-    await updateBotGuildIconApi(props.bot._id, {
-      iconBase64: guildIconBase64.value
-    })
-    ElMessage.success({ message: '公会图标修改成功', showClose: true })
-    guildIconBase64.value = ''
-    await fetchEditGuildInfo(props.bot._id)
-    emit('updated')
-  } catch (err) {
-    ElMessage.error({
-      message: err?.response?.data?.message || '修改失败',
-      showClose: true
-    })
-  } finally {
-    actioningId.value = null
-  }
 }
 
 function updateGuildIconPreview() {
