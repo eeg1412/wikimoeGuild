@@ -34,8 +34,8 @@
         权重决定每项行动的执行概率，数值越高越可能执行。
         <br />
         <span class="text-blue-400"
-          >注：收获水晶、卖水晶、招募冒险家、升级属性
-          已成为共通行动，每次都会执行。</span
+          >注：收获水晶、卖水晶、招募冒险家、升级属性、公会升级
+          已成为共通行动，每次都会自动执行。</span
         >
       </div>
       <div class="mb-3 px-4 flex flex-wrap gap-2">
@@ -63,7 +63,7 @@
       </el-form-item>
       <el-divider content-position="left">市场交易设置</el-divider>
       <div class="text-xs text-gray-400 mb-3 px-4">
-        机器人会智能计算升级所需的水晶保留量，多余的水晶将自动出售换取金币用于招募冒险家。
+        机器人会智能计算升级所需的水晶保留量，多余的水晶将自动出售换取金币用于招募冒险家和公会升级。
       </div>
       <el-form-item label="市场最大挂卖数">
         <el-input-number
@@ -237,14 +237,13 @@ const dialogVisible = computed({
   set: value => emit('update:modelValue', value)
 })
 
-// 行为权重字段（移除已成为共通行动的：招募冒险家、升级属性、市场交易）
+// 行为权重字段（移除已成为共通行动的：招募冒险家、升级属性、市场交易、公会升级）
 const weightFields = [
   { key: 'switchDungeon', label: '切换地牢' },
   { key: 'dungeonBattle', label: '地牢战斗' },
   { key: 'arenaBattle', label: '竞技场' },
   { key: 'mineExplore', label: '矿场探索' },
   { key: 'runeStoneManage', label: '符文石管理' },
-  { key: 'guildUpgrade', label: '公会升级' },
   { key: 'formationManage', label: '阵容管理' },
   { key: 'idle', label: '发呆概率' }
 ]
@@ -256,7 +255,6 @@ const weightPresets = {
     arenaBattle: 90,
     mineExplore: 60,
     runeStoneManage: 70,
-    guildUpgrade: 85,
     formationManage: 75,
     idle: 5
   },
@@ -266,7 +264,6 @@ const weightPresets = {
     arenaBattle: 50,
     mineExplore: 70,
     runeStoneManage: 60,
-    guildUpgrade: 80,
     formationManage: 60,
     idle: 25
   },
@@ -276,7 +273,6 @@ const weightPresets = {
     arenaBattle: 30,
     mineExplore: 40,
     runeStoneManage: 40,
-    guildUpgrade: 50,
     formationManage: 40,
     idle: 50
   },
@@ -286,7 +282,6 @@ const weightPresets = {
     arenaBattle: 95,
     mineExplore: 50,
     runeStoneManage: 65,
-    guildUpgrade: 75,
     formationManage: 80,
     idle: 10
   }
@@ -319,7 +314,6 @@ function createDefaultEditForm() {
       arenaBattle: 60,
       mineExplore: 50,
       runeStoneManage: 50,
-      guildUpgrade: 70,
       formationManage: 60,
       idle: 20
     },

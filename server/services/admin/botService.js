@@ -290,7 +290,7 @@ export async function create({
 
 /**
  * 根据阵容倾向获取默认行为权重
- * 注：招募冒险家、升级属性、卖水晶已成为共通行动，不再需要对应的行为权重
+ * 注：招募冒险家、升级属性、卖水晶、公会升级已成为共通行动，不再需要对应的行为权重
  */
 function getTendencyWeights(tendency) {
   switch (tendency) {
@@ -301,7 +301,6 @@ function getTendencyWeights(tendency) {
         arenaBattle: 80,
         mineExplore: 60,
         runeStoneManage: 60,
-        guildUpgrade: 80,
         formationManage: 70,
         idle: 10
       }
@@ -312,7 +311,6 @@ function getTendencyWeights(tendency) {
         arenaBattle: 60,
         mineExplore: 50,
         runeStoneManage: 50,
-        guildUpgrade: 70,
         formationManage: 60,
         idle: 20
       }
@@ -323,7 +321,6 @@ function getTendencyWeights(tendency) {
         arenaBattle: 40,
         mineExplore: 60,
         runeStoneManage: 60,
-        guildUpgrade: 60,
         formationManage: 50,
         idle: 30
       }
@@ -334,7 +331,6 @@ function getTendencyWeights(tendency) {
         arenaBattle: 85,
         mineExplore: 55,
         runeStoneManage: 55,
-        guildUpgrade: 75,
         formationManage: 65,
         idle: 10
       }
@@ -345,7 +341,6 @@ function getTendencyWeights(tendency) {
         arenaBattle: 60,
         mineExplore: 50,
         runeStoneManage: 50,
-        guildUpgrade: 70,
         formationManage: 60,
         idle: 20
       }
@@ -417,14 +412,15 @@ export async function update(botId, data) {
 
   await bot.save()
 
-  // 使用 $unset 清理旧的不再使用的 sellCrystals 字段
+  // 使用 $unset 清理旧的不再使用的字段
   await GameBotProfile.updateOne(
     { _id: bot._id },
     {
       $unset: {
         'marketSettings.sellCrystals.enabled': '',
         'marketSettings.sellCrystals.reserveAmount': '',
-        'marketSettings.sellCrystals.maxAmount': ''
+        'marketSettings.sellCrystals.maxAmount': '',
+        'behaviorWeights.guildUpgrade': ''
       }
     }
   )

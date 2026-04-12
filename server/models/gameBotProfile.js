@@ -38,14 +38,13 @@ const gameBotProfileSchema = new mongoose.Schema(
       default: () => new Map()
     },
     // 行为权重 (0-100)，越高越可能执行该行为
-    // 注：招募冒险家、升级属性、卖水晶已成为共通行动，每次tick都会执行
+    // 注：招募冒险家、升级属性、卖水晶、公会升级已成为共通行动，每次tick都会执行
     behaviorWeights: {
       switchDungeon: { type: Number, min: 0, max: 100, default: 40 },
       dungeonBattle: { type: Number, min: 0, max: 100, default: 70 },
       arenaBattle: { type: Number, min: 0, max: 100, default: 60 },
       mineExplore: { type: Number, min: 0, max: 100, default: 50 },
       runeStoneManage: { type: Number, min: 0, max: 100, default: 50 },
-      guildUpgrade: { type: Number, min: 0, max: 100, default: 70 },
       formationManage: { type: Number, min: 0, max: 100, default: 60 },
       idle: { type: Number, min: 0, max: 100, default: 20 }
     },

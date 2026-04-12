@@ -19,7 +19,7 @@ export const createBotSchema = Joi.object({
 })
 
 // 更新机器人
-// 注：招募冒险家、升级属性、卖水晶已成为共通行动，不再需要对应的行为权重
+// 注：招募冒险家、升级属性、卖水晶、公会升级已成为共通行动，不再需要对应的行为权重
 export const updateBotSchema = Joi.object({
   isActive: Joi.boolean().optional(),
   formationTendency: Joi.string()
@@ -31,7 +31,6 @@ export const updateBotSchema = Joi.object({
     arenaBattle: Joi.number().integer().min(0).max(100),
     mineExplore: Joi.number().integer().min(0).max(100),
     runeStoneManage: Joi.number().integer().min(0).max(100),
-    guildUpgrade: Joi.number().integer().min(0).max(100),
     formationManage: Joi.number().integer().min(0).max(100),
     idle: Joi.number().integer().min(0).max(100)
   }).optional(),
