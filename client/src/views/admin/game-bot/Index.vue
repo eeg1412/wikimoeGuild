@@ -74,6 +74,11 @@
             {{ formatNumberWithCommas(row.totalActions || 0) }}
           </template>
         </ResponsiveTableColumn>
+        <ResponsiveTableColumn label="工作时间" min-width="120">
+          <template #default="{ row }">
+            {{ formatBotWorkTime(row.activeTimeSettings) }}
+          </template>
+        </ResponsiveTableColumn>
         <ResponsiveTableColumn label="上次行动" min-width="160">
           <template #default="{ row }">
             {{ row.lastTickAt ? formatDate(row.lastTickAt) : '—' }}
@@ -233,6 +238,16 @@ function openDetailDialog(row) {
 function openAdventurerListFromTable(row) {
   adventurerBotId.value = row._id
   adventurerDialogVisible.value = true
+}
+
+function formatBotWorkTime(activeTimeSettings) {
+  if (!activeTimeSettings || activeTimeSettings.enabled === false) {
+    return '24小时'
+  }
+
+  const startHour = String(activeTimeSettings.startHour ?? 8).padStart(2, '0')
+  const endHour = String(activeTimeSettings.endHour ?? 23).padStart(2, '0')
+  return `${startHour}:00 - ${endHour}:00`
 }
 
 async function handleTrigger(row) {

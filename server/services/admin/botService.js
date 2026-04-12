@@ -112,6 +112,7 @@ export async function list({
               },
               behaviorWeights: 1,
               marketSettings: 1,
+              activeTimeSettings: 1,
               lastTickAt: 1,
               lastActions: { $slice: ['$lastActions', -5] },
               totalActions: 1,
