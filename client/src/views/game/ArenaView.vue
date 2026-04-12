@@ -381,8 +381,10 @@
                 <el-button
                   text
                   size="small"
-                  :loading="matchLoading"
-                  :disabled="refreshCooldown > 0 || matchLoading"
+                  :loading="matchLoading || matchRefreshPending"
+                  :disabled="
+                    refreshCooldown > 0 || matchLoading || matchRefreshPending
+                  "
                   @click="handleRefreshMatchList"
                 >
                   {{
@@ -1350,15 +1352,20 @@ async function handleArenaGridRoleTag(row, col, tagValue) {
 }
 
 const arenaTab = ref('match')
+const MATCH_LIST_REFRESH_COOLDOWN_MS = 10000
+const MATCH_LIST_REFRESH_SAFETY_MS = 500
 
 // 匹配对手
 const matchList = ref([])
 const matchLoading = ref(false)
+const matchRefreshPending = ref(false)
 const challengeLoading = ref(null)
 const challengedOpponents = ref(new Set())
 const matchRefreshedAt = ref(null)
 const refreshCooldown = ref(0)
 let refreshCooldownTimer = null
+let matchRefreshReadyAt = 0
+let matchForceRefreshPromise = null
 
 // 排行榜
 const leaderboard = ref([])
@@ -1720,34 +1727,164 @@ function handleSwitchArenaTab(tab) {
 }
 
 async function fetchMatchList(forceRefresh = false) {
-  matchLoading.value = true
   if (forceRefresh) {
-    challengedOpponents.value = new Set()
+    return refreshMatchListWithLock()
   }
+
+  matchLoading.value = true
   try {
-    const params = forceRefresh ? { refresh: '1' } : {}
-    const res = await getMatchListApi(params)
-    const data = res.data.data
-    matchList.value = data?.opponents || []
-    // 按竞技点从高到低排序
-    matchList.value.sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
-    if (data?.refreshedAt) {
-      matchRefreshedAt.value = new Date(data.refreshedAt)
-      startRefreshCooldown()
-    }
-    // 从服务端返回的 challengedIds 恢复已挑战状态
-    if (!forceRefresh && data?.challengedIds?.length > 0) {
-      challengedOpponents.value = new Set(data.challengedIds)
-    }
+    const res = await getMatchListApi()
+    applyMatchListData(res.data.data, { forceRefresh: false })
   } catch {
-    if (forceRefresh) {
-      // 冷却中时不清空已有列表
-    } else {
-      matchList.value = []
-    }
+    matchList.value = []
   } finally {
     matchLoading.value = false
   }
+}
+
+function applyMatchListData(data, options = {}) {
+  const forceRefresh = options.forceRefresh === true
+  matchList.value = data?.opponents || []
+  matchList.value.sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+
+  if (data?.refreshedAt) {
+    updateMatchRefreshWindow(data.refreshedAt, forceRefresh)
+  }
+
+  if (forceRefresh) {
+    challengedOpponents.value = new Set()
+    return
+  }
+
+  challengedOpponents.value = new Set(data?.challengedIds || [])
+}
+
+function updateMatchRefreshWindow(refreshedAt, forceRefresh = false) {
+  const refreshedAtMs = new Date(refreshedAt).getTime()
+  const now = Date.now()
+
+  matchRefreshedAt.value = new Date(refreshedAtMs)
+
+  if (forceRefresh) {
+    matchRefreshReadyAt = Math.max(
+      matchRefreshReadyAt,
+      now + MATCH_LIST_REFRESH_COOLDOWN_MS + MATCH_LIST_REFRESH_SAFETY_MS
+    )
+  } else {
+    const remainingMs = Math.max(
+      0,
+      MATCH_LIST_REFRESH_COOLDOWN_MS - (now - refreshedAtMs)
+    )
+    matchRefreshReadyAt = Math.max(
+      matchRefreshReadyAt,
+      now + remainingMs + MATCH_LIST_REFRESH_SAFETY_MS
+    )
+  }
+
+  startRefreshCooldown()
+}
+
+function getMatchRefreshRemainingMs() {
+  return Math.max(0, matchRefreshReadyAt - Date.now())
+}
+
+function getRefreshRetryMs(err) {
+  const message = err.response?.data?.message || err.message || ''
+  const matched = message.match(/请(\d+)秒后再试/)
+  if (!matched) return 0
+  return Number(matched[1]) * 1000 + MATCH_LIST_REFRESH_SAFETY_MS
+}
+
+async function waitForMatchRefresh(runToken) {
+  const initialRemainingMs = getMatchRefreshRemainingMs()
+  if (initialRemainingMs <= 0) {
+    refreshCooldown.value = 0
+    return true
+  }
+
+  autoArenaCooldownSeconds.value = Math.ceil(initialRemainingMs / 1000)
+  autoArenaStatusText.value = `⏳ 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
+
+  const ready = await new Promise(resolve => {
+    clearAutoArenaCooldownTimer()
+    autoArenaCooldownTimer = setInterval(() => {
+      if (!autoArenaRunning.value || runToken !== autoArenaRunToken) {
+        clearAutoArenaCooldownTimer()
+        autoArenaCooldownSeconds.value = 0
+        resolve(false)
+        return
+      }
+
+      const remainingMs = getMatchRefreshRemainingMs()
+      autoArenaCooldownSeconds.value = Math.ceil(remainingMs / 1000)
+      autoArenaStatusText.value = `⏳ 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
+
+      if (remainingMs <= 0) {
+        clearAutoArenaCooldownTimer()
+        autoArenaCooldownSeconds.value = 0
+        resolve(true)
+      }
+    }, 250)
+  })
+
+  return ready
+}
+
+async function refreshMatchListWithLock(options = {}) {
+  const runToken = options.runToken
+  const waitForCooldown = options.waitForCooldown === true
+  const autoRetryOnCooldown = options.autoRetryOnCooldown === true
+
+  if (matchForceRefreshPromise) {
+    return await matchForceRefreshPromise
+  }
+
+  matchForceRefreshPromise = (async () => {
+    let retryCount = 0
+    matchRefreshPending.value = true
+
+    try {
+      while (retryCount < 3) {
+        if (waitForCooldown) {
+          const ready = await waitForMatchRefresh(runToken)
+          if (!ready) return false
+        } else if (getMatchRefreshRemainingMs() > 0) {
+          startRefreshCooldown()
+          return false
+        }
+
+        try {
+          const res = await getMatchListApi({ refresh: '1' })
+          applyMatchListData(res.data.data, { forceRefresh: true })
+          return true
+        } catch (err) {
+          const retryMs = getRefreshRetryMs(err)
+          if (retryMs <= 0) {
+            return false
+          }
+
+          matchRefreshReadyAt = Math.max(
+            matchRefreshReadyAt,
+            Date.now() + retryMs
+          )
+          startRefreshCooldown()
+
+          if (!autoRetryOnCooldown) {
+            return false
+          }
+
+          retryCount += 1
+        }
+      }
+
+      return false
+    } finally {
+      matchRefreshPending.value = false
+      matchForceRefreshPromise = null
+    }
+  })()
+
+  return await matchForceRefreshPromise
 }
 
 function startRefreshCooldown() {
@@ -1757,8 +1894,7 @@ function startRefreshCooldown() {
   }
   if (!matchRefreshedAt.value) return
   const calcRemaining = () => {
-    const elapsed = Date.now() - matchRefreshedAt.value.getTime()
-    return Math.max(0, Math.ceil((10000 - elapsed) / 1000))
+    return Math.max(0, Math.ceil(getMatchRefreshRemainingMs() / 1000))
   }
   refreshCooldown.value = calcRemaining()
   if (refreshCooldown.value > 0) {
@@ -1772,8 +1908,8 @@ function startRefreshCooldown() {
   }
 }
 
-function handleRefreshMatchList() {
-  fetchMatchList(true)
+async function handleRefreshMatchList() {
+  await refreshMatchListWithLock()
 }
 
 function formatRefreshedAt(date) {
@@ -2225,56 +2361,12 @@ function releaseAutoArenaWakeLock() {
 
 // ── 刷新对手列表（自动对战用） ──
 async function autoArenaRefreshMatchList(runToken) {
-  if (matchRefreshedAt.value) {
-    const elapsed = Date.now() - matchRefreshedAt.value.getTime()
-    if (elapsed < 10000) {
-      const waitMs = 10000 - elapsed
-      autoArenaCooldownSeconds.value = Math.ceil(waitMs / 1000)
-      autoArenaStatusText.value = `⏳ 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
-
-      const refreshed = await new Promise(resolve => {
-        autoArenaCooldownTimer = setInterval(() => {
-          if (!autoArenaRunning.value || runToken !== autoArenaRunToken) {
-            clearAutoArenaCooldownTimer()
-            autoArenaCooldownSeconds.value = 0
-            resolve(false)
-            return
-          }
-          const remaining = Math.max(
-            0,
-            10000 - (Date.now() - matchRefreshedAt.value.getTime())
-          )
-          autoArenaCooldownSeconds.value = Math.ceil(remaining / 1000)
-          autoArenaStatusText.value = `⏳ 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
-          if (remaining <= 0) {
-            clearAutoArenaCooldownTimer()
-            autoArenaCooldownSeconds.value = 0
-            doAutoArenaRefresh().then(resolve)
-          }
-        }, 500)
-      })
-      return refreshed
-    }
-  }
-  return doAutoArenaRefresh()
-}
-
-async function doAutoArenaRefresh() {
   autoArenaStatusText.value = '🔄 刷新对手列表...'
-  challengedOpponents.value = new Set()
-  try {
-    const res = await getMatchListApi({ refresh: '1' })
-    const data = res.data.data
-    matchList.value = data?.opponents || []
-    matchList.value.sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
-    if (data?.refreshedAt) {
-      matchRefreshedAt.value = new Date(data.refreshedAt)
-      startRefreshCooldown()
-    }
-    return true
-  } catch {
-    return false
-  }
+  return await refreshMatchListWithLock({
+    runToken,
+    waitForCooldown: true,
+    autoRetryOnCooldown: true
+  })
 }
 
 // ── 对话框管理 ──
