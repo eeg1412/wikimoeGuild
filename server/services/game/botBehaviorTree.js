@@ -10,10 +10,11 @@
  * 3. 卖水晶换金币（为招募冒险家和公会升级准备资金）- 共通行动
  * 4. 招募冒险家（优先招募到下次公会升级所需数量，最多25个）- 共通行动
  * 5. 阵容管理（设定冒险家标记，按规则加入阵容）- 共通行动
- * 6. 购买水晶（智能使用余钱从玩家市场/官方市场购买短缺水晶）- 共通行动
- * 7. 升级冒险家属性（智能分配水晶）- 共通行动
- * 8. 公会升级（自动判断条件，可连续升级）- 共通行动
- * 9. 根据权重和概率选择并执行其他行动
+ * 6. 循环执行（最多3轮，尽可能花完资源）：
+ *    a. 购买水晶（智能使用余钱从玩家市场/官方市场购买短缺水晶）
+ *    b. 升级冒险家属性（智能分配水晶，每轮最多100次）
+ *    c. 公会升级（自动判断条件，可连续升级最多10次）
+ * 7. 根据权重和概率选择并执行其他行动
  */
 
 import GameBotProfile from '../../models/gameBotProfile.js'
@@ -397,16 +398,17 @@ async function actionLevelUpStats(accountId, bot) {
     }
 
     let totalUpgrades = 0
+    const maxUpgradesPerTick = 100 // 每次调用最多升级次数，确保尽可能花完资源
     // 按综合等级从低到高，优先升级低等级冒险家
     for (const adv of adventurers) {
-      if (totalUpgrades >= 20) break // 每次tick最多升20次
+      if (totalUpgrades >= maxUpgradesPerTick) break
 
       const compLevel =
         adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
       if (compLevel >= maxCompLevel) continue
 
-      // 尝试对同一冒险家升级多次（最多5次），模拟正常玩家行为
-      for (let i = 0; i < 5 && totalUpgrades < 20; i++) {
+      // 尝试对同一冒险家升级多次（最多20次），尽可能花完资源
+      for (let i = 0; i < 20 && totalUpgrades < maxUpgradesPerTick; i++) {
         // 根据冒险家角色选择属性分配权重
         const role = getRoleOf(adv._id)
         const statType = chooseStatToUpgrade(adv, getRoleWeights(role))
@@ -1009,7 +1011,7 @@ async function actionSellRuneFragments(accountId) {
  * 严谨的购买算法：
  * 1. 计算各类型水晶缺口（升级所需量 - 当前持有量）
  * 2. 计算必须预留的金币（公会升级费 + 招募费 + 近期升级金币消耗）
- * 3. 可用预算 = (当前金币 - 预留金) × 80%（保留安全余量）
+ * 3. 可用预算 = 当前金币 - 预留金（不保留额外安全余量，配合多轮循环尽可能花完资源）
  * 4. 按各类型缺口比例分配预算
  * 5. 对每种缺口水晶：
  *    a. 先收取已有的求购待领取素材
@@ -1086,7 +1088,7 @@ async function actionBuyCrystals(accountId, bot) {
       adventurers.length,
       recruitPrice
     )
-    // 近期升级属性所需金币（约20次升级，即一次tick的最大升级量）
+    // 近期升级属性所需金币（预留一轮升级的金币消耗，多轮循环中逐步释放预算）
     const nearTermGoldReserve = calculateNearTermUpgradeGoldNeeds(
       adventurers,
       maxCompLevel,
@@ -1096,10 +1098,8 @@ async function actionBuyCrystals(accountId, bot) {
     const totalReserve = guildReserve + nearTermGoldReserve
 
     // ── Step 3: 计算可用预算 ──
-    // 可用预算 = (当前金币 - 预留金) × 80%，保留20%安全余量
-    let availableBudget = Math.floor(
-      Math.max(0, playerInfo.gold - totalReserve) * 0.8
-    )
+    // 可用预算 = 当前金币 - 预留金（不保留额外安全余量，避免屯积资源）
+    let availableBudget = Math.max(0, playerInfo.gold - totalReserve)
     if (availableBudget <= 0) return null
 
     // 玩家市场可接受的最高单价
@@ -1504,8 +1504,8 @@ async function actionRuneStoneManage(accountId, bot) {
 async function actionGuildUpgrade(accountId) {
   return await safeExec('公会升级', async () => {
     let totalUpgrades = 0
-    // 每次tick最多尝试3次连续升级（避免无限循环）
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // 每次tick最多尝试10次连续升级
+    for (let attempt = 0; attempt < 10; attempt++) {
       const result = await safeExec('公会升级尝试', () =>
         guildService.upgradeGuildLevel(accountId)
       )
@@ -1705,9 +1705,10 @@ async function assignAdventurerRoles(bot, grid, adventurers) {
  * 4. 卖水晶换金币（为招募和公会升级准备资金）
  * 5. 招募冒险家（优先招募到公会升级所需数量）
  * 6. 阵容管理（设定冒险家标记，按规则加入阵容）
- * 7. 购买水晶（智能使用余钱从玩家/官方市场购买短缺水晶）
- * 8. 升级冒险家属性
- * 9. 公会升级（自动判断条件，可连续升级）
+ * 7. 循环（最多3轮，尽可能花完资源）：
+ *    a. 购买水晶（智能用余钱从玩家/官方市场购买短缺水晶）
+ *    b. 升级冒险家属性（每轮最多100次升级）
+ *    c. 公会升级（可连续升级最多10次）
  *
  * 权重行动（按概率执行）：
  * - 地牢战斗、切换地牢、竞技场、矿场探索、符文石管理
@@ -1762,14 +1763,21 @@ export async function executeBotTick(bot) {
   // 1.6 阵容管理（设定冒险家标记，按规则加入阵容，确保新招募冒险家立即入阵）
   addAction('formationManage', await actionFormationManage(accountId, bot))
 
-  // 1.7 购买水晶（智能使用余钱从玩家市场/官方市场购买短缺水晶）
-  addAction('buyCrystals', await actionBuyCrystals(accountId, bot))
+  // 1.7-1.9 循环执行：购买水晶 → 升级属性 → 公会升级
+  // 循环多轮确保尽可能花完资源，避免屯积
+  for (let round = 0; round < 3; round++) {
+    const buyResult = await actionBuyCrystals(accountId, bot)
+    addAction('buyCrystals', buyResult)
 
-  // 1.8 升级冒险家属性
-  addAction('levelUpStats', await actionLevelUpStats(accountId, bot))
+    const levelResult = await actionLevelUpStats(accountId, bot)
+    addAction('levelUpStats', levelResult)
 
-  // 1.9 公会升级（自动判断条件，满足则升级，可连续升级多次）
-  addAction('guildUpgrade', await actionGuildUpgrade(accountId))
+    const guildResult = await actionGuildUpgrade(accountId)
+    addAction('guildUpgrade', guildResult)
+
+    // 如果本轮没有任何操作执行成功，停止循环
+    if (!buyResult && !levelResult && !guildResult) break
+  }
 
   // ══════════════════════════════════════════════════════
   // Phase 2: 战斗类行动（按权重执行）
