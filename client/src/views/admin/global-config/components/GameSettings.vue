@@ -287,45 +287,63 @@
       <el-divider content-position="left">⚔️ 竞技场</el-divider>
 
       <el-form-item label="奖池金额" prop="arenaPoolAmount">
-        <el-input-number
-          v-model="form.arenaPoolAmount"
-          :min="0"
-          :max="2000000000"
-          :step="10000"
-          controls-position="right"
-        />
+        <div class="w-full">
+          <el-input-number
+            v-model="form.arenaPoolAmount"
+            :min="0"
+            :max="2000000000"
+            :step="10000"
+            controls-position="right"
+          />
+          <div class="text-xs text-gray-400 mt-1 leading-5">
+            仅在新建赛季时写入赛季数据。当前赛季，以及休赛期已提前创建的下一赛季，都不会自动同步这里的修改。
+          </div>
+        </div>
       </el-form-item>
 
       <el-form-item label="参与奖奖金" prop="arenaParticipationReward">
-        <el-input-number
-          v-model="form.arenaParticipationReward"
-          :min="0"
-          :max="2000000000"
-          :step="100"
-          controls-position="right"
-        />
-        <span class="ml-2 text-gray-400 text-sm">24场后可领</span>
+        <div class="w-full">
+          <el-input-number
+            v-model="form.arenaParticipationReward"
+            :min="0"
+            :max="2000000000"
+            :step="100"
+            controls-position="right"
+          />
+          <div class="text-xs text-gray-400 mt-1 leading-5">
+            满24场后可领取。仅在新建赛季时写入赛季数据，当前赛季和休赛期已提前创建的下一赛季都不会自动同步这里的修改。
+          </div>
+        </div>
       </el-form-item>
 
       <el-form-item label="每战获得金币" prop="arenaBattleGold">
-        <el-input-number
-          v-model="form.arenaBattleGold"
-          :min="0"
-          :max="2000000000"
-          :step="10"
-          controls-position="right"
-        />
+        <div class="w-full">
+          <el-input-number
+            v-model="form.arenaBattleGold"
+            :min="0"
+            :max="2000000000"
+            :step="10"
+            controls-position="right"
+          />
+          <div class="text-xs text-gray-400 mt-1 leading-5">
+            仅在新建赛季时写入赛季数据。当前赛季，以及休赛期已提前创建的下一赛季，都不会自动同步这里的修改。
+          </div>
+        </div>
       </el-form-item>
 
       <el-form-item label="赛季持续天数" prop="seasonDays">
-        <el-input-number
-          v-model="form.seasonDays"
-          :min="3"
-          :max="365"
-          :step="1"
-          controls-position="right"
-        />
-        <span class="ml-2 text-gray-400 text-sm">最少3天</span>
+        <div class="w-full">
+          <el-input-number
+            v-model="form.seasonDays"
+            :min="3"
+            :max="365"
+            :step="1"
+            controls-position="right"
+          />
+          <div class="text-xs text-gray-400 mt-1 leading-5">
+            最少3天。仅在新建赛季时读取，当前赛季和休赛期已提前创建的下一赛季都不会自动改变持续天数。
+          </div>
+        </div>
       </el-form-item>
 
       <el-divider content-position="left">⚔️ 冒险家升级基础值</el-divider>

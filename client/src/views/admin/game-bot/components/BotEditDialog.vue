@@ -156,23 +156,34 @@
       </el-form-item>
       <template v-if="editForm.activeTimeSettings.enabled">
         <el-form-item label="活动时段">
-          <div class="flex items-center gap-2 w-full">
-            <el-input-number
-              v-model="editForm.activeTimeSettings.startHour"
-              :min="0"
-              :max="23"
-              :step="1"
-              style="width: 120px"
-            />
-            <span>时 至</span>
-            <el-input-number
-              v-model="editForm.activeTimeSettings.endHour"
-              :min="0"
-              :max="23"
-              :step="1"
-              style="width: 120px"
-            />
-            <span>时</span>
+          <div
+            class="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:gap-3"
+          >
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="text-xs text-gray-400 shrink-0">开始</span>
+              <el-input-number
+                v-model="editForm.activeTimeSettings.startHour"
+                :min="0"
+                :max="23"
+                :step="1"
+                class="flex-1 min-w-0"
+                style="width: 100%"
+              />
+              <span class="shrink-0">时</span>
+            </div>
+            <span class="hidden sm:inline text-gray-400 shrink-0">至</span>
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="text-xs text-gray-400 shrink-0">结束</span>
+              <el-input-number
+                v-model="editForm.activeTimeSettings.endHour"
+                :min="0"
+                :max="23"
+                :step="1"
+                class="flex-1 min-w-0"
+                style="width: 100%"
+              />
+              <span class="shrink-0">时</span>
+            </div>
           </div>
           <div class="text-xs text-gray-400 mt-1">
             机器人仅在此时段内执行行动。支持跨天设置（如22时至6时）。
