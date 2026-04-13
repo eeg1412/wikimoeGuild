@@ -6,7 +6,7 @@ import logger from '../utils/logger.js'
 /**
  * 初始化定时任务
  * 赛季结束日凌晨3点开始结算奖励
- * 每整点(8:00-21:00)执行机器人行动
+ * 每整点执行机器人行动，由行为树按各机器人的活动时间过滤
  */
 export function initCronJobs() {
   // 每天凌晨3点检查是否需要结算赛季
@@ -20,8 +20,8 @@ export function initCronJobs() {
     }
   })
 
-  // 每整点执行机器人行动（8:00-21:00，行为树内部会判断时间范围）
-  cron.schedule('0 8-21 * * *', async () => {
+  // 每整点执行机器人行动，是否执行由行为树根据 bot.activeTimeSettings 判断
+  cron.schedule('0 * * * *', async () => {
     logger.info('[Cron] 开始执行机器人行动...')
     try {
       await executeAllBotTicks()
