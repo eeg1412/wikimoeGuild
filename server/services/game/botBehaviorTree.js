@@ -6,12 +6,14 @@
  *
  * 行动树执行流程：
  * 1. 资源收集（结算水晶、领取邮件）- 共通行动
- * 2. 卖水晶换金币（为招募冒险家和公会升级准备资金）- 共通行动
- * 3. 招募冒险家（优先招募到下次公会升级所需数量，最多25个）- 共通行动
- * 4. 阵容管理（设定冒险家标记，按规则加入阵容）- 共通行动
- * 5. 升级冒险家属性（智能分配水晶）- 共通行动
- * 6. 公会升级（自动判断条件，可连续升级）- 共通行动
- * 7. 根据权重和概率选择并执行其他行动
+ * 2. 出售符文石碎片（碎片换金币）- 共通行动
+ * 3. 卖水晶换金币（为招募冒险家和公会升级准备资金）- 共通行动
+ * 4. 招募冒险家（优先招募到下次公会升级所需数量，最多25个）- 共通行动
+ * 5. 阵容管理（设定冒险家标记，按规则加入阵容）- 共通行动
+ * 6. 购买水晶（智能使用余钱从玩家市场/官方市场购买短缺水晶）- 共通行动
+ * 7. 升级冒险家属性（智能分配水晶）- 共通行动
+ * 8. 公会升级（自动判断条件，可连续升级）- 共通行动
+ * 9. 根据权重和概率选择并执行其他行动
  */
 
 import GameBotProfile from '../../models/gameBotProfile.js'
@@ -25,6 +27,7 @@ import GameMine from '../../models/gameMine.js'
 import GameArenaRegistration from '../../models/gameArenaRegistration.js'
 import GameMarketListing from '../../models/gameMarketListing.js'
 import GameRuneStoneListing from '../../models/gameRuneStoneListing.js'
+import GameOfficialMarketStock from '../../models/gameOfficialMarketStock.js'
 
 import * as dungeonService from './dungeonService.js'
 import * as adventurerService from './adventurerService.js'
@@ -259,6 +262,52 @@ function calculateGuildUpgradeGoldNeeds(
 
   // 总计：升级费 + 招募费
   return upgradeFee + recruitCost
+}
+
+/**
+ * 计算近期升级冒险家属性所需的金币
+ * 从所有可升级的属性中取出最便宜的 maxLevels 次升级成本
+ * @param {object[]} adventurers - 冒险家列表
+ * @param {number} maxCompLevel - 当前公会最大综合等级
+ * @param {number} goldBase - 升级金币基数
+ * @param {number} maxLevels - 最多计算多少次升级（默认20，即一次tick的最大升级次数）
+ * @returns {number} 近期升级所需金币
+ */
+function calculateNearTermUpgradeGoldNeeds(
+  adventurers,
+  maxCompLevel,
+  goldBase,
+  maxLevels = 20
+) {
+  const levelMap = {
+    attack: 'attackLevel',
+    defense: 'defenseLevel',
+    speed: 'speedLevel',
+    san: 'SANLevel'
+  }
+
+  // 收集所有可执行的单次升级的金币成本
+  const costs = []
+  for (const adv of adventurers) {
+    const compLevel =
+      adv.attackLevel + adv.defenseLevel + adv.speedLevel + adv.SANLevel - 3
+    if (compLevel >= maxCompLevel) continue
+
+    for (const stat of ['attack', 'defense', 'speed', 'san']) {
+      const currentLevel = adv[levelMap[stat]]
+      if (currentLevel < maxCompLevel) {
+        costs.push(getAdventurerLevelUpGoldCost(currentLevel, goldBase))
+      }
+    }
+  }
+
+  // 按成本从低到高排序，取前 maxLevels 次
+  costs.sort((a, b) => a - b)
+  let total = 0
+  for (let i = 0; i < Math.min(maxLevels, costs.length); i++) {
+    total += costs[i]
+  }
+  return total
 }
 
 /**
@@ -821,13 +870,16 @@ async function actionSellCrystals(accountId, bot) {
       // 基础可出售量 = 持有量 - 属性升级保留量
       const baseSellable = Math.max(0, held - reserveForUpgrade)
       // 如果金币不足以支撑公会升级/招募，额外卖出一部分水晶（从保留量中借用）
-      const sellableQty =
-        extraSellPerType > 0
-          ? Math.max(
-              baseSellable,
-              Math.min(held, baseSellable + extraSellPerType)
-            )
-          : baseSellable
+      // 但绝不能让卖出后的水晶低于实际需求量（避免低卖高买回同类型水晶的亏损）
+      let sellableQty = baseSellable
+      if (extraSellPerType > 0) {
+        const absoluteMin = crystalNeeds[type] // 绝对最低保留量 = 实际需求量
+        const maxExtraSellable = Math.max(0, held - absoluteMin)
+        sellableQty = Math.min(
+          Math.max(baseSellable, baseSellable + extraSellPerType),
+          maxExtraSellable
+        )
+      }
       if (sellableQty < 10) continue
 
       // 查看当前已上架的卖单数量
@@ -904,6 +956,259 @@ async function actionSellCrystals(accountId, bot) {
       await safeExec('收取挂单金币', () =>
         marketService.collectMaterialOrder(accountId, order._id)
       )
+    }
+
+    return actions.length > 0 ? actions.join('；') : null
+  })
+}
+
+/**
+ * 出售所有符文石碎片（共通行动）
+ * 将所有碎片卖给官方市场换取金币
+ */
+async function actionSellRuneFragments(accountId) {
+  return await safeExec('出售符文石碎片', async () => {
+    const inventory = await GamePlayerInventory.findOne({
+      account: accountId
+    }).lean()
+    if (!inventory || !inventory.runeFragment || inventory.runeFragment <= 0) {
+      return null
+    }
+
+    const quantity = inventory.runeFragment
+    const result = await marketService.sellRuneFragmentToOfficial(
+      accountId,
+      // sellRuneFragmentToOfficial 限制最大 99999，分批出售
+      Math.min(quantity, 99999)
+    )
+    if (!result) return null
+
+    // 如果碎片超过 99999，继续出售剩余部分
+    let totalGold = result.goldEarned
+    let totalSold = Math.min(quantity, 99999)
+    let remaining = quantity - totalSold
+
+    while (remaining > 0) {
+      const batch = Math.min(remaining, 99999)
+      const batchResult = await safeExec('出售碎片批次', () =>
+        marketService.sellRuneFragmentToOfficial(accountId, batch)
+      )
+      if (!batchResult) break
+      totalGold += batchResult.goldEarned
+      totalSold += batch
+      remaining -= batch
+    }
+
+    return `出售了${totalSold}个符文石碎片，获得${totalGold}金币`
+  })
+}
+
+/**
+ * 购买水晶（共通行动）
+ *
+ * 严谨的购买算法：
+ * 1. 计算各类型水晶缺口（升级所需量 - 当前持有量）
+ * 2. 计算必须预留的金币（公会升级费 + 招募费 + 近期升级金币消耗）
+ * 3. 可用预算 = (当前金币 - 预留金) × 80%（保留安全余量）
+ * 4. 按各类型缺口比例分配预算
+ * 5. 对每种缺口水晶：
+ *    a. 先收取已有的求购待领取素材
+ *    b. 扫描玩家市场卖单（按价格升序），只购买单价 < 官方售价的合理订单
+ *    c. 剩余缺口从官方市场购买（官方售价）
+ * 6. 每笔购买都检查预算是否充足，严格不超支
+ *
+ * 价格合理性判断：
+ * - 玩家卖单价格 < 官方售价 × maxPriceRatio → 合理，购买
+ * - 玩家卖单价格 >= 官方售价 × maxPriceRatio → 过高，跳过
+ * - 无低价玩家卖单时，从官方市场按固定价购买
+ */
+async function actionBuyCrystals(accountId, bot) {
+  return await safeExec('购买水晶', async () => {
+    // 检查是否启用水晶购买
+    const ms = bot.marketSettings || {}
+    const buyCrystalSettings = ms.buyCrystals || {}
+    if (buyCrystalSettings.enabled === false) return null
+
+    const playerInfo = await GamePlayerInfo.findOne({
+      account: accountId
+    }).lean()
+    if (!playerInfo) return null
+
+    const inventory = await GamePlayerInventory.findOne({
+      account: accountId
+    }).lean()
+    if (!inventory) return null
+
+    const adventurers = await GameAdventurer.find({ account: accountId })
+      .sort({ comprehensiveLevel: 1 })
+      .lean()
+    if (adventurers.length === 0) return null
+
+    const gameSettings = global.$globalConfig?.gameSettings || {}
+    const crystalBase = gameSettings.adventurerLevelUpCrystalBase ?? 100
+    const goldBase = gameSettings.adventurerLevelUpGoldBase ?? 500
+    const officialSellPrice = gameSettings.officialCrystalSellPrice ?? 10000
+    const feeBase = gameSettings.guildLevelUpFeeBase ?? 1000
+    const recruitPrice = gameSettings.adventurerRecruitPrice ?? 10000
+    const maxPriceRatio = buyCrystalSettings.maxPriceRatio ?? 1.0
+
+    const guildLevel = playerInfo.guildLevel || 1
+    const maxCompLevel = getMaxComprehensiveLevel(guildLevel)
+
+    // ── Step 1: 计算各类型水晶缺口 ──
+    const crystalNeeds = calculateUpgradeCrystalNeeds(
+      adventurers,
+      maxCompLevel,
+      crystalBase
+    )
+    const crystalTypes = [
+      'attackCrystal',
+      'defenseCrystal',
+      'speedCrystal',
+      'sanCrystal'
+    ]
+    const deficits = {}
+    let totalDeficit = 0
+    for (const type of crystalTypes) {
+      const deficit = Math.max(0, crystalNeeds[type] - (inventory[type] || 0))
+      if (deficit > 0) {
+        deficits[type] = deficit
+        totalDeficit += deficit
+      }
+    }
+    if (totalDeficit === 0) return null
+
+    // ── Step 2: 计算必须预留的金币 ──
+    // 公会升级 + 招募冒险家费用
+    const guildReserve = calculateGuildUpgradeGoldNeeds(
+      guildLevel,
+      feeBase,
+      adventurers.length,
+      recruitPrice
+    )
+    // 近期升级属性所需金币（约20次升级，即一次tick的最大升级量）
+    const nearTermGoldReserve = calculateNearTermUpgradeGoldNeeds(
+      adventurers,
+      maxCompLevel,
+      goldBase,
+      20
+    )
+    const totalReserve = guildReserve + nearTermGoldReserve
+
+    // ── Step 3: 计算可用预算 ──
+    // 可用预算 = (当前金币 - 预留金) × 80%，保留20%安全余量
+    let availableBudget = Math.floor(
+      Math.max(0, playerInfo.gold - totalReserve) * 0.8
+    )
+    if (availableBudget <= 0) return null
+
+    // 玩家市场可接受的最高单价
+    const maxAcceptablePrice = Math.floor(officialSellPrice * maxPriceRatio)
+
+    const actions = []
+    const deficitTypes = Object.keys(deficits)
+
+    // ── Step 4: 先收取所有待领取的求购单素材 ──
+    const pendingBuyOrders = await GameMarketListing.find({
+      account: accountId,
+      orderType: 'buy',
+      status: { $in: ['active', 'completed'] },
+      pendingQuantity: { $gt: 0 }
+    }).lean()
+    for (const order of pendingBuyOrders) {
+      await safeExec('收取求购素材', () =>
+        marketService.collectMaterialOrder(accountId, order._id)
+      )
+    }
+
+    // ── Step 5: 按缺口比例分配预算并购买 ──
+    for (const type of deficitTypes) {
+      let deficit = deficits[type]
+      // 按缺口比例分配预算（缺口越大分配越多）
+      let typeBudget = Math.floor(availableBudget * (deficit / totalDeficit))
+      if (typeBudget <= 0) continue
+
+      let boughtFromPlayers = 0
+      let boughtFromOfficial = 0
+      let goldSpentOnPlayers = 0
+      let goldSpentOnOfficial = 0
+
+      // ── Step 5a: 从玩家市场购买低价卖单 ──
+      // 查询价格低于可接受上限的活跃卖单，按价格升序排列
+      const sellOrders = await GameMarketListing.find({
+        orderType: 'sell',
+        materialType: type,
+        status: 'active',
+        account: { $ne: accountId },
+        unitPrice: { $lt: maxAcceptablePrice }
+      })
+        .sort({ unitPrice: 1 })
+        .lean()
+
+      for (const order of sellOrders) {
+        if (deficit <= 0 || typeBudget <= 0) break
+
+        // 计算本单可购买数量：不超过缺口、不超过订单剩余、不超过预算
+        const maxAffordable = Math.floor(typeBudget / order.unitPrice)
+        const buyQty = Math.min(deficit, order.quantity, maxAffordable)
+        if (buyQty <= 0) break
+
+        const result = await safeExec('购买玩家水晶', () =>
+          marketService.fulfillMaterialSellOrder(accountId, order._id, buyQty)
+        )
+        if (result) {
+          const cost = result.goldSpent
+          deficit -= result.quantity
+          typeBudget -= cost
+          availableBudget -= cost
+          boughtFromPlayers += result.quantity
+          goldSpentOnPlayers += cost
+        }
+      }
+
+      // ── Step 5b: 剩余缺口从官方市场购买 ──
+      if (deficit > 0 && typeBudget >= officialSellPrice) {
+        const stock = await GameOfficialMarketStock.findOne({
+          key: 'global'
+        }).lean()
+        const officialAvailable = stock?.[type] || 0
+
+        if (officialAvailable > 0) {
+          const maxAffordable = Math.floor(typeBudget / officialSellPrice)
+          const buyQty = Math.min(
+            deficit,
+            maxAffordable,
+            officialAvailable,
+            99999 // 单次购买上限
+          )
+          if (buyQty > 0) {
+            const result = await safeExec('购买官方水晶', () =>
+              marketService.buyCrystalFromOfficial(accountId, type, buyQty)
+            )
+            if (result) {
+              deficit -= buyQty
+              const cost = result.goldSpent
+              typeBudget -= cost
+              availableBudget -= cost
+              boughtFromOfficial += buyQty
+              goldSpentOnOfficial += cost
+            }
+          }
+        }
+      }
+
+      // 记录购买日志
+      const label = getCrystalTypeLabel(type)
+      if (boughtFromPlayers > 0) {
+        actions.push(
+          `从玩家市场购买${boughtFromPlayers}个${label}（花费${goldSpentOnPlayers}金币）`
+        )
+      }
+      if (boughtFromOfficial > 0) {
+        actions.push(
+          `从官方市场购买${boughtFromOfficial}个${label}（花费${goldSpentOnOfficial}金币）`
+        )
+      }
     }
 
     return actions.length > 0 ? actions.join('；') : null
@@ -1396,11 +1701,13 @@ async function assignAdventurerRoles(bot, grid, adventurers) {
  * 共通行动（每次tick都会执行）：
  * 1. 结算水晶
  * 2. 领取邮件
- * 3. 卖水晶换金币（为招募和公会升级准备资金）
- * 4. 招募冒险家（优先招募到公会升级所需数量）
- * 5. 阵容管理（设定冒险家标记，按规则加入阵容）
- * 6. 升级冒险家属性
- * 7. 公会升级（自动判断条件，可连续升级）
+ * 3. 出售符文石碎片（碎片换金币）
+ * 4. 卖水晶换金币（为招募和公会升级准备资金）
+ * 5. 招募冒险家（优先招募到公会升级所需数量）
+ * 6. 阵容管理（设定冒险家标记，按规则加入阵容）
+ * 7. 购买水晶（智能使用余钱从玩家/官方市场购买短缺水晶）
+ * 8. 升级冒险家属性
+ * 9. 公会升级（自动判断条件，可连续升级）
  *
  * 权重行动（按概率执行）：
  * - 地牢战斗、切换地牢、竞技场、矿场探索、符文石管理
@@ -1443,19 +1750,25 @@ export async function executeBotTick(bot) {
   // 1.2 领取邮件附件
   addAction('claimMails', await actionClaimMails(accountId))
 
-  // 1.3 卖水晶换金币（为招募冒险家和公会升级准备金币）
+  // 1.3 出售符文石碎片（碎片换金币，为后续操作准备资金）
+  addAction('sellRuneFragments', await actionSellRuneFragments(accountId))
+
+  // 1.4 卖水晶换金币（为招募冒险家和公会升级准备金币）
   addAction('sellCrystals', await actionSellCrystals(accountId, bot))
 
-  // 1.4 招募冒险家（优先招募到下次公会升级所需数量）
+  // 1.5 招募冒险家（优先招募到下次公会升级所需数量）
   addAction('recruitAdventurer', await actionRecruitAdventurer(accountId))
 
-  // 1.5 阵容管理（设定冒险家标记，按规则加入阵容，确保新招募冒险家立即入阵）
+  // 1.6 阵容管理（设定冒险家标记，按规则加入阵容，确保新招募冒险家立即入阵）
   addAction('formationManage', await actionFormationManage(accountId, bot))
 
-  // 1.6 升级冒险家属性
+  // 1.7 购买水晶（智能使用余钱从玩家市场/官方市场购买短缺水晶）
+  addAction('buyCrystals', await actionBuyCrystals(accountId, bot))
+
+  // 1.8 升级冒险家属性
   addAction('levelUpStats', await actionLevelUpStats(accountId, bot))
 
-  // 1.7 公会升级（自动判断条件，满足则升级，可连续升级多次）
+  // 1.9 公会升级（自动判断条件，满足则升级，可连续升级多次）
   addAction('guildUpgrade', await actionGuildUpgrade(accountId))
 
   // ══════════════════════════════════════════════════════

@@ -109,6 +109,34 @@
           </el-checkbox-group>
         </el-form-item>
       </template>
+      <el-divider content-position="left">水晶购买设置</el-divider>
+      <el-form-item label="自动购买水晶">
+        <el-switch
+          v-model="createForm.marketSettings.buyCrystals.enabled"
+          active-text="开启"
+          inactive-text="关闭"
+        />
+        <div class="text-xs text-gray-400 mt-1">
+          开启后机器人会使用余钱从玩家市场和官方市场购买短缺的水晶。
+        </div>
+      </el-form-item>
+      <template v-if="createForm.marketSettings.buyCrystals.enabled">
+        <el-form-item label="最高价比">
+          <el-slider
+            v-model="createForm.marketSettings.buyCrystals.maxPriceRatio"
+            :min="0.1"
+            :max="1.0"
+            :step="0.1"
+            :format-tooltip="val => `${Math.round(val * 100)}%`"
+          />
+          <div class="text-xs text-gray-400 mt-1">
+            从玩家市场购买时可接受的最高单价（相对官方售价的比例）。
+            <br />
+            例如 100% 表示只要低于官方售价就购买，80% 表示只买不超过官方价格 80%
+            的水晶。
+          </div>
+        </el-form-item>
+      </template>
       <el-divider content-position="left">初始资源</el-divider>
       <el-form-item label="初始金币">
         <el-input-number
@@ -318,6 +346,10 @@ function resetCreateForm() {
   createForm.marketSettings.sellRuneStones.rarities = [
     ...defaults.marketSettings.sellRuneStones.rarities
   ]
+  createForm.marketSettings.buyCrystals.enabled =
+    defaults.marketSettings.buyCrystals.enabled
+  createForm.marketSettings.buyCrystals.maxPriceRatio =
+    defaults.marketSettings.buyCrystals.maxPriceRatio
   createForm.activeTimeSettings.enabled = defaults.activeTimeSettings.enabled
   createForm.activeTimeSettings.startHour =
     defaults.activeTimeSettings.startHour

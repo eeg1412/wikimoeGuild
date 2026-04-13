@@ -73,6 +73,14 @@ const gameBotProfileSchema = new mongoose.Schema(
           enum: ['normal', 'rare', 'legendary'],
           default: ['legendary']
         }
+      },
+      // 水晶购买设置
+      buyCrystals: {
+        // 是否启用自动购买水晶
+        enabled: { type: Boolean, default: true },
+        // 从玩家市场购买时可接受的最高单价比例（相对官方售价）
+        // 1.0 表示只要低于官方售价就会购买
+        maxPriceRatio: { type: Number, min: 0.1, max: 1.0, default: 1.0 }
       }
     },
     // 上次执行行动的时间

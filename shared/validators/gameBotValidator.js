@@ -23,6 +23,10 @@ const marketSettingsSchema = Joi.object({
       .items(Joi.string().valid('normal', 'rare', 'legendary'))
       .min(0)
       .max(3)
+  }).optional(),
+  buyCrystals: Joi.object({
+    enabled: Joi.boolean(),
+    maxPriceRatio: Joi.number().min(0.1).max(1.0)
   }).optional()
 })
 

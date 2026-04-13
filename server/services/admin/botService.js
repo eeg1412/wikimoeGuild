@@ -118,6 +118,7 @@ export async function list({
               totalActions: 1,
               note: 1,
               createdAt: 1,
+              'playerInfo.account': 1,
               'playerInfo.guildName': 1,
               'playerInfo.gold': 1,
               'playerInfo.guildLevel': 1,
@@ -315,6 +316,10 @@ export async function create({
         enabled: marketSettings?.sellRuneStones?.enabled ?? false,
         maxAmount: marketSettings?.sellRuneStones?.maxAmount ?? 3,
         rarities: marketSettings?.sellRuneStones?.rarities ?? ['legendary']
+      },
+      buyCrystals: {
+        enabled: marketSettings?.buyCrystals?.enabled ?? true,
+        maxPriceRatio: marketSettings?.buyCrystals?.maxPriceRatio ?? 1.0
       }
     }
 
@@ -459,6 +464,15 @@ export async function update(botId, data) {
           bot.marketSettings.sellRuneStones.maxAmount = sr.maxAmount
         if (sr.rarities !== undefined)
           bot.marketSettings.sellRuneStones.rarities = sr.rarities
+      }
+      if (data.marketSettings.buyCrystals) {
+        const bc = data.marketSettings.buyCrystals
+        if (!bot.marketSettings) bot.marketSettings = {}
+        if (!bot.marketSettings.buyCrystals) bot.marketSettings.buyCrystals = {}
+        if (bc.enabled !== undefined)
+          bot.marketSettings.buyCrystals.enabled = bc.enabled
+        if (bc.maxPriceRatio !== undefined)
+          bot.marketSettings.buyCrystals.maxPriceRatio = bc.maxPriceRatio
       }
       bot.markModified('marketSettings')
     }

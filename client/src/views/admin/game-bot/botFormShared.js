@@ -68,6 +68,10 @@ export function createDefaultBotSettings() {
         enabled: false,
         maxAmount: 3,
         rarities: ['legendary']
+      },
+      buyCrystals: {
+        enabled: true,
+        maxPriceRatio: 1.0
       }
     },
     activeTimeSettings: {
@@ -94,6 +98,10 @@ export function buildBotSettingsPayload(form) {
         enabled: form.marketSettings.sellRuneStones.enabled,
         maxAmount: form.marketSettings.sellRuneStones.maxAmount,
         rarities: [...form.marketSettings.sellRuneStones.rarities]
+      },
+      buyCrystals: {
+        enabled: form.marketSettings.buyCrystals.enabled,
+        maxPriceRatio: form.marketSettings.buyCrystals.maxPriceRatio
       }
     },
     activeTimeSettings: {

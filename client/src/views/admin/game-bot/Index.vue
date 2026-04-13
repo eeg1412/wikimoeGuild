@@ -47,14 +47,24 @@
         stripe
         style="width: 100%"
       >
-        <ResponsiveTableColumn label="公会名" min-width="120">
+        <ResponsiveTableColumn label="公会" min-width="160">
           <template #default="{ row }">
-            {{ row.playerInfo?.guildName || '—' }}
-          </template>
-        </ResponsiveTableColumn>
-        <ResponsiveTableColumn label="阵容倾向" min-width="80">
-          <template #default="{ row }">
-            {{ tendencyMap[row.formationTendency || 'balanced'] || '—' }}
+            <div class="flex items-center gap-2">
+              <GameGuildIcon
+                :account-id="row.account"
+                :has-custom-guild-icon="
+                  row.playerInfo?.hasCustomGuildIcon || false
+                "
+                :custom-guild-icon-updated-at="
+                  row.playerInfo?.customGuildIconUpdatedAt
+                "
+                class="w-6 h-6 rounded"
+              />
+              <span>{{ row.playerInfo?.guildName || '—' }}</span>
+              <el-tag size="small" type="info">
+                Lv.{{ row.playerInfo?.guildLevel || 1 }}
+              </el-tag>
+            </div>
           </template>
         </ResponsiveTableColumn>
         <ResponsiveTableColumn label="状态" min-width="70">
@@ -64,19 +74,51 @@
             </el-tag>
           </template>
         </ResponsiveTableColumn>
-        <ResponsiveTableColumn label="冒险家数量" min-width="90">
+        <ResponsiveTableColumn label="阵容倾向" min-width="80">
+          <template #default="{ row }">
+            {{ tendencyMap[row.formationTendency || 'balanced'] || '—' }}
+          </template>
+        </ResponsiveTableColumn>
+        <ResponsiveTableColumn label="冒险家" min-width="70">
           <template #default="{ row }">
             {{ formatNumberWithCommas(row.playerInfo?.adventurerCount || 0) }}
           </template>
         </ResponsiveTableColumn>
-        <ResponsiveTableColumn label="累计行动" min-width="90">
+        <ResponsiveTableColumn label="市场策略" min-width="200">
           <template #default="{ row }">
-            {{ formatNumberWithCommas(row.totalActions || 0) }}
+            <div class="text-xs leading-relaxed">
+              <div>
+                水晶挂卖：{{
+                  (row.marketSettings?.sellCrystals?.maxMarketAmount || 0) > 0
+                    ? `${formatNumberWithCommas(row.marketSettings.sellCrystals.maxMarketAmount)}/种`
+                    : '关闭'
+                }}
+              </div>
+              <div>
+                符文石出售：{{
+                  row.marketSettings?.sellRuneStones?.enabled
+                    ? `开启(${row.marketSettings.sellRuneStones.maxAmount || 0}个)`
+                    : '关闭'
+                }}
+              </div>
+              <div>
+                自动购买水晶：{{
+                  row.marketSettings?.buyCrystals?.enabled !== false
+                    ? `开启(最高价比${Math.round((row.marketSettings?.buyCrystals?.maxPriceRatio ?? 1) * 100)}%)`
+                    : '关闭'
+                }}
+              </div>
+            </div>
           </template>
         </ResponsiveTableColumn>
-        <ResponsiveTableColumn label="工作时间" min-width="120">
+        <ResponsiveTableColumn label="工作时间" min-width="100">
           <template #default="{ row }">
             {{ formatBotWorkTime(row.activeTimeSettings) }}
+          </template>
+        </ResponsiveTableColumn>
+        <ResponsiveTableColumn label="累计行动" min-width="80">
+          <template #default="{ row }">
+            {{ formatNumberWithCommas(row.totalActions || 0) }}
           </template>
         </ResponsiveTableColumn>
         <ResponsiveTableColumn label="上次行动" min-width="160">
@@ -84,7 +126,7 @@
             {{ row.lastTickAt ? formatDate(row.lastTickAt) : '—' }}
           </template>
         </ResponsiveTableColumn>
-        <ResponsiveTableColumn label="备注" prop="note" min-width="120" />
+        <ResponsiveTableColumn label="备注" prop="note" min-width="100" />
         <ResponsiveTableColumn
           label="操作"
           width="280"
