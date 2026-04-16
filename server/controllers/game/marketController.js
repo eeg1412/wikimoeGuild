@@ -326,3 +326,13 @@ export async function collectRuneStoneListing(req, res, next) {
     next(error)
   }
 }
+
+export async function getMarketPendingStatus(req, res, next) {
+  try {
+    const accountId = req.player.id
+    const result = await marketService.getMarketPendingStatus(accountId)
+    res.success(result, '获取市场待收取状态成功')
+  } catch (error) {
+    next(error)
+  }
+}

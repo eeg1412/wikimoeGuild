@@ -203,7 +203,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, inject } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createMaterialSellOrderApi,
@@ -221,6 +221,7 @@ import {
 import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
+const fetchMarketPendingStatus = inject('fetchMarketPendingStatus', () => {})
 
 // ── 素材持有信息 ──
 const inventoryLoading = ref(false)
@@ -309,6 +310,7 @@ async function handleCollect(order) {
     ElMessage.success({ message: '收取成功！', showClose: true })
     await fetchOrders()
     await fetchPlayerInfo()
+    fetchMarketPendingStatus()
   } catch {
   } finally {
     collectLoading.value = null

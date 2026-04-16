@@ -373,7 +373,10 @@
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameMarket' })"
           >
-            <span class="fab-grid-icon">🏪</span>
+            <div class="relative inline-flex">
+              <span class="fab-grid-icon">🏪</span>
+              <span v-if="marketPending.hasAnyPending" class="fab-dot-mini" />
+            </div>
             <span class="fab-grid-label">市场</span>
           </div>
           <div
@@ -448,7 +451,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -458,6 +461,7 @@ import { useGameSiteSettings } from '@/composables/useGameSiteSettings.js'
 import { getGuildLevelInfoApi, upgradeGuildLevelApi } from '@/api/game/guild.js'
 import { getMyInventoryApi } from '@/api/game/inventory.js'
 import { getUnreadCountApi } from '@/api/game/mail.js'
+import { getMarketPendingStatusApi } from '@/api/game/market.js'
 import { formatNumberWithCommas } from 'shared/utils/utils.js'
 import CrystalQuickSellDialog from '@/components/CrystalQuickSellDialog.vue'
 import CrystalQuickBuyDialog from '@/components/CrystalQuickBuyDialog.vue'
@@ -474,7 +478,18 @@ const fabOpen = ref(false)
 // ── 未读邮件角标 ──
 const unreadMailCount = ref(0)
 
-const hasNewContent = computed(() => unreadMailCount.value > 0)
+// ── 市场待收取状态 ──
+const marketPending = ref({
+  hasMaterialSellPending: false,
+  hasMaterialBuyPending: false,
+  hasMaterialPending: false,
+  hasRuneStonePending: false,
+  hasAnyPending: false
+})
+
+const hasNewContent = computed(
+  () => unreadMailCount.value > 0 || marketPending.value.hasAnyPending
+)
 
 const unreadMailBadge = computed(() => {
   if (unreadMailCount.value <= 0) return ''
@@ -492,11 +507,22 @@ async function fetchUnreadMailCount() {
   }
 }
 
-// 每次路由切换时更新未读数
+async function fetchMarketPendingStatus() {
+  if (!isLoggedIn.value) return
+  try {
+    const res = await getMarketPendingStatusApi()
+    marketPending.value = res.data.data ?? marketPending.value
+  } catch {
+    // ignore
+  }
+}
+
+// 每次路由切换时更新未读数和市场状态
 watch(
   () => route.fullPath,
   () => {
     fetchUnreadMailCount()
+    fetchMarketPendingStatus()
   }
 )
 
@@ -701,6 +727,7 @@ onMounted(async () => {
   if (isLoggedIn.value) {
     await fetchPlayerInfo()
     fetchUnreadMailCount()
+    fetchMarketPendingStatus()
     checkGuildUpgradeStatus()
   }
 })
@@ -725,10 +752,21 @@ watch(
   }
 )
 
+// 暴露市场待收取状态供子页面使用
+provide('marketPending', marketPending)
+provide('fetchMarketPendingStatus', fetchMarketPendingStatus)
+
 function handleLogout() {
   logout()
   fabOpen.value = false
   unreadMailCount.value = 0
+  marketPending.value = {
+    hasMaterialSellPending: false,
+    hasMaterialBuyPending: false,
+    hasMaterialPending: false,
+    hasRuneStonePending: false,
+    hasAnyPending: false
+  }
   router.push('/game/home')
 }
 </script>
@@ -881,6 +919,19 @@ function handleLogout() {
   border-radius: 9px;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* 小红点角标（菜单图标上） */
+.fab-dot-mini {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.6);
 }
 
 /* dungeons_texturize.webp */

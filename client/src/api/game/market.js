@@ -110,3 +110,8 @@ export function collectRuneStoneListingApi(id) {
 export function sellRuneFragmentToOfficialApi(data) {
   return gameRequest.post('/market/official/sell-rune-fragment', data)
 }
+
+// 市场待收取状态检查
+export function getMarketPendingStatusApi() {
+  return gameRequest.get('/market/pending-status')
+}

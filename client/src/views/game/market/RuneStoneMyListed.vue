@@ -78,6 +78,7 @@
 <script setup>
 import { ref, inject, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+
 import {
   listMyRuneStoneListingsApi,
   cancelRuneStoneListingApi,
@@ -89,6 +90,7 @@ import { formatNumberWithCommas } from 'shared/utils/utils.js'
 
 const { fetchPlayerInfo } = useGameUser()
 const rarityFilter = inject('runeStoneRarityFilter')
+const fetchMarketPendingStatus = inject('fetchMarketPendingStatus', () => {})
 
 const myListings = ref([])
 const myListingsLoading = ref(false)
@@ -143,6 +145,7 @@ async function handleCollectListing(listing) {
     ElMessage.success({ message: '收取成功！', showClose: true })
     await fetchMyListings()
     await fetchPlayerInfo()
+    fetchMarketPendingStatus()
   } catch {
   } finally {
     collectRsLoading.value = null

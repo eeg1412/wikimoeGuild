@@ -1441,6 +1441,47 @@ export async function collectRuneStoneListing(accountId, listingId) {
   })
 }
 
+// ==================== 市场待收取状态检查 ====================
+
+/**
+ * 检查玩家是否有市场待收取的物品/金币
+ */
+export async function getMarketPendingStatus(accountId) {
+  const [materialSellPending, materialBuyPending, runeStonePending] =
+    await Promise.all([
+      // 素材卖单：有待收取金币
+      GameMarketListing.exists({
+        account: accountId,
+        orderType: 'sell',
+        pendingGold: { $gt: 0 }
+      }),
+      // 素材买单：有待收取素材
+      GameMarketListing.exists({
+        account: accountId,
+        orderType: 'buy',
+        pendingQuantity: { $gt: 0 }
+      }),
+      // 符文石挂单：有待收取金币
+      GameRuneStoneListing.exists({
+        account: accountId,
+        pendingGold: { $gt: 0 }
+      })
+    ])
+
+  const hasMaterialSellPending = !!materialSellPending
+  const hasMaterialBuyPending = !!materialBuyPending
+  const hasRuneStonePending = !!runeStonePending
+
+  return {
+    hasMaterialSellPending,
+    hasMaterialBuyPending,
+    hasMaterialPending: hasMaterialSellPending || hasMaterialBuyPending,
+    hasRuneStonePending,
+    hasAnyPending:
+      hasMaterialSellPending || hasMaterialBuyPending || hasRuneStonePending
+  }
+}
+
 // ==================== 官方市场 - 符文石碎片收购 ====================
 
 /**

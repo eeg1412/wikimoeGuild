@@ -19,16 +19,26 @@
       <el-button
         :type="activeSubTab === 'mySell' ? 'warning' : 'default'"
         size="small"
+        class="relative"
         @click="navigateToSubTab('GameMarketMaterialMySell')"
       >
         发布出售
+        <span
+          v-if="marketPending.hasMaterialSellPending"
+          class="market-sub-dot"
+        />
       </el-button>
       <el-button
         :type="activeSubTab === 'myBuy' ? 'warning' : 'default'"
         size="small"
+        class="relative"
         @click="navigateToSubTab('GameMarketMaterialMyBuy')"
       >
         发布求购
+        <span
+          v-if="marketPending.hasMaterialBuyPending"
+          class="market-sub-dot"
+        />
       </el-button>
     </div>
 
@@ -59,12 +69,17 @@
 </template>
 
 <script setup>
-import { ref, computed, provide } from 'vue'
+import { ref, computed, provide, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { materialTypes } from '@/composables/useMarketUtils.js'
 
 const route = useRoute()
 const router = useRouter()
+
+const marketPending = inject('marketPending', {
+  hasMaterialSellPending: false,
+  hasMaterialBuyPending: false
+})
 
 // 共享素材类型筛选
 const materialFilter = ref('')
@@ -91,3 +106,17 @@ function handleFilterChange() {
   filterVersion.value++
 }
 </script>
+
+<style scoped>
+.market-sub-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.6);
+}
+</style>

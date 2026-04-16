@@ -164,4 +164,11 @@ router.post(
   marketController.collectRuneStoneListing
 )
 
+// 市场待收取状态检查
+router.get(
+  '/pending-status',
+  authPlayer,
+  marketController.getMarketPendingStatus
+)
+
 export default router

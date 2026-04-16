@@ -15,9 +15,31 @@
 
     <!-- 顶部标签页 -->
     <el-tabs v-model="activeTab" class="market-tabs mb-4">
-      <el-tab-pane label="🏛️ 官方市场" name="official" />
-      <el-tab-pane label="📦 素材交易" name="material" />
-      <el-tab-pane label="💎 符文石交易" name="runeStone" />
+      <el-tab-pane name="official">
+        <template #label>🏛️ 官方市场</template>
+      </el-tab-pane>
+      <el-tab-pane name="material">
+        <template #label>
+          <span class="relative">
+            📦 素材交易
+            <span
+              v-if="marketPending.hasMaterialPending"
+              class="market-tab-dot"
+            />
+          </span>
+        </template>
+      </el-tab-pane>
+      <el-tab-pane name="runeStone">
+        <template #label>
+          <span class="relative">
+            💎 符文石交易
+            <span
+              v-if="marketPending.hasRuneStonePending"
+              class="market-tab-dot"
+            />
+          </span>
+        </template>
+      </el-tab-pane>
     </el-tabs>
 
     <router-view />
@@ -25,7 +47,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameUser } from '@/composables/useGameUser.js'
 import { formatNumberWithCommas } from 'shared/utils/utils.js'
@@ -33,6 +55,12 @@ import { formatNumberWithCommas } from 'shared/utils/utils.js'
 const route = useRoute()
 const router = useRouter()
 const { isLoggedIn, playerInfo } = useGameUser()
+
+const marketPending = inject('marketPending', {
+  hasMaterialPending: false,
+  hasRuneStonePending: false,
+  hasAnyPending: false
+})
 
 if (!isLoggedIn.value) {
   router.replace({ name: 'GameLogin' })
@@ -78,5 +106,16 @@ const activeTab = computed({
 }
 .market-tabs :deep(.el-tabs__nav-wrap) {
   justify-content: center;
+}
+.market-tab-dot {
+  position: absolute;
+  top: -2px;
+  right: -8px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.6);
 }
 </style>

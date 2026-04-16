@@ -12,9 +12,11 @@
       <el-button
         :type="activeSubTab === 'myListed' ? 'success' : 'default'"
         size="small"
+        class="relative"
         @click="navigateToSubTab('GameMarketRuneStoneMyListed')"
       >
         上架中
+        <span v-if="marketPending.hasRuneStonePending" class="market-sub-dot" />
       </el-button>
       <el-button
         :type="activeSubTab === 'myUnlisted' ? 'info' : 'default'"
@@ -45,11 +47,15 @@
 </template>
 
 <script setup>
-import { ref, computed, provide } from 'vue'
+import { ref, computed, provide, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
+
+const marketPending = inject('marketPending', {
+  hasRuneStonePending: false
+})
 
 // 共享稀有度筛选（贯穿所有子页面）
 const rarityFilter = ref('')
@@ -69,3 +75,17 @@ function navigateToSubTab(routeName) {
   }
 }
 </script>
+
+<style scoped>
+.market-sub-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.6);
+}
+</style>
