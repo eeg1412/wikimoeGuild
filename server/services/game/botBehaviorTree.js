@@ -36,7 +36,6 @@ import * as formationService from './formationService.js'
 import * as arenaService from './arenaService.js'
 import * as mineService from './mineService.js'
 import * as marketService from './marketService.js'
-import * as runeStoneService from './runeStoneService.js'
 import * as guildService from './guildService.js'
 import * as mailService from './mailService.js'
 import * as legionService from './legionService.js'
@@ -73,6 +72,48 @@ function getRuneStoneRarityLabel(rarity) {
       rare: '稀有',
       legendary: '传说'
     }[rarity] || rarity
+  )
+}
+
+function getOfficialRuneStoneBuyPrice(rarity, gameSettings) {
+  const officialPriceMap = {
+    normal: gameSettings.officialNormalRuneStoneBuyPrice ?? 100,
+    rare: gameSettings.officialRareRuneStoneBuyPrice ?? 400,
+    legendary: gameSettings.officialLegendaryRuneStoneBuyPrice ?? 2000
+  }
+
+  return officialPriceMap[rarity] ?? 0
+}
+
+async function getBotRuneStoneListingPrice(accountId, runeStone, gameSettings) {
+  const freeMarketRuneStoneMinPrice =
+    gameSettings.freeMarketRuneStoneMinPrice ?? 100
+  const officialBuyPrice = getOfficialRuneStoneBuyPrice(
+    runeStone.rarity,
+    gameSettings
+  )
+
+  const marketListings = await GameRuneStoneListing.find({
+    status: 'active',
+    account: { $ne: accountId }
+  })
+    .populate({
+      path: 'runeStone',
+      match: { rarity: runeStone.rarity, level: runeStone.level }
+    })
+    .sort({ price: 1 })
+    .lean()
+
+  const sameTypeListings = marketListings.filter(listing => listing.runeStone)
+  const marketLowestPrice =
+    sameTypeListings.length > 0
+      ? sameTypeListings[0].price
+      : freeMarketRuneStoneMinPrice + 10
+
+  return Math.max(
+    marketLowestPrice,
+    freeMarketRuneStoneMinPrice,
+    officialBuyPrice > 0 ? officialBuyPrice + 1 : 0
   )
 }
 
@@ -1320,8 +1361,6 @@ async function actionRuneStoneManage(accountId, bot) {
       const maxListCount = runeSettings.maxAmount || 3
       const sellRarities = new Set(runeSettings.rarities || ['legendary'])
       const gameSettings = global.$globalConfig?.gameSettings || {}
-      const freeMarketRuneStoneMinPrice =
-        gameSettings.freeMarketRuneStoneMinPrice ?? 100
 
       // 当前已上架的符文石
       const myListings = await GameRuneStoneListing.find({
@@ -1351,28 +1390,14 @@ async function actionRuneStoneManage(accountId, bot) {
         const toList = sellableStones.slice(0, canList)
 
         for (const stone of toList) {
-          // 调研同稀有度同等级的市场价
-          const marketListings = await GameRuneStoneListing.find({
-            status: 'active',
-            account: { $ne: accountId }
-          })
-            .populate({
-              path: 'runeStone',
-              match: { rarity: stone.rarity, level: stone.level }
-            })
-            .sort({ price: 1 })
-            .lean()
-
-          const sameTypeListings = marketListings.filter(l => l.runeStone)
-          let listPrice
-          if (sameTypeListings.length > 0) {
-            listPrice = sameTypeListings[0].price
-          } else {
-            listPrice = freeMarketRuneStoneMinPrice + 10
-          }
+          const listPrice = await getBotRuneStoneListingPrice(
+            accountId,
+            stone,
+            gameSettings
+          )
 
           await safeExec('挂卖符文石', () =>
-            runeStoneService.createRuneStoneListing(
+            marketService.createRuneStoneListing(
               accountId,
               stone._id,
               listPrice
@@ -1417,7 +1442,7 @@ async function actionRuneStoneManage(accountId, bot) {
 
           // 下架低级的
           await safeExec('下架符文石', () =>
-            runeStoneService.cancelRuneStoneListing(accountId, listing._id)
+            marketService.cancelRuneStoneListing(accountId, listing._id)
           )
 
           // 低级符文石卖给官方变现
@@ -1427,27 +1452,14 @@ async function actionRuneStoneManage(accountId, bot) {
 
           // 上架高级的
           const stone = sellableStones.shift()
-          const marketListings = await GameRuneStoneListing.find({
-            status: 'active',
-            account: { $ne: accountId }
-          })
-            .populate({
-              path: 'runeStone',
-              match: { rarity: stone.rarity, level: stone.level }
-            })
-            .sort({ price: 1 })
-            .lean()
-
-          const sameTypeListings = marketListings.filter(l => l.runeStone)
-          let listPrice
-          if (sameTypeListings.length > 0) {
-            listPrice = sameTypeListings[0].price
-          } else {
-            listPrice = freeMarketRuneStoneMinPrice + 10
-          }
+          const listPrice = await getBotRuneStoneListingPrice(
+            accountId,
+            stone,
+            gameSettings
+          )
 
           await safeExec('挂卖符文石', () =>
-            runeStoneService.createRuneStoneListing(
+            marketService.createRuneStoneListing(
               accountId,
               stone._id,
               listPrice
@@ -1467,7 +1479,7 @@ async function actionRuneStoneManage(accountId, bot) {
       }).lean()
       for (const listing of completedListings) {
         await safeExec('收取符文石金币', () =>
-          runeStoneService.collectRuneStoneListing(accountId, listing._id)
+          marketService.collectRuneStoneListing(accountId, listing._id)
         )
       }
     }
