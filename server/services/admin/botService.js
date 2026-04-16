@@ -461,7 +461,10 @@ export async function update(botId, data) {
         if (sr.enabled !== undefined)
           bot.marketSettings.sellRuneStones.enabled = sr.enabled
         if (sr.maxAmount !== undefined)
-          bot.marketSettings.sellRuneStones.maxAmount = sr.maxAmount
+          bot.marketSettings.sellRuneStones.maxAmount = Math.min(
+            100,
+            Math.max(1, Math.trunc(sr.maxAmount))
+          )
         if (sr.rarities !== undefined)
           bot.marketSettings.sellRuneStones.rarities = sr.rarities
       }

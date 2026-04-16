@@ -90,13 +90,14 @@
         <el-form-item label="最大挂卖数">
           <el-input-number
             v-model="createForm.marketSettings.sellRuneStones.maxAmount"
-            :min="0"
+            :min="1"
             :max="100"
             :step="1"
             style="width: 100%"
           />
           <div class="text-xs text-gray-400 mt-1">
-            同时挂卖的符文石数量上限，超出时下架低级替换高级的，低级卖官方。
+            同时挂卖的符文石数量上限，必须大于
+            0；超出时下架低级替换高级的，低级卖官方。
           </div>
         </el-form-item>
         <el-form-item label="出售稀有度">

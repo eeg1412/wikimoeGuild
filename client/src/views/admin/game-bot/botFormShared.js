@@ -47,6 +47,15 @@ export const botWeightPresets = {
   }
 }
 
+export function normalizeSellRuneStoneMaxAmount(value, fallback = 3) {
+  const parsedValue = Number(value)
+  if (!Number.isFinite(parsedValue)) {
+    return fallback
+  }
+
+  return Math.min(100, Math.max(1, Math.trunc(parsedValue)))
+}
+
 export function createDefaultBotSettings() {
   return {
     isActive: true,
@@ -96,7 +105,9 @@ export function buildBotSettingsPayload(form) {
       },
       sellRuneStones: {
         enabled: form.marketSettings.sellRuneStones.enabled,
-        maxAmount: form.marketSettings.sellRuneStones.maxAmount,
+        maxAmount: normalizeSellRuneStoneMaxAmount(
+          form.marketSettings.sellRuneStones.maxAmount
+        ),
         rarities: [...form.marketSettings.sellRuneStones.rarities]
       },
       buyCrystals: {

@@ -18,7 +18,7 @@ const marketSettingsSchema = Joi.object({
   }).optional(),
   sellRuneStones: Joi.object({
     enabled: Joi.boolean(),
-    maxAmount: Joi.number().integer().min(0).max(100),
+    maxAmount: Joi.number().integer().min(1).max(100),
     rarities: Joi.array()
       .items(Joi.string().valid('normal', 'rare', 'legendary'))
       .min(0)

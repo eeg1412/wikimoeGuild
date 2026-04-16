@@ -66,7 +66,7 @@ const gameBotProfileSchema = new mongoose.Schema(
       sellRuneStones: {
         enabled: { type: Boolean, default: false },
         // 最多同时挂卖多少个符文石
-        maxAmount: { type: Number, min: 0, max: 100, default: 3 },
+        maxAmount: { type: Number, min: 1, max: 100, default: 3 },
         // 会出售哪些稀有度的符文石
         rarities: {
           type: [String],
