@@ -713,6 +713,19 @@
                   </div>
                 </div>
                 <div
+                  v-else-if="autoChallengeShowStoppedState"
+                  key="auto-challenge-stopped"
+                  class="auto-duel-settlement"
+                >
+                  <p class="auto-duel-settlement__title">自动挑战已停止</p>
+                  <p class="auto-duel-settlement__status">
+                    {{ autoChallengeStatusText }}
+                  </p>
+                  <div class="auto-duel-settlement__stats">
+                    <span>本次未进行任何战斗</span>
+                  </div>
+                </div>
+                <div
                   v-else-if="autoChallengeSceneReady"
                   :key="autoChallengeSceneKey"
                   class="auto-duel-scene"
@@ -832,7 +845,8 @@
                 v-if="
                   !autoChallengeDialogClosing &&
                   !autoChallengeSceneReady &&
-                  !autoChallengeInitialLoading
+                  !autoChallengeInitialLoading &&
+                  !autoChallengeShowStoppedState
                 "
                 class="text-gray-400 text-sm py-6"
               >
@@ -855,7 +869,8 @@
           <div
             class="space-y-2 auto-challenge-summary"
             :class="{
-              'auto-challenge-summary--hidden': autoChallengeShowSettlement
+              'auto-challenge-summary--hidden':
+                autoChallengeShowSettlement || autoChallengeShowStoppedState
             }"
           >
             <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -1978,6 +1993,17 @@ const autoChallengeShowSettlement = computed(() => {
   return !autoChallengeRunning.value && autoChallengeTotalCount.value > 0
 })
 
+const autoChallengeShowStoppedState = computed(() => {
+  if (!autoChallengeDialogVisible.value) return false
+  if (autoChallengeDialogClosing.value) return false
+  if (autoChallengeInitialLoading.value) return false
+  return (
+    !autoChallengeRunning.value &&
+    autoChallengeTotalCount.value === 0 &&
+    autoChallengeStatusText.value !== AUTO_CHALLENGE_PREPARING_TEXT
+  )
+})
+
 const autoChallengeCountdownHint = computed(() => {
   if (autoChallengeRunning.value && autoChallengeCooldownSeconds.value > 0) {
     return `下一批将在 ${autoChallengeCooldownSeconds.value} 秒后切换`
@@ -1990,6 +2016,9 @@ const autoChallengeCountdownHint = computed(() => {
   if (autoChallengeRunning.value) {
     return '正在准备下一批对手...'
   }
+  if (autoChallengeShowStoppedState.value) {
+    return '自动挑战已停止'
+  }
   if (autoChallengeTotalCount.value > 0) {
     return '自动挑战已结束'
   }
@@ -2000,6 +2029,9 @@ const autoChallengeCountdownHint = computed(() => {
 const autoChallengeBattleDisplay = computed(() => {
   if (autoChallengeRunning.value) {
     return `⚔️ 第 ${autoChallengeDisplayCount.value || 1} 场战斗`
+  }
+  if (autoChallengeShowStoppedState.value) {
+    return '⚔️ 本次未进行战斗'
   }
   if (autoChallengeTotalCount.value > 0) {
     return `⚔️ 共完成 ${autoChallengeTotalCount.value} 场战斗`
@@ -2423,6 +2455,8 @@ function handleStopAutoChallenge(options = {}) {
   autoChallengeCooldownSeconds.value = 0
   if (finalStatusText) {
     autoChallengeStatusText.value = finalStatusText
+  } else if (autoChallengeTotalCount.value === 0) {
+    autoChallengeStatusText.value = '已停止，未进行任何战斗'
   } else if (autoChallengeStatusText.value === AUTO_CHALLENGE_RUNNING_TEXT) {
     autoChallengeStatusText.value = '已停止'
   }

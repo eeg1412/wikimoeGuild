@@ -251,7 +251,12 @@
             <el-button
               type="warning"
               size="small"
-              :disabled="(arenaInfo.registration?.challengeUses ?? 0) <= 0"
+              :disabled="
+                autoArenaStartPending ||
+                autoArenaDialogVisible ||
+                autoArenaRunning ||
+                (arenaInfo.registration?.challengeUses ?? 0) <= 0
+              "
               @click="handleStartAutoArena"
             >
               ⚡ 自动对战
@@ -1083,6 +1088,19 @@
                   }}{{ formatNumberWithCommas(autoArenaTotalPointsChange) }}
                 </p>
               </div>
+              <div
+                v-else-if="autoArenaShowStoppedState"
+                key="auto-arena-stopped"
+                class="auto-arena-duel-settlement"
+              >
+                <p class="auto-arena-duel-settlement__title">自动对战已停止</p>
+                <p class="auto-arena-duel-settlement__status">
+                  {{ autoArenaStatusText }}
+                </p>
+                <div class="auto-arena-duel-settlement__stats">
+                  <span>本次未进行任何对战</span>
+                </div>
+              </div>
               <!-- 对战场景 -->
               <div
                 v-else-if="autoArenaSceneReady"
@@ -1172,6 +1190,7 @@
                 !autoArenaDialogClosing &&
                 !autoArenaSceneReady &&
                 !autoArenaInitialLoading &&
+                !autoArenaShowStoppedState &&
                 !autoArenaShowSettlement
               "
               class="text-gray-400 text-sm py-6"
@@ -1195,7 +1214,8 @@
         <div
           class="space-y-2 auto-arena-summary"
           :class="{
-            'auto-arena-summary--hidden': autoArenaShowSettlement
+            'auto-arena-summary--hidden':
+              autoArenaShowSettlement || autoArenaShowStoppedState
           }"
         >
           <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -1366,6 +1386,8 @@ const refreshCooldown = ref(0)
 let refreshCooldownTimer = null
 let matchRefreshReadyAt = 0
 let matchForceRefreshPromise = null
+let matchForceRefreshOwnerRunToken = null
+let matchForceRefreshPromiseId = 0
 
 // 排行榜
 const leaderboard = ref([])
@@ -1795,6 +1817,14 @@ function getRefreshRetryMs(err) {
   return Number(matched[1]) * 1000 + MATCH_LIST_REFRESH_SAFETY_MS
 }
 
+function releaseAutoArenaMatchRefreshLock() {
+  if (matchForceRefreshOwnerRunToken === null) return
+  matchForceRefreshPromiseId++
+  matchForceRefreshPromise = null
+  matchForceRefreshOwnerRunToken = null
+  matchRefreshPending.value = false
+}
+
 async function waitForMatchRefresh(runToken) {
   const initialRemainingMs = getMatchRefreshRemainingMs()
   if (initialRemainingMs <= 0) {
@@ -1836,9 +1866,18 @@ async function refreshMatchListWithLock(options = {}) {
   const autoRetryOnCooldown = options.autoRetryOnCooldown === true
 
   if (matchForceRefreshPromise) {
-    return await matchForceRefreshPromise
+    const shouldReuseExistingPromise =
+      matchForceRefreshOwnerRunToken === null ||
+      runToken === undefined ||
+      matchForceRefreshOwnerRunToken === runToken
+    if (shouldReuseExistingPromise) {
+      return await matchForceRefreshPromise
+    }
   }
 
+  const currentPromiseId = ++matchForceRefreshPromiseId
+  matchForceRefreshOwnerRunToken =
+    typeof runToken === 'number' ? runToken : null
   matchForceRefreshPromise = (async () => {
     let retryCount = 0
     matchRefreshPending.value = true
@@ -1879,8 +1918,11 @@ async function refreshMatchListWithLock(options = {}) {
 
       return false
     } finally {
-      matchRefreshPending.value = false
-      matchForceRefreshPromise = null
+      if (matchForceRefreshPromiseId === currentPromiseId) {
+        matchRefreshPending.value = false
+        matchForceRefreshPromise = null
+        matchForceRefreshOwnerRunToken = null
+      }
     }
   })()
 
@@ -2071,6 +2113,7 @@ const autoArenaSceneBattlePending = ref(false)
 const autoArenaCurrentOpponent = ref(null)
 const autoArenaStartPending = ref(false)
 const autoArenaDialogClosing = ref(false)
+let autoArenaNeedsSyncAfterClose = false
 
 let autoArenaStartTime = null
 let autoArenaCooldownTimer = null
@@ -2177,6 +2220,10 @@ function getAutoArenaOpponentGuildIconUrl(opponent) {
   return `/uploads/default-guild-icon/${opponent.accountId}.png`
 }
 
+function getAutoArenaChallengeStatusText(opponent) {
+  return `⚔️ 正在挑战「${opponent?.guildName || '对手'}」...`
+}
+
 const autoArenaSceneReady = computed(() => {
   return !!autoArenaCurrentOpponent.value
 })
@@ -2195,6 +2242,17 @@ const autoArenaShowSettlement = computed(() => {
   return !autoArenaRunning.value && autoArenaTotalCount.value > 0
 })
 
+const autoArenaShowStoppedState = computed(() => {
+  if (!autoArenaDialogVisible.value) return false
+  if (autoArenaDialogClosing.value) return false
+  if (autoArenaInitialLoading.value) return false
+  return (
+    !autoArenaRunning.value &&
+    autoArenaTotalCount.value === 0 &&
+    autoArenaStatusText.value !== '准备中...'
+  )
+})
+
 const autoArenaCountdownHint = computed(() => {
   if (autoArenaRunning.value && autoArenaCooldownSeconds.value > 0) {
     return `下一场将在 ${autoArenaCooldownSeconds.value} 秒后开始`
@@ -2207,6 +2265,9 @@ const autoArenaCountdownHint = computed(() => {
   if (autoArenaRunning.value) {
     return '正在寻找最佳对手...'
   }
+  if (autoArenaShowStoppedState.value) {
+    return '自动对战已停止'
+  }
   if (autoArenaTotalCount.value > 0) {
     return '自动对战已结束'
   }
@@ -2216,6 +2277,9 @@ const autoArenaCountdownHint = computed(() => {
 const autoArenaBattleDisplay = computed(() => {
   if (autoArenaRunning.value) {
     return `⚔️ 第 ${autoArenaDisplayCount.value || 1} 场对战`
+  }
+  if (autoArenaShowStoppedState.value) {
+    return '⚔️ 本次未进行对战'
   }
   if (autoArenaTotalCount.value > 0) {
     return `⚔️ 共完成 ${autoArenaTotalCount.value} 场对战`
@@ -2383,7 +2447,13 @@ async function autoArenaRefreshMatchList(runToken) {
 
 // ── 对话框管理 ──
 function handleStartAutoArena() {
-  if (autoArenaRunning.value) return
+  if (
+    autoArenaRunning.value ||
+    autoArenaStartPending.value ||
+    autoArenaDialogVisible.value
+  ) {
+    return
+  }
   if ((arenaInfo.value.registration?.challengeUses ?? 0) <= 0) {
     ElMessage.warning({ message: '挑战次数不足', showClose: true })
     return
@@ -2406,20 +2476,16 @@ async function handleAutoArenaDialogOpened() {
 
 function handleAutoArenaDialogClose() {
   autoArenaDialogClosing.value = true
-  autoArenaStartPending.value = false
+  invalidateAutoArenaSessionState()
 }
 
 function handleAutoArenaDialogClosed() {
   autoArenaDialogClosing.value = false
   if (autoArenaRunning.value) return
+  const shouldSyncMatchList = autoArenaNeedsSyncAfterClose
+  invalidateAutoArenaSessionState()
   resetAutoArenaDialogState()
-  // 静默同步服务端状态
-  getArenaInfoApi()
-    .then(res => {
-      arenaInfo.value = res.data.data || {}
-    })
-    .catch(() => {})
-  fetchPlayerInfo()
+  void syncArenaStateAfterAutoArenaDialogClose(shouldSyncMatchList)
 }
 
 function handleCloseAutoArenaDialog() {
@@ -2441,6 +2507,10 @@ function resetAutoArenaDialogState() {
   autoArenaCooldownSeconds.value = 0
   autoArenaDisplayCount.value = 0
   autoArenaRequestPending.value = false
+  autoArenaStartPending.value = false
+  autoArenaLostToHigher = false
+  autoArenaRefreshedNoHigher = false
+  autoArenaNeedsSyncAfterClose = false
 }
 
 // ── 核心流程 ──
@@ -2448,6 +2518,36 @@ function resetAutoArenaDialogState() {
 let autoArenaLostToHigher = false
 // 追踪是否刷新后仍无高积分对手（防止重复刷新）
 let autoArenaRefreshedNoHigher = false
+
+function invalidateAutoArenaSessionState() {
+  autoArenaRunToken++
+  autoArenaStartPending.value = false
+  autoArenaLostToHigher = false
+  autoArenaRefreshedNoHigher = false
+  releaseAutoArenaMatchRefreshLock()
+}
+
+async function syncArenaStateAfterAutoArenaDialogClose(syncMatchList = false) {
+  const results = await Promise.allSettled([
+    getArenaInfoApi(),
+    fetchPlayerInfo(),
+    syncMatchList ? getMatchListApi() : Promise.resolve(null)
+  ])
+
+  const [arenaInfoResult, , matchListResult] = results
+
+  if (arenaInfoResult.status === 'fulfilled') {
+    arenaInfo.value = arenaInfoResult.value.data.data || {}
+  }
+
+  if (
+    syncMatchList &&
+    matchListResult.status === 'fulfilled' &&
+    matchListResult.value
+  ) {
+    applyMatchListData(matchListResult.value.data.data, { forceRefresh: false })
+  }
+}
 
 async function startAutoArena() {
   if (autoArenaRunning.value) return false
@@ -2472,9 +2572,10 @@ async function startAutoArena() {
   await acquireAutoArenaWakeLock()
   startAutoArenaTimer()
 
-  // 确保有对手列表
-  if (matchList.value.length === 0) {
-    await fetchMatchList(false)
+  // 每次启动都重新同步一次服务器缓存的对手列表，避免重开复用上一次会话的内存状态
+  await fetchMatchList(false)
+  if (!autoArenaRunning.value || runToken !== autoArenaRunToken) {
+    return false
   }
 
   // 寻找第一个对手并设置场景
@@ -2539,6 +2640,7 @@ async function findAndSetupNextOpponent(runToken, useTransition) {
 
   // 设置场景
   autoArenaCurrentOpponent.value = bestOpponent
+  autoArenaStatusText.value = getAutoArenaChallengeStatusText(bestOpponent)
   autoArenaSceneLoser.value = ''
 
   if (useTransition) {
@@ -2560,7 +2662,7 @@ async function executeAutoArenaChallenge(runToken) {
   const opponent = autoArenaCurrentOpponent.value
   if (!opponent) return
 
-  autoArenaStatusText.value = `⚔️ 正在挑战「${opponent.guildName}」...`
+  autoArenaStatusText.value = getAutoArenaChallengeStatusText(opponent)
   autoArenaRequestPending.value = true
 
   // 挑战前记录对手积分是否高于自己（使用最新积分比较）
@@ -2583,6 +2685,7 @@ async function executeAutoArenaChallenge(runToken) {
     autoArenaTotalCount.value++
     autoArenaTotalPointsChange.value += result.pointsChange
     autoArenaTotalGold.value += result.goldEarned || 0
+    autoArenaNeedsSyncAfterClose = true
 
     // 标记已挑战
     challengedOpponents.value.add(opponent._id)
@@ -2723,6 +2826,11 @@ function scheduleTransitionAndCooldown(runToken) {
 function startAutoArenaBattleCooldown(runToken) {
   clearAutoArenaCooldownTimer()
   const delaySec = Math.ceil(AUTO_ARENA_ROUND_DELAY_MS / 1000)
+  if (autoArenaCurrentOpponent.value) {
+    autoArenaStatusText.value = getAutoArenaChallengeStatusText(
+      autoArenaCurrentOpponent.value
+    )
+  }
   autoArenaCooldownSeconds.value = delaySec
 
   autoArenaCooldownTimer = setInterval(() => {
@@ -2746,6 +2854,7 @@ function handleStopAutoArena(options = {}) {
 
   autoArenaRunning.value = false
   autoArenaRequestPending.value = false
+  releaseAutoArenaMatchRefreshLock()
   clearAutoArenaCooldownTimer()
   clearAutoArenaSceneDelayTimer()
   autoArenaSceneBattlePending.value = false
@@ -2754,6 +2863,8 @@ function handleStopAutoArena(options = {}) {
   autoArenaCooldownSeconds.value = 0
   if (finalStatusText) {
     autoArenaStatusText.value = finalStatusText
+  } else if (autoArenaTotalCount.value === 0) {
+    autoArenaStatusText.value = '已停止，未进行任何对战'
   } else if (
     autoArenaStatusText.value.startsWith('⚔️') ||
     autoArenaStatusText.value.startsWith('正在')
