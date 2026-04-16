@@ -827,19 +827,17 @@ export async function challengeOpponent(accountId, registrationId) {
 
     // 计算竞技点变动
     let pointsChange = 0
-    // 对方的竞技点如果比自己低 那么加成的竞技点应该是最小值
-    let changeAmount = 25 // 基础/默认变动
-    if (opponentPoints < myReg.points) {
-      changeAmount = 10
-    } else {
-      const pointsDiff = Math.abs(myReg.points - opponentPoints)
-      changeAmount = Math.min(Math.max(pointsDiff, 10), 100)
-    }
+    // 按相对强弱结算：以下克上为大分，顺位胜利为小分
+    const pointsDiff = Math.abs(myReg.points - opponentPoints)
+    const upsetChangeAmount = Math.min(Math.max(pointsDiff, 10), 100)
+    const normalChangeAmount = 10
 
     if (battleResult.winner === 'attacker') {
-      pointsChange = changeAmount
+      const attackerIsLower = myReg.points < opponentPoints
+      pointsChange = attackerIsLower ? upsetChangeAmount : normalChangeAmount
     } else if (battleResult.winner === 'defender') {
-      pointsChange = -changeAmount
+      const defenderIsLower = opponentPoints < myReg.points
+      pointsChange = defenderIsLower ? -upsetChangeAmount : -normalChangeAmount
     }
     // 平局为0
 

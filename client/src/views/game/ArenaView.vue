@@ -2223,10 +2223,16 @@ const autoArenaBattleDisplay = computed(() => {
   return '⚔️ 准备中…'
 })
 
+function isAutoArenaOpponentWithinCurrentRange(opponent, myPoints) {
+  if (!opponent) return false
+  return Math.abs((opponent.points ?? myPoints) - myPoints) <= 500
+}
+
 /**
  * 寻找下一个自动对战对手
  * 策略：
  * - 优先挑战竞技点高于自己的对手（按积分从高到低）
+ * - 若按当前策略选中的下一名对手已超出当前积分可对战范围，则先刷新列表
  * - 若无高积分对手，且之前没输给过高积分对手，且未尝试过刷新 → 返回 needRefresh
  * - 刷新后仍无高积分对手 / 或曾输给过高积分对手 → 从高到低挑战剩余对手
  * - 列表全部打完 → needRefresh
@@ -2251,6 +2257,9 @@ function findNextAutoArenaOpponent(lostToHigher, alreadyRefreshed) {
   const higherOps = unchallenged.filter(op => (op.points ?? 0) > myPoints)
 
   if (higherOps.length > 0) {
+    if (!isAutoArenaOpponentWithinCurrentRange(higherOps[0], myPoints)) {
+      return { opponent: null, needRefresh: true }
+    }
     // 优先挑战最高积分对手
     return { opponent: higherOps[0], needRefresh: false }
   }
@@ -2262,6 +2271,9 @@ function findNextAutoArenaOpponent(lostToHigher, alreadyRefreshed) {
   }
 
   // 曾输给过高积分对手 或 已经刷新过 → 按积分从高到低打剩余对手
+  if (!isAutoArenaOpponentWithinCurrentRange(unchallenged[0], myPoints)) {
+    return { opponent: null, needRefresh: true }
+  }
   return { opponent: unchallenged[0], needRefresh: false }
 }
 
@@ -2646,6 +2658,32 @@ async function executeAutoArenaChallenge(runToken) {
       handleStopAutoArena({
         finalStatusText: '📋 挑战次数已用完，自动对战结束'
       })
+    } else if (errMsg.includes('对手不在你的匹配范围内')) {
+      autoArenaStatusText.value = '🔄 对手超出匹配范围，刷新列表中...'
+
+      const refreshed = await autoArenaRefreshMatchList(runToken)
+      if (!autoArenaRunning.value || runToken !== autoArenaRunToken) return
+
+      if (!refreshed) {
+        handleStopAutoArena({
+          finalStatusText: '⚠️ 对手超出匹配范围，刷新列表失败，自动对战结束'
+        })
+        return
+      }
+
+      autoArenaLostToHigher = false
+      autoArenaRefreshedNoHigher = true
+
+      const found = await findAndSetupNextOpponent(runToken, true)
+      if (!found) {
+        handleStopAutoArena({
+          finalStatusText: '⚠️ 刷新后未找到合适对手，自动对战结束'
+        })
+        return
+      }
+
+      startAutoArenaBattleCooldown(runToken)
+      return
     } else {
       handleStopAutoArena({ finalStatusText: `❌ ${errMsg}` })
     }
