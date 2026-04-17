@@ -35,19 +35,31 @@
             typeIcon(item.type)
           }}</span>
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 break-all">
+            <p
+              class="text-sm font-semibold text-gray-700 dark:text-gray-200 break-all"
+            >
               {{ item.title }}
             </p>
-            <!-- 符文石稀有度展示（只有对应颜色的符文石名，不染整条标题） -->
-            <p v-if="item.extra?.rarity" class="text-xs mt-0.5 text-gray-500 dark:text-gray-400">
+            <!-- 仅“获得符文石”动态显示该强化文案，避免市场上架等动态误用 -->
+            <p
+              v-if="shouldShowRuneStoneFoundSummary(item)"
+              class="text-xs mt-0.5 text-gray-500 dark:text-gray-400"
+            >
               获得了
               <span
                 class="font-semibold"
                 :class="runeStoneRarityTextClass(item.extra.rarity)"
-              >{{ runeStoneRarityName(item.extra.rarity) }}符文石</span>
+                >{{ runeStoneRarityName(item.extra.rarity) }}符文石</span
+              >
               <span v-if="item.extra?.mineLevel">
                 Lv.{{ item.extra.mineLevel }}
               </span>
+            </p>
+            <p
+              v-else-if="item.content"
+              class="text-xs mt-0.5 text-gray-500 dark:text-gray-400 break-all"
+            >
+              {{ item.content }}
             </p>
             <!-- 击杀最高冒险家头像展示 -->
             <div
@@ -160,6 +172,10 @@ function runeStoneRarityTextClass(rarity) {
 
 function runeStoneRarityName(rarity) {
   return { normal: '普通', rare: '稀有', legendary: '传说' }[rarity] || rarity
+}
+
+function shouldShowRuneStoneFoundSummary(item) {
+  return item?.type === 'rune_stone_found' && Boolean(item?.extra?.rarity)
 }
 
 function formatTime(t) {
