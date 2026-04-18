@@ -980,12 +980,24 @@ async function actionSellCrystals(accountId, bot) {
         )
       }
 
-      // 剩余的卖给官方
-      if (officialQty >= 10) {
-        await safeExec('卖给官方', () =>
+      // 剩余的先匹配求购者，再卖给官方（smartSellCrystal 批量处理，持锁不会被抢单）
+      if (officialQty >= 1) {
+        const result = await safeExec('智能出售水晶', () =>
           marketService.smartSellCrystal(accountId, type, officialQty)
         )
-        actions.push(`官方出售${officialQty}个${getCrystalTypeLabel(type)}`)
+        if (result) {
+          const label = getCrystalTypeLabel(type)
+          if (result.soldToBuyers > 0) {
+            actions.push(
+              `出售${result.soldToBuyers}个${label}给求购者，获得${result.goldFromBuyers}金币`
+            )
+          }
+          if (result.soldToOfficial > 0) {
+            actions.push(
+              `官方出售${result.soldToOfficial}个${label}，获得${result.goldFromOfficial}金币`
+            )
+          }
+        }
       }
     }
 
