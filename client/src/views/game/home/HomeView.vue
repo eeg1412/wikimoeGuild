@@ -2,7 +2,7 @@
   <div class="w-full py-6">
     <!-- 欢迎区域 -->
     <div class="text-center mb-8">
-      <span class="text-6xl mb-4 block">🏰</span>
+      <span class="text-6xl mb-4 block"><PixelIcon name="dungeon" /></span>
       <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">
         欢迎来到 WikimoeGuild
       </h2>
@@ -10,15 +10,15 @@
         一起开启冒险之旅吧
       </p>
       <el-button text size="small" @click="handleNavGuide">
-        📖 查看新手手册
+        <PixelIcon name="notice" /> 查看新手手册
       </el-button>
 
       <!-- 未登录：显示登录/注册按钮 -->
       <div v-if="!isLoggedIn" class="flex flex-wrap gap-3 justify-center mb-6">
         <el-button type="primary" size="large" @click="handleNavLogin">
-          🔑 登录
+          <PixelIcon name="notice" /> 登录
         </el-button>
-        <el-button size="large" @click="handleNavRegister"> 📝 注册 </el-button>
+        <el-button size="large" @click="handleNavRegister"> <PixelIcon name="edit" /> 注册 </el-button>
         <el-button
           v-if="guestModeEnabled"
           size="large"
@@ -26,7 +26,7 @@
           :loading="guestLoading"
           @click="handleNavGuestLogin"
         >
-          🎮 游客模式
+          <PixelIcon name="notice" /> 游客模式
         </el-button>
       </div>
 
@@ -39,22 +39,22 @@
         </p>
         <div class="flex flex-wrap gap-2 justify-center">
           <el-button size="small" @click="handleNav('GameAdventurers')"
-            >⚔️ 冒险家</el-button
+            ><PixelIcon name="attack" /> 冒险家</el-button
           >
           <el-button size="small" @click="handleNav('GameDungeon')"
-            >🏰 地下迷宫</el-button
+            ><PixelIcon name="dungeon" /> 地下迷宫</el-button
           >
           <el-button size="small" @click="handleNav('GameMine')"
-            >⛏️ 矿场</el-button
+            ><PixelIcon name="mine" /> 矿场</el-button
           >
           <el-button size="small" @click="handleNav('GameArena')"
-            >⚔️ 竞技场</el-button
+            ><PixelIcon name="attack" /> 竞技场</el-button
           >
           <el-button size="small" @click="handleNav('GameMarket')"
-            >🏪 交易市场</el-button
+            ><PixelIcon name="market" /> 交易市场</el-button
           >
           <el-button size="small" @click="handleNav('GameInventory')"
-            >🎒 背包</el-button
+            ><PixelIcon name="inventory" /> 背包</el-button
           >
         </div>
       </div>
@@ -65,7 +65,7 @@
       <h3
         class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2"
       >
-        <span>📖</span> 游戏介绍
+        <span><PixelIcon name="notice" /></span> 游戏介绍
       </h3>
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
         这是一款放置类的冒险公会经营游戏。招募冒险家、探索迷宫、收集符文石，打造最强公会！
@@ -74,7 +74,7 @@
         <div
           class="flex items-start gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
         >
-          <span class="text-2xl flex-shrink-0">🏰</span>
+          <span class="text-2xl flex-shrink-0"><PixelIcon name="dungeon" /></span>
           <div>
             <p
               class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1"
@@ -89,7 +89,7 @@
         <div
           class="flex items-start gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
         >
-          <span class="text-2xl flex-shrink-0">⚔️</span>
+          <span class="text-2xl flex-shrink-0"><PixelIcon name="attack" /></span>
           <div>
             <p
               class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1"
@@ -104,7 +104,7 @@
         <div
           class="flex items-start gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
         >
-          <span class="text-2xl flex-shrink-0">⛏️</span>
+          <span class="text-2xl flex-shrink-0"><PixelIcon name="mine" /></span>
           <div>
             <p
               class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1"
@@ -119,7 +119,7 @@
         <div
           class="flex items-start gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
         >
-          <span class="text-2xl flex-shrink-0">🏪</span>
+          <span class="text-2xl flex-shrink-0"><PixelIcon name="market" /></span>
           <div>
             <p
               class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1"
@@ -134,7 +134,7 @@
         <div
           class="flex items-start gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
         >
-          <span class="text-2xl flex-shrink-0">🏆</span>
+          <span class="text-2xl flex-shrink-0"><PixelIcon name="notice" /></span>
           <div>
             <p
               class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1"
@@ -149,7 +149,7 @@
         <div
           class="flex items-start gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
         >
-          <span class="text-2xl flex-shrink-0">💎</span>
+          <span class="text-2xl flex-shrink-0"><PixelIcon name="rune" /></span>
           <div>
             <p
               class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1"
@@ -170,7 +170,7 @@
         <h3
           class="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2"
         >
-          <span>📢</span> 玩家动态
+          <span><PixelIcon name="notice" /></span> 玩家动态
         </h3>
         <el-button
           text
@@ -178,7 +178,7 @@
           :loading="refreshingFeed"
           @click="handleRefreshFeed"
         >
-          🔄 刷新
+          <PixelIcon name="notice" /> 刷新
         </el-button>
       </div>
       <ActivityFeed ref="activityFeedRef" />

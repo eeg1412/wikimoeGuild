@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        ⛏️ 矿场
+        <PixelIcon name="mine" /> 矿场
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         探索矿场，获取宝贵资源
@@ -14,14 +14,14 @@
     <div class="rpg-card rounded-xl p-3 mb-4">
       <div class="flex items-center justify-between text-sm">
         <div class="flex items-center gap-2">
-          <span class="text-yellow-500">⛏️</span>
+          <span class="text-yellow-500"><PixelIcon name="mine" /></span>
           <span class="text-gray-600 dark:text-gray-300">剩余挖矿次数:</span>
           <span class="font-bold text-blue-500">{{
             miningInfo.miningCanUses ?? 0
           }}</span>
         </div>
         <div v-if="miningInfo.nextRecoverIn" class="text-sm text-gray-400">
-          ⏰ {{ Math.ceil(miningInfo.nextRecoverIn / 60) }}分钟后恢复
+          <PixelIcon name="timer" /> {{ Math.ceil(miningInfo.nextRecoverIn / 60) }}分钟后恢复
         </div>
       </div>
     </div>
@@ -33,14 +33,14 @@
         size="small"
         @click="handleSwitchTab('list')"
       >
-        📋 矿场列表
+        <PixelIcon name="list" /> 矿场列表
       </el-button>
       <el-button
         :type="activeTab === 'revenue' ? 'primary' : 'default'"
         size="small"
         @click="handleSwitchTab('revenue')"
       >
-        💰 矿主收益
+        <PixelIcon name="gold" /> 矿主收益
       </el-button>
     </div>
 
@@ -69,13 +69,13 @@
             type="primary"
             :loading="listLoading"
             @click="handleFilterMines"
-            >🔍 筛选</el-button
+            ><PixelIcon name="search" /> 筛选</el-button
           >
         </div>
       </div>
 
       <div v-if="listLoading" class="flex justify-center py-8">
-        <span class="animate-spin inline-block text-2xl">⏳</span>
+        <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
       </div>
       <template v-else>
         <!-- 推荐矿场 -->
@@ -86,7 +86,7 @@
           class="mb-4"
         >
           <div class="flex items-center gap-2 mb-2 px-1">
-            <span class="text-yellow-500 text-sm">⭐</span>
+            <span class="text-yellow-500 text-sm"><PixelIcon name="star" /></span>
             <span
               class="text-sm font-semibold text-yellow-600 dark:text-yellow-400"
               >推荐矿场</span
@@ -107,12 +107,12 @@
                   <p
                     class="text-sm font-semibold text-gray-700 dark:text-gray-200"
                   >
-                    ⛰️ Lv.{{ mine.level }} 矿场
-                    <span class="text-xs text-yellow-500 ml-1">⭐</span>
+                    <PixelIcon name="notice" /> Lv.{{ mine.level }} 矿场
+                    <span class="text-xs text-yellow-500 ml-1"><PixelIcon name="star" /></span>
                     <span
                       v-if="mine.owner === playerId"
                       class="text-xs text-yellow-500 ml-1"
-                      >👑 我的</span
+                      ><PixelIcon name="crown" /> 我的</span
                     >
                   </p>
                   <p class="text-sm text-gray-400 mt-0.5">
@@ -120,7 +120,7 @@
                     {{ mine.exploredRewards }}/{{ mine.totalRewards }}
                   </p>
                 </div>
-                <span class="text-gray-400 text-sm">▶</span>
+                <span class="text-gray-400 text-sm"><PixelIcon name="speed" /></span>
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@
             "
             class="flex items-center gap-2 mb-2 px-1"
           >
-            <span class="text-blue-500 text-sm">📋</span>
+            <span class="text-blue-500 text-sm"><PixelIcon name="list" /></span>
             <span class="text-sm font-semibold text-blue-600 dark:text-blue-400"
               >全部矿场</span
             >
@@ -169,11 +169,11 @@
                   <p
                     class="text-sm font-semibold text-gray-700 dark:text-gray-200"
                   >
-                    ⛰️ Lv.{{ mine.level }} 矿场
+                    <PixelIcon name="notice" /> Lv.{{ mine.level }} 矿场
                     <span
                       v-if="mine.owner === playerId"
                       class="text-xs text-yellow-500 ml-1"
-                      >👑 我的</span
+                      ><PixelIcon name="crown" /> 我的</span
                     >
                   </p>
                   <p class="text-sm text-gray-400 mt-0.5">
@@ -181,7 +181,7 @@
                     {{ mine.exploredRewards }}/{{ mine.totalRewards }}
                   </p>
                 </div>
-                <span class="text-gray-400 text-sm">▶</span>
+                <span class="text-gray-400 text-sm"><PixelIcon name="speed" /></span>
               </div>
             </div>
           </div>
@@ -211,7 +211,7 @@
           <div class="flex items-center justify-between text-sm">
             <div>
               <span class="font-semibold text-gray-700 dark:text-gray-200"
-                >⛰️ Lv.{{ currentMine.level }} 矿场</span
+                ><PixelIcon name="notice" /> Lv.{{ currentMine.level }} 矿场</span
               >
               <span class="text-sm text-gray-400 ml-2"
                 >矿主: {{ currentMine.ownerGuildName }}</span
@@ -248,7 +248,7 @@
 
         <!-- 自动分解设置 -->
         <div class="rpg-card rounded-xl p-3 mb-3">
-          <p class="text-xs text-gray-400 mb-2">⚙️ 自动分解设置</p>
+          <p class="text-xs text-gray-400 mb-2"><PixelIcon name="settings" /> 自动分解设置</p>
           <div class="flex flex-wrap gap-1">
             <el-checkbox
               :model-value="autoDecomposeNormal"
@@ -290,14 +290,14 @@
                     digCellPos.col === cIdx
                   "
                 >
-                  <span class="animate-spin inline-block">⏳</span>
+                  <span class="animate-spin inline-block"><PixelIcon name="timer" /></span>
                 </template>
                 <template v-else-if="cell.revealed">
                   <template v-if="cell.type === 'reward'">
                     <span v-if="cell.challengeDefeated" class="text-green-500"
-                      >💎</span
+                      ><PixelIcon name="rune" /></span
                     >
-                    <span v-else class="text-red-500 animate-pulse">👹</span>
+                    <span v-else class="text-red-500 animate-pulse"><PixelIcon name="enemy" /></span>
                   </template>
                   <template v-else>
                     <span
@@ -311,7 +311,7 @@
                   </template>
                 </template>
                 <template v-else>
-                  <span class="text-gray-400">❓</span>
+                  <span class="text-gray-400"><PixelIcon name="unknown" /></span>
                 </template>
               </button>
             </template>
@@ -320,8 +320,8 @@
 
         <!-- SSE 连接状态 -->
         <div class="text-center text-sm mb-3">
-          <span v-if="sseConnected" class="text-green-400">🟢 实时同步中</span>
-          <span v-else class="text-gray-400">🔴 未连接</span>
+          <span v-if="sseConnected" class="text-green-400"><PixelIcon name="online" /> 实时同步中</span>
+          <span v-else class="text-gray-400"><PixelIcon name="offline" /> 未连接</span>
         </div>
 
         <div class="flex justify-center">
@@ -335,33 +335,33 @@
     <!-- ===== 矿主收益 ===== -->
     <div v-if="activeTab === 'revenue'">
       <div v-if="revenueLoading" class="flex justify-center py-8">
-        <span class="animate-spin inline-block text-2xl">⏳</span>
+        <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
       </div>
       <template v-else>
         <!-- 汇总 -->
         <div v-if="revenueSummary" class="rpg-card rounded-xl p-3 mb-3">
-          <p class="text-sm text-gray-400 mb-2">📊 近7天总收益</p>
+          <p class="text-sm text-gray-400 mb-2"><PixelIcon name="chart" /> 近7天总收益</p>
           <div class="grid grid-cols-2 gap-2 text-center text-sm">
             <div class="bg-red-50 dark:bg-red-900/20 rounded p-2">
-              <p class="text-xs text-gray-400">⚔️ 攻击水晶</p>
+              <p class="text-xs text-gray-400"><PixelIcon name="attack" /> 攻击水晶</p>
               <p class="font-bold text-red-500">
                 {{ formatNumberWithCommas(revenueSummary.attackCrystal || 0) }}
               </p>
             </div>
             <div class="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
-              <p class="text-xs text-gray-400">🛡️ 防御水晶</p>
+              <p class="text-xs text-gray-400"><PixelIcon name="defense" /> 防御水晶</p>
               <p class="font-bold text-blue-500">
                 {{ formatNumberWithCommas(revenueSummary.defenseCrystal || 0) }}
               </p>
             </div>
             <div class="bg-green-50 dark:bg-green-900/20 rounded p-2">
-              <p class="text-xs text-gray-400">💨 速度水晶</p>
+              <p class="text-xs text-gray-400"><PixelIcon name="speed" /> 速度水晶</p>
               <p class="font-bold text-green-500">
                 {{ formatNumberWithCommas(revenueSummary.speedCrystal || 0) }}
               </p>
             </div>
             <div class="bg-purple-50 dark:bg-purple-900/20 rounded p-2">
-              <p class="text-xs text-gray-400">❤️ SAN水晶</p>
+              <p class="text-xs text-gray-400"><PixelIcon name="san" /> SAN水晶</p>
               <p class="font-bold text-purple-500">
                 {{ formatNumberWithCommas(revenueSummary.sanCrystal || 0) }}
               </p>
@@ -416,7 +416,7 @@
     <!-- ===== 挖矿结果弹窗 ===== -->
     <el-dialog
       v-model="digResultVisible"
-      title="⛏️ 挖矿结果"
+      title="mine 挖矿结果"
       width="340px"
       align-center
       destroy-on-close
@@ -426,7 +426,7 @@
         <!-- 数字格子结果 -->
         <template v-if="digResult.type === 'number'">
           <div class="text-4xl mb-2">
-            {{ digResult.adjacentRewards > 0 ? '💎' : '🪨' }}
+            {{ digResult.adjacentRewards > 0 ? 'rune' : 'earth' }}
           </div>
           <p
             v-if="digResult.adjacentRewards > 0"
@@ -440,19 +440,19 @@
         <!-- 奖励区域结果 -->
         <template v-else-if="digResult.type === 'reward'">
           <template v-if="!digResult.challengeFailed && digResult.battleResult">
-            <div class="text-4xl mb-2">🎉</div>
+            <div class="text-4xl mb-2"><PixelIcon name="success" /></div>
             <p class="text-green-500 font-bold text-lg">
               攻破了 Lv.{{ digResult.mineLevel }} 矿场的守卫！
             </p>
           </template>
           <template v-else-if="digResult.challengeFailed">
             <template v-if="digResult.partialVictory">
-              <div class="text-4xl mb-2">⚠️</div>
+              <div class="text-4xl mb-2"><PixelIcon name="warning" /></div>
               <p class="text-yellow-500 font-bold">战斗获胜，但未能全歼守卫</p>
               <p class="text-sm text-gray-400">需要消灭所有守卫才能获得奖励</p>
             </template>
             <template v-else>
-              <div class="text-4xl mb-2">😔</div>
+              <div class="text-4xl mb-2"><PixelIcon name="fail" /></div>
               <p class="text-red-500 font-bold">战斗失败</p>
               <p class="text-sm text-gray-400">其他玩家可以继续挑战</p>
             </template>
@@ -467,16 +467,16 @@
           <p class="text-gray-400 mb-1">获得水晶:</p>
           <div class="grid grid-cols-2 gap-1">
             <p v-if="digResult.crystals.attackCrystal > 0">
-              ⚔️ {{ formatNumberWithCommas(digResult.crystals.attackCrystal) }}
+              <PixelIcon name="attack" /> {{ formatNumberWithCommas(digResult.crystals.attackCrystal) }}
             </p>
             <p v-if="digResult.crystals.defenseCrystal > 0">
-              🛡️ {{ formatNumberWithCommas(digResult.crystals.defenseCrystal) }}
+              <PixelIcon name="defense" /> {{ formatNumberWithCommas(digResult.crystals.defenseCrystal) }}
             </p>
             <p v-if="digResult.crystals.speedCrystal > 0">
-              💨 {{ formatNumberWithCommas(digResult.crystals.speedCrystal) }}
+              <PixelIcon name="speed" /> {{ formatNumberWithCommas(digResult.crystals.speedCrystal) }}
             </p>
             <p v-if="digResult.crystals.sanCrystal > 0">
-              ❤️ {{ formatNumberWithCommas(digResult.crystals.sanCrystal) }}
+              <PixelIcon name="san" /> {{ formatNumberWithCommas(digResult.crystals.sanCrystal) }}
             </p>
           </div>
         </div>
@@ -492,7 +492,7 @@
           v-if="digResult.autoDecomposed"
           class="bg-purple-50 dark:bg-purple-900/20 border border-purple-400/30 rounded-lg p-3 text-sm"
         >
-          <p class="text-purple-400 font-medium">🔮 已自动分解</p>
+          <p class="text-purple-400 font-medium"><PixelIcon name="rune" /> 已自动分解</p>
           <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
             获得
             {{ digResult.autoDecomposedFragments ?? 0 }} 个符文石碎片
@@ -504,7 +504,7 @@
           v-if="digResult.discardedRuneStone"
           class="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3 text-sm text-center"
         >
-          <p class="text-orange-400 font-medium">⚠️ 符文石背包已满</p>
+          <p class="text-orange-400 font-medium"><PixelIcon name="warning" /> 符文石背包已满</p>
           <p class="text-orange-300 text-xs mt-1">
             获得的{{
               { normal: '普通', rare: '稀有', legendary: '传说' }[
@@ -517,7 +517,7 @@
 
         <!-- 矿场废弃 -->
         <p v-if="digResult.mineDepleted" class="text-orange-400 text-sm">
-          ⚠️ 矿场已被完全探索，即将废弃
+          <PixelIcon name="warning" /> 矿场已被完全探索，即将废弃
         </p>
       </div>
     </el-dialog>
@@ -729,7 +729,7 @@ async function handleDigCell(row, col, cell) {
         try {
           await ElMessageBox.confirm(
             '符文石背包已满（500/500），胜利后获得的符文石将因空间不足而丢失。\n\n建议先前往「符文石」页面分解多余的符文石，再来挑战。\n\n是否仍要继续挑战？',
-            '⚠️ 符文石背包已满',
+            'warning 符文石背包已满',
             {
               confirmButtonText: '继续挑战',
               cancelButtonText: '暂不挑战',
@@ -906,10 +906,10 @@ function getNumberColor(n) {
 
 function crystalLabel(type) {
   const map = {
-    attackCrystal: '⚔️ 攻击水晶',
-    defenseCrystal: '🛡️ 防御水晶',
-    speedCrystal: '💨 速度水晶',
-    sanCrystal: '❤️ SAN水晶'
+    attackCrystal: 'attack 攻击水晶',
+    defenseCrystal: 'defense 防御水晶',
+    speedCrystal: 'speed 速度水晶',
+    sanCrystal: 'san SAN水晶'
   }
   return map[type] || type
 }

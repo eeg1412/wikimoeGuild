@@ -1,7 +1,7 @@
 <template>
   <div v-if="runeStones && runeStones.length > 0" class="space-y-2">
     <p class="font-bold text-lg text-center" :class="headerTextClass">
-      ✨ 获得符文石！
+      <PixelIcon name="spark" /> 获得符文石！
     </p>
     <div
       v-for="(rs, idx) in runeStones"
@@ -16,7 +16,7 @@
             class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
             :class="rarityIconBgClass(rs.rarity)"
           >
-            💎
+            <PixelIcon name="rune" />
           </div>
           <div>
             <p

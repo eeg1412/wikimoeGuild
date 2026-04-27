@@ -2,7 +2,7 @@
   <div class="rune-stone-market-list">
     <!-- 加载中 -->
     <div v-if="loading" class="flex justify-center py-6">
-      <span class="animate-spin inline-block text-2xl">⏳</span>
+      <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
     </div>
     <!-- 空状态 -->
     <div
@@ -27,7 +27,7 @@
               class="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0"
               :class="rarityBgClass(getRuneStone(item)?.rarity)"
             >
-              💎
+              <PixelIcon name="rune" />
             </div>
             <div class="min-w-0">
               <p
@@ -56,7 +56,7 @@
               "
               @click.stop="handleToggleExpand(getItemId(item))"
             >
-              {{ expandedIds.has(getItemId(item)) ? '🔼' : '🔽' }}
+              {{ expandedIds.has(getItemId(item)) ? 'collapse' : 'expand' }}
             </button>
           </div>
         </div>

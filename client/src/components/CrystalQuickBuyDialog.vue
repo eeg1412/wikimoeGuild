@@ -12,7 +12,7 @@
       <p class="text-sm text-gray-500 dark:text-gray-400">
         当前金币:
         <span class="font-bold text-yellow-500">
-          🪙 {{ formatNumberWithCommas(playerGold) }}
+          <PixelIcon name="gold" /> {{ formatNumberWithCommas(playerGold) }}
         </span>
       </p>
       <div
@@ -20,9 +20,9 @@
         class="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
       >
         <p>
-          📊 当前市场求购价区间:
+          <PixelIcon name="chart" /> 当前市场求购价区间:
           <span class="text-yellow-500 font-semibold">
-            🪙
+            <PixelIcon name="gold" />
             {{ formatNumberWithCommas(priceRange.minPrice)
             }}<template v-if="priceRange.maxPrice > priceRange.minPrice">
               ~ {{ formatNumberWithCommas(priceRange.maxPrice) }}</template
@@ -69,7 +69,7 @@
       <div class="text-sm text-gray-400">
         需冻结金币:
         <span class="text-yellow-500 font-semibold">
-          🪙
+          <PixelIcon name="gold" />
           {{ unitPrice ? formatNumberWithCommas(quantity * unitPrice) : '--' }}
         </span>
       </div>

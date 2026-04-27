@@ -10,7 +10,7 @@
         label-width="170px"
         @submit.prevent="handleStockSubmit"
       >
-        <el-divider content-position="left">📦 库存设置</el-divider>
+        <el-divider content-position="left"><PixelIcon name="package" /> 库存设置</el-divider>
 
         <el-form-item label="攻击水晶库存">
           <el-input-number

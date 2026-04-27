@@ -3,25 +3,25 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        🏪 交易市场
+        <PixelIcon name="market" /> 交易市场
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         官方市场 & 自由市场
       </p>
       <p class="text-sm text-yellow-500 font-semibold mt-1">
-        🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
+        <PixelIcon name="gold" /> {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
       </p>
     </div>
 
     <!-- 顶部标签页 -->
     <el-tabs v-model="activeTab" class="market-tabs mb-4">
       <el-tab-pane name="official">
-        <template #label>🏛️ 官方市场</template>
+        <template #label><PixelIcon name="official" /> 官方市场</template>
       </el-tab-pane>
       <el-tab-pane name="material">
         <template #label>
           <span class="relative">
-            📦 素材交易
+            <PixelIcon name="package" /> 素材交易
             <span
               v-if="marketPending.hasMaterialPending"
               class="market-tab-dot"
@@ -32,7 +32,7 @@
       <el-tab-pane name="runeStone">
         <template #label>
           <span class="relative">
-            💎 符文石交易
+            <PixelIcon name="rune" /> 符文石交易
             <span
               v-if="marketPending.hasRuneStonePending"
               class="market-tab-dot"

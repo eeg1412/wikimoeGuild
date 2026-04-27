@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        💎 符文石
+        <PixelIcon name="rune" /> 符文石
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         管理你的符文石，分解、升级或合成
@@ -16,7 +16,7 @@
       <div
         class="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-700 ml-1"
       >
-        💠 碎片：{{ formatNumberWithCommas(inventory?.runeFragment ?? 0) }}
+        <PixelIcon name="fragment" /> 碎片：{{ formatNumberWithCommas(inventory?.runeFragment ?? 0) }}
       </div>
     </div>
 
@@ -73,7 +73,7 @@
       <div class="flex items-center gap-2">
         <el-checkbox v-model="batchMode" size="small">批量选择</el-checkbox>
         <el-button type="warning" size="small" @click="openSynthesisDialog">
-          🔮 合成
+          <PixelIcon name="rune" /> 合成
         </el-button>
       </div>
     </div>
@@ -104,7 +104,7 @@
         :disabled="batchDecomposeLoading"
         @click="handleBatchDecompose"
       >
-        🔥 批量分解 ({{ selectedIds.size }})
+        <PixelIcon name="fire" /> 批量分解 ({{ selectedIds.size }})
       </el-button>
       <el-button size="small" @click="handleSelectAll" class="ml-0!">
         {{ isAllSelected ? '取消全选' : '全选当页' }}
@@ -113,7 +113,7 @@
 
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-12">
-      <span class="animate-spin inline-block text-4xl">⏳</span>
+      <span class="animate-spin inline-block text-4xl"><PixelIcon name="timer" /></span>
     </div>
 
     <!-- 符文石列表 -->
@@ -160,7 +160,7 @@
                 class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
                 :class="rarityBgClass(rs.rarity)"
               >
-                💎
+                <PixelIcon name="rune" />
               </div>
               <div>
                 <p
@@ -255,7 +255,7 @@
     <!-- ==================== 符文石合成弹窗 ==================== -->
     <el-dialog
       v-model="synthesisVisible"
-      title="🔮 符文石合成"
+      title="rune 符文石合成"
       align-center
       destroy-on-close
       :close-on-click-modal="!synthesisConfirmLoading"
@@ -290,7 +290,7 @@
                 class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
                 :class="rarityBgClass(synthesisMain.rarity)"
               >
-                💎
+                <PixelIcon name="rune" />
               </div>
               <div>
                 <p
@@ -330,7 +330,7 @@
                 class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
                 :class="rarityBgClass(synthesisMaterial.rarity)"
               >
-                💎
+                <PixelIcon name="rune" />
               </div>
               <div>
                 <p
@@ -358,7 +358,7 @@
           "
           @click="handlePreviewSynthesis"
         >
-          🔮 预览合成结果
+          <PixelIcon name="rune" /> 预览合成结果
         </el-button>
       </template>
 
@@ -371,7 +371,7 @@
               class="inline-flex w-14 h-14 rounded-2xl items-center justify-center text-2xl mb-1"
               :class="rarityBgClass(synthesisPreview.rarity)"
             >
-              💎
+              <PixelIcon name="rune" />
             </div>
             <p
               class="text-lg font-bold"
@@ -406,7 +406,7 @@
             class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2 text-xs text-gray-500 dark:text-gray-400"
           >
             <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
-              📊 与主石对比
+              <PixelIcon name="chart" /> 与主石对比
             </p>
             <p>
               稀有度：{{ rarityName(synthesisMain.rarity) }} →
@@ -424,7 +424,7 @@
             <!-- 主动技能变化详情 -->
             <div>
               <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                ⚡ 主动技能变化
+                <PixelIcon name="skill" /> 主动技能变化
               </p>
               <template v-if="synthesisSkillDiff.removed.length">
                 <div
@@ -470,7 +470,7 @@
             <!-- 被动增益变化详情 -->
             <div>
               <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                🔮 被动增益变化
+                <PixelIcon name="rune" /> 被动增益变化
               </p>
               <template v-if="synthesisBuffDiff.removed.length">
                 <div
@@ -551,7 +551,7 @@
           <RuneStoneInfoCard :rune-stone="synthesisPreview" />
 
           <p class="text-sm text-red-500 font-bold text-center">
-            ⚠️ 你的素材符文石已经被销毁
+            <PixelIcon name="warning" /> 你的素材符文石已经被销毁
           </p>
           <p class="text-xs text-center text-gray-500 mb-2">
             倒计时：<span class="text-yellow-500">{{ previewCountdown }}</span>

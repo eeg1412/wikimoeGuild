@@ -9,7 +9,7 @@
     append-to-body
   >
     <div v-if="loading" class="flex justify-center py-8">
-      <span class="animate-spin inline-block text-2xl">⏳</span>
+      <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
     </div>
     <div v-else-if="guildInfo" class="flex flex-col items-center gap-3">
       <!-- 公会图标 -->
@@ -28,13 +28,13 @@
       <!-- 信息栏 -->
       <div class="w-full space-y-1.5 text-sm">
         <div class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5">
-          <span class="info-label">🏰 公会等级</span>
+          <span class="info-label"><PixelIcon name="dungeon" /> 公会等级</span>
           <span class="info-value rpg-number"
             >Lv.{{ guildInfo.guildLevel ?? 1 }}</span
           >
         </div>
         <div class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5">
-          <span class="info-label">⚔️ 冒险家数</span>
+          <span class="info-label"><PixelIcon name="attack" /> 冒险家数</span>
           <span class="info-value rpg-number">{{
             guildInfo.adventurerCount ?? 0
           }}</span>
@@ -43,7 +43,7 @@
           v-if="guildInfo.createdAt"
           class="info-row bg-gray-50 dark:bg-gray-800 rounded p-1.5"
         >
-          <span class="info-label">📅 创建时间</span>
+          <span class="info-label"><PixelIcon name="calendar" /> 创建时间</span>
           <span class="info-value text-gray-500 text-xs">{{
             formatDate(guildInfo.createdAt)
           }}</span>
@@ -52,7 +52,7 @@
 
       <!-- 冒险家列表 -->
       <div v-if="guildInfo.adventurers?.length" class="w-full mt-2">
-        <p class="text-xs text-gray-400 mb-2 text-center">🗡️ 冒险家一览</p>
+        <p class="text-xs text-gray-400 mb-2 text-center"><PixelIcon name="attack" /> 冒险家一览</p>
         <div class="grid grid-cols-5 gap-1.5">
           <div
             v-for="adv in guildInfo.adventurers"

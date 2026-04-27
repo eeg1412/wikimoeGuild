@@ -82,7 +82,7 @@
           :disabled="loading || guestLoading"
           @click="handleGuestRegister"
         >
-          🎮 游客模式快速游玩
+          <PixelIcon name="notice" /> 游客模式快速游玩
         </el-button>
       </div>
     </div>

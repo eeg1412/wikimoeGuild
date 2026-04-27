@@ -1,14 +1,14 @@
 <template>
   <div>
     <div v-if="officialLoading" class="flex justify-center py-12">
-      <span class="animate-spin inline-block text-4xl">⏳</span>
+      <span class="animate-spin inline-block text-4xl"><PixelIcon name="timer" /></span>
     </div>
     <template v-else>
       <!-- 官方市场报价 -->
       <div class="rpg-card rounded-xl p-4 mb-4 border-2 border-yellow-400/40">
         <div class="flex items-center justify-between mb-3">
           <span class="text-sm font-semibold text-gray-700 dark:text-gray-200"
-            >💰 官方市场报价</span
+            ><PixelIcon name="gold" /> 官方市场报价</span
           >
         </div>
         <div class="grid grid-cols-2 gap-3 text-sm">
@@ -17,7 +17,7 @@
           >
             <p class="text-sm text-gray-400 mb-1">收购单价</p>
             <p class="text-lg font-bold text-green-500">
-              🪙 {{ formatNumberWithCommas(officialInfo.buyPrice) }}
+              <PixelIcon name="gold" /> {{ formatNumberWithCommas(officialInfo.buyPrice) }}
             </p>
             <p class="text-xs text-gray-400">官方从你手中收购</p>
           </div>
@@ -26,17 +26,17 @@
           >
             <p class="text-sm text-gray-400 mb-1">出售单价</p>
             <p class="text-lg font-bold text-blue-500">
-              🪙 {{ formatNumberWithCommas(officialInfo.sellPrice) }}
+              <PixelIcon name="gold" /> {{ formatNumberWithCommas(officialInfo.sellPrice) }}
             </p>
             <p class="text-xs text-gray-400">从官方购买</p>
           </div>
         </div>
       </div>
 
-      <!-- ===== 📤 出售水晶给官方 ===== -->
+      <!-- ===== sell 出售水晶给官方 ===== -->
       <div class="official-section-card sell-crystal mb-4">
         <div class="section-header bg-green-500/10 dark:bg-green-900/30">
-          <span class="section-icon">📤</span>
+          <span class="section-icon"><PixelIcon name="sell" /></span>
           <span class="section-title">出售水晶给官方</span>
         </div>
         <div class="section-body">
@@ -47,7 +47,7 @@
               :key="'own-' + c.key"
               class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm"
             >
-              <span>{{ c.icon }}</span>
+              <PixelIcon :name="c.icon" :size="20" />
               <span class="text-gray-600 dark:text-gray-300">{{ c.name }}</span>
               <span class="ml-auto font-mono" :style="{ color: c.color }">{{
                 playerInventory[c.key] ?? 0
@@ -64,9 +64,13 @@
               <el-option
                 v-for="c in crystalList"
                 :key="c.key"
-                :label="`${c.icon} ${c.name}水晶`"
-                :value="c.key"
-              />
+              :label="`${c.name}水晶`"
+              :value="c.key"
+            >
+              <span class="inline-flex items-center gap-1">
+                <PixelIcon :name="c.icon" :size="16" /> {{ c.name }}水晶
+              </span>
+            </el-option>
             </el-select>
             <el-input-number
               v-model="sellCrystalQty"
@@ -102,7 +106,7 @@
           <div class="text-sm text-gray-400 mb-2">
             预计获得<span class="text-xs">(按官方收购价计算)</span>:
             <span class="text-yellow-500 font-semibold"
-              >🪙
+              ><PixelIcon name="gold" />
               {{
                 formatNumberWithCommas(sellCrystalQty * officialInfo.buyPrice)
               }}</span
@@ -115,9 +119,9 @@
             class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400 mb-2"
           >
             <p>
-              📊 收购单价区间:
+              <PixelIcon name="chart" /> 收购单价区间:
               <span class="text-yellow-500 font-semibold">
-                🪙 {{ formatNumberWithCommas(currentCrystalPriceRange.minPrice)
+                <PixelIcon name="gold" /> {{ formatNumberWithCommas(currentCrystalPriceRange.minPrice)
                 }}<template
                   v-if="
                     currentCrystalPriceRange.maxPrice >
@@ -145,10 +149,10 @@
         </div>
       </div>
 
-      <!-- ===== 📥 从官方购买水晶 ===== -->
+      <!-- ===== download 从官方购买水晶 ===== -->
       <div class="official-section-card buy-crystal mb-4">
         <div class="section-header bg-blue-500/10 dark:bg-blue-900/30">
-          <span class="section-icon">📥</span>
+          <span class="section-icon"><PixelIcon name="download" /></span>
           <span class="section-title">从官方购买水晶</span>
         </div>
         <div class="section-body">
@@ -159,7 +163,7 @@
               :key="c.key"
               class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm"
             >
-              <span>{{ c.icon }}</span>
+              <PixelIcon :name="c.icon" :size="20" />
               <span class="text-gray-600 dark:text-gray-300">{{ c.name }}</span>
               <span class="ml-auto font-mono" :style="{ color: c.color }">{{
                 officialInfo.stock?.[c.key] ?? 0
@@ -176,9 +180,13 @@
               <el-option
                 v-for="c in crystalList"
                 :key="c.key"
-                :label="`${c.icon} ${c.name}水晶`"
-                :value="c.key"
-              />
+              :label="`${c.name}水晶`"
+              :value="c.key"
+            >
+              <span class="inline-flex items-center gap-1">
+                <PixelIcon :name="c.icon" :size="16" /> {{ c.name }}水晶
+              </span>
+            </el-option>
             </el-select>
             <el-input-number
               v-model="buyCrystalQty"
@@ -191,7 +199,7 @@
           <div class="text-sm text-gray-400 mb-2">
             需要花费:
             <span class="text-yellow-500 font-semibold"
-              >🪙
+              ><PixelIcon name="gold" />
               {{
                 formatNumberWithCommas(buyCrystalQty * officialInfo.sellPrice)
               }}</span
@@ -210,10 +218,10 @@
         </div>
       </div>
 
-      <!-- ===== 🔮 出售符文石碎片给官方 ===== -->
+      <!-- ===== rune 出售符文石碎片给官方 ===== -->
       <div class="official-section-card sell-fragment mb-4">
         <div class="section-header bg-purple-500/10 dark:bg-purple-900/30">
-          <span class="section-icon">🔮</span>
+          <span class="section-icon"><PixelIcon name="rune" /></span>
           <span class="section-title">出售符文石碎片给官方</span>
         </div>
         <div class="section-body">
@@ -222,7 +230,7 @@
           >
             <p class="text-sm text-gray-400 mb-1">收购单价</p>
             <p class="text-lg font-bold text-green-500">
-              🪙
+              <PixelIcon name="gold" />
               {{
                 formatNumberWithCommas(officialInfo.runeFragmentBuyPrice ?? 0)
               }}
@@ -231,7 +239,7 @@
           <div
             class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm mb-3"
           >
-            <span>🔮</span>
+            <span><PixelIcon name="rune" /></span>
             <span class="text-gray-600 dark:text-gray-300">符文石碎片</span>
             <span class="ml-auto font-mono text-purple-500">{{
               formatNumberWithCommas(playerInventory.runeFragment ?? 0)
@@ -272,7 +280,7 @@
           <div class="text-sm text-gray-400 mb-2">
             预计获得:
             <span class="text-yellow-500 font-semibold"
-              >🪙
+              ><PixelIcon name="gold" />
               {{
                 formatNumberWithCommas(
                   sellFragmentQty * (officialInfo.runeFragmentBuyPrice ?? 0)
@@ -293,10 +301,10 @@
         </div>
       </div>
 
-      <!-- ===== 💎 出售符文石给官方 ===== -->
+      <!-- ===== rune 出售符文石给官方 ===== -->
       <div class="official-section-card sell-runestone mb-4">
         <div class="section-header bg-yellow-500/10 dark:bg-yellow-900/30">
-          <span class="section-icon">💎</span>
+          <span class="section-icon"><PixelIcon name="rune" /></span>
           <span class="section-title">出售符文石给官方</span>
           <el-button
             type="primary"
@@ -316,11 +324,11 @@
             class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 mb-3"
           >
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              💰 官方符文石收购报价
+              <PixelIcon name="gold" /> 官方符文石收购报价
             </p>
             <div class="flex flex-wrap gap-2 text-xs">
               <span class="text-gray-600 dark:text-gray-300"
-                >普通: 🪙
+                >普通: <PixelIcon name="gold" />
                 {{
                   formatNumberWithCommas(
                     officialInfo.runeStoneOfficialPrices.normal
@@ -328,7 +336,7 @@
                 }}</span
               >
               <span class="text-blue-500"
-                >稀有: 🪙
+                >稀有: <PixelIcon name="gold" />
                 {{
                   formatNumberWithCommas(
                     officialInfo.runeStoneOfficialPrices.rare
@@ -336,7 +344,7 @@
                 }}</span
               >
               <span class="text-yellow-500"
-                >传说: 🪙
+                >传说: <PixelIcon name="gold" />
                 {{
                   formatNumberWithCommas(
                     officialInfo.runeStoneOfficialPrices.legendary
@@ -383,7 +391,7 @@
               <template v-if="selectedRuneStoneIds.size > 0">
                 · 预计获得
                 <b class="text-yellow-500"
-                  >🪙 {{ formatNumberWithCommas(batchSellTotalGold) }}</b
+                  ><PixelIcon name="gold" /> {{ formatNumberWithCommas(batchSellTotalGold) }}</b
                 >
               </template>
             </span>
@@ -400,7 +408,7 @@
 
           <!-- 符文石列表 -->
           <div v-if="officialRsLoading" class="flex justify-center py-6">
-            <span class="animate-spin inline-block text-2xl">⏳</span>
+            <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
           </div>
           <div
             v-else-if="paginatedRuneStones.length === 0"
@@ -432,7 +440,7 @@
                     class="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0"
                     :class="rarityBgClass(rs.rarity)"
                   >
-                    💎
+                    <PixelIcon name="rune" />
                   </div>
                   <div class="min-w-0">
                     <p
@@ -452,7 +460,7 @@
                     <p
                       class="text-sm text-yellow-500 font-semibold whitespace-nowrap"
                     >
-                      🪙
+                      <PixelIcon name="gold" />
                       {{
                         formatNumberWithCommas(
                           officialInfo.runeStoneOfficialPrices?.[rs.rarity]
@@ -470,7 +478,7 @@
                     出售
                   </el-button>
                   <span class="text-gray-400 text-sm px-1 select-none">
-                    {{ expandedRuneStoneIds.has(rs._id) ? '🔼' : '🔽' }}
+                    {{ expandedRuneStoneIds.has(rs._id) ? 'collapse' : 'expand' }}
                   </span>
                 </div>
               </div>

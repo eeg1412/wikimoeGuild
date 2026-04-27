@@ -4,7 +4,7 @@
       v-if="loading && activities.length === 0"
       class="flex justify-center py-8"
     >
-      <span class="animate-spin inline-block text-2xl">⏳</span>
+      <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
     </div>
 
     <div
@@ -31,9 +31,12 @@
             @click="handleGuildIconClick(item)"
           />
           <!-- 类型图标（无账号时回退） -->
-          <span v-else class="text-lg shrink-0 mt-0.5">{{
-            typeIcon(item.type)
-          }}</span>
+          <PixelIcon
+            v-else
+            :name="typeIcon(item.type)"
+            :size="22"
+            class="shrink-0 mt-0.5"
+          />
           <div class="min-w-0 flex-1">
             <p
               class="text-sm font-semibold text-gray-700 dark:text-gray-200 break-all"
@@ -147,17 +150,17 @@ function handleGuildIconClick(item) {
 }
 
 function typeIcon(type) {
-  const icons = {
-    guild_created: '🏰',
-    rune_stone_found: '💎',
-    arena_top3: '🏆',
-    mine_discovered: '⛏️',
-    market_listing: '🏪',
-    guild_upgrade: '⬆️',
-    dungeon_victory: '🐉',
-    arena_victory: '⚔️'
+  const semanticIcons = {
+    guild_created: 'guild',
+    rune_stone_found: 'rune',
+    arena_top3: 'arena',
+    mine_discovered: 'mine',
+    market_listing: 'market',
+    guild_upgrade: 'up',
+    dungeon_victory: 'dungeon',
+    arena_victory: 'attack'
   }
-  return icons[type] || '📌'
+  return semanticIcons[type] || 'pin'
 }
 
 function runeStoneRarityTextClass(rarity) {

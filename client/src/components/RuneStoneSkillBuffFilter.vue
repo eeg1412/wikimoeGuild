@@ -17,7 +17,7 @@
           }"
           @click="skillVisible = !skillVisible"
         >
-          ⚔️ 主动技能
+          <PixelIcon name="attack" /> 主动技能
           <span
             v-if="skillMode !== '' && skillSelected.size > 0"
             class="filter-badge"
@@ -57,7 +57,7 @@
                   ? 'bg-blue-500 border-blue-500 text-white'
                   : 'border-gray-400 dark:border-gray-500 text-transparent'
               "
-              >✓</span
+              ><PixelIcon name="check" /></span
             >
             {{ item.label }}
           </div>
@@ -90,7 +90,7 @@
           }"
           @click="buffVisible = !buffVisible"
         >
-          🛡️ 被动增益
+          <PixelIcon name="defense" /> 被动增益
           <span
             v-if="buffMode !== '' && buffSelected.size > 0"
             class="filter-badge"
@@ -130,7 +130,7 @@
                   ? 'bg-blue-500 border-blue-500 text-white'
                   : 'border-gray-400 dark:border-gray-500 text-transparent'
               "
-              >✓</span
+              ><PixelIcon name="check" /></span
             >
             {{ item.label }}
           </div>

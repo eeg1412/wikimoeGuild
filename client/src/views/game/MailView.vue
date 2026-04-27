@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        📬 邮箱
+        <PixelIcon name="mail" /> 邮箱
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         查收邮件和领取附件奖励
@@ -12,14 +12,14 @@
 
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-12">
-      <span class="animate-spin inline-block text-4xl">⏳</span>
+      <span class="animate-spin inline-block text-4xl"><PixelIcon name="timer" /></span>
     </div>
 
     <template v-else>
       <!-- 未读提示 -->
       <div v-if="unreadCount > 0" class="text-center mb-4">
         <span class="text-sm text-yellow-500"
-          >📩 你有 {{ unreadCount }} 封未读邮件</span
+          ><PixelIcon name="notice" /> 你有 {{ unreadCount }} 封未读邮件</span
         >
       </div>
 
@@ -49,7 +49,7 @@
                     : 'bg-yellow-100 dark:bg-yellow-900/30'
                 "
               >
-                {{ typeIcon(mail.type) }}
+                <PixelIcon :name="typeIcon(mail.type)" :size="22" />
               </div>
               <div class="min-w-0">
                 <p
@@ -62,12 +62,12 @@
                   <span
                     v-if="mail.hasAttachment && !mail.claimed"
                     class="text-yellow-500 ml-1"
-                    >📦 有附件</span
+                    ><PixelIcon name="package" /> 有附件</span
                   >
                   <span
                     v-if="mail.hasAttachment && mail.claimed"
                     class="text-green-500 ml-1"
-                    >✅ 已领取</span
+                    ><PixelIcon name="check" /> 已领取</span
                   >
                 </p>
               </div>
@@ -77,7 +77,7 @@
                 v-if="!mail.read"
                 class="w-2 h-2 rounded-full bg-red-500 inline-block"
               ></span>
-              <span class="text-gray-400">▶</span>
+              <span class="text-gray-400"><PixelIcon name="speed" /></span>
             </div>
           </div>
         </div>
@@ -108,7 +108,7 @@
       append-to-body
     >
       <div v-if="detailLoading" class="flex justify-center py-8">
-        <span class="animate-spin inline-block text-2xl">⏳</span>
+        <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
       </div>
       <div v-else-if="detailMail" class="space-y-4">
         <!-- 邮件信息 -->
@@ -130,13 +130,13 @@
           v-if="detailMail.hasAttachment"
           class="border border-yellow-200 dark:border-yellow-700/40 rounded-lg p-3"
         >
-          <h4 class="text-sm font-semibold text-yellow-500 mb-2">📦 附件</h4>
+          <h4 class="text-sm font-semibold text-yellow-500 mb-2"><PixelIcon name="package" /> 附件</h4>
           <div class="space-y-1 text-sm">
             <div
               v-if="detailMail.attachGold > 0"
               class="flex items-center gap-2"
             >
-              <span>🪙</span>
+              <span><PixelIcon name="gold" /></span>
               <span class="text-gray-700 dark:text-gray-300">金币</span>
               <span class="ml-auto font-mono text-yellow-500"
                 >+{{ formatNumberWithCommas(detailMail.attachGold) }}</span
@@ -147,7 +147,7 @@
                 v-if="detailMail.attachItems?.[cry.key] > 0"
                 class="flex items-center gap-2"
               >
-                <span>{{ cry.icon }}</span>
+                <PixelIcon :name="crystalIcon(cry.key)" />
                 <span class="text-gray-700 dark:text-gray-300"
                   >{{ cry.name }}水晶</span
                 >
@@ -160,7 +160,7 @@
               v-if="detailMail.attachItems?.runeFragment > 0"
               class="flex items-center gap-2"
             >
-              <span>🔮</span>
+              <span><PixelIcon name="rune" /></span>
               <span class="text-gray-700 dark:text-gray-300">符文石碎片</span>
               <span class="ml-auto font-mono text-purple-400"
                 >+{{ detailMail.attachItems.runeFragment }}</span
@@ -170,7 +170,7 @@
               v-if="detailMail.attachRuneStones?.length > 0"
               class="flex items-center gap-2"
             >
-              <span>💎</span>
+              <span><PixelIcon name="rune" /></span>
               <span class="text-gray-700 dark:text-gray-300">符文石</span>
               <span class="ml-auto font-mono text-blue-400"
                 >x{{ detailMail.attachRuneStones.length }}</span
@@ -191,7 +191,7 @@
             </el-button>
           </div>
           <div v-else class="mt-2 text-center text-sm text-green-500">
-            ✅ 附件已领取
+            <PixelIcon name="check" /> 附件已领取
           </div>
         </div>
 
@@ -205,7 +205,7 @@
             :disabled="deleteLoading"
             @click="handleDelete"
           >
-            🗑️ 删除邮件
+            <PixelIcon name="trash" /> 删除邮件
           </el-button>
         </div>
       </div>
@@ -235,10 +235,10 @@ if (!isLoggedIn.value) {
 }
 
 const crystalList = [
-  { key: 'attackCrystal', name: '攻击', icon: '⚔️', color: '#e05c4f' },
-  { key: 'defenseCrystal', name: '防御', icon: '🛡️', color: '#4fa3e0' },
-  { key: 'speedCrystal', name: '速度', icon: '💨', color: '#6abf69' },
-  { key: 'sanCrystal', name: 'SAN值', icon: '❤️', color: '#c070e0' }
+  { key: 'attackCrystal', name: '攻击', icon: 'attack', color: '#e05c4f' },
+  { key: 'defenseCrystal', name: '防御', icon: 'defense', color: '#4fa3e0' },
+  { key: 'speedCrystal', name: '速度', icon: 'speed', color: '#6abf69' },
+  { key: 'sanCrystal', name: 'SAN值', icon: 'san', color: '#c070e0' }
 ]
 
 const loading = ref(false)
@@ -347,7 +347,13 @@ async function handleDelete() {
 
 // 工具函数
 function typeIcon(type) {
-  return { system: '📢', reward: '🎁', arena: '⚔️', market: '🏪' }[type] || '📧'
+  const semanticIcons = {
+    system: 'notice',
+    reward: 'gift',
+    arena: 'arena',
+    market: 'market'
+  }
+  return semanticIcons[type] || 'mail'
 }
 function typeLabel(type) {
   return (
@@ -357,6 +363,17 @@ function typeLabel(type) {
       arena: '竞技场',
       market: '交易市场'
     }[type] || '邮件'
+  )
+}
+
+function crystalIcon(key) {
+  return (
+    {
+      attackCrystal: 'attack',
+      defenseCrystal: 'defense',
+      speedCrystal: 'speed',
+      sanCrystal: 'san'
+    }[key] || 'rune'
   )
 }
 function formatTime(t) {

@@ -33,7 +33,7 @@
               type="button"
               class="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/40 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
             >
-              <span class="text-purple-500 text-sm">🏰</span>
+              <PixelIcon name="guild" :size="16" />
               <span
                 class="text-sm font-semibold text-purple-600 dark:text-purple-400 tabular-nums"
               >
@@ -43,7 +43,7 @@
                 v-if="guildUpgradeReady"
                 class="text-sm"
                 title="可以升级公会"
-                >⬆️</span
+                ><PixelIcon name="up" /></span
               >
             </button>
           </template>
@@ -52,14 +52,14 @@
             <div class="flex items-center justify-between">
               <span
                 class="text-sm font-semibold text-gray-700 dark:text-gray-200"
-                >🏰 公会等级</span
+                ><PixelIcon name="guild" /> 公会等级</span
               >
               <span class="text-lg font-bold text-purple-500"
                 >Lv.{{ playerInfo.guildLevel ?? 1 }}</span
               >
             </div>
             <div v-if="guildLevelLoading" class="text-center py-3">
-              <span class="animate-spin inline-block text-xl">⏳</span>
+              <span class="animate-spin inline-block text-xl"><PixelIcon name="timer" /></span>
             </div>
             <template v-else-if="guildLevelInfo">
               <div class="space-y-1.5 text-sm">
@@ -105,13 +105,13 @@
                 <div class="flex justify-between">
                   <span class="text-gray-500 dark:text-gray-400">升级费用</span>
                   <span class="font-semibold text-yellow-500"
-                    >🪙 {{ formatNumberWithCommas(guildLevelInfo.fee) }}</span
+                    ><PixelIcon name="gold" />{{ formatNumberWithCommas(guildLevelInfo.fee) }}</span
                   >
                 </div>
                 <div class="flex justify-between">
                   <span class="text-gray-500 dark:text-gray-400">当前金币</span>
                   <span class="font-semibold text-yellow-500"
-                    >🪙 {{ formatNumberWithCommas(guildLevelInfo.gold) }}</span
+                    ><PixelIcon name="gold" />{{ formatNumberWithCommas(guildLevelInfo.gold) }}</span
                   >
                 </div>
                 <div class="flex justify-between">
@@ -138,7 +138,7 @@
                 :disabled="guildLevelUpLoading || !canUpgradeGuild"
                 @click="handleGuildLevelUp"
               >
-                ⬆️ 升级公会 (Lv.{{ (playerInfo.guildLevel ?? 1) + 1 }})
+                <PixelIcon name="up" /> 升级公会 (Lv.{{ (playerInfo.guildLevel ?? 1) + 1 }})
               </el-button>
             </template>
           </div>
@@ -158,26 +158,26 @@
               type="button"
               class="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/40 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
             >
-              <span class="text-yellow-500 text-sm">🎒</span>
+              <PixelIcon name="inventory" :size="16" />
             </button>
           </template>
           <!-- 背包弹出面板 -->
           <div class="space-y-2">
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-              🎒 背包
+              <PixelIcon name="inventory" /> 背包
             </p>
             <div
               class="flex items-center justify-between bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2"
             >
-              <span class="text-sm text-gray-600 dark:text-gray-300"
-                >🪙 金币</span
-              >
+              <span class="text-sm text-gray-600 dark:text-gray-300">
+                <PixelIcon name="gold" />金币
+              </span>
               <span class="font-bold text-yellow-500 tabular-nums">{{
                 formatNumberWithCommas(playerInfo.gold ?? 0)
               }}</span>
             </div>
             <div v-if="backpackLoading" class="text-center py-2">
-              <span class="animate-spin inline-block text-sm">⏳</span>
+              <span class="animate-spin inline-block text-sm"><PixelIcon name="timer" /></span>
             </div>
             <template v-else-if="backpackInventory">
               <div class="grid grid-cols-1 gap-1.5">
@@ -188,7 +188,8 @@
                 >
                   <div class="flex items-center justify-between">
                     <span class="text-xs text-gray-500"
-                      >{{ cry.icon }} {{ cry.name }}</span
+                      ><PixelIcon :name="crystalIcon(cry.key)" />
+                      {{ cry.name }}</span
                     >
                     <span
                       class="text-sm font-semibold tabular-nums"
@@ -221,7 +222,7 @@
               <div
                 class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
               >
-                <span class="text-xs text-gray-500">💎 符文碎片</span>
+                <span class="text-xs text-gray-500"><PixelIcon name="rune" /> 符文碎片</span>
                 <span
                   class="text-sm font-semibold text-cyan-400 tabular-nums"
                   >{{
@@ -235,7 +236,7 @@
 
         <!-- 暗模式切换 -->
         <el-button text circle @click="toggleTheme">
-          <span class="text-lg">{{ isDark ? '☀️' : '🌙' }}</span>
+          <PixelIcon :name="isDark ? 'light' : 'dark'" :size="20" />
         </el-button>
 
         <!-- 已登录：显示公会图标和公会名 -->
@@ -258,10 +259,10 @@
                 <el-dropdown-item
                   @click="handleNavTo({ name: 'GameGuildSettings' })"
                 >
-                  ⚙️ 公会设置
+                  <PixelIcon name="settings" /> 公会设置
                 </el-dropdown-item>
                 <el-dropdown-item divided @click="handleLogout">
-                  🚪 退出登录
+                  <PixelIcon name="notice" /> 退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -290,7 +291,7 @@
         class="w-full bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg px-4 py-2 mt-4 flex items-center justify-between gap-2"
       >
         <div class="flex items-center gap-2 min-w-0">
-          <span class="text-yellow-500 text-lg flex-shrink-0">⚠️</span>
+          <span class="text-yellow-500 text-lg flex-shrink-0"><PixelIcon name="warning" /></span>
           <span class="text-sm text-yellow-700 dark:text-yellow-300 truncate">
             您正在使用游客账号，请及时绑定邮箱
           </span>
@@ -322,47 +323,47 @@
       <transition name="fab-menu">
         <div v-if="fabOpen" class="fab-grid-panel">
           <div class="fab-grid-item" @click="handleNavTo({ name: 'GameHome' })">
-            <span class="fab-grid-icon">🏠</span>
+            <PixelIcon name="home" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">首页</span>
           </div>
           <div
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameAdventurers' })"
           >
-            <span class="fab-grid-icon">⚔️</span>
+            <PixelIcon name="adventurer" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">冒险家</span>
           </div>
           <div
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameDungeon' })"
           >
-            <span class="fab-grid-icon">🏰</span>
+            <PixelIcon name="dungeon" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">迷宫</span>
           </div>
           <div
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameRuneStones' })"
           >
-            <span class="fab-grid-icon">💎</span>
+            <PixelIcon name="rune" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">符文石</span>
           </div>
           <div
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameFormations' })"
           >
-            <span class="fab-grid-icon">🏗️</span>
+            <PixelIcon name="formation" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">阵容</span>
           </div>
           <div
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameInventory' })"
           >
-            <span class="fab-grid-icon">🎒</span>
+            <PixelIcon name="inventory" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">背包</span>
           </div>
           <div class="fab-grid-item" @click="handleNavTo({ name: 'GameMail' })">
             <div class="relative inline-flex">
-              <span class="fab-grid-icon">📬</span>
+              <PixelIcon name="mail" :size="24" class="fab-grid-icon" />
               <span v-if="unreadMailBadge" class="fab-badge">{{
                 unreadMailBadge
               }}</span>
@@ -374,7 +375,7 @@
             @click="handleNavTo({ name: 'GameMarket' })"
           >
             <div class="relative inline-flex">
-              <span class="fab-grid-icon">🏪</span>
+              <PixelIcon name="market" :size="24" class="fab-grid-icon" />
               <span v-if="marketPending.hasAnyPending" class="fab-dot-mini" />
             </div>
             <span class="fab-grid-label">市场</span>
@@ -383,25 +384,25 @@
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameArena' })"
           >
-            <span class="fab-grid-icon">🏟️</span>
+            <PixelIcon name="arena" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">竞技场</span>
           </div>
           <div class="fab-grid-item" @click="handleNavTo({ name: 'GameMine' })">
-            <span class="fab-grid-icon">⛏️</span>
+            <PixelIcon name="mine" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">矿场</span>
           </div>
           <div
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameGuildSettings' })"
           >
-            <span class="fab-grid-icon">⚙️</span>
+            <PixelIcon name="settings" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">公会</span>
           </div>
           <div
             class="fab-grid-item"
             @click="handleNavTo({ name: 'GameGuide' })"
           >
-            <span class="fab-grid-icon">📖</span>
+            <PixelIcon name="guide" :size="24" class="fab-grid-icon" />
             <span class="fab-grid-label">手册</span>
           </div>
         </div>
@@ -414,12 +415,7 @@
         @click="toggleFab"
         aria-label="菜单"
       >
-        <span
-          class="text-2xl transition-transform duration-300"
-          :class="{ 'rotate-45': fabOpen }"
-        >
-          ➕
-        </span>
+        <PixelIcon name="plus" :size="26" class="transition-transform duration-300" :class="{ 'rotate-45': fabOpen }" />
         <!-- 红点角标 -->
         <span v-if="hasNewContent && !fabOpen" class="fab-dot" />
       </button>
@@ -631,28 +627,39 @@ const backpackCrystalList = [
   {
     key: 'attackCrystal',
     name: '攻击水晶',
-    icon: '⚔️',
+    icon: 'attack',
     colorClass: 'text-red-400'
   },
   {
     key: 'defenseCrystal',
     name: '防御水晶',
-    icon: '🛡️',
+    icon: 'defense',
     colorClass: 'text-blue-400'
   },
   {
     key: 'speedCrystal',
     name: '速度水晶',
-    icon: '💨',
+    icon: 'speed',
     colorClass: 'text-green-400'
   },
   {
     key: 'sanCrystal',
     name: 'SAN水晶',
-    icon: '❤️',
+    icon: 'san',
     colorClass: 'text-purple-400'
   }
 ]
+
+function crystalIcon(key) {
+  return (
+    {
+      attackCrystal: 'attack',
+      defenseCrystal: 'defense',
+      speedCrystal: 'speed',
+      sanCrystal: 'san'
+    }[key] || 'rune'
+  )
+}
 
 const backpackSellVisible = ref(false)
 const backpackSellCrystalType = ref('attackCrystal')

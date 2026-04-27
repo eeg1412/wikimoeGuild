@@ -10,7 +10,7 @@
         <h1
           class="rpg-dungeon-title text-2xl font-bold text-yellow-300 drop-shadow-lg"
         >
-          🏰 地下迷宫
+          <PixelIcon name="dungeon" /> 地下迷宫
         </h1>
         <p class="text-gray-300 text-sm mt-1">
           地下
@@ -24,7 +24,7 @@
           <span
             class="text-yellow-300 font-semibold text-sm flex items-center gap-1"
           >
-            <span>🎯</span> 符文石产出等级
+            <span><PixelIcon name="notice" /></span> 符文石产出等级
           </span>
           <div class="flex items-center gap-2">
             <el-select-v2
@@ -38,7 +38,7 @@
             <span
               v-if="selectLevelLoading"
               class="animate-spin inline-block text-sm"
-              >⏳</span
+              ><PixelIcon name="timer" /></span
             >
           </div>
         </div>
@@ -74,7 +74,7 @@
                   v-if="adv.direction === 'walk-left' && adv.carryEmoji"
                   class="carry-bubble-content"
                 >
-                  {{ adv.carryEmoji }}
+                  <PixelIcon :name="adv.carryEmoji" :size="18" />
                 </div>
                 <GameAdventurerAvatar
                   :adventurer="adv"
@@ -92,7 +92,7 @@
                       : 'explorer-bubble--right'
                   "
                 >
-                  {{ adv.bubbleEmoji }}
+                  <PixelIcon :name="adv.bubbleEmoji" :size="18" />
                 </div>
               </Transition>
             </div>
@@ -105,7 +105,7 @@
         <h3
           class="text-yellow-300 font-semibold text-sm mb-3 flex items-center gap-2"
         >
-          <span>💎</span> 水晶爆率
+          <span><PixelIcon name="rune" /></span> 水晶爆率
         </h3>
         <div class="grid grid-cols-2 gap-3">
           <div
@@ -114,7 +114,7 @@
             class="crystal-item flex flex-col items-center p-2 rounded-lg"
             :style="{ borderColor: cry.color + '80' }"
           >
-            <span class="text-lg">{{ cry.icon }}</span>
+                  <PixelIcon :name="cry.icon" :size="20" />
             <span class="text-sm text-gray-300 mt-0.5">{{ cry.name }}水晶</span>
             <span
               class="text-base font-bold mt-1"
@@ -131,7 +131,7 @@
         <h3
           class="text-yellow-300 font-semibold text-sm mb-3 flex items-center gap-2"
         >
-          <span>⚗️</span> 产出信息
+          <span><PixelIcon name="notice" /></span> 产出信息
         </h3>
         <div class="space-y-3">
           <div class="dungeon-info-row">
@@ -207,7 +207,7 @@
       </div>
       <!-- 自动分解设置 -->
       <div class="rpg-card rounded-xl p-1 mt-1">
-        <!-- <p class="text-xs text-gray-400 mb-2">⚙️ 自动分解设置</p> -->
+        <!-- <p class="text-xs text-gray-400 mb-2"><PixelIcon name="settings" /> 自动分解设置</p> -->
         <div class="flex flex-wrap items-center justify-center gap-1">
           <el-checkbox
             :model-value="autoDecomposeNormal"
@@ -241,7 +241,7 @@
           :disabled="settleLoading || currentOutput < 1"
           @click="handleSettle"
         >
-          ✨ 收取水晶
+          <PixelIcon name="spark" /> 收取水晶
         </el-button>
 
         <!-- 切换迷宫 -->
@@ -259,7 +259,7 @@
           "
           @click="handleSwitch"
         >
-          🔄 切换迷宫
+          <PixelIcon name="notice" /> 切换迷宫
         </el-button>
 
         <!-- 自动挑战选项 -->
@@ -286,8 +286,8 @@
         >
           {{
             battleCooldown > 0
-              ? `⚔️ 冷却中 (${battleCooldown}s)`
-              : '⚔️ 挑战迷宫军团'
+              ? `attack 冷却中 (${battleCooldown}s)`
+              : 'attack 挑战迷宫军团'
           }}
         </el-button>
       </div>
@@ -303,7 +303,7 @@
       >
         <div v-if="settleResult" class="space-y-2 text-sm">
           <div class="flex justify-between" style="color: #e05c4f">
-            <span>⚔️ 攻击水晶</span>
+            <span><PixelIcon name="attack" /> 攻击水晶</span>
             <span class="font-bold"
               >+{{
                 formatNumberWithCommas(
@@ -313,7 +313,7 @@
             >
           </div>
           <div class="flex justify-between" style="color: #4fa3e0">
-            <span>🛡️ 防御水晶</span>
+            <span><PixelIcon name="defense" /> 防御水晶</span>
             <span class="font-bold"
               >+{{
                 formatNumberWithCommas(
@@ -323,7 +323,7 @@
             >
           </div>
           <div class="flex justify-between" style="color: #6abf69">
-            <span>💨 速度水晶</span>
+            <span><PixelIcon name="speed" /> 速度水晶</span>
             <span class="font-bold"
               >+{{
                 formatNumberWithCommas(settleResult.crystals?.speedCrystal || 0)
@@ -331,7 +331,7 @@
             >
           </div>
           <div class="flex justify-between" style="color: #c070e0">
-            <span>❤️ SAN水晶</span>
+            <span><PixelIcon name="san" /> SAN水晶</span>
             <span class="font-bold"
               >+{{
                 formatNumberWithCommas(settleResult.crystals?.sanCrystal || 0)
@@ -348,7 +348,7 @@
             v-if="settleResult.autoDecomposed"
             class="bg-purple-50 dark:bg-purple-900/20 border border-purple-400/30 rounded-lg p-3 text-sm"
           >
-            <p class="text-purple-400 font-medium">🔮 已自动分解</p>
+            <p class="text-purple-400 font-medium"><PixelIcon name="rune" /> 已自动分解</p>
             <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
               获得
               {{
@@ -370,7 +370,7 @@
             class="mt-2 rounded p-2 text-xs bg-orange-500/10 border border-orange-500/30"
           >
             <p class="font-semibold text-orange-400 mb-1">
-              ⚠️ 背包已满，已自动转换为符文石碎片：
+              <PixelIcon name="warning" /> 背包已满，已自动转换为符文石碎片：
             </p>
             <p
               v-if="settleResult.discardedRuneStones.normal > 0"
@@ -402,7 +402,7 @@
       <!-- 军团挑战弹窗 -->
       <el-dialog
         v-model="showLegionDialog"
-        title="⚔️ 挑战迷宫军团"
+        title="attack 挑战迷宫军团"
         align-center
         destroy-on-close
         :close-on-click-modal="!challengeLoading"
@@ -413,7 +413,7 @@
         <div class="space-y-4">
           <!-- 军团预览 -->
           <div v-if="legionPreviewLoading" class="text-center py-4">
-            <span class="animate-spin inline-block text-2xl">⏳</span>
+            <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
           </div>
           <div v-else-if="legionPreview">
             <div class="flex items-center justify-between mb-2">
@@ -423,7 +423,7 @@
               <!-- <p
                 class="text-sm font-semibold text-orange-500 dark:text-orange-400"
               >
-                ⚔️ 敌方: {{ legionCombatPower }}
+                <PixelIcon name="attack" /> 敌方: {{ legionCombatPower }}
               </p> -->
             </div>
             <div class="grid grid-cols-5 gap-1 overflow-y-auto">
@@ -475,11 +475,11 @@
               <template v-else-if="myFormationCombatPower > 0">
                 <div class="flex justify-between items-center px-1">
                   <span class="text-blue-500 font-mono font-bold"
-                    >🏰 我方:
+                    ><PixelIcon name="dungeon" /> 我方:
                     {{ formatNumberWithUnits(myFormationCombatPower) }}</span
                   >
                   <span class="text-orange-500 font-mono font-bold"
-                    >😈 敌方:
+                    ><PixelIcon name="notice" /> 敌方:
                     {{ formatNumberWithUnits(legionCombatPower) }}</span
                   >
                 </div>
@@ -488,7 +488,7 @@
                     v-if="myFormationCombatPower > legionCombatPower"
                     class="text-green-500 text-sm font-semibold"
                   >
-                    ✅ 我方战斗力领先 +{{
+                    <PixelIcon name="check" /> 我方战斗力领先 +{{
                       formatNumberWithUnits(
                         myFormationCombatPower - legionCombatPower
                       )
@@ -498,7 +498,7 @@
                     v-else-if="myFormationCombatPower < legionCombatPower"
                     class="text-red-400 text-sm font-semibold"
                   >
-                    ⚠️ 敌方战斗力领先 +{{
+                    <PixelIcon name="warning" /> 敌方战斗力领先 +{{
                       formatNumberWithUnits(
                         legionCombatPower - myFormationCombatPower
                       )
@@ -545,10 +545,10 @@
           <div class="text-4xl">
             {{
               battleResultDisplay === 'win'
-                ? '🎉'
+                ? 'success'
                 : battleResultDisplay === 'lose'
-                  ? '💀'
-                  : '🤝'
+                  ? 'dark'
+                  : 'notice'
             }}
           </div>
           <p
@@ -590,7 +590,7 @@
             v-if="battleResult.autoDecomposed"
             class="bg-purple-50 dark:bg-purple-900/20 border border-purple-400/30 rounded-lg p-3 text-sm"
           >
-            <p class="text-purple-400 font-medium">🔮 已自动分解</p>
+            <p class="text-purple-400 font-medium"><PixelIcon name="rune" /> 已自动分解</p>
             <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
               获得
               {{
@@ -606,7 +606,7 @@
             v-if="battleResult.discardedRuneStone"
             class="bg-orange-900/30 rounded-lg p-2 text-xs text-orange-400"
           >
-            ⚠️ 背包已满，符文石已自动转换为
+            <PixelIcon name="warning" /> 背包已满，符文石已自动转换为
             {{
               formatNumberWithCommas(
                 battleResult.discardedRuneStone.convertedFragments ?? 0
@@ -632,14 +632,14 @@
       <!-- 发现矿场弹窗 -->
       <el-dialog
         v-model="showMineDiscovery"
-        title="⛏️ 发现矿场！"
+        title="mine 发现矿场！"
         width="340px"
         align-center
         destroy-on-close
         append-to-body
       >
         <div v-if="discoveredMine" class="text-center space-y-3">
-          <div class="text-4xl">⛰️</div>
+          <div class="text-4xl"><PixelIcon name="notice" /></div>
           <p class="text-lg font-bold text-yellow-500">
             恭喜！你发现了一座矿场！
           </p>
@@ -878,10 +878,10 @@
             </p>
             <div class="flex justify-center gap-4 text-sm">
               <span class="text-green-500">
-                ✅ 胜利: {{ autoChallengeWinCount }}
+                <PixelIcon name="check" /> 胜利: {{ autoChallengeWinCount }}
               </span>
               <span class="text-red-400">
-                ❌ 失败: {{ autoChallengeLoseCount }}
+                <PixelIcon name="notice" /> 失败: {{ autoChallengeLoseCount }}
               </span>
             </div>
             <p class="text-xs text-gray-400">
@@ -1083,28 +1083,28 @@ const crystalRates = computed(() => {
     {
       key: 'attack',
       name: '攻击',
-      icon: '⚔️',
+      icon: 'attack',
       color: '#e05c4f',
       rate: (rates.attackCryRate / 100).toFixed(0)
     },
     {
       key: 'defense',
       name: '防御',
-      icon: '🛡️',
+      icon: 'defense',
       color: '#4fa3e0',
       rate: (rates.defenseCryRate / 100).toFixed(0)
     },
     {
       key: 'speed',
       name: '速度',
-      icon: '💨',
+      icon: 'speed',
       color: '#6abf69',
       rate: (rates.speedCryRate / 100).toFixed(0)
     },
     {
       key: 'san',
       name: 'SAN值',
-      icon: '❤️',
+      icon: 'san',
       color: '#c070e0',
       rate: (rates.SANCryRate / 100).toFixed(0)
     }
@@ -1280,7 +1280,7 @@ async function checkRuneStoneOverflow(crystalCount) {
     try {
       await ElMessageBox.confirm(
         `当前符文石背包有 ${currentCount}/500 个，本次收取预计最多掉落 ${estimatedDrops} 个符文石，超出上限的部分将自动丢弃。\n\n是否继续？`,
-        '⚠️ 符文石背包可能溢出',
+        'warning 符文石背包可能溢出',
         {
           confirmButtonText: '继续收取',
           cancelButtonText: '取消',
@@ -1551,7 +1551,7 @@ async function handleOpenLegionDialog() {
       try {
         await ElMessageBox.confirm(
           '符文石背包已满（500/500），胜利后必得的传说符文石将因空间不足而丢失。\n\n建议先前往「符文石」页面分解多余的符文石，再来挑战。\n\n是否仍要继续挑战？',
-          '⚠️ 符文石背包已满',
+          'warning 符文石背包已满',
           {
             confirmButtonText: '继续挑战',
             cancelButtonText: '暂不挑战',
@@ -1664,7 +1664,7 @@ function buildExplorerStyle(idx, total, duration) {
 }
 
 // ── 搬运水晶泡泡 ──
-const CARRY_EMOJIS = ['⚔️', '🛡️', '💨', '❤️']
+const CARRY_EMOJIS = ['attack', 'defense', 'speed', 'san']
 
 function getCarryEmoji() {
   return CARRY_EMOJIS[Math.floor(Math.random() * CARRY_EMOJIS.length)]
@@ -1672,52 +1672,52 @@ function getCarryEmoji() {
 
 // ── 对话气泡 ──
 const MOOD_EMOJIS = [
-  '😊',
-  '😤',
-  '🤔',
-  '😴',
-  '🥳',
-  '😎',
-  '🤩',
-  '💪',
-  '😅',
-  '🙄',
-  '😠',
-  '🥶',
-  '🫡',
-  '😈',
-  '✨',
-  '💎',
-  '⚔️',
-  '🛡️',
-  '🔥',
-  '🌟',
-  '👀',
-  '😁',
-  '🫣',
-  '🗡️',
-  '🏹',
-  '🪓',
-  '🪄',
-  '🔮',
-  '📜',
-  '🧭',
-  '🏆',
-  '👑',
-  '💰',
-  '🪙',
-  '🧪',
-  '🧫',
-  '🐉',
-  '👻',
-  '🧙',
-  '🧝',
-  '🧌',
-  '🦄',
-  '🦇',
-  '🌙',
-  '⭐',
-  '🗺️'
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'spark',
+  'rune',
+  'attack',
+  'defense',
+  'fire',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'attack',
+  'notice',
+  'notice',
+  'notice',
+  'rune',
+  'notice',
+  'notice',
+  'notice',
+  'crown',
+  'gold',
+  'gold',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'notice',
+  'star',
+  'notice'
 ]
 
 function showAdvBubble(adv) {
@@ -1854,7 +1854,7 @@ const AUTO_CHALLENGE_PREPARING_TEXT = '准备中...'
 const AUTO_CHALLENGE_LOADING_FORMATION_TEXT = '正在读取阵容...'
 const AUTO_CHALLENGE_RUNNING_TEXT = '正在挑战...'
 const AUTO_CHALLENGE_PREPARE_FAILED_TEXT = '准备失败，请重新开始'
-const AUTO_CHALLENGE_DEFEAT_FINISHED_TEXT = '💀 挑战失败，自动挑战结束'
+const AUTO_CHALLENGE_DEFEAT_FINISHED_TEXT = 'dark 挑战失败，自动挑战结束'
 const autoChallenge = ref(
   localStorage.getItem('dungeon_auto_challenge') === 'true'
 )
@@ -2028,15 +2028,15 @@ const autoChallengeCountdownHint = computed(() => {
 // 自动挑战场次显示
 const autoChallengeBattleDisplay = computed(() => {
   if (autoChallengeRunning.value) {
-    return `⚔️ 第 ${autoChallengeDisplayCount.value || 1} 场战斗`
+    return `attack 第 ${autoChallengeDisplayCount.value || 1} 场战斗`
   }
   if (autoChallengeShowStoppedState.value) {
-    return '⚔️ 本次未进行战斗'
+    return 'attack 本次未进行战斗'
   }
   if (autoChallengeTotalCount.value > 0) {
-    return `⚔️ 共完成 ${autoChallengeTotalCount.value} 场战斗`
+    return `attack 共完成 ${autoChallengeTotalCount.value} 场战斗`
   }
-  return '⚔️ 准备中…'
+  return 'attack 准备中…'
 })
 
 function clearAutoChallengeSceneDelayTimer() {
@@ -2250,13 +2250,13 @@ function applyDisplayedAutoChallengeSuccess(
     autoChallengeWinCount.value++
     if (roundResult.data?.upgraded) {
       autoChallengeUpgradeCount.value++
-      autoChallengeStatusText.value = '🎉 胜利！迷宫等级提升！'
+      autoChallengeStatusText.value = 'success 胜利！迷宫等级提升！'
     } else {
-      autoChallengeStatusText.value = '⚔️ 胜利，但未全歼军团'
+      autoChallengeStatusText.value = 'attack 胜利，但未全歼军团'
     }
   } else {
     autoChallengeWinCount.value++
-    autoChallengeStatusText.value = '🤝 平局'
+    autoChallengeStatusText.value = 'notice 平局'
   }
 
   if (useTransition) {
@@ -2432,7 +2432,7 @@ async function executeAutoChallenge(
     startAutoChallengeCooldown(runToken)
   } catch {
     if (runToken !== autoChallengeRunToken) return
-    autoChallengeStatusText.value = '❌ 挑战请求失败，已停止'
+    autoChallengeStatusText.value = 'notice 挑战请求失败，已停止'
     autoChallengeScenePhase.value = 'idle'
     handleStopAutoChallenge()
   }

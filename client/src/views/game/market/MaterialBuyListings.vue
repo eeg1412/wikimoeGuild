@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-if="ordersLoading" class="flex justify-center py-8">
-      <span class="animate-spin inline-block text-2xl">⏳</span>
+      <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
     </div>
     <template v-else>
       <div
@@ -19,7 +19,7 @@
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span>{{ getMaterialIcon(order.materialType) }}</span>
+              <PixelIcon :name="getMaterialIcon(order.materialType)" :size="20" />
               <div>
                 <p
                   class="text-sm font-semibold text-gray-700 dark:text-gray-200"
@@ -35,8 +35,8 @@
                   >
                 </p>
                 <p class="text-sm text-gray-400">
-                  单价 🪙 {{ formatNumberWithCommas(order.unitPrice) }} · 总价
-                  🪙
+                  单价 <PixelIcon name="gold" /> {{ formatNumberWithCommas(order.unitPrice) }} · 总价
+                  <PixelIcon name="gold" />
                   {{ formatNumberWithCommas(order.quantity * order.unitPrice) }}
                 </p>
                 <p v-if="order.guildName" class="text-xs text-gray-400 mt-0.5">
@@ -89,7 +89,7 @@
       <div v-if="fulfillDialogOrder" class="space-y-3">
         <div class="text-sm text-gray-600 dark:text-gray-300">
           {{ getMaterialName(fulfillDialogOrder.materialType) }}
-          单价 🪙 {{ formatNumberWithCommas(fulfillDialogOrder.unitPrice) }} ·
+          单价 <PixelIcon name="gold" /> {{ formatNumberWithCommas(fulfillDialogOrder.unitPrice) }} ·
           需求 x{{ fulfillDialogOrder.quantity }}
         </div>
         <div class="flex items-center gap-2">
@@ -108,7 +108,7 @@
         <div class="text-sm text-gray-400">
           将获得:
           <span class="text-yellow-500 font-semibold"
-            >🪙
+            ><PixelIcon name="gold" />
             {{
               formatNumberWithCommas(fulfillQty * fulfillDialogOrder.unitPrice)
             }}</span

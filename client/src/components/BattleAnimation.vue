@@ -12,7 +12,7 @@
             class="text-yellow-300 font-bold drop-shadow-lg"
             :style="{ fontSize: titleFontSize + 'px' }"
           >
-            ⚔️ 战斗演出
+            <PixelIcon name="attack" /> 战斗演出
           </h2>
           <p class="text-gray-400" :style="{ fontSize: subFontSize + 'px' }">
             第 {{ currentRound }} / {{ totalRounds }} 回合
@@ -104,7 +104,12 @@
                     :class="'effect-' + effect.type"
                     :style="{ '--effect-idx': eIdx }"
                   >
-                    {{ effect.text }}
+                      <PixelIcon
+                        v-if="inlineIconName(effect.text)"
+                        :name="inlineIconName(effect.text)"
+                        :size="16"
+                      />
+                      {{ inlineIconText(effect.text) }}
                   </div>
                 </template>
               </div>
@@ -200,7 +205,12 @@
                     :class="'effect-' + effect.type"
                     :style="{ '--effect-idx': eIdx }"
                   >
-                    {{ effect.text }}
+                    <PixelIcon
+                      v-if="inlineIconName(effect.text)"
+                      :name="inlineIconName(effect.text)"
+                      :size="16"
+                    />
+                    {{ inlineIconText(effect.text) }}
                   </div>
                 </template>
               </div>
@@ -217,7 +227,14 @@
             :class="logEntryClass(entry)"
             :style="{ fontSize: logFontSize + 'px' }"
           >
-            <span>{{ formatLogEntry(entry) }}</span>
+            <span>
+              <PixelIcon
+                v-if="inlineIconName(formatLogEntry(entry))"
+                :name="inlineIconName(formatLogEntry(entry))"
+                :size="16"
+              />
+              {{ inlineIconText(formatLogEntry(entry)) }}
+            </span>
           </div>
         </div>
 
@@ -246,7 +263,7 @@
             round
             @click="handleContinue"
           >
-            继续 ▶️
+            继续 <PixelIcon name="speed" />
           </el-button>
           <el-button
             v-else-if="canSkip"
@@ -255,7 +272,7 @@
             round
             @click="handleSkip"
           >
-            跳过演出 ⏭️
+            跳过演出 <PixelIcon name="speed" />
           </el-button>
           <p
             v-else
@@ -372,7 +389,10 @@
                     :class="`cutin-skill--${skillEffect.skillType}`"
                     :style="getCutInSkillStyle(skillEffect)"
                   >
-                    {{ getCutInSkillIcon(skillEffect) }}
+                    <PixelIcon
+                      :name="getCutInSkillIcon(skillEffect)"
+                      :size="18"
+                    />
                     {{ formatCutInSkillText(skillEffect) }}
                   </p>
                 </div>
@@ -455,12 +475,12 @@ const ELEMENT_COLORS = {
 }
 
 const ELEMENT_EMOJIS = {
-  1: '🪨',
-  2: '🌊',
-  3: '🔥',
-  4: '🌪️',
-  5: '☀️',
-  6: '🌑'
+  1: 'earth',
+  2: 'water',
+  3: 'fire',
+  4: 'wind',
+  5: 'light',
+  6: 'dark'
 }
 
 const ELEMENT_NAME_TO_KEY = {
@@ -473,11 +493,42 @@ const ELEMENT_NAME_TO_KEY = {
 }
 
 const SKILL_TYPE_ICONS = {
-  buff: '⬆️',
-  debuff: '⬇️',
-  sanRecover: '❤️',
-  changeOrder: '🔀',
-  attack: '⚔️'
+  buff: 'up',
+  debuff: 'down',
+  sanRecover: 'san',
+  changeOrder: 'formation',
+  attack: 'attack'
+}
+
+const INLINE_ICON_NAMES = new Set([
+  'attack',
+  'defense',
+  'speed',
+  'san',
+  'rune',
+  'spark',
+  'up',
+  'down',
+  'formation',
+  'fire',
+  'water',
+  'wind',
+  'earth',
+  'light',
+  'dark',
+  'gold',
+  'notice'
+])
+
+function inlineIconName(text) {
+  const firstToken = String(text || '').trim().split(/\s+/)[0]
+  return INLINE_ICON_NAMES.has(firstToken) ? firstToken : ''
+}
+
+function inlineIconText(text) {
+  const value = String(text || '')
+  const icon = inlineIconName(value)
+  return icon ? value.trim().slice(icon.length).trimStart() : value
 }
 
 const ELEMENT_SKILL_COLORS = {
@@ -534,9 +585,9 @@ function inferSkillType(skill) {
 function getCutInSkillIcon(skillEffect) {
   if (skillEffect?.skillType === 'attack') {
     const elementKey = resolveSkillElementKey(skillEffect)
-    return ELEMENT_EMOJIS[elementKey] || '❓'
+    return ELEMENT_EMOJIS[elementKey] || 'unknown'
   }
-  return SKILL_TYPE_ICONS[skillEffect?.skillType] || '✨'
+  return SKILL_TYPE_ICONS[skillEffect?.skillType] || 'spark'
 }
 
 function formatCutInSkillText(skillEffect) {
@@ -1211,7 +1262,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
           target.currentSp = entry.targetCurrentSp
         }
         if (target.currentSan <= 0) target.alive = false
-        const koText = target.currentSan <= 0 ? ' 💀' : ''
+        const koText = target.currentSan <= 0 ? ' dark' : ''
         const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
         const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
         if (entry.elementCounter) {
@@ -1292,14 +1343,14 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
         target.row = entry.newRow
         target.col = entry.newCol
         newMoved.add(entry.target)
-        addEffect(entry.target, '🔀 移动', 'move')
+        addEffect(entry.target, 'formation 移动', 'move')
       }
 
       if (swapTarget) {
         swapTarget.row = entry.oldRow
         swapTarget.col = entry.oldCol
         newMoved.add(swapTarget.id)
-        addEffect(swapTarget.id, '🔀 互换', 'move')
+        addEffect(swapTarget.id, 'formation 互换', 'move')
       }
 
       needRefreshState = true
@@ -1307,7 +1358,7 @@ function applyCutInRuneSkillLogs(runeSkillLogs) {
 
     if (entry.skillType === 'changeOrder' && !entry.success) {
       newDebuffed.add(entry.target)
-      addEffect(entry.target, '🔀 失败', 'miss')
+      addEffect(entry.target, 'formation 失败', 'miss')
     }
   }
 
@@ -1437,7 +1488,7 @@ function formatLogEntry(entry) {
     const counter = entry.elementCounter ? ' [克制!]' : ''
     const ko =
       entry.defenderRemainSan <= 0
-        ? ' 💀击倒！'
+        ? ' dark击倒！'
         : ` (剩余${entry.defenderRemainSan})`
     return `${getSideLabel(entry.attacker)}${entry.attackerName} → ${getSideLabel(entry.defender)}${entry.defenderName} 造成 ${entry.damage} 伤害${counter}${ko}`
   }
@@ -1447,26 +1498,26 @@ function formatLogEntry(entry) {
     switch (entry.skillType) {
       case 'attack': {
         const counterMark = entry.elementCounter ? ' 克制!' : ''
-        return `✨ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害${counterMark}`
+        return `spark ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${entry.damage} 伤害${counterMark}`
       }
       case 'buff':
         const buffLabel = BUFF_TYPE_LABEL[entry.buffType] || entry.buffType
-        return `⬆️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${buffLabel}+${entry.value}`
+        return `up ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${buffLabel}+${entry.value}`
       case 'debuff':
         const debuffLabel =
           BUFF_TYPE_LABEL[entry.debuffType] || entry.debuffType
-        return `⬇️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${debuffLabel}-${entry.value}`
+        return `down ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} ${debuffLabel}-${entry.value}`
       case 'changeOrder':
         if (entry.success) {
           const posInfo = `(${entry.oldRow + 1},${entry.oldCol + 1})→(${entry.newRow + 1},${entry.newCol + 1})`
           if (entry.swapped) {
-            return `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] ${targetLabel}${entry.targetName} 与 ${targetLabel}${entry.swapTargetName} 互换位置！${posInfo}`
+            return `formation ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] ${targetLabel}${entry.targetName} 与 ${targetLabel}${entry.swapTargetName} 互换位置！${posInfo}`
           }
-          return `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 将 ${targetLabel}${entry.targetName} 移动到了新位置！${posInfo}`
+          return `formation ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 将 ${targetLabel}${entry.targetName} 移动到了新位置！${posInfo}`
         }
-        return `🔀 ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 但未命中 ${targetLabel}${entry.targetName}`
+        return `formation ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] 但未命中 ${targetLabel}${entry.targetName}`
       case 'sanRecover':
-        return `❤️ ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} 恢复 ${entry.healAmount} SAN`
+        return `san ${casterLabel}${entry.casterName} 发动 [${entry.skillLabel}] → ${targetLabel}${entry.targetName} 恢复 ${entry.healAmount} SAN`
       default:
         return `${casterLabel}${entry.casterName} 使用技能`
     }
@@ -1561,7 +1612,7 @@ function processLogEntry(entry) {
       } else {
         hitUnitIds.value = new Set([entry.defender])
       }
-      const koText = defender.currentSan <= 0 ? ' 💀' : ''
+      const koText = defender.currentSan <= 0 ? ' dark' : ''
       addEffect(
         entry.defender,
         `-${entry.damage}${koText}`,
@@ -1583,7 +1634,7 @@ function processLogEntry(entry) {
           target.currentSp = entry.targetCurrentSp
         }
         if (target.currentSan <= 0) target.alive = false
-        const koText = target.currentSan <= 0 ? ' 💀' : ''
+        const koText = target.currentSan <= 0 ? ' dark' : ''
         const elementEmoji = ELEMENT_EMOJIS[entry.skillElement] || ''
         const attackIcon = elementEmoji || SKILL_TYPE_ICONS.attack
         if (entry.elementCounter) {
@@ -1662,14 +1713,14 @@ function processLogEntry(entry) {
         target.row = entry.newRow
         target.col = entry.newCol
         moved.add(entry.target)
-        addEffect(entry.target, '🔀 移动', 'move')
+        addEffect(entry.target, 'formation 移动', 'move')
       }
 
       if (swapTarget) {
         swapTarget.row = entry.oldRow
         swapTarget.col = entry.oldCol
         moved.add(swapTarget.id)
-        addEffect(swapTarget.id, '🔀 互换', 'move')
+        addEffect(swapTarget.id, 'formation 互换', 'move')
       }
 
       movedUnitIds.value = moved
@@ -1678,7 +1729,7 @@ function processLogEntry(entry) {
 
     if (entry.skillType === 'changeOrder' && !entry.success) {
       debuffedUnitIds.value = new Set([...debuffedUnitIds.value, entry.target])
-      addEffect(entry.target, '🔀 失败', 'miss')
+      addEffect(entry.target, 'formation 失败', 'miss')
     }
   }
 
@@ -1804,7 +1855,7 @@ function batchProcessCurrentRound() {
           defender.currentSp = entry.defenderCurrentSp
         }
         if (defender.currentSan <= 0) defender.alive = false
-        const koText = defender.currentSan <= 0 ? ' 💀' : ''
+        const koText = defender.currentSan <= 0 ? ' dark' : ''
         if (entry.elementCounter) {
           newCounterHit.add(entry.defender)
           addEffect(

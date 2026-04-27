@@ -6,7 +6,7 @@
       label-width="170px"
       @submit.prevent="handleSubmit"
     >
-      <el-divider content-position="left">💰 冒险家价格</el-divider>
+      <el-divider content-position="left"><PixelIcon name="gold" /> 冒险家价格</el-divider>
 
       <el-form-item label="招募价格（金币）" prop="adventurerRecruitPrice">
         <el-input-number
@@ -38,7 +38,7 @@
         />
       </el-form-item>
 
-      <el-divider content-position="left">✨ 符文石掉率</el-divider>
+      <el-divider content-position="left"><PixelIcon name="spark" /> 符文石掉率</el-divider>
 
       <el-form-item label="符文石掉率" prop="runeStoneDropRate">
         <el-input-number
@@ -97,7 +97,7 @@
         </div>
       </el-form-item>
 
-      <el-divider content-position="left">💠 符文石碎片系数</el-divider>
+      <el-divider content-position="left"><PixelIcon name="fragment" /> 符文石碎片系数</el-divider>
 
       <el-form-item
         label="分解系数（普通）"
@@ -184,7 +184,7 @@
         <span class="ml-2 text-gray-400 text-sm">默认500</span>
       </el-form-item>
 
-      <el-divider content-position="left">🏪 交易市场</el-divider>
+      <el-divider content-position="left"><PixelIcon name="market" /> 交易市场</el-divider>
 
       <el-form-item label="官方水晶收购单价" prop="officialCrystalBuyPrice">
         <el-input-number
@@ -284,7 +284,7 @@
         <span class="ml-2 text-gray-400 text-sm">金币/个</span>
       </el-form-item>
 
-      <el-divider content-position="left">⚔️ 竞技场</el-divider>
+      <el-divider content-position="left"><PixelIcon name="attack" /> 竞技场</el-divider>
 
       <el-form-item label="奖池金额" prop="arenaPoolAmount">
         <div class="w-full">
@@ -346,7 +346,7 @@
         </div>
       </el-form-item>
 
-      <el-divider content-position="left">⚔️ 冒险家升级基础值</el-divider>
+      <el-divider content-position="left"><PixelIcon name="attack" /> 冒险家升级基础值</el-divider>
 
       <el-form-item label="升级水晶基础值" prop="adventurerLevelUpCrystalBase">
         <el-input-number
@@ -381,7 +381,7 @@
         <span class="ml-2 text-gray-400 text-sm">默认1000（每降1级）</span>
       </el-form-item>
 
-      <el-divider content-position="left">🏰 公会设置</el-divider>
+      <el-divider content-position="left"><PixelIcon name="dungeon" /> 公会设置</el-divider>
 
       <el-form-item label="公会升级费用基础值" prop="guildLevelUpFeeBase">
         <el-input-number
@@ -454,7 +454,7 @@
           controls-position="right"
         />
       </el-form-item>
-      <el-divider content-position="left">🎮 迷宫设置</el-divider>
+      <el-divider content-position="left"><PixelIcon name="notice" /> 迷宫设置</el-divider>
 
       <el-form-item
         label="迷宫等级增益基础值"
@@ -469,7 +469,7 @@
         />
         <span class="ml-2 text-gray-400 text-sm">默认100</span>
       </el-form-item>
-      <el-divider content-position="left">🎮 游客模式</el-divider>
+      <el-divider content-position="left"><PixelIcon name="notice" /> 游客模式</el-divider>
 
       <el-form-item label="启用游客模式" prop="guestModeEnabled">
         <el-switch v-model="form.guestModeEnabled" />
@@ -500,7 +500,7 @@
         <span class="ml-2 text-gray-400 text-sm">次/24小时</span>
       </el-form-item>
 
-      <el-divider content-position="left">✉️ 邮件限制</el-divider>
+      <el-divider content-position="left"><PixelIcon name="notice" /> 邮件限制</el-divider>
 
       <el-form-item label="每24小时邮件发送上限" prop="dailyEmailLimit">
         <el-input-number

@@ -33,7 +33,7 @@
           class="inline-flex w-14 h-14 rounded-2xl items-center justify-center text-2xl mb-1"
           :class="rarityBgClass(adventurer.runeStone.rarity)"
         >
-          💎
+          <PixelIcon name="rune" />
         </div>
         <p
           class="text-lg font-bold"
@@ -104,7 +104,7 @@
           :disabled="anyLoading"
           @click="handleOpenSynthesis"
         >
-          🔮 合成
+          <PixelIcon name="rune" /> 合成
         </el-button>
       </div>
     </div>
@@ -114,7 +114,7 @@
       v-else-if="adventurer && !adventurer.runeStone"
       class="text-center py-6 text-gray-400"
     >
-      <p class="text-3xl mb-2">💎</p>
+      <p class="text-3xl mb-2"><PixelIcon name="rune" /></p>
       <p class="text-sm">该冒险家未装备符文石</p>
       <el-button
         type="primary"

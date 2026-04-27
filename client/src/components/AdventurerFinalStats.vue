@@ -1,20 +1,22 @@
 <template>
   <div v-if="adventurer" class="w-full">
-    <p class="text-xs text-gray-400 mb-1.5 text-center">📊 最终属性</p>
+    <p class="text-xs text-gray-400 mb-1.5 text-center"><PixelIcon name="chart" /> 最终属性</p>
     <div class="grid grid-cols-2 gap-1.5">
       <div
         v-for="stat in STAT_LIST"
         :key="stat.key"
         class="bg-gray-50 dark:bg-gray-800 rounded p-2 text-center"
       >
-        <p class="text-xs text-gray-400">{{ stat.icon }} {{ stat.name }}</p>
+        <p class="text-xs text-gray-400">
+          <PixelIcon :name="stat.key" /> {{ stat.name }}
+        </p>
         <p class="text-base font-bold text-gray-700 dark:text-gray-200">
           {{ computeFinalStat(stat.key) }}
         </p>
         <p class="text-[10px] text-gray-400 leading-tight">
           Lv.{{ adventurer[stat.levelKey] }}
           <span v-if="getRuneStoneBonus(stat.key) > 0" class="text-yellow-500">
-            +{{ getRuneStoneBonus(stat.key) }}💎
+            +{{ getRuneStoneBonus(stat.key) }}<PixelIcon name="rune" />
           </span>
         </p>
       </div>
@@ -36,10 +38,10 @@ const RUNE_QUALITY_COEFFICIENT = {
 }
 
 const STAT_LIST = [
-  { key: 'attack', levelKey: 'attackLevel', name: '攻击', icon: '⚔️' },
-  { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: '🛡️' },
-  { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: '💨' },
-  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '❤️' }
+  { key: 'attack', levelKey: 'attackLevel', name: '攻击', icon: 'attack' },
+  { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: 'defense' },
+  { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: 'speed' },
+  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: 'san' }
 ]
 
 const LEVEL_KEY_MAP = {

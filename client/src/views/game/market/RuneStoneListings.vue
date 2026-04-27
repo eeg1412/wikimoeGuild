@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-if="listingsLoading" class="flex justify-center py-8">
-      <span class="animate-spin inline-block text-2xl">⏳</span>
+      <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
     </div>
     <template v-else>
       <RuneStoneMarketList
@@ -14,7 +14,7 @@
         <template #extra="{ item }">
           <div class="text-right mr-1">
             <p class="text-sm text-yellow-500 font-semibold whitespace-nowrap">
-              🪙 {{ formatNumberWithCommas(item.price) }}
+              <PixelIcon name="gold" /> {{ formatNumberWithCommas(item.price) }}
             </p>
             <p v-if="item.isMine" class="text-xs text-yellow-500">（我的）</p>
             <p v-else-if="item.guildName" class="text-xs text-gray-400">

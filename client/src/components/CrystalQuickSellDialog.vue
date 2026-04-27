@@ -18,7 +18,7 @@
       <p class="text-xs text-gray-400">
         官方收购单价:
         <span class="text-yellow-500 font-semibold"
-          >🪙 {{ formatNumberWithCommas(officialPrice) }}</span
+          ><PixelIcon name="gold" /> {{ formatNumberWithCommas(officialPrice) }}</span
         >
       </p>
       <div
@@ -26,9 +26,9 @@
         class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400"
       >
         <p>
-          📊 收购单价区间:
+          <PixelIcon name="chart" /> 收购单价区间:
           <span class="text-yellow-500 font-semibold">
-            🪙
+            <PixelIcon name="gold" />
             {{ formatNumberWithCommas(priceRange.minPrice)
             }}<template v-if="priceRange.maxPrice > priceRange.minPrice">
               ~ {{ formatNumberWithCommas(priceRange.maxPrice) }}</template
@@ -36,7 +36,7 @@
           </span>
         </p>
         <p class="text-xs text-gray-400 mt-1">
-          💡 出售时会优先匹配市场高价求购单
+          <PixelIcon name="info" /> 出售时会优先匹配市场高价求购单
         </p>
       </div>
       <div class="flex">
@@ -86,7 +86,7 @@
       <div class="text-sm text-gray-400">
         预计获得<span class="text-xs">(按官方收购价计算)</span>:
         <span class="text-yellow-500 font-semibold"
-          >🪙 {{ formatNumberWithCommas(customAmount * officialPrice) }}</span
+          ><PixelIcon name="gold" /> {{ formatNumberWithCommas(customAmount * officialPrice) }}</span
         >
       </div>
     </div>
@@ -183,7 +183,7 @@ async function handleSell(amount) {
     const data = res.data.data
     let msg = `出售成功，获得 ${formatNumberWithCommas(data.goldEarned)} 金币`
     if (data.soldToBuyers > 0) {
-      msg += `（市场求购 ${formatNumberWithCommas(data.soldToBuyers)} 个 +${formatNumberWithCommas(data.goldFromBuyers)}🪙, 官方 ${formatNumberWithCommas(data.soldToOfficial)} 个 +${formatNumberWithCommas(data.goldFromOfficial)}🪙）`
+      msg += `（市场求购 ${formatNumberWithCommas(data.soldToBuyers)} 个 +${formatNumberWithCommas(data.goldFromBuyers)}gold, 官方 ${formatNumberWithCommas(data.soldToOfficial)} 个 +${formatNumberWithCommas(data.goldFromOfficial)}gold）`
     }
     ElMessage.success({ message: msg, showClose: true })
     // 独立刷新自己的数据，不依赖外部 ref

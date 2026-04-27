@@ -3,7 +3,7 @@
     <div class="rpg-card rounded-xl p-4 mb-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-          📝 上架符文石
+          <PixelIcon name="edit" /> 上架符文石
         </h3>
         <el-button
           type="primary"
@@ -22,17 +22,17 @@
         class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 mb-3"
       >
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-          ⚠️ 低于官方收购价的符文石将被官方立即收购
+          <PixelIcon name="warning" /> 低于官方收购价的符文石将被官方立即收购
         </p>
         <div class="flex flex-wrap gap-2 text-xs">
           <span class="text-gray-600 dark:text-gray-300"
-            >普通: 🪙 {{ formatNumberWithCommas(officialPrices.normal) }}</span
+            >普通: <PixelIcon name="gold" /> {{ formatNumberWithCommas(officialPrices.normal) }}</span
           >
           <span class="text-blue-500"
-            >稀有: 🪙 {{ formatNumberWithCommas(officialPrices.rare) }}</span
+            >稀有: <PixelIcon name="gold" /> {{ formatNumberWithCommas(officialPrices.rare) }}</span
           >
           <span class="text-yellow-500"
-            >传说: 🪙
+            >传说: <PixelIcon name="gold" />
             {{ formatNumberWithCommas(officialPrices.legendary) }}</span
           >
         </div>
@@ -138,7 +138,7 @@ async function handleCreateListing(rs) {
     try {
       await ElMessageBox.confirm(
         `你设置的价格 ${formatNumberWithCommas(price)} 金币低于或等于官方收购价 ${formatNumberWithCommas(officialPrice)} 金币，该符文石将被官方立即收购，你将获得 ${formatNumberWithCommas(officialPrice)} 金币。是否继续？`,
-        '⚠️ 官方收购提示',
+        'warning 官方收购提示',
         {
           confirmButtonText: '确认出售给官方',
           cancelButtonText: '取消',
@@ -170,7 +170,7 @@ async function handleCreateListing(rs) {
     if (result?.officialPurchased) {
       await ElMessageBox.alert(
         `你的 ${rarityName(rs.rarity)} Lv.${rs.level} 符文石已被官方市场以 ${formatNumberWithCommas(result.goldEarned)} 金币收购！`,
-        '🏛️ 官方收购完成',
+        'official 官方收购完成',
         { confirmButtonText: '确定', type: 'success' }
       )
       await fetchPlayerInfo()

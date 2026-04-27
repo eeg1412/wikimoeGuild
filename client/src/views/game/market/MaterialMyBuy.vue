@@ -3,10 +3,10 @@
     <!-- 我的素材持有 -->
     <div class="rpg-card rounded-xl p-4 mb-4">
       <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-        🎒 我的素材
+        <PixelIcon name="inventory" /> 我的素材
       </h3>
       <div v-if="inventoryLoading" class="text-center py-2">
-        <span class="animate-spin inline-block text-sm">⏳</span>
+        <span class="animate-spin inline-block text-sm"><PixelIcon name="timer" /></span>
       </div>
       <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         <div
@@ -14,7 +14,9 @@
           :key="m.key"
           class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded p-1.5"
         >
-          <span class="text-xs text-gray-500">{{ m.icon }} {{ m.name }}</span>
+          <span class="text-xs text-gray-500">
+            <PixelIcon :name="m.icon" :size="14" /> {{ m.name }}
+          </span>
           <span
             class="text-sm font-semibold tabular-nums text-gray-700 dark:text-gray-200"
             >{{ myInventory[m.key] ?? 0 }}</span
@@ -26,7 +28,7 @@
     <!-- 发布求购表单 -->
     <div class="rpg-card rounded-xl p-4 mb-4">
       <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-        📝 发布求购
+        <PixelIcon name="edit" /> 发布求购
       </h3>
       <div class="flex flex-wrap items-center gap-2 mb-3">
         <el-select
@@ -38,9 +40,13 @@
           <el-option
             v-for="m in materialTypes"
             :key="m.key"
-            :label="`${m.icon} ${m.name}`"
+            :label="m.name"
             :value="m.key"
-          />
+          >
+            <span class="inline-flex items-center gap-1">
+              <PixelIcon :name="m.icon" :size="16" /> {{ m.name }}
+            </span>
+          </el-option>
         </el-select>
         <el-input-number
           v-model="buyForm.quantity"
@@ -63,7 +69,7 @@
       <div class="text-sm text-gray-400 mb-2">
         需冻结金币:
         <span class="text-yellow-500 font-semibold"
-          >🪙
+          ><PixelIcon name="gold" />
           {{
             buyForm.unitPrice
               ? formatNumberWithCommas(buyForm.quantity * buyForm.unitPrice)
@@ -86,12 +92,12 @@
     <!-- 我的求购订单列表 -->
     <div class="flex items-center justify-between mb-3">
       <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-        📋 我的求购列表
+        <PixelIcon name="list" /> 我的求购列表
       </h3>
     </div>
 
     <div v-if="ordersLoading" class="flex justify-center py-8">
-      <span class="animate-spin inline-block text-2xl">⏳</span>
+      <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
     </div>
     <template v-else>
       <div
@@ -108,7 +114,7 @@
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span>{{ getMaterialIcon(order.materialType) }}</span>
+              <PixelIcon :name="getMaterialIcon(order.materialType)" :size="20" />
               <div>
                 <p
                   class="text-sm font-semibold text-gray-700 dark:text-gray-200"
@@ -119,7 +125,7 @@
                   >
                 </p>
                 <p class="text-sm text-gray-400">
-                  单价 🪙 {{ formatNumberWithCommas(order.unitPrice) }}
+                  单价 <PixelIcon name="gold" /> {{ formatNumberWithCommas(order.unitPrice) }}
                 </p>
                 <!-- 状态显示 -->
                 <p class="text-xs mt-0.5">
@@ -150,7 +156,7 @@
                   v-if="order.pendingQuantity > 0"
                   class="text-xs text-yellow-500 mt-0.5"
                 >
-                  📦 待收取: {{ getMaterialName(order.materialType) }} x{{
+                  <PixelIcon name="package" /> 待收取: {{ getMaterialName(order.materialType) }} x{{
                     order.pendingQuantity
                   }}
                 </p>

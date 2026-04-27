@@ -4,24 +4,24 @@
 
 /** 水晶类型列表 */
 export const crystalList = [
-  { key: 'attackCrystal', name: '攻击', icon: '⚔️', color: '#e05c4f' },
-  { key: 'defenseCrystal', name: '防御', icon: '🛡️', color: '#4fa3e0' },
-  { key: 'speedCrystal', name: '速度', icon: '💨', color: '#6abf69' },
-  { key: 'sanCrystal', name: 'SAN值', icon: '❤️', color: '#c070e0' }
+  { key: 'attackCrystal', name: '攻击', icon: 'attack', color: '#e05c4f' },
+  { key: 'defenseCrystal', name: '防御', icon: 'defense', color: '#4fa3e0' },
+  { key: 'speedCrystal', name: '速度', icon: 'speed', color: '#6abf69' },
+  { key: 'sanCrystal', name: 'SAN值', icon: 'san', color: '#c070e0' }
 ]
 
 /** 素材类型列表 */
 export const materialTypes = [
-  { key: 'attackCrystal', name: '攻击水晶', icon: '⚔️' },
-  { key: 'defenseCrystal', name: '防御水晶', icon: '🛡️' },
-  { key: 'speedCrystal', name: '速度水晶', icon: '💨' },
-  { key: 'sanCrystal', name: 'SAN值水晶', icon: '❤️' },
-  { key: 'runeFragment', name: '符文石碎片', icon: '🔮' }
+  { key: 'attackCrystal', name: '攻击水晶', icon: 'attack' },
+  { key: 'defenseCrystal', name: '防御水晶', icon: 'defense' },
+  { key: 'speedCrystal', name: '速度水晶', icon: 'speed' },
+  { key: 'sanCrystal', name: 'SAN值水晶', icon: 'san' },
+  { key: 'runeFragment', name: '符文石碎片', icon: 'rune' }
 ]
 
 /** 获取素材图标 */
 export function getMaterialIcon(type) {
-  return materialTypes.find(m => m.key === type)?.icon || '📦'
+  return materialTypes.find(m => m.key === type)?.icon || 'package'
 }
 
 /** 获取素材名称 */

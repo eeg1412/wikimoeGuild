@@ -23,7 +23,7 @@
               {{ email }}
             </span>
             <el-button size="small" text @click="handleCopy(email)">
-              📋
+              <PixelIcon name="list" />
             </el-button>
           </div>
         </div>
@@ -36,7 +36,7 @@
               {{ password }}
             </span>
             <el-button size="small" text @click="handleCopy(password)">
-              📋
+              <PixelIcon name="list" />
             </el-button>
           </div>
         </div>
@@ -48,7 +48,7 @@
         size="large"
         @click="handleDownload"
       >
-        📥 下载账号信息
+        <PixelIcon name="download" /> 下载账号信息
       </el-button>
       <p class="text-xs text-gray-400">
         建议进入游戏后在公会设置中绑定正式邮箱，以保护您的账号。

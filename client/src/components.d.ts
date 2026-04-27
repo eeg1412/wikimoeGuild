@@ -29,6 +29,7 @@ declare module 'vue' {
     GuildInfoDialog: typeof import('./components/GuildInfoDialog.vue')['default']
     IpInfoDisplay: typeof import('./components/IpInfoDisplay.vue')['default']
     ObtainedRuneStonesDisplay: typeof import('./components/ObtainedRuneStonesDisplay.vue')['default']
+    PixelIcon: typeof import('./components/PixelIcon.vue')['default']
     ResponsiveTable: typeof import('./components/ResponsiveTable.vue')['default']
     ResponsiveTableColumn: typeof import('./components/ResponsiveTableColumn.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

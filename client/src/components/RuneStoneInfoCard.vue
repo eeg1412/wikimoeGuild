@@ -2,7 +2,7 @@
   <div class="rune-stone-info-card space-y-3">
     <!-- 主动技能 -->
     <div v-if="runeStone.activeSkills?.length">
-      <h4 class="text-sm font-semibold text-yellow-500 mb-2">⚡ 主动技能</h4>
+      <h4 class="text-sm font-semibold text-yellow-500 mb-2"><PixelIcon name="skill" /> 主动技能</h4>
       <div
         v-for="(skill, idx) in runeStone.activeSkills"
         :key="idx"
@@ -54,7 +54,7 @@
 
     <!-- 被动增益 -->
     <div v-if="runeStone.passiveBuffs?.length">
-      <h4 class="text-sm font-semibold text-blue-400 mb-2">🔮 被动增益</h4>
+      <h4 class="text-sm font-semibold text-blue-400 mb-2"><PixelIcon name="rune" /> 被动增益</h4>
       <div
         v-for="(buff, idx) in runeStone.passiveBuffs"
         :key="idx"

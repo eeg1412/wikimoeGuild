@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        🏰 公会设置
+        <PixelIcon name="dungeon" /> 公会设置
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         自定义你的公会信息
@@ -12,7 +12,7 @@
 
     <!-- 加载 -->
     <div v-if="loading" class="flex justify-center py-12">
-      <span class="animate-spin inline-block text-4xl">⏳</span>
+      <span class="animate-spin inline-block text-4xl"><PixelIcon name="timer" /></span>
     </div>
 
     <template v-else>
@@ -27,7 +27,7 @@
             <div
               class="absolute bottom-0 right-0 bg-black/60 rounded-full px-1.5 py-0.5 text-[10px] text-white"
             >
-              ✏️
+              <PixelIcon name="edit" />
             </div>
           </div>
           <div class="min-w-0 flex-1">
@@ -38,23 +38,23 @@
                 {{ playerInfo?.guildName || '加载中...' }}
               </h2>
               <el-button text size="small" @click="handleOpenNameDialog">
-                ✏️
+                <PixelIcon name="edit" />
               </el-button>
             </div>
             <p class="text-sm text-purple-500 font-semibold">
-              🏰 公会等级 Lv.{{ playerInfo?.guildLevel ?? 1 }}
+              <PixelIcon name="dungeon" /> 公会等级 Lv.{{ playerInfo?.guildLevel ?? 1 }}
             </p>
             <p class="text-sm text-gray-400">
-              🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
+              <PixelIcon name="gold" /> {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
             </p>
             <p
               v-if="playerInfo?.createdAt"
               class="text-xs text-gray-400 mt-0.5"
             >
-              📅 创建于 {{ formatDate(playerInfo.createdAt) }}
+              <PixelIcon name="calendar" /> 创建于 {{ formatDate(playerInfo.createdAt) }}
             </p>
             <p v-if="playerInfo?.email" class="text-xs text-gray-400 mt-0.5">
-              📧 {{ playerInfo.email }}
+              <PixelIcon name="mail" /> {{ playerInfo.email }}
             </p>
           </div>
         </div>
@@ -63,10 +63,10 @@
       <!-- 公会升级卡片 -->
       <div class="rpg-card rounded-xl p-4 mb-4">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-          📈 公会升级
+          <PixelIcon name="notice" /> 公会升级
         </h3>
         <div v-if="levelInfoLoading" class="flex justify-center py-4">
-          <span class="animate-spin inline-block text-xl">⏳</span>
+          <span class="animate-spin inline-block text-xl"><PixelIcon name="timer" /></span>
         </div>
         <template v-else-if="levelInfo">
           <div class="grid grid-cols-2 gap-2 text-sm mb-3">
@@ -79,7 +79,7 @@
             <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
               <p class="text-xs text-gray-400">升级费用</p>
               <p class="text-sm font-bold text-yellow-500">
-                🪙 {{ formatNumberWithCommas(levelInfo.fee) }}
+                <PixelIcon name="gold" /> {{ formatNumberWithCommas(levelInfo.fee) }}
               </p>
             </div>
             <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 text-center">
@@ -119,7 +119,7 @@
               "
               @click="handleUpgradeGuild"
             >
-              ⬆️ 升级公会 (🪙 {{ formatNumberWithCommas(levelInfo.fee) }})
+              <PixelIcon name="up" /> 升级公会 (<PixelIcon name="gold" /> {{ formatNumberWithCommas(levelInfo.fee) }})
             </el-button>
           </div>
         </template>
@@ -130,7 +130,7 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-              🎨 修改公会标志
+              <PixelIcon name="notice" /> 修改公会标志
             </p>
             <p class="text-sm text-gray-400 mt-0.5">
               消耗
@@ -150,7 +150,7 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-              📝 修改公会名字
+              <PixelIcon name="edit" /> 修改公会名字
             </p>
             <p class="text-sm text-gray-400 mt-0.5">
               消耗
@@ -170,7 +170,7 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-              🔑 修改密码
+              <PixelIcon name="notice" /> 修改密码
             </p>
             <p class="text-sm text-gray-400 mt-0.5">修改登录密码</p>
           </div>
@@ -189,7 +189,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                📧 绑定邮箱
+                <PixelIcon name="mail" /> 绑定邮箱
               </p>
               <p class="text-sm text-gray-400 mt-0.5">绑定正式邮箱以保护账号</p>
             </div>

@@ -2,7 +2,7 @@
   <div class="w-full py-6">
     <!-- 页面标题 -->
     <div class="text-center mb-6">
-      <span class="text-5xl mb-3 block">📖</span>
+      <span class="text-5xl mb-3 block"><PixelIcon name="notice" /></span>
       <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">
         新手手册
       </h2>
@@ -21,7 +21,7 @@
           :class="{ 'guide-tab-btn--active': activeTab === tab.key }"
           @click="handleSwitchTab(tab.key)"
         >
-          <span class="mr-1">{{ tab.icon }}</span>
+          <PixelIcon :name="tab.icon" :size="16" />
           <span>{{ tab.label }}</span>
         </button>
       </div>
@@ -31,43 +31,43 @@
     <div class="rpg-card rounded-xl p-5">
       <!-- 游戏概览 -->
       <div v-if="activeTab === 'overview'">
-        <h3 class="guide-section-title">🗺️ 游戏概览</h3>
+        <h3 class="guide-section-title"><PixelIcon name="notice" /> 游戏概览</h3>
         <p class="guide-text mb-4">
           这是一款放置类的冒险公会经营游戏。你将建立自己的公会，招募冒险家，探索地下迷宫，收集资源与符文石，不断壮大公会力量！
         </p>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">🎯 核心游戏流程</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 核心游戏流程</h4>
           <div class="guide-flow">
             <div class="guide-flow-item">
-              <span class="guide-flow-icon">🏰</span>
+              <span class="guide-flow-icon"><PixelIcon name="dungeon" /></span>
               <span class="guide-flow-text">地下迷宫刷素材/符文石</span>
             </div>
             <span class="guide-flow-arrow">→</span>
             <div class="guide-flow-item">
-              <span class="guide-flow-icon">⚔️</span>
+              <span class="guide-flow-icon"><PixelIcon name="attack" /></span>
               <span class="guide-flow-text">升级冒险家</span>
             </div>
             <span class="guide-flow-arrow">→</span>
             <div class="guide-flow-item">
-              <span class="guide-flow-icon">👹</span>
+              <span class="guide-flow-icon"><PixelIcon name="enemy" /></span>
               <span class="guide-flow-text">挑战迷宫军团</span>
             </div>
             <span class="guide-flow-arrow">→</span>
             <div class="guide-flow-item">
-              <span class="guide-flow-icon">⬆️</span>
+              <span class="guide-flow-icon"><PixelIcon name="up" /></span>
               <span class="guide-flow-text">升级迷宫</span>
             </div>
             <span class="guide-flow-arrow">→</span>
             <div class="guide-flow-item">
-              <span class="guide-flow-icon">💎</span>
+              <span class="guide-flow-icon"><PixelIcon name="rune" /></span>
               <span class="guide-flow-text">获取更高级符文石</span>
             </div>
           </div>
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">🎮 其他玩法</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 其他玩法</h4>
           <ul class="guide-list">
             <li>在<strong>自由市场</strong>与其他玩家交易素材和符文石</li>
             <li>在<strong>矿场</strong>手动挖掘获取水晶和符文石</li>
@@ -79,10 +79,10 @@
 
       <!-- 冒险家 -->
       <div v-if="activeTab === 'adventurer'">
-        <h3 class="guide-section-title">⚔️ 冒险家系统</h3>
+        <h3 class="guide-section-title"><PixelIcon name="attack" /> 冒险家系统</h3>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">📌 基本信息</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 基本信息</h4>
           <ul class="guide-list">
             <li>注册时自动获取 <strong>1 名</strong>冒险家</li>
             <li>
@@ -90,14 +90,14 @@
               <strong>{{
                 formatNumberWithCommas(gameSettings.adventurerRecruitPrice)
               }}</strong>
-              🪙 招募更多冒险家
+              <PixelIcon name="gold" /> 招募更多冒险家
             </li>
             <li>每个账号最多可招募 <strong>50 名</strong>冒险家</li>
           </ul>
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">📊 冒险家属性</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="chart" /> 冒险家属性</h4>
           <div class="overflow-x-auto">
             <table class="guide-table">
               <thead>
@@ -109,22 +109,22 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>⚔️ 攻击</td>
+                  <td><PixelIcon name="attack" /> 攻击</td>
                   <td>100</td>
                   <td>实际攻击 = 基础值 × 攻击等级</td>
                 </tr>
                 <tr>
-                  <td>🛡️ 防御</td>
+                  <td><PixelIcon name="defense" /> 防御</td>
                   <td>100</td>
                   <td>实际防御 = 基础值 × 防御等级</td>
                 </tr>
                 <tr>
-                  <td>💨 速度</td>
+                  <td><PixelIcon name="speed" /> 速度</td>
                   <td>100</td>
                   <td>实际速度 = 基础值 × 速度等级</td>
                 </tr>
                 <tr>
-                  <td>❤️ SAN</td>
+                  <td><PixelIcon name="san" /> SAN</td>
                   <td>150</td>
                   <td>实际SAN = 基础值 × SAN等级，归0则无法战斗</td>
                 </tr>
@@ -132,40 +132,40 @@
             </table>
           </div>
           <p class="guide-note mt-2">
-            💡 综合等级 = 攻击 + 防御 + 速度 + SAN 四项等级总和
+            <PixelIcon name="info" /> 综合等级 = 攻击 + 防御 + 速度 + SAN 四项等级总和
           </p>
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">🔮 元素系统</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="rune" /> 元素系统</h4>
           <p class="guide-text mb-2">
             每名冒险家拥有一种元素属性，元素之间存在克制关系：
           </p>
           <div class="guide-element-chain">
             <div class="guide-element-group">
-              <span class="guide-element">🌊 水</span>
+              <span class="guide-element"><PixelIcon name="water" /> 水</span>
               <span class="guide-element-arrow">→</span>
-              <span class="guide-element">🔥 火</span>
+              <span class="guide-element"><PixelIcon name="fire" /> 火</span>
               <span class="guide-element-arrow">→</span>
-              <span class="guide-element">🌪️ 风</span>
+              <span class="guide-element"><PixelIcon name="wind" /> 风</span>
               <span class="guide-element-arrow">→</span>
-              <span class="guide-element">🪨 地</span>
+              <span class="guide-element"><PixelIcon name="earth" /> 地</span>
               <span class="guide-element-arrow">→</span>
-              <span class="guide-element">🌊 水</span>
+              <span class="guide-element"><PixelIcon name="water" /> 水</span>
             </div>
             <div class="guide-element-group mt-2">
-              <span class="guide-element">☀️ 光明</span>
-              <span class="guide-element-arrow">↔</span>
-              <span class="guide-element">🌑 黑暗</span>
+              <span class="guide-element"><PixelIcon name="light" /> 光明</span>
+              <span class="guide-element-arrow"><PixelIcon name="notice" /></span>
+              <span class="guide-element"><PixelIcon name="dark" /> 黑暗</span>
             </div>
           </div>
           <p class="guide-note mt-2">
-            ⚠️ 被克制时受到的伤害为 <strong>150%</strong>
+            <PixelIcon name="warning" /> 被克制时受到的伤害为 <strong>150%</strong>
           </p>
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">⬆️ 属性升级</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="up" /> 属性升级</h4>
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
             升级消耗根据当前属性等级动态变化：<br />
             水晶消耗 = ⌊基础值 × (1 + 当前等级 × 0.1)⌋<br />
@@ -196,22 +196,22 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>⚔️ 攻击等级</td>
+                  <td><PixelIcon name="attack" /> 攻击等级</td>
                   <td>攻击水晶 × 公式</td>
                   <td>金币 × 公式</td>
                 </tr>
                 <tr>
-                  <td>🛡️ 防御等级</td>
+                  <td><PixelIcon name="defense" /> 防御等级</td>
                   <td>防御水晶 × 公式</td>
                   <td>金币 × 公式</td>
                 </tr>
                 <tr>
-                  <td>💨 速度等级</td>
+                  <td><PixelIcon name="speed" /> 速度等级</td>
                   <td>速度水晶 × 公式</td>
                   <td>金币 × 公式</td>
                 </tr>
                 <tr>
-                  <td>❤️ SAN等级</td>
+                  <td><PixelIcon name="san" /> SAN等级</td>
                   <td>SAN水晶 × 公式</td>
                   <td>金币 × 公式</td>
                 </tr>
@@ -224,7 +224,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">⬇️ 属性降级</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="down" /> 属性降级</h4>
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
             可以使用金币降低某个属性的等级：<br />
             降级费用 = 降级层数 × 每级固定消耗（默认
@@ -239,21 +239,21 @@
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">✨ 个性化</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="spark" /> 个性化</h4>
           <ul class="guide-list">
             <li>
               可消耗
               <strong>{{
                 formatNumberWithCommas(gameSettings.adventurerCustomAvatarPrice)
               }}</strong>
-              🪙 自定义冒险家<strong>头像</strong>
+              <PixelIcon name="gold" /> 自定义冒险家<strong>头像</strong>
             </li>
             <li>
               可消耗
               <strong>{{
                 formatNumberWithCommas(gameSettings.adventurerCustomNamePrice)
               }}</strong>
-              🪙 自定义冒险家<strong>名字</strong>
+              <PixelIcon name="gold" /> 自定义冒险家<strong>名字</strong>
             </li>
           </ul>
         </div>
@@ -261,10 +261,10 @@
 
       <!-- 战斗系统 -->
       <div v-if="activeTab === 'battle'">
-        <h3 class="guide-section-title">⚔️ 战斗系统</h3>
+        <h3 class="guide-section-title"><PixelIcon name="attack" /> 战斗系统</h3>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">🏗️ 阵容配置</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 阵容配置</h4>
           <ul class="guide-list">
             <li>最多可预设 <strong>10 种</strong>阵容配置</li>
             <li>
@@ -275,7 +275,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">📜 战斗规则</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 战斗规则</h4>
           <ul class="guide-list">
             <li>战斗在 <strong>5×5</strong> 的棋盘上进行，回合制结算</li>
             <li>
@@ -299,7 +299,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">💎 符文石触发</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="rune" /> 符文石触发</h4>
           <ul class="guide-list">
             <li>冒险家 <strong>SP 达到 1000</strong> 时触发符文石主动效果</li>
             <li>每回合开始时，存活冒险家会获得 <strong>40 SP</strong></li>
@@ -326,7 +326,7 @@
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">🏁 结束判定</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 结束判定</h4>
           <ul class="guide-list">
             <li>一方全员 SAN 归 0 → 判负</li>
             <li>双方同时全员 SAN 归 0 → 平局</li>
@@ -340,10 +340,10 @@
 
       <!-- 地下迷宫 -->
       <div v-if="activeTab === 'dungeon'">
-        <h3 class="guide-section-title">🏰 地下迷宫</h3>
+        <h3 class="guide-section-title"><PixelIcon name="dungeon" /> 地下迷宫</h3>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">📌 基本玩法</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 基本玩法</h4>
           <ul class="guide-list">
             <li>
               在迷宫放置冒险家，自动产出<strong>攻击/防御/速度/SAN水晶</strong>
@@ -360,7 +360,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">🔄 迷宫切换</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 迷宫切换</h4>
           <ul class="guide-list">
             <li>每 <strong>3 秒</strong>可切换一次迷宫</li>
             <li>每 <strong>1 小时</strong>获得 1 次切换机会</li>
@@ -370,7 +370,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">👹 迷宫军团</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="enemy" /> 迷宫军团</h4>
           <ul class="guide-list">
             <li>挑战并击败迷宫军团可<strong>升级迷宫等级</strong></li>
             <li>击败军团必定掉落 <strong>1 个传说级符文石</strong></li>
@@ -378,7 +378,7 @@
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">💎 符文石掉率</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="rune" /> 符文石掉率</h4>
           <ul class="guide-list">
             <li>
               掉率由后台设定（当前 <strong>{{ runeDropPercent }}%</strong>）
@@ -395,15 +395,15 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>⬜ 普通</td>
+                  <td><PixelIcon name="notice" /> 普通</td>
                   <td>{{ normalRunePercent }}%</td>
                 </tr>
                 <tr>
-                  <td>🟦 稀有</td>
+                  <td><PixelIcon name="notice" /> 稀有</td>
                   <td>{{ rareRunePercent }}%</td>
                 </tr>
                 <tr>
-                  <td>🟧 传说</td>
+                  <td><PixelIcon name="notice" /> 传说</td>
                   <td>{{ legendaryRunePercent }}%</td>
                 </tr>
               </tbody>
@@ -414,10 +414,10 @@
 
       <!-- 符文石 -->
       <div v-if="activeTab === 'rune'">
-        <h3 class="guide-section-title">💎 符文石系统</h3>
+        <h3 class="guide-section-title"><PixelIcon name="rune" /> 符文石系统</h3>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">📌 基本信息</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 基本信息</h4>
           <ul class="guide-list">
             <li>
               符文石包含<strong>主动技能</strong>和<strong>被动增益</strong>
@@ -429,7 +429,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">⭐ 稀有度对比</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="star" /> 稀有度对比</h4>
           <div class="overflow-x-auto">
             <table class="guide-table">
               <thead>
@@ -442,19 +442,19 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>⬜ 普通</td>
+                  <td><PixelIcon name="notice" /> 普通</td>
                   <td>1 条</td>
                   <td>2 条</td>
                   <td>1~10</td>
                 </tr>
                 <tr>
-                  <td>🟦 稀有</td>
+                  <td><PixelIcon name="notice" /> 稀有</td>
                   <td>2 条</td>
                   <td>4 条</td>
                   <td>11~20</td>
                 </tr>
                 <tr>
-                  <td>🟧 传说</td>
+                  <td><PixelIcon name="notice" /> 传说</td>
                   <td>3 条</td>
                   <td>6 条</td>
                   <td>21~30</td>
@@ -463,7 +463,7 @@
             </table>
           </div>
           <p class="guide-note mt-2">
-            💡 被动增益 = 对应属性 × (增益等级 × 品质系数)
+            <PixelIcon name="info" /> 被动增益 = 对应属性 × (增益等级 × 品质系数)
           </p>
           <div class="overflow-x-auto mt-2">
             <table class="guide-table">
@@ -475,15 +475,15 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>⬜ 普通</td>
+                  <td><PixelIcon name="notice" /> 普通</td>
                   <td>0.0012</td>
                 </tr>
                 <tr>
-                  <td>🟦 稀有</td>
+                  <td><PixelIcon name="notice" /> 稀有</td>
                   <td>0.0022</td>
                 </tr>
                 <tr>
-                  <td>🟧 传说</td>
+                  <td><PixelIcon name="notice" /> 传说</td>
                   <td>0.0033</td>
                 </tr>
               </tbody>
@@ -492,7 +492,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">🔨 符文石分解</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 符文石分解</h4>
           <p class="guide-text mb-2">
             分解符文石可获得<strong>符文石碎片</strong>，数量 = 稀有度系数 ×
             符文石等级
@@ -508,17 +508,17 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>⬜ 普通</td>
+                  <td><PixelIcon name="notice" /> 普通</td>
                   <td>10</td>
                   <td>50 碎片</td>
                 </tr>
                 <tr>
-                  <td>🟦 稀有</td>
+                  <td><PixelIcon name="notice" /> 稀有</td>
                   <td>100</td>
                   <td>500 碎片</td>
                 </tr>
                 <tr>
-                  <td>🟧 传说</td>
+                  <td><PixelIcon name="notice" /> 传说</td>
                   <td>500</td>
                   <td>2500 碎片</td>
                 </tr>
@@ -528,7 +528,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">⬆️ 符文石升级</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="up" /> 符文石升级</h4>
           <p class="guide-text mb-2">升级所需碎片 = 稀有度系数 × 当前等级</p>
           <div class="overflow-x-auto">
             <table class="guide-table">
@@ -541,17 +541,17 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>⬜ 普通</td>
+                  <td><PixelIcon name="notice" /> 普通</td>
                   <td>100 × 等级</td>
                   <td>500 碎片</td>
                 </tr>
                 <tr>
-                  <td>🟦 稀有</td>
+                  <td><PixelIcon name="notice" /> 稀有</td>
                   <td>1000 × 等级</td>
                   <td>5000 碎片</td>
                 </tr>
                 <tr>
-                  <td>🟧 传说</td>
+                  <td><PixelIcon name="notice" /> 传说</td>
                   <td>5000 × 等级</td>
                   <td>25000 碎片</td>
                 </tr>
@@ -561,7 +561,7 @@
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">🔀 符文石合成</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="formation" /> 符文石合成</h4>
           <ul class="guide-list">
             <li>两个<strong>相同稀有度</strong>的未装备符文石可以合成</li>
             <li>合成后等级 = 两个符文石的平均值（向下取整）</li>
@@ -574,31 +574,31 @@
 
       <!-- 交易市场 -->
       <div v-if="activeTab === 'market'">
-        <h3 class="guide-section-title">🏪 交易市场</h3>
+        <h3 class="guide-section-title"><PixelIcon name="market" /> 交易市场</h3>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">🏛️ 官方市场</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="official" /> 官方市场</h4>
           <ul class="guide-list">
             <li>
               <strong>水晶收购</strong>：官方以
               <strong>{{
                 formatNumberWithCommas(gameSettings.officialCrystalBuyPrice)
               }}</strong>
-              🪙/个 收购玩家的各种水晶
+              <PixelIcon name="gold" />/个 收购玩家的各种水晶
             </li>
             <li>
               <strong>水晶贩卖</strong>：官方以
               <strong>{{
                 formatNumberWithCommas(gameSettings.officialCrystalSellPrice)
               }}</strong>
-              🪙/个 出售水晶
+              <PixelIcon name="gold" />/个 出售水晶
             </li>
             <li>收购和售卖价格由后台设定</li>
           </ul>
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">🤝 自由市场 · 素材交易</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 自由市场 · 素材交易</h4>
           <ul class="guide-list">
             <li>
               <strong>出售</strong
@@ -611,13 +611,13 @@
               <strong>{{
                 formatNumberWithCommas(gameSettings.freeMarketMinPrice)
               }}</strong>
-              🪙）
+              <PixelIcon name="gold" />）
             </li>
           </ul>
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">💎 自由市场 · 符文石交易</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="rune" /> 自由市场 · 符文石交易</h4>
           <ul class="guide-list">
             <li>可将<strong>未装备</strong>的符文石挂到市场贩卖</li>
             <li>发布时暂扣符文石到市场</li>
@@ -627,7 +627,7 @@
               <strong>{{
                 formatNumberWithCommas(gameSettings.freeMarketRuneStoneMinPrice)
               }}</strong>
-              🪙）
+              <PixelIcon name="gold" />）
             </li>
           </ul>
         </div>
@@ -635,10 +635,10 @@
 
       <!-- 竞技场 -->
       <div v-if="activeTab === 'arena'">
-        <h3 class="guide-section-title">🏆 竞技场</h3>
+        <h3 class="guide-section-title"><PixelIcon name="notice" /> 竞技场</h3>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">📌 参赛规则</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 参赛规则</h4>
           <ul class="guide-list">
             <li>需要先<strong>报名</strong>参赛，报名时选择阵容</li>
             <li>
@@ -652,7 +652,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">⚔️ 对战机制</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="attack" /> 对战机制</h4>
           <ul class="guide-list">
             <li>系统匹配竞技点 <strong>±500</strong> 范围内的 10 名对手</li>
             <li>不足时系统自动补充 <strong>NPC</strong></li>
@@ -661,7 +661,7 @@
               <strong>{{
                 formatNumberWithCommas(gameSettings.arenaBattleGold)
               }}</strong>
-              🪙 奖励
+              <PixelIcon name="gold" /> 奖励
             </li>
             <li>报名时有 <strong>24 次</strong>挑战机会</li>
             <li>之后每 <strong>1 小时</strong>恢复 1 次，最多 24 次</li>
@@ -669,7 +669,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">🏅 赛季奖励</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 赛季奖励</h4>
           <div class="overflow-x-auto">
             <table class="guide-table">
               <thead>
@@ -680,36 +680,36 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>🥇 第一名</td>
+                  <td><PixelIcon name="notice" /> 第一名</td>
                   <td>60%</td>
                 </tr>
                 <tr>
-                  <td>🥈 第二名</td>
+                  <td><PixelIcon name="notice" /> 第二名</td>
                   <td>30%</td>
                 </tr>
                 <tr>
-                  <td>🥉 第三名</td>
+                  <td><PixelIcon name="notice" /> 第三名</td>
                   <td>10%</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p class="guide-note mt-2">
-            💡 赛季（<strong>{{ gameSettings.seasonDays }}</strong> 天）期间完成
+            <PixelIcon name="info" /> 赛季（<strong>{{ gameSettings.seasonDays }}</strong> 天）期间完成
             24 次主动战斗可获得
             <strong>{{
               formatNumberWithCommas(gameSettings.arenaParticipationReward)
             }}</strong>
-            🪙 参与奖。奖池总额
+            <PixelIcon name="gold" /> 参与奖。奖池总额
             <strong>{{
               formatNumberWithCommas(gameSettings.arenaPoolAmount)
             }}</strong>
-            🪙
+            <PixelIcon name="gold" />
           </p>
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">📋 对战记录</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="list" /> 对战记录</h4>
           <ul class="guide-list">
             <li>可查看主动挑战和被挑战的对战记录</li>
             <li>记录保存 <strong>7 天</strong></li>
@@ -720,10 +720,10 @@
 
       <!-- 矿场 -->
       <div v-if="activeTab === 'mine'">
-        <h3 class="guide-section-title">⛏️ 矿场系统</h3>
+        <h3 class="guide-section-title"><PixelIcon name="mine" /> 矿场系统</h3>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">📌 矿场发现</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 矿场发现</h4>
           <ul class="guide-list">
             <li>切换迷宫时有概率发现矿场</li>
             <li>矿场等级 = 切换时的迷宫等级</li>
@@ -733,7 +733,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">💣 扫雷玩法</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 扫雷玩法</h4>
           <ul class="guide-list">
             <li>矿场为 <strong>10×10</strong> 的区域</li>
             <li>随机分布 <strong>10~30 个</strong>奖励区域</li>
@@ -748,7 +748,7 @@
         </div>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">⏱️ 挖矿机会</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="notice" /> 挖矿机会</h4>
           <ul class="guide-list">
             <li>注册时有 <strong>24 次</strong>挖矿机会</li>
             <li>每 <strong>1 小时</strong>恢复 1 次</li>
@@ -759,7 +759,7 @@
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">👑 矿主特权</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="crown" /> 矿主特权</h4>
           <ul class="guide-list">
             <li>
               其他玩家在你的矿场获得水晶时，你将<strong>额外获得 10 个</strong
@@ -773,10 +773,10 @@
 
       <!-- 其他系统 -->
       <div v-if="activeTab === 'other'">
-        <h3 class="guide-section-title">📬 其他系统</h3>
+        <h3 class="guide-section-title"><PixelIcon name="mail" /> 其他系统</h3>
 
         <div class="guide-card mb-4">
-          <h4 class="guide-subtitle">📬 邮箱系统</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="mail" /> 邮箱系统</h4>
           <ul class="guide-list">
             <li>游戏内邮箱系统，用于接收消息和领取奖励</li>
             <li>可领取邮件中的<strong>物品和金币</strong></li>
@@ -786,21 +786,21 @@
         </div>
 
         <div class="guide-card">
-          <h4 class="guide-subtitle">⚙️ 公会设置</h4>
+          <h4 class="guide-subtitle"><PixelIcon name="settings" /> 公会设置</h4>
           <ul class="guide-list">
             <li>
               可消耗
               <strong>{{
                 formatNumberWithCommas(gameSettings.guildCustomLogoPrice)
               }}</strong>
-              🪙 修改<strong>公会标志</strong>
+              <PixelIcon name="gold" /> 修改<strong>公会标志</strong>
             </li>
             <li>
               可消耗
               <strong>{{
                 formatNumberWithCommas(gameSettings.guildChangeNamePrice)
               }}</strong>
-              🪙 修改<strong>公会名字</strong>
+              <PixelIcon name="gold" /> 修改<strong>公会名字</strong>
             </li>
           </ul>
         </div>
@@ -819,15 +819,15 @@ const route = useRoute()
 const router = useRouter()
 
 const tabs = [
-  { key: 'overview', label: '游戏概览', icon: '🗺️' },
-  { key: 'adventurer', label: '冒险家', icon: '⚔️' },
-  { key: 'battle', label: '战斗系统', icon: '⚔️' },
-  { key: 'dungeon', label: '地下迷宫', icon: '🏰' },
-  { key: 'rune', label: '符文石', icon: '💎' },
-  { key: 'market', label: '交易市场', icon: '🏪' },
-  { key: 'arena', label: '竞技场', icon: '🏆' },
-  { key: 'mine', label: '矿场', icon: '⛏️' },
-  { key: 'other', label: '其他', icon: '📬' }
+  { key: 'overview', label: '游戏概览', icon: 'notice' },
+  { key: 'adventurer', label: '冒险家', icon: 'attack' },
+  { key: 'battle', label: '战斗系统', icon: 'attack' },
+  { key: 'dungeon', label: '地下迷宫', icon: 'dungeon' },
+  { key: 'rune', label: '符文石', icon: 'rune' },
+  { key: 'market', label: '交易市场', icon: 'market' },
+  { key: 'arena', label: '竞技场', icon: 'notice' },
+  { key: 'mine', label: '矿场', icon: 'mine' },
+  { key: 'other', label: '其他', icon: 'mail' }
 ]
 
 const activeTab = ref(route.query.tab || 'overview')

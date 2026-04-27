@@ -30,14 +30,14 @@
           v-if="adventurer.roleTag && ROLE_TAG_MAP[adventurer.roleTag]"
           class="absolute bottom-0 right-0 rounded-tl text-sm leading-none p-1"
         >
-          {{ ROLE_TAG_MAP[adventurer.roleTag].emoji }}
+          <PixelIcon :name="ROLE_TAG_MAP[adventurer.roleTag].emoji" :size="18" />
         </span>
         <!-- 编辑提示 -->
         <div
           v-if="showManage"
           class="absolute bottom-0 right-0 bg-black/60 rounded-full px-1.5 py-0.5 text-[10px] text-white"
         >
-          ✏️
+          <PixelIcon name="edit" />
         </div>
       </div>
 
@@ -52,7 +52,7 @@
           size="small"
           @click="showNameDialog = true"
         >
-          ✏️
+          <PixelIcon name="edit" />
         </el-button>
       </div>
 
@@ -79,7 +79,7 @@
               :disabled="rerollLoading"
               @click="handleReroll('element')"
             >
-              🎲 {{ gameSettings.adventurerRerollElementPrice ?? 1000 }}金
+              <PixelIcon name="dice" /> {{ gameSettings.adventurerRerollElementPrice ?? 1000 }}金
             </el-button>
           </div>
           <span
@@ -113,7 +113,7 @@
               :disabled="rerollLoading"
               @click="handleReroll('passiveBuff')"
             >
-              🎲 {{ gameSettings.adventurerRerollPassiveBuffPrice ?? 1000 }}金
+              <PixelIcon name="dice" /> {{ gameSettings.adventurerRerollPassiveBuffPrice ?? 1000 }}金
             </el-button>
           </div>
           <span
@@ -146,7 +146,7 @@
               :disabled="rerollLoading"
               @click="handleReroll('attackPreference')"
             >
-              🎲
+              <PixelIcon name="dice" />
               {{ gameSettings.adventurerRerollAttackPreferencePrice ?? 1000 }}金
             </el-button>
           </div>
@@ -191,7 +191,7 @@
               :title="tag.label"
               @click="handleSetRoleTag(tag.value)"
             >
-              {{ tag.emoji }}
+              <PixelIcon :name="tag.emoji" :size="18" />
             </span>
           </div>
         </div>
@@ -204,7 +204,7 @@
             <div
               class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2 text-center"
             >
-              <p class="text-xs text-gray-400">🪙 金币</p>
+              <p class="text-xs text-gray-400"><PixelIcon name="gold" /> 金币</p>
               <p class="text-sm font-bold text-yellow-500">
                 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }}
               </p>
@@ -216,7 +216,9 @@
               :key="cType.key"
               class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center cursor-pointer hover:ring-1 ring-yellow-400 transition"
             >
-              <p class="text-xs text-gray-400">{{ cType.icon }}水晶</p>
+              <p class="text-xs text-gray-400">
+                <PixelIcon :name="cType.icon" />水晶
+              </p>
               <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
                 {{ formatNumberWithCommas(inventory?.[cType.key] ?? 0) }}
               </p>
@@ -255,7 +257,7 @@
 
         <!-- 符文石 -->
         <div class="info-row">
-          <span class="info-label">💎 符文石</span>
+          <span class="info-label"><PixelIcon name="rune" /> 符文石</span>
           <div class="flex items-center gap-1">
             <template v-if="adventurer.runeStone">
               <span

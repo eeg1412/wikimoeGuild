@@ -92,23 +92,23 @@
 
       <div class="grid grid-cols-2 gap-2 mt-4">
         <div class="fpg-stat-chip">
-          ⚔️ {{ selectedAdventurer.attackLevel || 1 }}
+          <PixelIcon name="attack" /> {{ selectedAdventurer.attackLevel || 1 }}
         </div>
         <div class="fpg-stat-chip">
-          🛡️ {{ selectedAdventurer.defenseLevel || 1 }}
+          <PixelIcon name="defense" /> {{ selectedAdventurer.defenseLevel || 1 }}
         </div>
         <div class="fpg-stat-chip">
-          💨 {{ selectedAdventurer.speedLevel || 1 }}
+          <PixelIcon name="speed" /> {{ selectedAdventurer.speedLevel || 1 }}
         </div>
         <div class="fpg-stat-chip">
-          ❤️ {{ selectedAdventurer.SANLevel || 1 }}
+          <PixelIcon name="san" /> {{ selectedAdventurer.SANLevel || 1 }}
         </div>
       </div>
 
       <div
         class="mt-4 rounded-lg bg-orange-50 dark:bg-orange-900/20 px-3 py-2.5 text-orange-500 font-mono"
       >
-        ⚔️ 战斗力
+        <PixelIcon name="attack" /> 战斗力
         {{ formatNumberWithUnits(getCombatPower(selectedAdventurer)) }}
       </div>
 

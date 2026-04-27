@@ -191,10 +191,10 @@ const actionNameMap = {
 }
 
 const roleMap = {
-  tank: `${ROLE_TAG_MAP[2].emoji} ${ROLE_TAG_MAP[2].label}`,
-  dps: `${ROLE_TAG_MAP[1].emoji} ${ROLE_TAG_MAP[1].label}`,
-  assassin: `${ROLE_TAG_MAP[3].emoji} ${ROLE_TAG_MAP[3].label}`,
-  balanced: `${ROLE_TAG_MAP[4].emoji} ${ROLE_TAG_MAP[4].label}`
+  tank: ROLE_TAG_MAP[2].label,
+  dps: ROLE_TAG_MAP[1].label,
+  assassin: ROLE_TAG_MAP[3].label,
+  balanced: ROLE_TAG_MAP[4].label
 }
 
 const legacyDetailLabelMap = {

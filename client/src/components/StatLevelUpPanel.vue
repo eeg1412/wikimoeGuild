@@ -5,7 +5,7 @@
       <div
         class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2 text-center"
       >
-        <p class="text-xs text-gray-400">🪙 金币</p>
+        <p class="text-xs text-gray-400"><PixelIcon name="gold" /> 金币</p>
         <p class="text-sm font-bold text-yellow-500">
           {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }}
         </p>
@@ -17,7 +17,9 @@
         :key="cType.key"
         class="bg-gray-50 dark:bg-gray-800 rounded p-1.5 text-center"
       >
-        <p class="text-xs text-gray-400">{{ cType.icon }}</p>
+          <p class="text-xs text-gray-400">
+            <PixelIcon :name="cType.icon" />
+          </p>
         <p class="text-sm font-mono text-gray-600 dark:text-gray-300">
           {{ formatNumberWithCommas(inventory?.[cType.key] ?? 0) }}
         </p>
@@ -63,7 +65,9 @@
           :key="stat.key"
           class="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 flex flex-col items-center gap-2"
         >
-          <p class="text-lg">{{ stat.icon }}</p>
+                <p class="text-lg">
+                  <PixelIcon :name="stat.icon" />
+                </p>
           <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
             {{ stat.name }}
           </p>
@@ -73,10 +77,10 @@
           <p class="text-[10px] text-gray-400 text-center leading-tight">
             升级:
             {{ formatNumberWithCommas(getStatLevelUpCrystalCost(stat.levelKey))
-            }}{{ stat.icon }} +
+                  }}<PixelIcon :name="stat.icon" /> +
             {{
               formatNumberWithCommas(getStatLevelUpGoldCost(stat.levelKey))
-            }}🪙
+            }}<PixelIcon name="gold" />
           </p>
           <p class="text-[10px] text-red-400 text-center leading-tight">
             降级:
@@ -84,7 +88,7 @@
               formatNumberWithCommas(
                 gameSettings?.adventurerLevelDownGoldPrice ?? 1000
               )
-            }}🪙/级
+            }}<PixelIcon name="gold" />/级
           </p>
           <!-- 降级按钮组 -->
           <div class="flex gap-0.5 w-full">
@@ -166,7 +170,9 @@
             :key="stat.key"
             class="bg-gray-50 dark:bg-gray-800 rounded p-1.5"
           >
-            <p class="text-xs text-gray-400">{{ stat.icon }} {{ stat.name }}</p>
+              <p class="text-xs text-gray-400">
+                <PixelIcon :name="stat.icon" /> {{ stat.name }}
+              </p>
             <p class="text-sm font-bold text-yellow-500">
               Lv.{{ adventurer[stat.levelKey] }}
             </p>
@@ -180,7 +186,7 @@
           class="flex items-center gap-2"
         >
           <span class="text-sm w-16 shrink-0">
-            {{ stat.icon }} {{ stat.name }}
+                <PixelIcon :name="stat.icon" /> {{ stat.name }}
           </span>
           <el-input-number
             v-model="ratioForm[stat.key]"
@@ -311,7 +317,7 @@
     <!-- ===== 按比例降级报表弹窗 ===== -->
     <el-dialog
       v-model="downgradeReportVisible"
-      title="📉 按比例降级报表预览"
+      title="notice 按比例降级报表预览"
       width="90%"
       style="max-width: 500px"
       align-center
@@ -326,7 +332,7 @@
             降级 <b>{{ downgradeReportData.totalLevels }}</b> 级
           </p>
           <p class="mt-1">
-            💰 预计消耗:
+            <PixelIcon name="gold" /> 预计消耗:
             <span class="text-yellow-500 font-bold">{{
               formatNumberWithCommas(downgradeReportData.totalGoldCost)
             }}</span>
@@ -336,7 +342,7 @@
                 formatNumberWithCommas(
                   gameSettings?.adventurerLevelDownGoldPrice ?? 1000
                 )
-              }}🪙/级)
+              }}<PixelIcon name="gold" />/级)
             </span>
           </p>
         </div>
@@ -345,7 +351,7 @@
           <p class="font-medium mb-2">{{ adventurer.name }}</p>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 text-xs">
             <span v-for="stat in STAT_LIST" :key="stat.key">
-              {{ stat.icon }} Lv.{{ adventurer[stat.levelKey] }} → Lv.{{
+                      <PixelIcon :name="stat.icon" /> Lv.{{ adventurer[stat.levelKey] }} → Lv.{{
                 adventurer[stat.levelKey] -
                 (downgradeReportData.alloc[stat.key] || 0)
               }}
@@ -365,7 +371,7 @@
           </p>
         </div>
         <p v-if="downgradeReportData.error" class="text-xs text-red-500">
-          ⚠️ {{ downgradeReportData.error }}
+          <PixelIcon name="warning" /> {{ downgradeReportData.error }}
         </p>
       </div>
       <template #footer>
@@ -464,17 +470,17 @@ const maxCompLevel = computed(() => {
 })
 
 const STAT_LIST = [
-  { key: 'attack', levelKey: 'attackLevel', name: '攻击', icon: '⚔️' },
-  { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: '🛡️' },
-  { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: '💨' },
-  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: '❤️' }
+  { key: 'attack', levelKey: 'attackLevel', name: '攻击', icon: 'attack' },
+  { key: 'defense', levelKey: 'defenseLevel', name: '防御', icon: 'defense' },
+  { key: 'speed', levelKey: 'speedLevel', name: '速度', icon: 'speed' },
+  { key: 'san', levelKey: 'SANLevel', name: 'SAN值', icon: 'san' }
 ]
 
 const CRYSTAL_TYPES = [
-  { key: 'attackCrystal', icon: '⚔️', label: '攻击水晶' },
-  { key: 'defenseCrystal', icon: '🛡️', label: '防御水晶' },
-  { key: 'speedCrystal', icon: '💨', label: '速度水晶' },
-  { key: 'sanCrystal', icon: '❤️', label: 'SAN水晶' }
+  { key: 'attackCrystal', icon: 'attack', label: '攻击水晶' },
+  { key: 'defenseCrystal', icon: 'defense', label: '防御水晶' },
+  { key: 'speedCrystal', icon: 'speed', label: '速度水晶' },
+  { key: 'sanCrystal', icon: 'san', label: 'SAN水晶' }
 ]
 
 // ── 自动分配比例 ──

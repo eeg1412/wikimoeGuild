@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        ⚔️ 竞技场
+        <PixelIcon name="attack" /> 竞技场
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         与其他公会一较高下
@@ -12,7 +12,7 @@
 
     <!-- 加载 -->
     <div v-if="loading" class="flex justify-center py-12">
-      <span class="animate-spin inline-block text-4xl">⏳</span>
+      <span class="animate-spin inline-block text-4xl"><PixelIcon name="timer" /></span>
     </div>
 
     <template v-else>
@@ -20,7 +20,7 @@
       <div class="rpg-card rounded-xl p-4 mb-4">
         <div class="flex items-center justify-between mb-2">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-            🏆 赛季信息
+            <PixelIcon name="notice" /> 赛季信息
           </h3>
           <span
             v-if="arenaInfo.season"
@@ -47,7 +47,7 @@
           >
             <p class="text-xs text-gray-400">奖池总额</p>
             <p class="text-sm font-bold text-yellow-500">
-              🪙 {{ formatNumberWithCommas(arenaInfo.season.poolAmount ?? 0) }}
+              <PixelIcon name="gold" /> {{ formatNumberWithCommas(arenaInfo.season.poolAmount ?? 0) }}
             </p>
           </div>
           <div
@@ -55,7 +55,7 @@
           >
             <p class="text-xs text-gray-400">每战奖金</p>
             <p class="text-sm font-bold text-blue-500">
-              🪙 {{ formatNumberWithCommas(arenaInfo.season.battleGold) }}
+              <PixelIcon name="gold" /> {{ formatNumberWithCommas(arenaInfo.season.battleGold) }}
             </p>
           </div>
         </div>
@@ -72,7 +72,7 @@
         class="rpg-card rounded-xl p-4 mb-4 text-center"
       >
         <p class="text-lg font-bold text-yellow-500 mb-2">
-          {{ arenaInfo.status === 'settling' ? '⏳ 赛季结算中' : '🏖️ 休赛期' }}
+          {{ arenaInfo.status === 'settling' ? 'timer 赛季结算中' : 'notice 休赛期' }}
         </p>
         <p class="text-sm text-gray-500 dark:text-gray-400">
           {{ arenaInfo.message }}
@@ -119,7 +119,7 @@
               你还未报名本赛季
             </p>
             <p class="text-sm text-red-400 mb-3">
-              ⚠️
+              <PixelIcon name="warning" />
               报名后，阵容中的冒险家将被锁定至赛季结束，期间不可替换，只能调整位置。
             </p>
 
@@ -144,7 +144,7 @@
             <!-- 阵容预览 -->
             <div v-if="formationPreview" class="mb-3">
               <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                📋 阵容预览（{{ formationPreviewCount }} 名冒险家）
+                <PixelIcon name="list" /> 阵容预览（{{ formationPreviewCount }} 名冒险家）
               </p>
               <div class="flex justify-center">
                 <FormationGrid
@@ -164,7 +164,7 @@
               </div>
             </div>
             <div v-if="formationPreviewLoading" class="mb-3 text-center">
-              <span class="animate-spin inline-block text-xl">⏳</span>
+              <span class="animate-spin inline-block text-xl"><PixelIcon name="timer" /></span>
             </div>
 
             <el-button
@@ -173,7 +173,7 @@
               :disabled="registerLoading || !registerSlot"
               @click="handleRegister"
             >
-              ⚔️ 报名参赛
+              <PixelIcon name="attack" /> 报名参赛
             </el-button>
           </div>
         </template>
@@ -210,7 +210,7 @@
               v-if="arenaInfo.nextRecoverIn"
               class="text-center text-xs text-gray-400 mt-2"
             >
-              ⏰ 下次恢复: {{ Math.ceil(arenaInfo.nextRecoverIn / 60) }} 分钟后
+              <PixelIcon name="timer" /> 下次恢复: {{ Math.ceil(arenaInfo.nextRecoverIn / 60) }} 分钟后
             </p>
           </div>
 
@@ -221,28 +221,28 @@
               size="small"
               @click="handleSwitchArenaTab('match')"
             >
-              🎯 匹配对手
+              <PixelIcon name="notice" /> 匹配对手
             </el-button>
             <el-button
               :type="arenaTab === 'formation' ? 'primary' : 'default'"
               size="small"
               @click="handleSwitchArenaTab('formation')"
             >
-              🏗️ 阵容管理
+              <PixelIcon name="notice" /> 阵容管理
             </el-button>
             <el-button
               :type="arenaTab === 'leaderboard' ? 'primary' : 'default'"
               size="small"
               @click="handleSwitchArenaTab('leaderboard')"
             >
-              🏅 排行榜
+              <PixelIcon name="notice" /> 排行榜
             </el-button>
             <el-button
               :type="arenaTab === 'logs' ? 'primary' : 'default'"
               size="small"
               @click="handleSwitchArenaTab('logs')"
             >
-              📜 战斗记录
+              <PixelIcon name="notice" /> 战斗记录
             </el-button>
           </div>
 
@@ -259,14 +259,14 @@
               "
               @click="handleStartAutoArena"
             >
-              ⚡ 自动对战
+              <PixelIcon name="skill" /> 自动对战
             </el-button>
           </div>
 
           <!-- ===== 匹配对手 ===== -->
           <div v-if="arenaTab === 'match'">
             <div v-if="matchLoading" class="flex justify-center py-8">
-              <span class="animate-spin inline-block text-2xl">⏳</span>
+              <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
             </div>
             <template v-else>
               <!-- 我方战斗力展示 -->
@@ -275,7 +275,7 @@
                 class="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm flex items-center justify-between"
               >
                 <span class="text-gray-500 dark:text-gray-400"
-                  >🏰 我方竞技场战斗力</span
+                  ><PixelIcon name="dungeon" /> 我方竞技场战斗力</span
                 >
                 <span class="font-mono font-bold text-blue-500">{{
                   formatNumberWithUnits(arenaCombatPower)
@@ -324,14 +324,14 @@
                         <p
                           class="text-sm font-semibold text-amber-500 dark:text-amber-400"
                         >
-                          🏆 竞技点:
+                          <PixelIcon name="notice" /> 竞技点:
                           {{ formatNumberWithCommas(opponent.points) }}
                         </p>
                         <p
                           v-if="opponent.combatPower != null"
                           class="text-xs text-orange-400 font-mono"
                         >
-                          ⚔️ 战斗力:
+                          <PixelIcon name="attack" /> 战斗力:
                           {{ formatNumberWithUnits(opponent.combatPower) }}
                           <template v-if="arenaCombatPower > 0">
                             <span
@@ -372,8 +372,8 @@
                     >
                       {{
                         challengedOpponents.has(opponent._id)
-                          ? '✅ 已挑战'
-                          : '⚔️ 挑战'
+                          ? 'check 已挑战'
+                          : 'attack 挑战'
                       }}
                     </el-button>
                   </div>
@@ -394,8 +394,8 @@
                 >
                   {{
                     refreshCooldown > 0
-                      ? `🔄 刷新对手 (${refreshCooldown}s)`
-                      : '🔄 刷新对手'
+                      ? `notice 刷新对手 (${refreshCooldown}s)`
+                      : 'notice 刷新对手'
                   }}
                 </el-button>
               </div>
@@ -405,14 +405,14 @@
           <!-- ===== 阵容管理 ===== -->
           <div v-if="arenaTab === 'formation'">
             <div v-if="arenaFormationLoading" class="flex justify-center py-8">
-              <span class="animate-spin inline-block text-2xl">⏳</span>
+              <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
             </div>
             <template v-else>
               <p class="text-sm text-gray-400 text-center mb-2">
                 ↑ 前排（面向敌人）· ↓ 后排
               </p>
               <p class="text-sm text-red-400 text-center mb-2">
-                ⚠️ 已锁定的冒险家不能移除，只能调整位置或添加新冒险家
+                <PixelIcon name="warning" /> 已锁定的冒险家不能移除，只能调整位置或添加新冒险家
               </p>
               <FormationGrid
                 v-model="arenaGrid"
@@ -430,7 +430,7 @@
                 已放置 {{ arenaPlacedCount }} 名冒险家
               </p>
               <p class="text-center text-sm text-orange-400 font-mono mb-4">
-                ⚔️ 综合战斗力: {{ formatNumberWithUnits(arenaCombatPower) }}
+                <PixelIcon name="attack" /> 综合战斗力: {{ formatNumberWithUnits(arenaCombatPower) }}
               </p>
 
               <div class="flex justify-center gap-3 mb-4">
@@ -440,7 +440,7 @@
                   :disabled="arenaFormationSaving"
                   @click="handleSaveArenaFormation"
                 >
-                  💾 保存阵容
+                  <PixelIcon name="notice" /> 保存阵容
                 </el-button>
               </div>
             </template>
@@ -449,7 +449,7 @@
           <!-- ===== 排行榜 ===== -->
           <div v-if="arenaTab === 'leaderboard'">
             <div v-if="leaderboardLoading" class="flex justify-center py-8">
-              <span class="animate-spin inline-block text-2xl">⏳</span>
+              <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
             </div>
             <template v-else>
               <div
@@ -505,7 +505,7 @@
           <!-- ===== 战斗记录 ===== -->
           <div v-if="arenaTab === 'logs'">
             <div v-if="logsLoading" class="flex justify-center py-8">
-              <span class="animate-spin inline-block text-2xl">⏳</span>
+              <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
             </div>
             <template v-else>
               <div
@@ -538,7 +538,7 @@
                         <span
                           v-if="log.goldEarned > 0"
                           class="text-yellow-500 ml-1"
-                          >+🪙{{ formatNumberWithCommas(log.goldEarned) }}</span
+                          >+<PixelIcon name="gold" />{{ formatNumberWithCommas(log.goldEarned) }}</span
                         >
                       </p>
                     </div>
@@ -570,7 +570,7 @@
                           }}{{ formatNumberWithCommas(log.pointsChange) }} pt
                         </p>
                       </div>
-                      <span class="text-gray-400 text-sm">▶</span>
+                      <span class="text-gray-400 text-sm"><PixelIcon name="speed" /></span>
                     </div>
                   </div>
                 </div>
@@ -607,7 +607,7 @@
       append-to-body
     >
       <div v-if="arenaAdventurersLoading" class="text-center py-6">
-        <span class="animate-spin inline-block text-2xl">⏳</span>
+        <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
       </div>
       <template v-else>
         <!-- 当前格子上的冒险家 -->
@@ -629,7 +629,7 @@
               v-if="isAdventurerLocked(arenaCellAdventurer._id)"
               class="text-xs text-yellow-500 border border-yellow-500 px-1 rounded"
             >
-              🔒 已锁定
+              <PixelIcon name="lock" /> 已锁定
             </span>
             <el-button
               v-if="!isAdventurerLocked(arenaCellAdventurer._id)"
@@ -703,7 +703,7 @@
     <!-- ===== 战斗结果弹窗 ===== -->
     <el-dialog
       v-model="battleResultVisible"
-      title="⚔️ 战斗结果"
+      title="attack 战斗结果"
       width="340px"
       align-center
       destroy-on-close
@@ -711,7 +711,7 @@
     >
       <div v-if="battleResult" class="text-center space-y-3">
         <div class="text-4xl mb-2">
-          {{ battleResult.isWin ? '🎉' : battleResult.isDraw ? '🤝' : '😔' }}
+          {{ battleResult.isWin ? 'success' : battleResult.isDraw ? 'notice' : 'fail' }}
         </div>
         <p
           class="text-xl font-bold"
@@ -755,7 +755,7 @@
           <p v-if="battleResult.goldEarned > 0">
             <span class="text-gray-400">获得金币:</span>
             <span class="ml-2 text-yellow-500 font-bold"
-              >🪙 {{ formatNumberWithCommas(battleResult.goldEarned) }}</span
+              ><PixelIcon name="gold" /> {{ formatNumberWithCommas(battleResult.goldEarned) }}</span
             >
           </p>
         </div>
@@ -777,7 +777,7 @@
     <!-- ===== 战斗记录详情弹窗 ===== -->
     <el-dialog
       v-model="logDetailVisible"
-      title="📜 战斗记录详情"
+      title="notice 战斗记录详情"
       width="95%"
       style="max-width: 500px"
       align-center
@@ -785,12 +785,12 @@
       append-to-body
     >
       <div v-if="logDetailLoading" class="flex justify-center py-8">
-        <span class="animate-spin inline-block text-2xl">⏳</span>
+        <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
       </div>
       <template v-else-if="logDetail">
         <!-- 版本不匹配 -->
         <div v-if="logDetail.versionMismatch" class="text-center py-4">
-          <p class="text-4xl mb-3">🔒</p>
+          <p class="text-4xl mb-3"><PixelIcon name="lock" /></p>
           <p class="text-gray-500 dark:text-gray-400 mb-2">
             {{ logDetail.message }}
           </p>
@@ -817,14 +817,14 @@
           <div class="flex items-center justify-between text-sm">
             <div class="text-center flex-1">
               <p class="font-semibold text-blue-500">
-                🏰 {{ logDetail.attackerGuildName }}
+                <PixelIcon name="dungeon" /> {{ logDetail.attackerGuildName }}
               </p>
               <p class="text-sm text-gray-400">挑战方</p>
             </div>
             <div class="text-xl font-bold text-gray-400 px-2">VS</div>
             <div class="text-center flex-1">
               <p class="font-semibold text-red-500">
-                🏰
+                <PixelIcon name="dungeon" />
                 {{ logDetail.defenderGuildName }}
               </p>
               <p class="text-sm text-gray-400">防守方</p>
@@ -842,7 +842,7 @@
             <span
               v-if="logDetail.goldEarned > 0"
               class="text-yellow-500 text-sm ml-2"
-              >+🪙{{ formatNumberWithCommas(logDetail.goldEarned) }}</span
+              >+<PixelIcon name="gold" />{{ formatNumberWithCommas(logDetail.goldEarned) }}</span
             >
           </div>
 
@@ -928,7 +928,7 @@
 
           <!-- 单位详情列表 -->
           <div class="space-y-2">
-            <p class="text-sm text-gray-400">👥 冒险家属性快照</p>
+            <p class="text-sm text-gray-400"><PixelIcon name="notice" /> 冒险家属性快照</p>
             <div class="max-h-60 overflow-y-auto space-y-1">
               <!-- 挑战方 -->
               <p class="text-xs font-semibold text-blue-500 mt-1">
@@ -951,12 +951,12 @@
                     <span v-if="unit.isDemon" class="text-red-400">(恶魔)</span>
                   </p>
                   <p class="text-gray-400">
-                    ⚔️{{ unit.attackLevel }} 🛡️{{ unit.defenseLevel }} 💨{{
+                    <PixelIcon name="attack" />{{ unit.attackLevel }} <PixelIcon name="defense" />{{ unit.defenseLevel }} <PixelIcon name="speed" />{{
                       unit.speedLevel
                     }}
-                    ❤️{{ unit.SANLevel }}
+                    <PixelIcon name="san" />{{ unit.SANLevel }}
                     <span v-if="unit.runeStone" class="ml-1"
-                      >💎Lv{{ unit.runeStone.level }}</span
+                      ><PixelIcon name="rune" />Lv{{ unit.runeStone.level }}</span
                     >
                   </p>
                 </div>
@@ -982,12 +982,12 @@
                     <span v-if="unit.isDemon" class="text-red-400">(恶魔)</span>
                   </p>
                   <p class="text-gray-400">
-                    ⚔️{{ unit.attackLevel }} 🛡️{{ unit.defenseLevel }} 💨{{
+                    <PixelIcon name="attack" />{{ unit.attackLevel }} <PixelIcon name="defense" />{{ unit.defenseLevel }} <PixelIcon name="speed" />{{
                       unit.speedLevel
                     }}
-                    ❤️{{ unit.SANLevel }}
+                    <PixelIcon name="san" />{{ unit.SANLevel }}
                     <span v-if="unit.runeStone" class="ml-1"
-                      >💎Lv{{ unit.runeStone.level }}</span
+                      ><PixelIcon name="rune" />Lv{{ unit.runeStone.level }}</span
                     >
                   </p>
                 </div>
@@ -1012,14 +1012,14 @@
       <template #footer>
         <div class="flex justify-center gap-2 mt-2">
           <el-button size="small" @click="handleArenaDetailReplace"
-            >🔄 替换</el-button
+            ><PixelIcon name="notice" /> 替换</el-button
           >
           <el-button
             v-if="!isAdventurerLocked(arenaAdvDetailId)"
             type="danger"
             size="small"
             @click="handleArenaDetailRemove"
-            >🗑️ 移除</el-button
+            ><PixelIcon name="trash" /> 移除</el-button
           >
         </div>
       </template>
@@ -1034,7 +1034,7 @@
     <!-- ===== 自动竞技场对战弹窗 ===== -->
     <el-dialog
       v-model="autoArenaDialogVisible"
-      title="⚡ 自动竞技场对战"
+      title="skill 自动竞技场对战"
       width="400px"
       align-center
       :close-on-click-modal="!autoArenaRunning"
@@ -1223,13 +1223,13 @@
           </p>
           <div class="flex justify-center gap-4 text-sm flex-wrap">
             <span class="text-green-500">
-              ✅ 胜利: {{ autoArenaWinCount }}
+              <PixelIcon name="check" /> 胜利: {{ autoArenaWinCount }}
             </span>
             <span class="text-gray-400">
-              🤝 平局: {{ autoArenaDrawCount }}
+              <PixelIcon name="notice" /> 平局: {{ autoArenaDrawCount }}
             </span>
             <span class="text-red-400">
-              ❌ 失败: {{ autoArenaLoseCount }}
+              <PixelIcon name="notice" /> 失败: {{ autoArenaLoseCount }}
             </span>
           </div>
           <p class="text-xs text-gray-400">
@@ -1833,7 +1833,7 @@ async function waitForMatchRefresh(runToken) {
   }
 
   autoArenaCooldownSeconds.value = Math.ceil(initialRemainingMs / 1000)
-  autoArenaStatusText.value = `⏳ 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
+  autoArenaStatusText.value = `timer 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
 
   const ready = await new Promise(resolve => {
     clearAutoArenaCooldownTimer()
@@ -1847,7 +1847,7 @@ async function waitForMatchRefresh(runToken) {
 
       const remainingMs = getMatchRefreshRemainingMs()
       autoArenaCooldownSeconds.value = Math.ceil(remainingMs / 1000)
-      autoArenaStatusText.value = `⏳ 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
+      autoArenaStatusText.value = `timer 等待刷新冷却 (${autoArenaCooldownSeconds.value}s)...`
 
       if (remainingMs <= 0) {
         clearAutoArenaCooldownTimer()
@@ -2037,15 +2037,15 @@ async function handleViewLogDetail(log) {
 }
 
 const ELEMENT_EMOJI_MAP = {
-  1: '🌍',
-  2: '💧',
-  3: '🔥',
-  4: '🌪️',
-  5: '☀️',
-  6: '🌑'
+  1: 'notice',
+  2: 'notice',
+  3: 'fire',
+  4: 'wind',
+  5: 'light',
+  6: 'dark'
 }
 function elementEmoji(el) {
-  return ELEMENT_EMOJI_MAP[el] || '❓'
+  return ELEMENT_EMOJI_MAP[el] || 'unknown'
 }
 
 function getUnitAt(units, row, col) {
@@ -2055,7 +2055,7 @@ function getUnitAt(units, row, col) {
 
 function getUnitTooltip(unit) {
   if (!unit) return ''
-  return `${unit.name} | ⚔️${unit.attackLevel} 🛡️${unit.defenseLevel} 💨${unit.speedLevel} ❤️${unit.SANLevel}`
+  return `${unit.name} | attack${unit.attackLevel} defense${unit.defenseLevel} speed${unit.speedLevel} san${unit.SANLevel}`
 }
 
 function getLogWinClass(detail) {
@@ -2221,7 +2221,7 @@ function getAutoArenaOpponentGuildIconUrl(opponent) {
 }
 
 function getAutoArenaChallengeStatusText(opponent) {
-  return `⚔️ 正在挑战「${opponent?.guildName || '对手'}」...`
+  return `attack 正在挑战「${opponent?.guildName || '对手'}」...`
 }
 
 const autoArenaSceneReady = computed(() => {
@@ -2276,15 +2276,15 @@ const autoArenaCountdownHint = computed(() => {
 
 const autoArenaBattleDisplay = computed(() => {
   if (autoArenaRunning.value) {
-    return `⚔️ 第 ${autoArenaDisplayCount.value || 1} 场对战`
+    return `attack 第 ${autoArenaDisplayCount.value || 1} 场对战`
   }
   if (autoArenaShowStoppedState.value) {
-    return '⚔️ 本次未进行对战'
+    return 'attack 本次未进行对战'
   }
   if (autoArenaTotalCount.value > 0) {
-    return `⚔️ 共完成 ${autoArenaTotalCount.value} 场对战`
+    return `attack 共完成 ${autoArenaTotalCount.value} 场对战`
   }
-  return '⚔️ 准备中…'
+  return 'attack 准备中…'
 })
 
 function isAutoArenaOpponentWithinCurrentRange(opponent, myPoints) {
@@ -2437,7 +2437,7 @@ function releaseAutoArenaWakeLock() {
 
 // ── 刷新对手列表（自动对战用） ──
 async function autoArenaRefreshMatchList(runToken) {
-  autoArenaStatusText.value = '🔄 刷新对手列表...'
+  autoArenaStatusText.value = 'notice 刷新对手列表...'
   return await refreshMatchListWithLock({
     runToken,
     waitForCooldown: true,
@@ -2581,7 +2581,7 @@ async function startAutoArena() {
   // 寻找第一个对手并设置场景
   const found = await findAndSetupNextOpponent(runToken, false)
   if (!found) {
-    handleStopAutoArena({ finalStatusText: '⚠️ 未找到合适对手' })
+    handleStopAutoArena({ finalStatusText: 'warning 未找到合适对手' })
     return false
   }
 
@@ -2611,7 +2611,7 @@ async function findAndSetupNextOpponent(runToken, useTransition) {
     autoArenaRunning.value &&
     runToken === autoArenaRunToken
   ) {
-    autoArenaStatusText.value = '🔍 刷新对手列表...'
+    autoArenaStatusText.value = 'search 刷新对手列表...'
 
     const refreshed = await autoArenaRefreshMatchList(runToken)
     if (!autoArenaRunning.value || runToken !== autoArenaRunToken) return false
@@ -2704,16 +2704,16 @@ async function executeAutoArenaChallenge(runToken) {
     if (winner === 'attacker') {
       autoArenaWinCount.value++
       setAutoArenaSceneResult('attacker')
-      autoArenaStatusText.value = `✅ 击败「${opponent.guildName}」+${formatNumberWithCommas(result.pointsChange)} pt`
+      autoArenaStatusText.value = `check 击败「${opponent.guildName}」+${formatNumberWithCommas(result.pointsChange)} pt`
     } else if (winner === 'draw') {
       autoArenaDrawCount.value++
       setAutoArenaSceneResult('draw')
-      autoArenaStatusText.value = `🤝 与「${opponent.guildName}」平局`
+      autoArenaStatusText.value = `notice 与「${opponent.guildName}」平局`
     } else {
       // defender wins → 失败
       autoArenaLoseCount.value++
       setAutoArenaSceneResult('defender')
-      autoArenaStatusText.value = `💀 败给「${opponent.guildName}」${result.pointsChange} pt`
+      autoArenaStatusText.value = `dark 败给「${opponent.guildName}」${result.pointsChange} pt`
 
       // 如果输给了高积分对手，标记以便后续不再刷新、继续挑战低积分对手
       if (opponentIsHigher) {
@@ -2729,7 +2729,7 @@ async function executeAutoArenaChallenge(runToken) {
     // 停止条件1：单次失败竞技点下降 >= 100
     if (result.pointsChange <= -100) {
       handleStopAutoArena({
-        finalStatusText: `💀 单次竞技点下降 ${result.pointsChange}，自动对战结束`
+        finalStatusText: `dark 单次竞技点下降 ${result.pointsChange}，自动对战结束`
       })
       return
     }
@@ -2737,7 +2737,7 @@ async function executeAutoArenaChallenge(runToken) {
     // 停止条件2：本轮总竞技点收益 < -100
     if (autoArenaTotalPointsChange.value < -100) {
       handleStopAutoArena({
-        finalStatusText: `💀 总竞技点收益 ${autoArenaTotalPointsChange.value}，自动对战结束`
+        finalStatusText: `dark 总竞技点收益 ${autoArenaTotalPointsChange.value}，自动对战结束`
       })
       return
     }
@@ -2745,7 +2745,7 @@ async function executeAutoArenaChallenge(runToken) {
     // 停止条件3：挑战次数用完
     if ((arenaInfo.value.registration?.challengeUses ?? 0) <= 0) {
       handleStopAutoArena({
-        finalStatusText: '📋 挑战次数已用完，自动对战结束'
+        finalStatusText: 'list 挑战次数已用完，自动对战结束'
       })
       return
     }
@@ -2759,17 +2759,17 @@ async function executeAutoArenaChallenge(runToken) {
     const errMsg = err.response?.data?.message || err.message || '请求失败'
     if (errMsg.includes('挑战次数不足')) {
       handleStopAutoArena({
-        finalStatusText: '📋 挑战次数已用完，自动对战结束'
+        finalStatusText: 'list 挑战次数已用完，自动对战结束'
       })
     } else if (errMsg.includes('对手不在你的匹配范围内')) {
-      autoArenaStatusText.value = '🔄 对手超出匹配范围，刷新列表中...'
+      autoArenaStatusText.value = 'notice 对手超出匹配范围，刷新列表中...'
 
       const refreshed = await autoArenaRefreshMatchList(runToken)
       if (!autoArenaRunning.value || runToken !== autoArenaRunToken) return
 
       if (!refreshed) {
         handleStopAutoArena({
-          finalStatusText: '⚠️ 对手超出匹配范围，刷新列表失败，自动对战结束'
+          finalStatusText: 'warning 对手超出匹配范围，刷新列表失败，自动对战结束'
         })
         return
       }
@@ -2780,7 +2780,7 @@ async function executeAutoArenaChallenge(runToken) {
       const found = await findAndSetupNextOpponent(runToken, true)
       if (!found) {
         handleStopAutoArena({
-          finalStatusText: '⚠️ 刷新后未找到合适对手，自动对战结束'
+          finalStatusText: 'warning 刷新后未找到合适对手，自动对战结束'
         })
         return
       }
@@ -2788,7 +2788,7 @@ async function executeAutoArenaChallenge(runToken) {
       startAutoArenaBattleCooldown(runToken)
       return
     } else {
-      handleStopAutoArena({ finalStatusText: `❌ ${errMsg}` })
+      handleStopAutoArena({ finalStatusText: `notice ${errMsg}` })
     }
   }
 }
@@ -2809,7 +2809,7 @@ function scheduleTransitionAndCooldown(runToken) {
     if (!found) {
       if (autoArenaRunning.value && runToken === autoArenaRunToken) {
         handleStopAutoArena({
-          finalStatusText: '⚠️ 连续多次未找到合适对手，已停止'
+          finalStatusText: 'warning 连续多次未找到合适对手，已停止'
         })
       }
       return
@@ -2866,7 +2866,7 @@ function handleStopAutoArena(options = {}) {
   } else if (autoArenaTotalCount.value === 0) {
     autoArenaStatusText.value = '已停止，未进行任何对战'
   } else if (
-    autoArenaStatusText.value.startsWith('⚔️') ||
+    autoArenaStatusText.value.startsWith('attack') ||
     autoArenaStatusText.value.startsWith('正在')
   ) {
     autoArenaStatusText.value = '已停止'

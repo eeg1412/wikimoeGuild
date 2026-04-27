@@ -58,9 +58,13 @@
         <el-option
           v-for="m in materialTypes"
           :key="m.key"
-          :label="`${m.icon} ${m.name}`"
-          :value="m.key"
-        />
+              :label="m.name"
+              :value="m.key"
+            >
+              <span class="inline-flex items-center gap-1">
+                <PixelIcon :name="m.icon" :size="16" /> {{ m.name }}
+              </span>
+            </el-option>
       </el-select>
     </div>
 

@@ -53,7 +53,7 @@
 
     <!-- 列表 -->
     <div v-if="loading" class="text-center py-6">
-      <span class="animate-spin inline-block text-2xl">⏳</span>
+      <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
     </div>
     <div
       v-else-if="sortedList.length === 0"
@@ -82,7 +82,7 @@
               class="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
               :class="rarityBgClass(rs.rarity)"
             >
-              💎
+              <PixelIcon name="rune" />
             </div>
             <div class="min-w-0">
               <p
@@ -100,7 +100,7 @@
                 class="text-xs font-semibold mt-0.5"
                 :class="getCombatPowerDiffClass(rs)"
               >
-                ⚔️
+                <PixelIcon name="attack" />
                 {{ formatNumberWithUnits(getCombatPowerAfter(rs)) }} (<span>{{
                   getCombatPowerDiffText(rs)
                 }}</span
@@ -115,7 +115,7 @@
               :title="expandedIds.has(rs._id) ? '收起详情' : '展开详情'"
               @click.stop="handleToggleExpand(rs._id)"
             >
-              {{ expandedIds.has(rs._id) ? '🔼' : '🔽' }}
+              {{ expandedIds.has(rs._id) ? 'collapse' : 'expand' }}
             </button>
           </div>
         </div>

@@ -2,7 +2,7 @@
   <!-- ==================== 选择素材弹窗 ==================== -->
   <el-dialog
     v-model="materialPickVisible"
-    title="🔮 选择素材符文石（将被销毁）"
+    title="rune 选择素材符文石（将被销毁）"
     align-center
     destroy-on-close
     v-bind="previewLockProps"
@@ -13,7 +13,7 @@
       (Lv.{{ comprehensiveLevel }}) 的未装备符文石。
     </p>
     <div v-if="materialLoading" class="flex justify-center py-8">
-      <span class="animate-spin inline-block text-2xl">⏳</span>
+      <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
     </div>
     <div
       v-else-if="materialOptions.length === 0"
@@ -43,7 +43,7 @@
   <!-- ==================== 预览结果弹窗 ==================== -->
   <el-dialog
     v-model="previewVisible"
-    title="🔮 合成预览结果"
+    title="rune 合成预览结果"
     width="360px"
     align-center
     :close-on-click-modal="false"
@@ -92,13 +92,13 @@
         class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2 text-xs text-gray-500 dark:text-gray-400"
       >
         <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
-          📊 与主石对比
+          <PixelIcon name="chart" /> 与主石对比
         </p>
 
         <!-- 主动技能变化 -->
         <div>
           <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
-            ⚡ 主动技能变化
+            <PixelIcon name="skill" /> 主动技能变化
           </p>
           <template v-if="synthesisSkillDiff.removed.length">
             <div
@@ -144,7 +144,7 @@
         <!-- 被动增益变化 -->
         <div>
           <p class="font-semibold text-gray-600 dark:text-gray-300 mb-1">
-            🔮 被动增益变化
+            <PixelIcon name="rune" /> 被动增益变化
           </p>
           <template v-if="synthesisBuffDiff.removed.length">
             <div
@@ -223,7 +223,7 @@
       <RuneStoneInfoCard :rune-stone="previewData" />
 
       <p class="text-sm text-red-500 font-bold text-center">
-        ⚠️ 素材符文石已被销毁，此操作不可撤销
+        <PixelIcon name="warning" /> 素材符文石已被销毁，此操作不可撤销
       </p>
       <p class="text-xs text-center text-gray-400">
         倒计时：<span class="text-yellow-500">{{ countdown }}</span> 秒

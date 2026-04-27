@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        🎒 背包
+        <PixelIcon name="inventory" /> 背包
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         管理你的水晶和符文石碎片
@@ -12,7 +12,7 @@
 
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-12">
-      <span class="animate-spin inline-block text-4xl">⏳</span>
+      <span class="animate-spin inline-block text-4xl"><PixelIcon name="timer" /></span>
     </div>
 
     <template v-else>
@@ -23,7 +23,7 @@
           :key="cry.key"
           class="rpg-card rounded-xl p-4 flex flex-col items-center"
         >
-          <span class="text-3xl mb-2">{{ cry.icon }}</span>
+          <PixelIcon :name="crystalIcon(cry.key)" :size="34" class="mb-2" />
           <span class="text-sm text-gray-500 dark:text-gray-400"
             >{{ cry.name }}水晶</span
           >
@@ -56,7 +56,7 @@
 
       <!-- 符文石碎片 -->
       <div class="rpg-card rounded-xl p-5 flex flex-col items-center">
-        <span class="text-3xl mb-2">💠</span>
+        <span class="text-3xl mb-2"><PixelIcon name="fragment" /></span>
         <span class="text-sm text-gray-500 dark:text-gray-400">符文石碎片</span>
         <span class="text-2xl font-bold text-purple-400 mt-1 tabular-nums">
           {{ formatNumberWithCommas(inventory.runeFragment || 0) }}
@@ -101,11 +101,22 @@ const loading = ref(false)
 const inventory = ref({})
 
 const crystalList = [
-  { key: 'attackCrystal', name: '攻击', icon: '⚔️', color: '#e05c4f' },
-  { key: 'defenseCrystal', name: '防御', icon: '🛡️', color: '#4fa3e0' },
-  { key: 'speedCrystal', name: '速度', icon: '💨', color: '#6abf69' },
-  { key: 'sanCrystal', name: 'SAN值', icon: '❤️', color: '#c070e0' }
+  { key: 'attackCrystal', name: '攻击', icon: 'attack', color: '#e05c4f' },
+  { key: 'defenseCrystal', name: '防御', icon: 'defense', color: '#4fa3e0' },
+  { key: 'speedCrystal', name: '速度', icon: 'speed', color: '#6abf69' },
+  { key: 'sanCrystal', name: 'SAN值', icon: 'san', color: '#c070e0' }
 ]
+
+function crystalIcon(key) {
+  return (
+    {
+      attackCrystal: 'attack',
+      defenseCrystal: 'defense',
+      speedCrystal: 'speed',
+      sanCrystal: 'san'
+    }[key] || 'rune'
+  )
+}
 
 async function fetchInventory() {
   loading.value = true

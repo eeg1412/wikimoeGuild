@@ -3,10 +3,10 @@
     <!-- 拖拽排序开关 + 显示标记 -->
     <div class="flex justify-center mb-2 gap-4">
       <el-checkbox v-model="dragMode" size="small" v-if="canDragMode">
-        ☰ 拖拽排序模式
+        <PixelIcon name="drag" /> 拖拽排序模式
       </el-checkbox>
       <el-checkbox v-model="showMarkMode" size="small">
-        🏷️ 显示标记
+        <PixelIcon name="tag" /> 显示标记
       </el-checkbox>
     </div>
 
@@ -62,12 +62,15 @@
                 @mousedown.stop
                 @touchstart.stop
               >
-                {{
-                  element.adventurer.roleTag &&
-                  ROLE_TAG_MAP[element.adventurer.roleTag]
-                    ? ROLE_TAG_MAP[element.adventurer.roleTag].emoji
-                    : '🏷️'
-                }}
+                <PixelIcon
+                  :name="
+                    element.adventurer.roleTag &&
+                    ROLE_TAG_MAP[element.adventurer.roleTag]
+                      ? ROLE_TAG_MAP[element.adventurer.roleTag].emoji
+                      : 'tag'
+                  "
+                  :size="14"
+                />
               </span>
             </template>
             <div>
@@ -97,21 +100,31 @@
                     )
                   "
                 >
-                  {{ tag.emoji }}
+                  <PixelIcon :name="tag.emoji" :size="18" />
                 </span>
               </div>
             </div>
           </el-popover>
-          <span v-else class="fg-cell-seq">{{
-            showMarkMode &&
-            element.adventurer &&
-            element.adventurer.roleTag &&
-            ROLE_TAG_MAP[element.adventurer.roleTag]
-              ? ROLE_TAG_MAP[element.adventurer.roleTag].emoji
-              : showMarkMode && element.adventurer
-                ? '🏷️'
-                : `${Math.floor(index / 5) + 1}-${(index % 5) + 1}`
-          }}</span>
+          <span v-else class="fg-cell-seq">
+            <PixelIcon
+              v-if="
+                showMarkMode &&
+                element.adventurer &&
+                element.adventurer.roleTag &&
+                ROLE_TAG_MAP[element.adventurer.roleTag]
+              "
+              :name="ROLE_TAG_MAP[element.adventurer.roleTag].emoji"
+              :size="14"
+            />
+            <PixelIcon
+              v-else-if="showMarkMode && element.adventurer"
+              name="tag"
+              :size="14"
+            />
+            <template v-else>
+              {{ `${Math.floor(index / 5) + 1}-${(index % 5) + 1}` }}
+            </template>
+          </span>
 
           <template v-if="element.adventurer">
             <GameAdventurerAvatar
@@ -141,7 +154,7 @@
               class="absolute top-0 right-0.5 text-[10px]"
               title="已锁定"
             >
-              🔒
+              <PixelIcon name="lock" />
             </div>
 
             <!-- 清除按钮（非拖拽模式 且 未锁定） -->
@@ -150,12 +163,12 @@
               class="fg-clear-btn"
               title="移除"
               @click.stop="emit('clear-cell', Math.floor(index / 5), index % 5)"
-              >✕</span
+              ><PixelIcon name="close" /></span
             >
           </template>
 
           <template v-else>
-            <span class="text-gray-400 text-lg">➕</span>
+            <span class="text-gray-400 text-lg"><PixelIcon name="plus" /></span>
           </template>
         </div>
       </DraggableList>
@@ -181,7 +194,7 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  /** 已锁定的冒险家 ID 列表，锁定的冒险家不显示移除按钮并显示 🔒 */
+  /** 已锁定的冒险家 ID 列表，锁定的冒险家不显示移除按钮并显示 lock */
   lockedIds: {
     type: Array,
     default: () => []

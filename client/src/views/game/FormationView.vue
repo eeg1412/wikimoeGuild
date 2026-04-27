@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        🏗️ 阵容配置
+        <PixelIcon name="notice" /> 阵容配置
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         配置 5×5 棋盘，最多预设 10 套阵容
@@ -12,7 +12,7 @@
 
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-12">
-      <span class="animate-spin inline-block text-4xl">⏳</span>
+      <span class="animate-spin inline-block text-4xl"><PixelIcon name="timer" /></span>
     </div>
 
     <template v-else>
@@ -67,7 +67,7 @@
           :disabled="saving"
           @click="handleSave"
         >
-          💾 保存阵容
+          <PixelIcon name="notice" /> 保存阵容
         </el-button>
         <el-button
           type="danger"
@@ -75,10 +75,10 @@
           :disabled="deleting || !existingFormation"
           @click="handleDelete"
         >
-          🗑️ 删除阵容
+          <PixelIcon name="trash" /> 删除阵容
         </el-button>
         <el-button :disabled="!hasUnsavedChanges" @click="handleRestore">
-          ↩️ 还原
+          <PixelIcon name="notice" /> 还原
         </el-button>
         <el-button @click="handleClear"> 清空棋盘 </el-button>
       </div>
@@ -88,7 +88,7 @@
         已放置 {{ placedCount }} / 25 名冒险家
       </p>
       <p class="text-center text-sm text-orange-400 font-mono mb-4">
-        ⚔️ 综合战斗力: {{ formatNumberWithUnits(formationCombatPower) }}
+        <PixelIcon name="attack" /> 综合战斗力: {{ formatNumberWithUnits(formationCombatPower) }}
       </p>
     </template>
 
@@ -102,7 +102,7 @@
       append-to-body
     >
       <div v-if="adventurersLoading" class="text-center py-6">
-        <span class="animate-spin inline-block text-2xl">⏳</span>
+        <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
       </div>
       <template v-else>
         <!-- 当前格子上的冒险家 -->
@@ -148,7 +148,7 @@
             size="small"
             @click="handlePickFilterTag(tag.value)"
           >
-            {{ tag.emoji }}
+                  <PixelIcon :name="tag.emoji" :size="18" />
           </el-button>
         </div>
 
@@ -203,10 +203,10 @@
       <template #footer>
         <div class="flex justify-center gap-2 mt-2">
           <el-button size="small" @click="handleDetailReplace"
-            >🔄 替换</el-button
+            ><PixelIcon name="notice" /> 替换</el-button
           >
           <el-button type="danger" size="small" @click="handleDetailRemove"
-            >🗑️ 移除</el-button
+            ><PixelIcon name="trash" /> 移除</el-button
           >
         </div>
       </template>

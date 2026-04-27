@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="mb-6 text-center">
       <h1 class="rpg-title text-2xl font-bold text-gray-800 dark:text-gray-100">
-        ⚔️ 冒险家公会
+        <PixelIcon name="attack" /> 冒险家公会
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         您的公会共有
@@ -17,7 +17,7 @@
     <!-- 招募按钮 -->
     <div class="text-center mb-4">
       <p class="text-sm text-yellow-500 font-semibold mb-1">
-        🪙 {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
+        <PixelIcon name="gold" /> {{ formatNumberWithCommas(playerInfo?.gold ?? 0) }} 金币
       </p>
       <el-button
         type="warning"
@@ -26,7 +26,7 @@
         :disabled="recruiting || adventurers.length >= maxAdventurerCap"
         @click="handleRecruit"
       >
-        🪙 招募冒险家（{{
+        <PixelIcon name="gold" /> 招募冒险家（{{
           formatNumberWithCommas(gameSettings.adventurerRecruitPrice ?? 10000)
         }}
         金币）
@@ -49,14 +49,14 @@
         size="small"
         @click="handleFilterTag(tag.value)"
       >
-        {{ tag.emoji }} {{ tag.label }}
+        <PixelIcon :name="tag.emoji" :size="16" /> {{ tag.label }}
       </el-button>
       <el-button
         :type="filterTag === 'none' ? 'primary' : 'default'"
         size="small"
         @click="handleFilterTag('none')"
       >
-        🏷️ 未设定
+        <PixelIcon name="tag" /> 未设定
       </el-button>
     </div>
 
@@ -114,7 +114,7 @@
           :disabled="batchEquipLoading"
           @click="handleBatchEquipBest"
         >
-          💎 批量装备符文石 ({{ selectedIds.size }})
+          <PixelIcon name="rune" /> 批量装备符文石 ({{ selectedIds.size }})
         </el-button>
         <el-dropdown
           split-button
@@ -125,7 +125,7 @@
           @click="handleBatchUpDefault"
           @command="handleBatchUpCommand"
         >
-          📈 批量升级+10
+          <PixelIcon name="notice" /> 批量升级+10
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item :command="1">+1</el-dropdown-item>
@@ -142,7 +142,7 @@
           @click="handleBatchDownDefault"
           @command="handleBatchDownCommand"
         >
-          📉 批量降级-10
+          <PixelIcon name="notice" /> 批量降级-10
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item :command="1">-1</el-dropdown-item>
@@ -164,7 +164,7 @@
         @click="handleOpenFormationUpgradeMax"
         @command="handleOpenFormationUpgrade"
       >
-        🏗️ 按阵容升到最高等级
+        <PixelIcon name="notice" /> 按阵容升到最高等级
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item :command="10">+10级</el-dropdown-item>
@@ -177,7 +177,7 @@
 
     <!-- 加载状态 -->
     <div v-if="loading" class="flex justify-center py-12">
-      <span class="animate-spin inline-block text-4xl">⏳</span>
+      <span class="animate-spin inline-block text-4xl"><PixelIcon name="timer" /></span>
     </div>
 
     <!-- 冒险家网格 -->
@@ -226,10 +226,10 @@
               @click.stop
             >
               <template v-if="adv.roleTag && ROLE_TAG_MAP[adv.roleTag]">
-                {{ ROLE_TAG_MAP[adv.roleTag].emoji }}
+                <PixelIcon :name="ROLE_TAG_MAP[adv.roleTag].emoji" :size="14" />
                 {{ ROLE_TAG_MAP[adv.roleTag].label }}
               </template>
-              <template v-else>🏷️ 未设定</template>
+              <template v-else><PixelIcon name="tag" /> 未设定</template>
             </span>
           </template>
           <div>
@@ -256,7 +256,7 @@
                 :title="tag.label"
                 @click="handleSetRoleTag(adv, tag.value)"
               >
-                {{ tag.emoji }}
+                <PixelIcon :name="tag.emoji" :size="18" />
               </span>
             </div>
           </div>
@@ -297,7 +297,7 @@
 
         <!-- 战斗力 -->
         <p class="text-xs text-orange-400 mt-0.5 font-mono">
-          ⚔️
+          <PixelIcon name="attack" />
           {{
             formatNumberWithUnits(
               calculateCombatPower(adv, adv.runeStone || null)
@@ -312,7 +312,7 @@
           :class="runeStoneCardClass(adv.runeStone.rarity)"
           @click.stop="handleShowRuneStoneManage(adv)"
         >
-          💎 {{ rarityName(adv.runeStone.rarity) }} Lv.{{ adv.runeStone.level }}
+          <PixelIcon name="rune" /> {{ rarityName(adv.runeStone.rarity) }} Lv.{{ adv.runeStone.level }}
         </div>
 
         <!-- 属性升降级按钮 -->
@@ -323,21 +323,21 @@
           style="font-size: 12px"
           @click.stop="handleOpenStatUpgrade(adv)"
         >
-          📈 升降级
+          <PixelIcon name="notice" /> 升降级
         </el-button>
       </div>
 
       <!-- 快捷入口 -->
       <div class="col-span-full text-center mt-4 mb-2">
         <el-button type="primary" text size="small" @click="goToFormation">
-          🏗️ 前往阵容配置
+          <PixelIcon name="notice" /> 前往阵容配置
         </el-button>
       </div>
     </div>
 
     <!-- 空状态 -->
     <div v-else class="text-center py-16 text-gray-400 dark:text-gray-600">
-      <span class="text-5xl mb-3 block">⚔️</span>
+      <span class="text-5xl mb-3 block"><PixelIcon name="attack" /></span>
       <p>暂无冒险家，快去招募吧！</p>
     </div>
 
@@ -425,7 +425,7 @@
               </template>
             </p>
             <p class="mt-1">
-              💰 总金币:
+              <PixelIcon name="gold" /> 总金币:
               <span class="text-yellow-500 font-bold">{{
                 formatNumberWithCommas(batchReportTotalGold)
               }}</span>
@@ -441,18 +441,18 @@
                   formatNumberWithCommas(
                     gameSettings?.adventurerLevelDownGoldPrice ?? 1000
                   )
-                }}🪙/级)
+                }}<PixelIcon name="gold" />/级)
               </span>
             </p>
             <p v-if="batchReportDirection === 'up'" class="mt-1 space-x-2">
               <span
-                >⚔️ 攻击水晶:
+                ><PixelIcon name="attack" /> 攻击水晶:
                 {{
                   formatNumberWithCommas(batchReportTotalCrystals.attackCrystal)
                 }}</span
               >
               <span
-                >🛡️ 防御水晶:
+                ><PixelIcon name="defense" /> 防御水晶:
                 {{
                   formatNumberWithCommas(
                     batchReportTotalCrystals.defenseCrystal
@@ -460,13 +460,13 @@
                 }}</span
               >
               <span
-                >💨 速度水晶:
+                ><PixelIcon name="speed" /> 速度水晶:
                 {{
                   formatNumberWithCommas(batchReportTotalCrystals.speedCrystal)
                 }}</span
               >
               <span
-                >❤️ SAN水晶:
+                ><PixelIcon name="san" /> SAN水晶:
                 {{
                   formatNumberWithCommas(batchReportTotalCrystals.sanCrystal)
                 }}</span
@@ -479,7 +479,7 @@
               "
               class="mt-2 text-green-500 text-xs"
             >
-              🏰 满足公会升级条件，升级时将自动升级公会等级至 Lv.{{
+              <PixelIcon name="dungeon" /> 满足公会升级条件，升级时将自动升级公会等级至 Lv.{{
                 batchReportGuildUpgradeInfo.targetGuildLevel
               }}（额外消耗
               {{
@@ -514,22 +514,22 @@
                 <p class="font-medium truncate">{{ item.name }}</p>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 text-xs mt-1">
                   <span
-                    >⚔️ Lv.{{ item.currentLevels.attack }} → Lv.{{
+                    ><PixelIcon name="attack" /> Lv.{{ item.currentLevels.attack }} → Lv.{{
                       item.newLevels.attack
                     }}</span
                   >
                   <span
-                    >🛡️ Lv.{{ item.currentLevels.defense }} → Lv.{{
+                    ><PixelIcon name="defense" /> Lv.{{ item.currentLevels.defense }} → Lv.{{
                       item.newLevels.defense
                     }}</span
                   >
                   <span
-                    >💨 Lv.{{ item.currentLevels.speed }} → Lv.{{
+                    ><PixelIcon name="speed" /> Lv.{{ item.currentLevels.speed }} → Lv.{{
                       item.newLevels.speed
                     }}</span
                   >
                   <span
-                    >❤️ Lv.{{ item.currentLevels.san }} → Lv.{{
+                    ><PixelIcon name="san" /> Lv.{{ item.currentLevels.san }} → Lv.{{
                       item.newLevels.san
                     }}</span
                   >
@@ -551,13 +551,13 @@
                   </template>
                 </p>
                 <p v-if="item.error" class="text-xs text-red-500 mt-1">
-                  ⚠️ {{ item.error }}
+                  <PixelIcon name="warning" /> {{ item.error }}
                 </p>
                 <p
                   v-else-if="item.warning"
                   class="text-xs text-orange-500 dark:text-orange-400 mt-1"
                 >
-                  ⚠️ {{ item.warning }}
+                  <PixelIcon name="warning" /> {{ item.warning }}
                 </p>
               </div>
             </div>
@@ -611,7 +611,7 @@
           class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center"
         >
           <p class="text-lg font-bold text-green-500 mb-1">
-            {{ batchResultDirection === 'up' ? '🎉 升级完成' : '📉 降级完成' }}
+            {{ batchResultDirection === 'up' ? 'success 升级完成' : 'notice 降级完成' }}
           </p>
           <p>
             <span class="text-green-500 font-bold"
@@ -625,7 +625,7 @@
             </span>
           </p>
           <p class="mt-1">
-            💰 消耗金币:
+            <PixelIcon name="gold" /> 消耗金币:
             <span class="text-yellow-500 font-bold">{{
               formatNumberWithCommas(batchResultData.totalGoldSpent)
             }}</span>
@@ -636,7 +636,7 @@
           </p>
           <p v-if="batchResultDirection === 'up'" class="mt-1 space-x-2">
             <span
-              >⚔️ 消耗攻击水晶:
+              ><PixelIcon name="attack" /> 消耗攻击水晶:
               {{
                 formatNumberWithCommas(
                   batchResultData.totalCrystalsSpent.attackCrystal
@@ -644,7 +644,7 @@
               }}</span
             >
             <span
-              >🛡️ 防御水晶:
+              ><PixelIcon name="defense" /> 防御水晶:
               {{
                 formatNumberWithCommas(
                   batchResultData.totalCrystalsSpent.defenseCrystal
@@ -652,7 +652,7 @@
               }}</span
             >
             <span
-              >💨 速度水晶:
+              ><PixelIcon name="speed" /> 速度水晶:
               {{
                 formatNumberWithCommas(
                   batchResultData.totalCrystalsSpent.speedCrystal
@@ -660,7 +660,7 @@
               }}</span
             >
             <span
-              >❤️ SAN水晶:
+              ><PixelIcon name="san" /> SAN水晶:
               {{
                 formatNumberWithCommas(
                   batchResultData.totalCrystalsSpent.sanCrystal
@@ -673,28 +673,28 @@
             class="mt-1 text-xs text-gray-400 space-x-2"
           >
             <span
-              >剩余: ⚔️{{
+              >剩余: <PixelIcon name="attack" />{{
                 formatNumberWithCommas(
                   batchResultData.remainingCrystals.attackCrystal
                 )
               }}</span
             >
             <span
-              >🛡️{{
+              ><PixelIcon name="defense" />{{
                 formatNumberWithCommas(
                   batchResultData.remainingCrystals.defenseCrystal
                 )
               }}</span
             >
             <span
-              >💨{{
+              ><PixelIcon name="speed" />{{
                 formatNumberWithCommas(
                   batchResultData.remainingCrystals.speedCrystal
                 )
               }}</span
             >
             <span
-              >❤️{{
+              ><PixelIcon name="san" />{{
                 formatNumberWithCommas(
                   batchResultData.remainingCrystals.sanCrystal
                 )
@@ -706,7 +706,7 @@
             v-if="batchResultData.guildUpgraded"
             class="mt-2 text-green-500 font-bold"
           >
-            🏰 公会等级已升级至 Lv.{{ batchResultData.newGuildLevel }}！
+            <PixelIcon name="dungeon" /> 公会等级已升级至 Lv.{{ batchResultData.newGuildLevel }}！
           </p>
         </div>
 
@@ -731,26 +731,26 @@
             <div class="flex-1 min-w-0">
               <p class="font-medium truncate">
                 {{ item.adventurerName }}
-                <span class="text-green-500 text-xs ml-1">✅ 成功</span>
+                <span class="text-green-500 text-xs ml-1"><PixelIcon name="check" /> 成功</span>
               </p>
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 text-xs mt-1">
                 <span
-                  >⚔️ Lv.{{ item.oldLevels.attack }} → Lv.{{
+                  ><PixelIcon name="attack" /> Lv.{{ item.oldLevels.attack }} → Lv.{{
                     item.newLevels.attackLevel
                   }}</span
                 >
                 <span
-                  >🛡️ Lv.{{ item.oldLevels.defense }} → Lv.{{
+                  ><PixelIcon name="defense" /> Lv.{{ item.oldLevels.defense }} → Lv.{{
                     item.newLevels.defenseLevel
                   }}</span
                 >
                 <span
-                  >💨 Lv.{{ item.oldLevels.speed }} → Lv.{{
+                  ><PixelIcon name="speed" /> Lv.{{ item.oldLevels.speed }} → Lv.{{
                     item.newLevels.speedLevel
                   }}</span
                 >
                 <span
-                  >❤️ Lv.{{ item.oldLevels.san }} → Lv.{{
+                  ><PixelIcon name="san" /> Lv.{{ item.oldLevels.san }} → Lv.{{
                     item.newLevels.SANLevel
                   }}</span
                 >
@@ -770,7 +770,7 @@
                 v-if="item.warning"
                 class="text-xs text-orange-500 dark:text-orange-400 mt-1"
               >
-                ⚠️ {{ item.warning }}
+                <PixelIcon name="warning" /> {{ item.warning }}
               </p>
             </div>
           </div>
@@ -789,7 +789,7 @@
             <div class="flex-1 min-w-0">
               <p class="font-medium truncate">
                 {{ item.adventurerName }}
-                <span class="text-red-400 text-xs ml-1">⚠️ 跳过</span>
+                <span class="text-red-400 text-xs ml-1"><PixelIcon name="warning" /> 跳过</span>
               </p>
               <p class="text-xs text-red-400 mt-1">
                 {{ item.skipReason }}
@@ -823,7 +823,7 @@
           {{ formationUpgradeDescription }}
         </p>
         <div v-if="formationListLoading" class="flex justify-center py-6">
-          <span class="animate-spin inline-block text-2xl">⏳</span>
+          <span class="animate-spin inline-block text-2xl"><PixelIcon name="timer" /></span>
         </div>
         <div v-else class="space-y-2">
           <!-- 竞技场阵容 -->
@@ -832,7 +832,7 @@
             class="rpg-card rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors border border-gray-300 dark:border-gray-600"
             @click="handleSelectFormation('arena')"
           >
-            <p class="font-medium text-sm">⚔️ 当前竞技场阵容</p>
+            <p class="font-medium text-sm"><PixelIcon name="attack" /> 当前竞技场阵容</p>
             <p class="text-xs text-gray-400 mt-0.5">
               {{ arenaFormationOption.advCount }} 名冒险家
             </p>
@@ -845,7 +845,7 @@
             @click="handleSelectFormation(f.slot)"
           >
             <p class="font-medium text-sm">
-              📋 {{ f.name }}（槽位{{ f.slot }}）
+              <PixelIcon name="list" /> {{ f.name }}（槽位{{ f.slot }}）
             </p>
             <p class="text-xs text-gray-400 mt-0.5">
               {{ f.advCount }} 名冒险家
@@ -919,7 +919,7 @@
 
               <!-- 战斗力 -->
               <p class="text-xs text-orange-400 mt-0.5 font-mono">
-                ⚔️
+                <PixelIcon name="attack" />
                 {{
                   formatNumberWithUnits(
                     calculateCombatPower(adv, adv.runeStone || null)
@@ -1049,7 +1049,7 @@ const formationSlotAdvIdsMap = ref({})
 // 选项列表（初始含基础两项，fetchFormationIds 后动态填充）
 const formationFilterOptions = ref([
   { value: '', label: '全部阵容' },
-  { value: 'notInAny', label: '📭 未配置任何阵容' }
+  { value: 'notInAny', label: 'notice 未配置任何阵容' }
 ])
 
 function handleFormationFilter() {
@@ -1074,7 +1074,7 @@ async function fetchFormationIds() {
       }
       if (ids.size > 0) {
         newMap['arena'] = ids
-        opts.push({ value: 'arena', label: '⚔️ 竞技场阵容' })
+        opts.push({ value: 'arena', label: 'attack 竞技场阵容' })
       }
     }
 
@@ -1093,13 +1093,13 @@ async function fetchFormationIds() {
           newMap[key] = ids
           opts.push({
             value: key,
-            label: `📋 ${f.name || '阵容' + f.slot}（槽${f.slot}）`
+            label: `list ${f.name || '阵容' + f.slot}（槽${f.slot}）`
           })
         }
       }
     }
 
-    opts.push({ value: 'notInAny', label: '📭 未配置任何阵容' })
+    opts.push({ value: 'notInAny', label: 'notice 未配置任何阵容' })
     formationSlotAdvIdsMap.value = newMap
     formationFilterOptions.value = opts
   } catch {
@@ -2073,9 +2073,9 @@ const formationSelectedAdvIds = ref(new Set())
 
 const formationUpgradeDialogTitle = computed(() => {
   if (formationUpgradeMode.value === FORMATION_UPGRADE_MODE_MAX) {
-    return '🏗️ 按阵容升级到最高等级'
+    return 'notice 按阵容升级到最高等级'
   }
-  return '🏗️ 按阵容升级'
+  return 'notice 按阵容升级'
 })
 
 const formationUpgradeDescription = computed(() => {
